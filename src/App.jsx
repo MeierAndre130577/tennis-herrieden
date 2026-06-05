@@ -480,8 +480,22 @@ function AdminView({data,onAddCourt,onUpdateCourt,onDeleteCourt,onCancelBooking}
   const [courtForm,setCourtForm]=useState({name:"",surface:"Sand"});
   const [editCourt,setEditCourt]=useState(null);
   const [supaUsers,setSupaUsers]=useState([]);
-  useEffect(()=>{ sb.from("profiles").select("*").order("created_at").then(({data})=>setSupaUsers(data||[])); },[tab]);
-  const updateRole=async(uid,role)=>{ await sb.from("profiles").update({role}).eq("id",uid); setSupaUsers(u=>u.map(x=>x.id===uid?{...x,role}:x)); };
+  useEffect(()=>{
+    if(tab!=="members") return;
+    sb.from("profiles").select("*").order("created_at").then(({data})=>setSupaUsers(data||[]));
+  },[tab]);
+
+  const updateRole=async(uid,role)=>{
+    await sb.from("profiles").update({role}).eq("id",uid);
+    setSupaUsers(u=>u.map(x=>x.id===uid?{...x,role}:x));
+  };
+
+  const deleteUser=async(uid)=>{
+    // Delete bookings first, then profile (auth user needs service role - use SQL)
+    await sb.from("bookings").delete().eq("user_id",uid);
+    await sb.from("profiles").delete().eq("id",uid);
+    setSupaUsers(u=>u.filter(x=>x.id!==uid));
+  };
   return (
     <div style={{padding:"24px 28px"}}>
       <h1 style={S.pageTitle}>Administration</h1>
@@ -496,8 +510,28 @@ function AdminView({data,onAddCourt,onUpdateCourt,onDeleteCourt,onCancelBooking}
         </div>))}</div>
       </>)}
       {tab==="members"&&(<>
-        <div style={{...S.card,background:"#EFF6FF",border:"1px solid #BFDBFE",marginBottom:16}}><div style={{fontWeight:700,marginBottom:6}}>ℹ️ Mitglieder einladen</div><div style={{fontSize:13,color:"#1D4ED8",lineHeight:1.6}}>Mitglieder registrieren sich selbst über den Login-Screen. Danach kannst du hier die Rolle zuweisen.</div></div>
-        {supaUsers.map(u=>(<div key={u.id} style={{...S.card,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}><div style={{display:"flex",alignItems:"center",gap:12}}><Av name={u.name}/><div><div style={{fontWeight:600}}>{u.name}</div></div></div><select value={u.role} onChange={e=>updateRole(u.id,e.target.value)} style={{...S.input,width:"auto",padding:"6px 10px"}}><option value="member">Mitglied</option><option value="member2">Mitglied Plus</option><option value="admin">Administrator</option></select></div>))}
+        <div style={{...S.card,background:"#EFF6FF",border:"1px solid #BFDBFE",marginBottom:16}}><div style={{fontWeight:700,marginBottom:6}}>ℹ️ Mitglieder einladen</div><div style={{fontSize:13,color:"#1D4ED8",lineHeight:1.6}}>Mitglieder registrieren sich selbst über den Login-Screen. Danach kannst du hier Rolle zuweisen oder Mitglieder löschen.</div></div>
+        <h3 style={{fontWeight:700,marginBottom:12}}>Alle Mitglieder ({supaUsers.length})</h3>
+        {supaUsers.map(u=>(
+          <div key={u.id} style={{...S.card,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
+            <div style={{display:"flex",alignItems:"center",gap:12,minWidth:0,flex:1}}>
+              <Av name={u.name}/>
+              <div style={{minWidth:0}}>
+                <div style={{fontWeight:700,fontSize:14}}>{u.name}</div>
+                <div style={{fontSize:12,color:"#6B7280",marginTop:2}}>{u.email||"–"}</div>
+                <span style={{fontSize:11,padding:"2px 8px",borderRadius:20,background:"#F3F4F6",color:"#374151",fontWeight:600,marginTop:4,display:"inline-block"}}>{ROLE_LABELS[u.role]}</span>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:8,alignItems:"center",flexShrink:0}}>
+              <select value={u.role} onChange={e=>updateRole(u.id,e.target.value)} style={{...S.input,width:"auto",padding:"6px 10px",fontSize:12}}>
+                <option value="member">Mitglied</option>
+                <option value="member2">Mitglied Plus</option>
+                <option value="admin">Administrator</option>
+              </select>
+              <button style={S.cancelBtn} onClick={()=>{if(window.confirm(`${u.name} wirklich löschen? Alle Buchungen werden ebenfalls gelöscht.`)) deleteUser(u.id);}}>Löschen</button>
+            </div>
+          </div>
+        ))}
       </>)}
       {tab==="bookings"&&(<div><h3 style={{fontWeight:700,marginBottom:14}}>Bevorstehende Buchungen</h3>
         {data.bookings.filter(b=>b.date>=today()).sort((a,b)=>(a.date+a.slot).localeCompare(b.date+b.slot)).map(b=>{const court=data.courts.find(c=>c.id===b.courtId);const ci=data.courts.findIndex(c=>c.id===b.courtId);const icon=b.type==="training"?"🏋️":b.type==="match"?"🏆":"📅";
