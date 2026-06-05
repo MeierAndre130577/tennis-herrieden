@@ -1,14 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-// ─── Supabase Client ──────────────────────────────────────────────────────────
-// HIER deine eigenen Werte eintragen (Schritt 2 der Anleitung):
 const SUPABASE_URL  = "https://irszeiamvwyrntyauury.supabase.co";
 const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlyc3plaWFtdnd5cm50eWF1dXJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2Mzc1MjcsImV4cCI6MjA5NjIxMzUyN30.ryxib1E5E2cfkwfXj6i2EnmD56tyCtz_39u7Bpw7qSc";
-
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
 
-// ─── Constants ────────────────────────────────────────────────────────────────
 const SLOTS = ["08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00"];
 const DE_DAYS  = ["Mo","Di","Mi","Do","Fr","Sa","So"];
 const DE_FULL  = ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"];
@@ -20,24 +16,19 @@ const ROLE_LABELS = { admin:"Administrator", member2:"Mitglied Plus", member:"Mi
 function fmt(d)     { return d.toISOString().slice(0,10); }
 function today()    { return fmt(new Date()); }
 function fmtDate(d) { return `${d.getDate()}. ${DE_MONTH[d.getMonth()]} ${d.getFullYear()}`; }
-function dayOfWeek(dateStr) { const d=new Date(dateStr+"T12:00:00"); return d.getDay()===0?6:d.getDay()-1; }
-function getWeekDays(base) {
-  const m=new Date(base); const dw=m.getDay();
-  m.setDate(m.getDate()-(dw===0?6:dw-1));
-  return Array.from({length:7},(_,i)=>{ const d=new Date(m); d.setDate(m.getDate()+i); return d; });
-}
-function addDays(dateStr,n) { const d=new Date(dateStr+"T12:00:00"); d.setDate(d.getDate()+n); return fmt(d); }
-function datesBetween(from,to) {
-  const dates=[]; let cur=from;
-  while(cur<=to){ dates.push(cur); cur=addDays(cur,1); }
-  return dates;
-}
+function eur(n)     { return (n||0).toFixed(2).replace(".",",") + " €"; }
+function dayOfWeek(s){ const d=new Date(s+"T12:00:00"); return d.getDay()===0?6:d.getDay()-1; }
+function getWeekDays(base){ const m=new Date(base); const dw=m.getDay(); m.setDate(m.getDate()-(dw===0?6:dw-1)); return Array.from({length:7},(_,i)=>{ const d=new Date(m); d.setDate(m.getDate()+i); return d; }); }
+function addDays(s,n){ const d=new Date(s+"T12:00:00"); d.setDate(d.getDate()+n); return fmt(d); }
+function datesBetween(from,to){ const dates=[]; let cur=from; while(cur<=to){ dates.push(cur); cur=addDays(cur,1); } return dates; }
 
+// ═══════════════════════════════════════════════════════════════════════════
 export default function App() {
   const [session,setSession]   = useState(undefined);
   const [profile,setProfile]   = useState(null);
   const [courts,setCourts]     = useState([]);
   const [bookings,setBookings] = useState([]);
+  const [guestFee,setGuestFee] = useState(5.00);
   const [view,setView]         = useState("calendar");
   const [calMode,setCalMode]   = useState("week");
   const [weekBase,setWeekBase] = useState(new Date());
@@ -46,11 +37,11 @@ export default function App() {
   const [toast,setToast]       = useState(null);
   const [modal,setModal]       = useState(null);
 
-  const showToast = (msg,type="success") => { setToast({msg,type}); setTimeout(()=>setToast(null),3200); };
+  const showToast=(msg,type="success")=>{ setToast({msg,type}); setTimeout(()=>setToast(null),3200); };
 
   useEffect(()=>{
     sb.auth.getSession().then(({data:{session}})=>setSession(session));
-    const {data:{subscription}} = sb.auth.onAuthStateChange((_,session)=>setSession(session));
+    const {data:{subscription}}=sb.auth.onAuthStateChange((_,session)=>setSession(session));
     return ()=>subscription.unsubscribe();
   },[]);
 
@@ -62,12 +53,13 @@ export default function App() {
   useEffect(()=>{
     if(!session) return;
     sb.from("courts").select("*").order("sort_order").then(({data})=>{ setCourts(data||[]); setSelCourt(s=>s||(data?.[0]?.id||null)); });
+    sb.from("settings").select("*").eq("key","guest_fee").single().then(({data})=>{ if(data) setGuestFee(parseFloat(data.value)||5); });
   },[session]);
 
-  const loadBookings = useCallback(async()=>{
+  const loadBookings=useCallback(async()=>{
     if(!session) return;
     const from=addDays(today(),-30);
-    const {data} = await sb.from("bookings").select("*").gte("date",from).order("date").order("slot");
+    const {data}=await sb.from("bookings").select("*").gte("date",from).order("date").order("slot");
     setBookings(data||[]);
   },[session]);
 
@@ -75,65 +67,69 @@ export default function App() {
 
   useEffect(()=>{
     if(!session) return;
-    const channel = sb.channel("bookings-live")
-      .on("postgres_changes",{event:"*",schema:"public",table:"bookings"},()=>loadBookings())
-      .subscribe();
-    return ()=>sb.removeChannel(channel);
+    const ch=sb.channel("bookings-live").on("postgres_changes",{event:"*",schema:"public",table:"bookings"},()=>loadBookings()).subscribe();
+    return ()=>sb.removeChannel(ch);
   },[session,loadBookings]);
 
   if(session===undefined) return <Loading msg="Verbinde mit Datenbank…"/>;
   if(!session) return <LoginScreen/>;
   if(!profile) return <Loading msg="Lade Profil…"/>;
 
-  const canMassBook = profile.role==="admin"||profile.role==="member2";
+  const canMassBook=profile.role==="admin"||profile.role==="member2";
+  const adaptedBookings=bookings.map(b=>({...b,courtId:b.court_id,userId:b.user_id,userName:b.user_name}));
+  const adaptedData={bookings:adaptedBookings,courts};
 
-  const adaptedBookings = bookings.map(b=>({...b,courtId:b.court_id,userId:b.user_id,userName:b.user_name}));
-  const adaptedData = { bookings:adaptedBookings, courts };
-
-  const bookSingle = async(courtId,date,slot,type="regular",label="")=>{
-    const {error} = await sb.from("bookings").insert({court_id:courtId,user_id:profile.id,user_name:profile.name,date,slot,type,label});
+  // ── Single booking ──
+  const bookSingle=async(courtId,date,slot,type="regular",label="",withGuest=false)=>{
+    const {error}=await sb.from("bookings").insert({court_id:courtId,user_id:profile.id,user_name:profile.name,date,slot,type,label,with_guest:withGuest,guest_fee:withGuest?guestFee:0});
     if(error){ showToast(error.code==="23505"?"Dieser Slot ist bereits belegt.":error.message,"error"); return; }
     await loadBookings(); setModal(null);
     showToast(`${slot} Uhr auf ${courts.find(c=>c.id===courtId)?.name} gebucht ✓`);
   };
 
-  const massBook = async({courtIds,dateFrom,dateTo,weekdays,slots,type,label})=>{
+  // ── Mass booking ──
+  const massBook=async({courtIds,dateFrom,dateTo,weekdays,slots,type,label})=>{
     const allDates=datesBetween(dateFrom,dateTo).filter(d=>weekdays.includes(dayOfWeek(d)));
     const rows=[];
     for(const date of allDates) for(const courtId of courtIds) for(const slot of slots)
-      rows.push({court_id:courtId,user_id:profile.id,user_name:profile.name,date,slot,type,label});
+      rows.push({court_id:courtId,user_id:profile.id,user_name:profile.name,date,slot,type,label,with_guest:false,guest_fee:0});
     let added=0;
     for(let i=0;i<rows.length;i+=50){
-      const {data:ins} = await sb.from("bookings").upsert(rows.slice(i,i+50),{onConflict:"court_id,date,slot",ignoreDuplicates:true}).select();
+      const {data:ins}=await sb.from("bookings").upsert(rows.slice(i,i+50),{onConflict:"court_id,date,slot",ignoreDuplicates:true}).select();
       added+=(ins?.length||0);
     }
     await loadBookings(); showToast(`${added} Slots gebucht.`); setModal(null);
   };
 
-  const cancel = async(bookingId)=>{
+  // ── Cancel ──
+  const cancel=async(bookingId)=>{
     const bk=bookings.find(b=>b.id===bookingId); if(!bk) return;
     if(bk.user_id!==profile.id&&profile.role!=="admin"){ showToast("Keine Berechtigung.","error"); return; }
     await sb.from("bookings").delete().eq("id",bookingId);
     await loadBookings(); showToast("Buchung storniert."); setModal(null);
   };
+  const cancelMany=async(ids)=>{ await sb.from("bookings").delete().in("id",ids); await loadBookings(); showToast(`${ids.length} Buchungen storniert.`); };
 
-  const cancelMany = async(ids)=>{
-    await sb.from("bookings").delete().in("id",ids);
-    await loadBookings(); showToast(`${ids.length} Buchungen storniert.`);
+  // ── Mark guest fee paid ──
+  const markGuestPaid=async(userId)=>{
+    await sb.from("bookings").update({guest_paid:true}).eq("user_id",userId).eq("with_guest",true).eq("guest_paid",false);
+    await loadBookings(); showToast("Als bezahlt markiert ✓");
   };
 
-  const addCourt = async(name,surface)=>{
-    await sb.from("courts").insert({name,surface,sort_order:courts.length+1});
-    const {data} = await sb.from("courts").select("*").order("sort_order"); setCourts(data||[]); showToast(`${name} hinzugefügt ✓`);
+  // ── Courts ──
+  const addCourt=async(name,surface)=>{ await sb.from("courts").insert({name,surface,sort_order:courts.length+1}); const {data}=await sb.from("courts").select("*").order("sort_order"); setCourts(data||[]); showToast(`${name} hinzugefügt ✓`); };
+  const updateCourt=async(id,name,surface)=>{ await sb.from("courts").update({name,surface}).eq("id",id); const {data}=await sb.from("courts").select("*").order("sort_order"); setCourts(data||[]); showToast("Aktualisiert ✓"); };
+  const deleteCourt=async(id)=>{ await sb.from("courts").delete().eq("id",id); const {data}=await sb.from("courts").select("*").order("sort_order"); setCourts(data||[]); showToast("Gelöscht."); };
+
+  // ── Save guest fee ──
+  const saveGuestFee=async(fee)=>{
+    await sb.from("settings").upsert({key:"guest_fee",value:String(fee)},{onConflict:"key"});
+    setGuestFee(fee); showToast(`Gebühr auf ${eur(fee)} gesetzt ✓`);
   };
-  const updateCourt = async(id,name,surface)=>{
-    await sb.from("courts").update({name,surface}).eq("id",id);
-    const {data} = await sb.from("courts").select("*").order("sort_order"); setCourts(data||[]); showToast("Aktualisiert ✓");
-  };
-  const deleteCourt = async(id)=>{
-    await sb.from("courts").delete().eq("id",id);
-    const {data} = await sb.from("courts").select("*").order("sort_order"); setCourts(data||[]); showToast("Gelöscht.");
-  };
+
+  // ── Users ──
+  const addUser=async(name,email,password,role)=>{ if(bookings.find(b=>b.user_name===name)) return; showToast("Mitglieder registrieren sich selbst.","error"); };
+  const deleteUser=async(uid)=>{ await sb.from("bookings").delete().eq("user_id",uid); await sb.from("profiles").delete().eq("id",uid); showToast("Gelöscht."); };
 
   const days=getWeekDays(weekBase);
   const navItems=[
@@ -146,28 +142,14 @@ export default function App() {
   return (
     <>
       <style>{`
-        @media (max-width: 767px) {
-          .desktop-sidebar { display: none !important; }
-          .mobile-bottom-nav { display: flex !important; }
-          .mobile-top-bar { display: flex !important; }
-          .app-main { padding-bottom: 72px !important; }
-        }
-        @media (min-width: 768px) {
-          .desktop-sidebar { display: flex !important; }
-          .mobile-bottom-nav { display: none !important; }
-          .mobile-top-bar { display: none !important; }
-        }
+        @media(max-width:767px){.desktop-sidebar{display:none!important}.mobile-bottom-nav{display:flex!important}.mobile-top-bar{display:flex!important}.app-main{padding-bottom:72px!important}}
+        @media(min-width:768px){.desktop-sidebar{display:flex!important}.mobile-bottom-nav{display:none!important}.mobile-top-bar{display:none!important}}
       `}</style>
-
       <div style={S.shell}>
-        <aside className="desktop-sidebar" style={{...S.sidebar, display:"none"}}>
+        <aside className="desktop-sidebar" style={{...S.sidebar,display:"none"}}>
           <div style={S.logo}><TennisBall size={28}/><span style={S.logoText}>Tennis Herrieden</span></div>
           <nav style={S.nav}>
-            {navItems.map(item=>(
-              <button key={item.id} style={{...S.navBtn,...(view===item.id?S.navBtnActive:{})}} onClick={()=>setView(item.id)}>
-                <span style={{fontSize:16}}>{item.icon}</span><span>{item.label}</span>
-              </button>
-            ))}
+            {navItems.map(item=>(<button key={item.id} style={{...S.navBtn,...(view===item.id?S.navBtnActive:{})}} onClick={()=>setView(item.id)}><span style={{fontSize:16}}>{item.icon}</span><span>{item.label}</span></button>))}
           </nav>
           <div style={S.sidebarBottom}>
             <div style={S.userChip}><Av name={profile.name}/><div><div style={{fontWeight:700,fontSize:13}}>{profile.name}</div><div style={{fontSize:11,color:"#6B7280"}}>{ROLE_LABELS[profile.role]}</div></div></div>
@@ -178,86 +160,112 @@ export default function App() {
         <main className="app-main" style={S.main}>
           <div className="mobile-top-bar" style={{display:"none",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",background:"#0F172A",position:"sticky",top:0,zIndex:50}}>
             <div style={{display:"flex",alignItems:"center",gap:8}}><TennisBall size={22}/><span style={{color:"#fff",fontWeight:800,fontSize:15}}>Tennis Herrieden</span></div>
-            <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <Av name={profile.name}/>
-              <button style={{background:"none",border:"1px solid #334155",borderRadius:6,color:"#94A3B8",cursor:"pointer",fontSize:12,padding:"5px 10px"}} onClick={()=>sb.auth.signOut()}>Abmelden</button>
-            </div>
+            <div style={{display:"flex",alignItems:"center",gap:8}}><Av name={profile.name}/><button style={{background:"none",border:"1px solid #334155",borderRadius:6,color:"#94A3B8",cursor:"pointer",fontSize:12,padding:"5px 10px"}} onClick={()=>sb.auth.signOut()}>Abmelden</button></div>
           </div>
 
           {view==="calendar"&&<CalendarView data={adaptedData} user={profile} calMode={calMode} setCalMode={setCalMode} days={days} weekBase={weekBase} setWeekBase={setWeekBase} dayBase={dayBase} setDayBase={setDayBase} selCourt={selCourt||courts[0]?.id} setSelCourt={setSelCourt} onSlotClick={(courtId,date,slot,existing)=>setModal({type:"slot",courtId,date,slot,existing})}/>}
-          {view==="myBookings"&&<MyBookings data={adaptedData} user={profile} onCancel={cancel}/>}
+          {view==="myBookings"&&<MyBookings data={adaptedData} user={profile} onCancel={cancel} guestFee={guestFee} onMarkPaid={()=>markGuestPaid(profile.id)}/>}
           {view==="massbook"&&canMassBook&&<MassBookView data={adaptedData} user={profile} onMassBook={massBook} onCancelMany={cancelMany}/>}
-          {view==="admin"&&profile.role==="admin"&&<AdminView data={adaptedData} onAddCourt={addCourt} onUpdateCourt={updateCourt} onDeleteCourt={deleteCourt} onCancelBooking={cancel}/>}
+          {view==="admin"&&profile.role==="admin"&&<AdminView data={adaptedData} allBookings={bookings} guestFee={guestFee} onSaveGuestFee={saveGuestFee} onAddCourt={addCourt} onUpdateCourt={updateCourt} onDeleteCourt={deleteCourt} onDeleteUser={deleteUser} onCancelBooking={cancel} onMarkPaid={markGuestPaid}/>}
         </main>
 
         <nav className="mobile-bottom-nav" style={{display:"none",position:"fixed",bottom:0,left:0,right:0,background:"#0F172A",borderTop:"1px solid #1E293B",zIndex:100,justifyContent:"space-around",padding:"8px 0",paddingBottom:"env(safe-area-inset-bottom)"}}>
-          {navItems.map(item=>(
-            <button key={item.id} onClick={()=>setView(item.id)}
-              style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,background:"none",border:"none",cursor:"pointer",padding:"6px 12px",borderRadius:8,color:view===item.id?"#4ADE80":"#64748B"}}>
-              <span style={{fontSize:22}}>{item.icon}</span>
-              <span style={{fontSize:10,fontWeight:600}}>{item.label.split(" ")[0]}</span>
-            </button>
-          ))}
+          {navItems.map(item=>(<button key={item.id} onClick={()=>setView(item.id)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,background:"none",border:"none",cursor:"pointer",padding:"6px 12px",borderRadius:8,color:view===item.id?"#4ADE80":"#64748B"}}><span style={{fontSize:22}}>{item.icon}</span><span style={{fontSize:10,fontWeight:600}}>{item.label.split(" ")[0]}</span></button>))}
         </nav>
 
-        {modal?.type==="slot"&&<SlotModal modal={modal} data={adaptedData} user={profile} onBook={bookSingle} onCancel={cancel} onClose={()=>setModal(null)}/>}
+        {modal?.type==="slot"&&<SlotModal modal={modal} data={adaptedData} user={profile} guestFee={guestFee} onBook={bookSingle} onCancel={cancel} onClose={()=>setModal(null)}/>}
         {toast&&<div style={{...S.toast,background:toast.type==="error"?"#EF4444":"#10B981"}}>{toast.msg}</div>}
       </div>
     </>
   );
 }
 
-function LoginScreen() {
-  const [mode,setMode]=useState("login");
-  const [email,setEmail]=useState("");
-  const [password,setPassword]=useState("");
-  const [name,setName]=useState("");
-  const [msg,setMsg]=useState(null);
-  const [loading,setLoading]=useState(false);
-  const handle=async()=>{
-    setLoading(true);setMsg(null);
-    if(mode==="login"){
-      const {error}=await sb.auth.signInWithPassword({email,password});
-      if(error)setMsg({text:error.message,type:"error"});
-    } else if(mode==="register"){
-      const {error}=await sb.auth.signUp({email,password,options:{data:{name}}});
-      if(error)setMsg({text:error.message,type:"error"});
-      else setMsg({text:"Bitte bestätige deine E-Mail, dann kannst du dich anmelden.",type:"ok"});
-    } else {
-      const {error}=await sb.auth.resetPasswordForEmail(email);
-      if(error)setMsg({text:error.message,type:"error"});
-      else setMsg({text:"Passwort-Reset-Link gesendet.",type:"ok"});
-    }
-    setLoading(false);
-  };
+// ═══════════════════════════════════════════════════════════════════════════
+// SLOT MODAL – with guest option
+// ═══════════════════════════════════════════════════════════════════════════
+function SlotModal({modal,data,user,guestFee,onBook,onCancel,onClose}) {
+  const {courtId,date,slot,existing}=modal;
+  const [withGuest,setWithGuest]=useState(false);
+  const court=data.courts.find(c=>c.id===courtId);
+  const d=new Date(date+"T12:00:00");
+  const isOwn=existing?.userId===user.id;
+  const isAdmin=user.role==="admin";
+  const bType=existing?.type||"regular";
+
   return (
-    <div style={S.loginWrap}>
-      <div style={S.loginCard}>
-        <div style={{textAlign:"center",marginBottom:28}}>
-          <TennisBall size={52}/>
-          <h1 style={{fontSize:22,fontWeight:800,letterSpacing:-.5,marginTop:12}}>Tennis Herrieden</h1>
-          <p style={{color:"#6B7280",fontSize:13,marginTop:4}}>Tennisplatz-Buchungssystem</p>
+    <div style={S.overlay} onClick={onClose}>
+      <div style={{...S.modal,maxHeight:"90vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
+        <div style={S.modalHeader}>
+          <div><div style={S.modalTitle}>{court?.name} · {slot} Uhr</div><div style={S.modalSub}>{DE_FULL[dayOfWeek(date)]}, {fmtDate(d)}</div></div>
+          <button style={S.closeBtn} onClick={onClose}>✕</button>
         </div>
-        <div style={{display:"flex",gap:6,marginBottom:20}}>
-          {[["login","Anmelden"],["register","Registrieren"]].map(([m,l])=>(
-            <button key={m} style={{...S.tabBtn,flex:1,...(mode===m?S.tabBtnActive:{})}} onClick={()=>{setMode(m);setMsg(null);}}>{l}</button>
-          ))}
-        </div>
-        <div style={{display:"flex",flexDirection:"column",gap:12}}>
-          {mode==="register"&&<input placeholder="Vollständiger Name" value={name} onChange={e=>setName(e.target.value)} style={S.input}/>}
-          <input type="email" placeholder="E-Mail" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handle()} style={S.input}/>
-          {mode!=="reset"&&<input type="password" placeholder="Passwort" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handle()} style={S.input}/>}
-          {msg&&<div style={{padding:"10px 12px",borderRadius:8,fontSize:13,background:msg.type==="error"?"#FEE2E2":"#DCFCE7",color:msg.type==="error"?"#991B1B":"#166534"}}>{msg.text}</div>}
-          <button style={{...S.primaryBtn,marginTop:4,opacity:loading?.6:1}} onClick={handle} disabled={loading}>
-            {loading?"…":mode==="login"?"Anmelden":mode==="register"?"Registrieren":"Link senden"}
-          </button>
-          {mode==="login"&&<button style={{background:"none",border:"none",color:"#6B7280",cursor:"pointer",fontSize:12}} onClick={()=>{setMode("reset");setMsg(null);}}>Passwort vergessen?</button>}
-        </div>
+
+        {!existing&&(
+          <>
+            {/* Slot info */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:16}}>
+              {[["Platz",court?.name||"?"],["Uhrzeit",slot+" Uhr"],["Dauer","1 Std."]].map(([l,v])=>(
+                <div key={l} style={{background:"#F8FAFC",borderRadius:8,padding:"10px",textAlign:"center"}}>
+                  <div style={{fontSize:10,color:"#9CA3AF",fontWeight:700,marginBottom:3}}>{l}</div>
+                  <div style={{fontSize:13,fontWeight:800,color:"#111827"}}>{v}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Guest toggle */}
+            <div style={{background:"#FFFBEB",border:"1.5px solid #FDE68A",borderRadius:12,padding:14,marginBottom:16}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer"}} onClick={()=>setWithGuest(g=>!g)}>
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  <span style={{fontSize:22}}>👥</span>
+                  <div>
+                    <div style={{fontWeight:700,fontSize:14,color:"#111827"}}>Gastspieler</div>
+                    <div style={{fontSize:11,color:"#92400E",marginTop:1}}>Gebühr wird am Jahresende abgerechnet</div>
+                  </div>
+                </div>
+                {/* Toggle switch */}
+                <div style={{width:44,height:24,background:withGuest?"#F59E0B":"#E5E7EB",borderRadius:12,position:"relative",transition:"background .2s",flexShrink:0}}>
+                  <div style={{width:20,height:20,background:"#fff",borderRadius:"50%",position:"absolute",top:2,left:withGuest?22:2,transition:"left .2s",boxShadow:"0 1px 4px rgba(0,0,0,.2)"}}></div>
+                </div>
+              </div>
+              {withGuest&&(
+                <div style={{marginTop:10,padding:"10px 12px",background:"#FEF3C7",borderRadius:8,fontSize:12,color:"#92400E",fontWeight:600}}>
+                  💶 Gebühr: <strong>{eur(guestFee)}</strong> – wird in deinem Konto vorgemerkt
+                </div>
+              )}
+            </div>
+
+            <div style={{display:"flex",gap:10}}>
+              <button style={{...S.primaryBtn,flex:1}} onClick={()=>onBook(courtId,date,slot,"regular","",withGuest)}>
+                {withGuest?"Mit Gastspieler buchen":"Jetzt buchen"}
+              </button>
+              <button style={S.ghostBtn} onClick={onClose}>Abbrechen</button>
+            </div>
+          </>
+        )}
+
+        {existing&&(
+          <>
+            <div style={{background:"#F9FAFB",borderRadius:8,padding:"12px 14px",marginBottom:16}}>
+              <div style={{fontSize:12,color:"#6B7280",marginBottom:4}}>Gebucht von</div>
+              <div style={{fontWeight:700,fontSize:16}}>{existing.userName}</div>
+              <div style={{marginTop:6,display:"flex",gap:6,flexWrap:"wrap"}}>
+                <span style={{fontSize:12,padding:"2px 8px",borderRadius:20,background:BOOKING_TYPE_COLORS[bType]+"22",color:BOOKING_TYPE_COLORS[bType],fontWeight:600}}>
+                  {bType==="training"?"🏋️ Training":bType==="match"?"🏆 Spieltag":"📅 Standard"}
+                </span>
+                {existing.with_guest&&<span style={{fontSize:12,padding:"2px 8px",borderRadius:20,background:"#FEF3C7",color:"#D97706",fontWeight:700}}>👥 Gastspieler</span>}
+              </div>
+            </div>
+            {(isOwn||isAdmin)?(<div style={{display:"flex",gap:10}}><button style={{...S.cancelBtn,padding:"10px 18px",fontSize:14}} onClick={()=>onCancel(existing.id)}>Stornieren</button><button style={S.ghostBtn} onClick={onClose}>Schließen</button></div>):(<button style={S.ghostBtn} onClick={onClose}>Schließen</button>)}
+          </>
+        )}
       </div>
     </div>
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// CALENDAR VIEW
+// ═══════════════════════════════════════════════════════════════════════════
 function CalendarView({data,user,calMode,setCalMode,days,weekBase,setWeekBase,dayBase,setDayBase,selCourt,setSelCourt,onSlotClick}) {
   const todayStr=today();
   const prevWeek=()=>{const d=new Date(weekBase);d.setDate(d.getDate()-7);setWeekBase(d);};
@@ -267,47 +275,32 @@ function CalendarView({data,user,calMode,setCalMode,days,weekBase,setWeekBase,da
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:12}}>
         <div><h1 style={S.pageTitle}>Buchungskalender</h1><p style={S.pageSub}>Klicke auf einen freien Slot zum Buchen</p></div>
         <div style={{display:"flex",gap:6}}>
-          {[["week","📅 Woche"],["day","🗓 Tag"]].map(([m,l])=>(
-            <button key={m} style={{...S.tabBtn,...(calMode===m?S.tabBtnActive:{})}} onClick={()=>setCalMode(m)}>{l}</button>
-          ))}
+          {[["week","📅 Woche"],["day","🗓 Tag"]].map(([m,l])=>(<button key={m} style={{...S.tabBtn,...(calMode===m?S.tabBtnActive:{})}} onClick={()=>setCalMode(m)}>{l}</button>))}
         </div>
       </div>
-      {calMode==="week"&&(
-        <>
-          <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
-            {data.courts.map((c,i)=>(
-              <button key={c.id} style={{...S.courtTab,...(selCourt===c.id?{background:COURT_COLORS[i%COURT_COLORS.length],color:"#fff",borderColor:COURT_COLORS[i%COURT_COLORS.length]}:{})}} onClick={()=>setSelCourt(c.id)}>
-                {c.name}<br/><span style={{fontSize:10,opacity:.8}}>{c.surface}</span>
-              </button>
-            ))}
-          </div>
-          <div style={S.weekNav}>
-            <button style={S.weekBtn} onClick={prevWeek}>← Vorwoche</button>
-            <span style={{fontWeight:600,fontSize:14}}>{fmtDate(days[0])} – {fmtDate(days[6])}</span>
-            <button style={S.weekBtn} onClick={nextWeek}>Nächste Woche →</button>
-            <button style={{...S.weekBtn,marginLeft:8}} onClick={()=>setWeekBase(new Date())}>Heute</button>
-          </div>
-          <WeekGrid data={data} user={user} days={days} selCourt={selCourt} todayStr={todayStr} onSlotClick={onSlotClick}/>
-        </>
-      )}
-      {calMode==="day"&&(
-        <>
-          <div style={S.weekNav}>
-            <button style={S.weekBtn} onClick={()=>setDayBase(addDays(dayBase,-1))}>← Vorheriger Tag</button>
-            <span style={{fontWeight:600,fontSize:14}}>{DE_FULL[dayOfWeek(dayBase)]}, {fmtDate(new Date(dayBase+"T12:00:00"))}</span>
-            <button style={S.weekBtn} onClick={()=>setDayBase(addDays(dayBase,1))}>Nächster Tag →</button>
-            <button style={{...S.weekBtn,marginLeft:8}} onClick={()=>setDayBase(today())}>Heute</button>
-          </div>
-          <DayGrid data={data} user={user} date={dayBase} todayStr={todayStr} onSlotClick={onSlotClick}/>
-        </>
-      )}
+      {calMode==="week"&&(<>
+        <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
+          {data.courts.map((c,i)=>(<button key={c.id} style={{...S.courtTab,...(selCourt===c.id?{background:COURT_COLORS[i%COURT_COLORS.length],color:"#fff",borderColor:COURT_COLORS[i%COURT_COLORS.length]}:{})}} onClick={()=>setSelCourt(c.id)}>{c.name}<br/><span style={{fontSize:10,opacity:.8}}>{c.surface}</span></button>))}
+        </div>
+        <div style={S.weekNav}>
+          <button style={S.weekBtn} onClick={prevWeek}>← Vorwoche</button>
+          <span style={{fontWeight:600,fontSize:14}}>{fmtDate(days[0])} – {fmtDate(days[6])}</span>
+          <button style={S.weekBtn} onClick={nextWeek}>Nächste Woche →</button>
+          <button style={{...S.weekBtn,marginLeft:8}} onClick={()=>setWeekBase(new Date())}>Heute</button>
+        </div>
+        <WeekGrid data={data} user={user} days={days} selCourt={selCourt} todayStr={todayStr} onSlotClick={onSlotClick}/>
+      </>)}
+      {calMode==="day"&&(<>
+        <div style={S.weekNav}>
+          <button style={S.weekBtn} onClick={()=>setDayBase(addDays(dayBase,-1))}>← Vorheriger Tag</button>
+          <span style={{fontWeight:600,fontSize:14}}>{DE_FULL[dayOfWeek(dayBase)]}, {fmtDate(new Date(dayBase+"T12:00:00"))}</span>
+          <button style={S.weekBtn} onClick={()=>setDayBase(addDays(dayBase,1))}>Nächster Tag →</button>
+          <button style={{...S.weekBtn,marginLeft:8}} onClick={()=>setDayBase(today())}>Heute</button>
+        </div>
+        <DayGrid data={data} user={user} date={dayBase} todayStr={todayStr} onSlotClick={onSlotClick}/>
+      </>)}
       <div style={{display:"flex",gap:20,marginTop:12,flexWrap:"wrap"}}>
-        {[["#22C55E","Eigene Buchung"],["#6B7280","Belegt"],["#3B82F6","Training"],["#EF4444","Spieltag"],["#F9FAFB","Verfügbar"]].map(([col,label])=>(
-          <div key={label} style={{display:"flex",alignItems:"center",gap:6}}>
-            <div style={{width:13,height:13,borderRadius:3,background:col,border:"1px solid #E5E7EB"}}></div>
-            <span style={{fontSize:12,color:"#6B7280"}}>{label}</span>
-          </div>
-        ))}
+        {[["#22C55E","Eigene Buchung"],["#16A34A","Mit Gastspieler"],["#6B7280","Belegt"],["#3B82F6","Training"],["#EF4444","Spieltag"],["#F9FAFB","Verfügbar"]].map(([col,label])=>(<div key={label} style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:13,height:13,borderRadius:3,background:col,border:"1px solid #E5E7EB"}}></div><span style={{fontSize:12,color:"#6B7280"}}>{label}</span></div>))}
       </div>
     </div>
   );
@@ -328,9 +321,10 @@ function WeekGrid({data,user,days,selCourt,todayStr,onSlotClick}) {
             const booking=data.bookings.find(b=>b.courtId===selCourt&&b.date===dateStr&&b.slot===slot);
             const isOwn=booking?.userId===user.id;const isPast=dateStr<todayStr;
             const bType=booking?.type||"regular";const bColor=BOOKING_TYPE_COLORS[bType];
+            const slotColor=isOwn?(booking?.with_guest?"#16A34A":color):bColor;
             return (<td key={di} style={S.tdSlot}><button disabled={isPast&&!booking} onClick={()=>onSlotClick(selCourt,dateStr,slot,booking||null)}
-              style={{...S.slotBtn,...(booking?{background:isOwn?color+"22":bColor+"22",borderColor:isOwn?color:bColor,color:isOwn?color:bColor,fontWeight:700}:{}),...(isPast&&!booking?S.slotPast:{})}}>
-              {booking?(()=>{const icon=bType==="training"?"🏋️":bType==="match"?"🏆":"";const name=isOwn?"✓ Du":booking.userName.split(" ")[0];return `${icon} ${name}`.trim();})():(isPast?"—":"Frei")}</button></td>);
+              style={{...S.slotBtn,...(booking?{background:slotColor+"22",borderColor:slotColor,color:slotColor,fontWeight:700}:{}),...(isPast&&!booking?S.slotPast:{})}}>
+              {booking?(()=>{const icon=bType==="training"?"🏋️":bType==="match"?"🏆":booking.with_guest?"👥":"";const name=isOwn?"✓ Du":booking.userName.split(" ")[0];return `${icon} ${name}`.trim();})():(isPast?"—":"Frei")}</button></td>);
           })}</tr>))}</tbody>
       </table>
     </div>
@@ -350,19 +344,34 @@ function DayGrid({data,user,date,todayStr,onSlotClick}) {
             const booking=data.bookings.find(b=>b.courtId===c.id&&b.date===date&&b.slot===slot);
             const isOwn=booking?.userId===user.id;const color=COURT_COLORS[ci%COURT_COLORS.length];
             const bType=booking?.type||"regular";const bColor=BOOKING_TYPE_COLORS[bType];
+            const slotColor=isOwn?(booking?.with_guest?"#16A34A":color):bColor;
             return (<td key={c.id} style={{...S.tdSlot,borderLeft:`2px solid ${color}22`}}><button disabled={isPastDay&&!booking} onClick={()=>onSlotClick(c.id,date,slot,booking||null)}
-              style={{...S.slotBtn,...(booking?{background:isOwn?color+"22":bColor+"22",borderColor:isOwn?color:bColor,color:isOwn?color:bColor,fontWeight:700}:{}),...(isPastDay&&!booking?S.slotPast:{})}}>
-              {booking?(()=>{const icon=bType==="training"?"🏋️":bType==="match"?"🏆":"";const name=isOwn?"✓ Du":booking.userName.split(" ")[0];return `${icon} ${name}`.trim();})():(isPastDay?"—":"Frei")}</button></td>);
+              style={{...S.slotBtn,...(booking?{background:slotColor+"22",borderColor:slotColor,color:slotColor,fontWeight:700}:{}),...(isPastDay&&!booking?S.slotPast:{})}}>
+              {booking?(()=>{const icon=bType==="training"?"🏋️":bType==="match"?"🏆":booking.with_guest?"👥":"";const name=isOwn?"✓ Du":booking.userName.split(" ")[0];return `${icon} ${name}`.trim();})():(isPastDay?"—":"Frei")}</button></td>);
           })}</tr>))}</tbody>
       </table>
     </div>
   );
 }
 
-function MyBookings({data,user,onCancel}) {
-  const todayStr=today();const [openGroups,setOpenGroups]=useState({});const [showPast,setShowPast]=useState(false);
+// ═══════════════════════════════════════════════════════════════════════════
+// MY BOOKINGS – with guest fee summary
+// ═══════════════════════════════════════════════════════════════════════════
+function MyBookings({data,user,onCancel,guestFee,onMarkPaid}) {
+  const todayStr=today();
+  const [openGroups,setOpenGroups]=useState({});
+  const [showPast,setShowPast]=useState(false);
+  const [showPayConfirm,setShowPayConfirm]=useState(false);
+
   const mine=data.bookings.filter(b=>b.userId===user.id).sort((a,b)=>(a.date+a.slot).localeCompare(b.date+b.slot));
-  const upcoming=mine.filter(b=>b.date>=todayStr);const past=mine.filter(b=>b.date<todayStr);
+  const upcoming=mine.filter(b=>b.date>=todayStr);
+  const past=mine.filter(b=>b.date<todayStr);
+
+  // Guest fee calculation
+  const openGuestBookings=mine.filter(b=>b.with_guest&&!b.guest_paid);
+  const openAmount=openGuestBookings.length*guestFee;
+  const paidBookings=mine.filter(b=>b.with_guest&&b.guest_paid);
+
   const massGroups={};const singles=[];
   for(const b of upcoming){if(b.type==="training"||b.type==="match"){const key=`${b.type}||${b.label||""}`;if(!massGroups[key])massGroups[key]={type:b.type,label:b.label||"",bookings:[]};massGroups[key].bookings.push(b);}else singles.push(b);}
   const toggleGroup=key=>setOpenGroups(o=>({...o,[key]:!o[key]}));
@@ -370,10 +379,30 @@ function MyBookings({data,user,onCancel}) {
   const groupDateRange=bs=>{const dates=bs.map(b=>b.date).sort();if(dates.length===1)return fmtDate(new Date(dates[0]+"T12:00:00"));return `${fmtDate(new Date(dates[0]+"T12:00:00"))} – ${fmtDate(new Date(dates[dates.length-1]+"T12:00:00"))}`;};
   const groupSlots=bs=>[...new Set(bs.map(b=>b.slot))].sort().join(", ")+" Uhr";
   const nextOcc=bs=>{const f=bs.filter(b=>b.date>=todayStr).sort((a,b)=>a.date.localeCompare(b.date));if(!f.length)return null;const d=new Date(f[0].date+"T12:00:00");return `${DE_FULL[dayOfWeek(f[0].date)]}, ${fmtDate(d)}, ${f[0].slot} Uhr`;};
+
   return (
     <div style={{padding:"24px 28px",maxWidth:820}}>
       <h1 style={S.pageTitle}>Meine Buchungen</h1>
-      <p style={S.pageSub}>{user.name} · {ROLE_LABELS[user.role]} · {upcoming.length} bevorstehende Slots</p>
+      <p style={S.pageSub}>{user.name} · {ROLE_LABELS[user.role]}</p>
+
+      {/* Guest fee banner */}
+      {(openGuestBookings.length>0||paidBookings.length>0)&&(
+        <div style={{background:openAmount>0?"linear-gradient(135deg,#FEF3C7,#FDE68A)":"linear-gradient(135deg,#DCFCE7,#BBF7D0)",border:`1.5px solid ${openAmount>0?"#F59E0B":"#22C55E"}`,borderRadius:14,padding:16,marginBottom:20,display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
+          <div>
+            <div style={{fontSize:11,fontWeight:700,color:openAmount>0?"#92400E":"#166534",marginBottom:4}}>GASTSPIELER-GEBÜHR {new Date().getFullYear()}</div>
+            <div style={{fontSize:28,fontWeight:800,color:"#111827"}}>{eur(openAmount)}</div>
+            <div style={{fontSize:12,color:"#6B7280",marginTop:2}}>{openGuestBookings.length} offene Buchungen · {eur(guestFee)} pro Buchung</div>
+          </div>
+          {openAmount>0&&(
+            <button style={{...S.primaryBtn,background:"#0F172A",whiteSpace:"nowrap"}} onClick={()=>setShowPayConfirm(true)}>
+              Als bezahlt<br/>markieren
+            </button>
+          )}
+          {openAmount===0&&<div style={{fontSize:24}}>✅</div>}
+        </div>
+      )}
+
+      {/* Mass groups */}
       {Object.keys(massGroups).length>0&&(<div style={{marginBottom:28}}><SectTitle>Serien & Veranstaltungen</SectTitle>
         {Object.entries(massGroups).map(([key,g])=>{
           const isOpen=!!openGroups[key];const typeColor=BOOKING_TYPE_COLORS[g.type];
@@ -405,25 +434,51 @@ function MyBookings({data,user,onCancel}) {
           </div>);
         })}
       </div>)}
+
       {singles.length>0&&(<div style={{marginBottom:28}}><SectTitle>Einzelbuchungen ({singles.length})</SectTitle>
-        {singles.map(b=>{const court=data.courts.find(c=>c.id===b.courtId);const ci=data.courts.findIndex(c=>c.id===b.courtId);const color=COURT_COLORS[ci%COURT_COLORS.length];const d=new Date(b.date+"T12:00:00");
+        {singles.map(b=>{const court=data.courts.find(c=>c.id===b.courtId);const ci=data.courts.findIndex(c=>c.id===b.courtId);const color=b.with_guest?"#16A34A":COURT_COLORS[ci%COURT_COLORS.length];const d=new Date(b.date+"T12:00:00");
           return (<div key={b.id} style={{...S.card,borderLeft:`4px solid ${color}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
-            <div><div style={{fontWeight:700,fontSize:14}}>{court?.name||"?"} · {b.slot} Uhr</div><div style={{fontSize:12,color:"#6B7280",marginTop:2}}>{DE_FULL[dayOfWeek(b.date)]}, {fmtDate(d)}</div></div>
+            <div><div style={{fontWeight:700,fontSize:14}}>{court?.name||"?"} · {b.slot} Uhr {b.with_guest?"👥":""}</div><div style={{fontSize:12,color:"#6B7280",marginTop:2}}>{DE_FULL[dayOfWeek(b.date)]}, {fmtDate(d)}</div></div>
             <button style={S.cancelBtn} onClick={()=>onCancel(b.id)}>Stornieren</button>
           </div>);
         })}
       </div>)}
+
       {upcoming.length===0&&<Em msg="Keine bevorstehenden Buchungen"/>}
+
       <div>
         <button style={{...S.ghostBtn,fontSize:13,padding:"7px 14px",marginBottom:12}} onClick={()=>setShowPast(p=>!p)}>{showPast?"▲ Vergangene ausblenden":`▼ Vergangene Buchungen (${past.length})`}</button>
-        {showPast&&[...past].reverse().slice(0,20).map(b=>{const court=data.courts.find(c=>c.id===b.courtId);const ci=data.courts.findIndex(c=>c.id===b.courtId);const color=COURT_COLORS[ci%COURT_COLORS.length];const bType=b.type||"regular";const icon=bType==="training"?"🏋️":bType==="match"?"🏆":"📅";const d=new Date(b.date+"T12:00:00");
-          return (<div key={b.id} style={{...S.card,borderLeft:`4px solid ${color}`,opacity:.7,display:"flex",alignItems:"center",gap:10}}><div style={{fontSize:13,fontWeight:600}}>{icon} {court?.name||"?"} · {b.slot} Uhr</div><div style={{fontSize:12,color:"#9CA3AF"}}>{DE_FULL[dayOfWeek(b.date)]}, {fmtDate(d)}</div></div>);
+        {showPast&&[...past].reverse().slice(0,20).map(b=>{const court=data.courts.find(c=>c.id===b.courtId);const ci=data.courts.findIndex(c=>c.id===b.courtId);const color=b.with_guest?"#16A34A":COURT_COLORS[ci%COURT_COLORS.length];const bType=b.type||"regular";const icon=bType==="training"?"🏋️":bType==="match"?"🏆":b.with_guest?"👥":"📅";const d=new Date(b.date+"T12:00:00");
+          return (<div key={b.id} style={{...S.card,borderLeft:`4px solid ${color}`,opacity:.7,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
+            <div><div style={{fontSize:13,fontWeight:600}}>{icon} {court?.name||"?"} · {b.slot} Uhr</div><div style={{fontSize:12,color:"#9CA3AF"}}>{DE_FULL[dayOfWeek(b.date)]}, {fmtDate(d)}</div></div>
+            {b.with_guest&&<span style={{fontSize:11,padding:"2px 8px",borderRadius:20,background:b.guest_paid?"#DCFCE7":"#FEF3C7",color:b.guest_paid?"#16A34A":"#D97706",fontWeight:700}}>{b.guest_paid?"Bezahlt ✓":"Offen"}</span>}
+          </div>);
         })}
       </div>
+
+      {/* Pay confirm modal */}
+      {showPayConfirm&&(
+        <div style={S.overlay} onClick={()=>setShowPayConfirm(false)}>
+          <div style={S.modal} onClick={e=>e.stopPropagation()}>
+            <div style={S.modalHeader}><div style={S.modalTitle}>Zahlung bestätigen</div><button style={S.closeBtn} onClick={()=>setShowPayConfirm(false)}>✕</button></div>
+            <p style={{color:"#6B7280",fontSize:13,marginBottom:16}}>Bitte bestätige, dass du den offenen Betrag an den Verein bezahlt hast.</p>
+            <div style={{background:"#FEF3C7",borderRadius:10,padding:14,textAlign:"center",marginBottom:20}}>
+              <div style={{fontSize:11,color:"#92400E",fontWeight:700,marginBottom:4}}>ZU BEZAHLENDER BETRAG</div>
+              <div style={{fontSize:28,fontWeight:800,color:"#111827"}}>{eur(openAmount)}</div>
+              <div style={{fontSize:12,color:"#6B7280",marginTop:4}}>{openGuestBookings.length} Buchungen × {eur(guestFee)}</div>
+            </div>
+            <button style={{...S.primaryBtn,width:"100%",background:"#22C55E",color:"#fff",marginBottom:8}} onClick={()=>{onMarkPaid();setShowPayConfirm(false);}}>✓ Ja, ich habe bezahlt</button>
+            <button style={{...S.ghostBtn,width:"100%"}} onClick={()=>setShowPayConfirm(false)}>Abbrechen</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// MASS BOOKING
+// ═══════════════════════════════════════════════════════════════════════════
 function MassBookView({data,user,onMassBook,onCancelMany}) {
   const [tab,setTab]=useState("create");
   const [form,setForm]=useState({type:"training",label:"",dateFrom:today(),dateTo:addDays(today(),27),weekdays:[1,2,3,4],courtIds:data.courts.length>0?[data.courts[0].id]:[],slots:["09:00","10:00"]});
@@ -475,31 +530,44 @@ function MassBookView({data,user,onMassBook,onCancelMany}) {
   );
 }
 
-function AdminView({data,onAddCourt,onUpdateCourt,onDeleteCourt,onCancelBooking}) {
+// ═══════════════════════════════════════════════════════════════════════════
+// ADMIN VIEW – with guest fee management
+// ═══════════════════════════════════════════════════════════════════════════
+function AdminView({data,allBookings,guestFee,onSaveGuestFee,onAddCourt,onUpdateCourt,onDeleteCourt,onDeleteUser,onCancelBooking,onMarkPaid}) {
   const [tab,setTab]=useState("courts");
   const [courtForm,setCourtForm]=useState({name:"",surface:"Sand"});
   const [editCourt,setEditCourt]=useState(null);
   const [supaUsers,setSupaUsers]=useState([]);
+  const [feeInput,setFeeInput]=useState(String(guestFee));
+  const [confirmPay,setConfirmPay]=useState(null); // {userId, name, amount, count}
+
   useEffect(()=>{
-    if(tab!=="members") return;
+    if(tab!=="members"&&tab!=="guest") return;
     sb.from("profiles").select("*").order("created_at").then(({data})=>setSupaUsers(data||[]));
   },[tab]);
 
-  const updateRole=async(uid,role)=>{
-    await sb.from("profiles").update({role}).eq("id",uid);
-    setSupaUsers(u=>u.map(x=>x.id===uid?{...x,role}:x));
-  };
+  const updateRole=async(uid,role)=>{ await sb.from("profiles").update({role}).eq("id",uid); setSupaUsers(u=>u.map(x=>x.id===uid?{...x,role}:x)); };
+  const deleteUser=async(uid)=>{ await onDeleteUser(uid); setSupaUsers(u=>u.filter(x=>x.id!==uid)); };
 
-  const deleteUser=async(uid)=>{
-    // Delete bookings first, then profile (auth user needs service role - use SQL)
-    await sb.from("bookings").delete().eq("user_id",uid);
-    await sb.from("profiles").delete().eq("id",uid);
-    setSupaUsers(u=>u.filter(x=>x.id!==uid));
-  };
+  // Guest fee stats per user
+  const guestStats=supaUsers.map(u=>{
+    const userBookings=allBookings.filter(b=>b.user_id===u.id&&b.with_guest);
+    const open=userBookings.filter(b=>!b.guest_paid);
+    const paid=userBookings.filter(b=>b.guest_paid);
+    const paidAmount=paid.reduce((s)=>s+guestFee,0);
+    return {...u, openCount:open.length, openAmount:open.length*guestFee, paidAmount, openBookings:open };
+  });
+  const totalOpen=guestStats.reduce((s,u)=>s+u.openAmount,0);
+  const totalPaid=guestStats.reduce((s,u)=>s+u.paidAmount,0);
+
   return (
     <div style={{padding:"24px 28px"}}>
       <h1 style={S.pageTitle}>Administration</h1>
-      <div style={{display:"flex",gap:8,marginBottom:24,flexWrap:"wrap"}}>{[["courts","🎾 Plätze"],["members","👥 Mitglieder"],["bookings","📅 Buchungen"]].map(([id,l])=>(<button key={id} style={{...S.tabBtn,...(tab===id?S.tabBtnActive:{})}} onClick={()=>setTab(id)}>{l}</button>))}</div>
+      <div style={{display:"flex",gap:8,marginBottom:24,flexWrap:"wrap"}}>
+        {[["courts","🎾 Plätze"],["members","👥 Mitglieder"],["guest","💶 Gastspieler"],["bookings","📅 Buchungen"]].map(([id,l])=>(<button key={id} style={{...S.tabBtn,...(tab===id?S.tabBtnActive:{})}} onClick={()=>setTab(id)}>{l}</button>))}
+      </div>
+
+      {/* ── COURTS ── */}
       {tab==="courts"&&(<>
         <div style={S.card}><h3 style={{fontWeight:700,marginBottom:14}}>Neuen Platz hinzufügen</h3>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><input placeholder="Platzname" value={courtForm.name} onChange={e=>setCourtForm(f=>({...f,name:e.target.value}))} style={S.input}/><select value={courtForm.surface} onChange={e=>setCourtForm(f=>({...f,surface:e.target.value}))} style={S.input}>{["Sand","Hartplatz","Rasen","Teppich","Kunstrasen"].map(s=><option key={s}>{s}</option>)}</select></div>
@@ -509,51 +577,133 @@ function AdminView({data,onAddCourt,onUpdateCourt,onDeleteCourt,onCancelBooking}
           :(<div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><div style={{fontWeight:700}}>{c.name}</div><div style={{fontSize:12,color:"#6B7280"}}>{c.surface}</div></div><div style={{display:"flex",gap:8}}><button style={{...S.ghostBtn,padding:"6px 12px",fontSize:13}} onClick={()=>setEditCourt({id:c.id,name:c.name,surface:c.surface})}>Bearbeiten</button><button style={S.cancelBtn} onClick={()=>onDeleteCourt(c.id)}>Löschen</button></div></div>)}
         </div>))}</div>
       </>)}
+
+      {/* ── MEMBERS ── */}
       {tab==="members"&&(<>
-        <div style={{...S.card,background:"#EFF6FF",border:"1px solid #BFDBFE",marginBottom:16}}><div style={{fontWeight:700,marginBottom:6}}>ℹ️ Mitglieder einladen</div><div style={{fontSize:13,color:"#1D4ED8",lineHeight:1.6}}>Mitglieder registrieren sich selbst über den Login-Screen. Danach kannst du hier Rolle zuweisen oder Mitglieder löschen.</div></div>
-        <h3 style={{fontWeight:700,marginBottom:12}}>Alle Mitglieder ({supaUsers.length})</h3>
-        {supaUsers.map(u=>(
-          <div key={u.id} style={{...S.card,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
-            <div style={{display:"flex",alignItems:"center",gap:12,minWidth:0,flex:1}}>
+        <div style={{...S.card,background:"#EFF6FF",border:"1px solid #BFDBFE",marginBottom:16}}><div style={{fontWeight:700,marginBottom:6}}>ℹ️ Mitglieder einladen</div><div style={{fontSize:13,color:"#1D4ED8",lineHeight:1.6}}>Mitglieder registrieren sich selbst. Danach kannst du hier Rollen zuweisen oder Mitglieder löschen.</div></div>
+        {supaUsers.map(u=>(<div key={u.id} style={{...S.card,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
+          <div style={{display:"flex",alignItems:"center",gap:12}}><Av name={u.name}/><div><div style={{fontWeight:700,fontSize:14}}>{u.name}</div><div style={{fontSize:12,color:"#6B7280",marginTop:2}}>{u.email||"–"}</div><span style={{fontSize:11,padding:"2px 8px",borderRadius:20,background:"#F3F4F6",color:"#374151",fontWeight:600,marginTop:4,display:"inline-block"}}>{ROLE_LABELS[u.role]}</span></div></div>
+          <div style={{display:"flex",gap:8,alignItems:"center",flexShrink:0}}>
+            <select value={u.role} onChange={e=>updateRole(u.id,e.target.value)} style={{...S.input,width:"auto",padding:"6px 10px",fontSize:12}}><option value="member">Mitglied</option><option value="member2">Mitglied Plus</option><option value="admin">Administrator</option></select>
+            <button style={S.cancelBtn} onClick={()=>{if(window.confirm(`${u.name} wirklich löschen?`))deleteUser(u.id);}}>Löschen</button>
+          </div>
+        </div>))}
+      </>)}
+
+      {/* ── GUEST FEE ── */}
+      {tab==="guest"&&(<>
+        {/* Fee setting */}
+        <div style={{background:"#EFF6FF",border:"1.5px solid #BFDBFE",borderRadius:12,padding:14,marginBottom:16}}>
+          <div style={{fontWeight:800,fontSize:13,color:"#1E40AF",marginBottom:10}}>⚙️ Gebühr pro Gastspieler-Buchung</div>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <input type="number" value={feeInput} onChange={e=>setFeeInput(e.target.value)} min="0" step="0.5" style={{...S.input,maxWidth:100,fontSize:16,fontWeight:800}}/>
+            <span style={{fontWeight:700,color:"#6B7280"}}>€</span>
+            <button style={S.primaryBtn} onClick={()=>onSaveGuestFee(parseFloat(feeInput)||0)}>Speichern</button>
+          </div>
+          <div style={{fontSize:11,color:"#6B7280",marginTop:8}}>Gilt für alle zukünftigen Buchungen mit Gastspieler.</div>
+        </div>
+
+        {/* Totals */}
+        <div style={{background:"#0F172A",borderRadius:12,padding:14,marginBottom:16,display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <div style={{textAlign:"center"}}><div style={{color:"#94A3B8",fontSize:11,fontWeight:700,marginBottom:4}}>GESAMT OFFEN {new Date().getFullYear()}</div><div style={{color:"#F59E0B",fontSize:22,fontWeight:800}}>{eur(totalOpen)}</div></div>
+          <div style={{textAlign:"center"}}><div style={{color:"#94A3B8",fontSize:11,fontWeight:700,marginBottom:4}}>BEZAHLT {new Date().getFullYear()}</div><div style={{color:"#4ADE80",fontSize:22,fontWeight:800}}>{eur(totalPaid)}</div></div>
+        </div>
+
+        {/* Per member */}
+        <SectTitle>Alle Mitglieder</SectTitle>
+        {guestStats.filter(u=>u.openCount>0||u.paidAmount>0).map(u=>(
+          <div key={u.id} style={{...S.card,borderLeft:`4px solid ${u.openAmount>0?"#F59E0B":"#22C55E"}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
               <Av name={u.name}/>
-              <div style={{minWidth:0}}>
+              <div>
                 <div style={{fontWeight:700,fontSize:14}}>{u.name}</div>
-                <div style={{fontSize:12,color:"#6B7280",marginTop:2}}>{u.email||"–"}</div>
-                <span style={{fontSize:11,padding:"2px 8px",borderRadius:20,background:"#F3F4F6",color:"#374151",fontWeight:600,marginTop:4,display:"inline-block"}}>{ROLE_LABELS[u.role]}</span>
+                <div style={{fontSize:12,color:"#6B7280"}}>{u.openCount} offen · {eur(u.paidAmount)} bezahlt</div>
+                {u.openAmount>0&&<button style={{...S.cancelBtn,background:"#FEF3C7",color:"#D97706",border:"1px solid #FDE68A",marginTop:6,padding:"5px 10px",fontSize:11}} onClick={()=>setConfirmPay({userId:u.id,name:u.name,amount:u.openAmount,count:u.openCount})}>Als bezahlt markieren</button>}
               </div>
             </div>
-            <div style={{display:"flex",gap:8,alignItems:"center",flexShrink:0}}>
-              <select value={u.role} onChange={e=>updateRole(u.id,e.target.value)} style={{...S.input,width:"auto",padding:"6px 10px",fontSize:12}}>
-                <option value="member">Mitglied</option>
-                <option value="member2">Mitglied Plus</option>
-                <option value="admin">Administrator</option>
-              </select>
-              <button style={S.cancelBtn} onClick={()=>{if(window.confirm(`${u.name} wirklich löschen? Alle Buchungen werden ebenfalls gelöscht.`)) deleteUser(u.id);}}>Löschen</button>
+            <div style={{textAlign:"right"}}>
+              <div style={{fontSize:18,fontWeight:800,color:u.openAmount>0?"#D97706":"#22C55E"}}>{eur(u.openAmount)}</div>
+              <div style={{fontSize:11,color:"#9CA3AF"}}>offen</div>
             </div>
           </div>
         ))}
+        {guestStats.every(u=>u.openCount===0&&u.paidAmount===0)&&<Em msg="Keine Gastspieler-Buchungen vorhanden"/>}
+
+        {/* Payment history */}
+        {guestStats.some(u=>u.paidAmount>0)&&(<>
+          <SectTitle style={{marginTop:16}}>Zahlungshistorie</SectTitle>
+          <div style={S.card}>
+            {guestStats.filter(u=>u.paidAmount>0).map(u=>(
+              <div key={u.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid #F3F4F6"}}>
+                <div><div style={{fontWeight:600,fontSize:13}}>{u.name}</div><div style={{fontSize:11,color:"#6B7280"}}>Bezahlt</div></div>
+                <div style={{textAlign:"right"}}><div style={{fontWeight:800,color:"#16A34A"}}>{eur(u.paidAmount)}</div><span style={{fontSize:10,padding:"2px 8px",borderRadius:20,background:"#DCFCE7",color:"#16A34A",fontWeight:700}}>Bezahlt ✓</span></div>
+              </div>
+            ))}
+          </div>
+        </>)}
       </>)}
+
+      {/* ── BOOKINGS ── */}
       {tab==="bookings"&&(<div><h3 style={{fontWeight:700,marginBottom:14}}>Bevorstehende Buchungen</h3>
         {data.bookings.filter(b=>b.date>=today()).sort((a,b)=>(a.date+a.slot).localeCompare(b.date+b.slot)).map(b=>{const court=data.courts.find(c=>c.id===b.courtId);const ci=data.courts.findIndex(c=>c.id===b.courtId);const icon=b.type==="training"?"🏋️":b.type==="match"?"🏆":"📅";
-          return (<div key={b.id} style={{...S.card,borderLeft:`4px solid ${COURT_COLORS[ci%COURT_COLORS.length]}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><div style={{fontWeight:600}}>{icon} {court?.name||"?"} · {b.slot} Uhr · {b.date}</div><div style={{fontSize:12,color:"#6B7280"}}>{b.userName}{b.label?` · ${b.label}`:""}</div></div><button style={S.cancelBtn} onClick={()=>onCancelBooking(b.id)}>Stornieren</button></div>);
+          return (<div key={b.id} style={{...S.card,borderLeft:`4px solid ${COURT_COLORS[ci%COURT_COLORS.length]}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div><div style={{fontWeight:600}}>{icon} {court?.name||"?"} · {b.slot} Uhr · {b.date}</div><div style={{fontSize:12,color:"#6B7280"}}>{b.userName}{b.with_guest?" · 👥 Gastspieler":""}{b.label?` · ${b.label}`:""}</div></div>
+            <button style={S.cancelBtn} onClick={()=>onCancelBooking(b.id)}>Stornieren</button>
+          </div>);
         })}
       </div>)}
+
+      {/* Confirm pay modal */}
+      {confirmPay&&(
+        <div style={S.overlay} onClick={()=>setConfirmPay(null)}>
+          <div style={S.modal} onClick={e=>e.stopPropagation()}>
+            <div style={S.modalHeader}><div style={S.modalTitle}>Zahlung bestätigen</div><button style={S.closeBtn} onClick={()=>setConfirmPay(null)}>✕</button></div>
+            <p style={{color:"#6B7280",fontSize:13,marginBottom:16}}>{confirmPay.name} als bezahlt markieren?</p>
+            <div style={{background:"#FEF3C7",borderRadius:10,padding:14,textAlign:"center",marginBottom:20}}>
+              <div style={{fontSize:11,color:"#92400E",fontWeight:700,marginBottom:4}}>BETRAG</div>
+              <div style={{fontSize:28,fontWeight:800,color:"#111827"}}>{eur(confirmPay.amount)}</div>
+              <div style={{fontSize:12,color:"#6B7280",marginTop:4}}>{confirmPay.count} Buchungen × {eur(guestFee)}</div>
+            </div>
+            <button style={{...S.primaryBtn,width:"100%",background:"#22C55E",color:"#fff",marginBottom:8}} onClick={()=>{onMarkPaid(confirmPay.userId);setConfirmPay(null);}}>✓ Als bezahlt markieren</button>
+            <button style={{...S.ghostBtn,width:"100%"}} onClick={()=>setConfirmPay(null)}>Abbrechen</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function SlotModal({modal,data,user,onBook,onCancel,onClose}) {
-  const {courtId,date,slot,existing}=modal;const court=data.courts.find(c=>c.id===courtId);const d=new Date(date+"T12:00:00");
-  const isOwn=existing?.userId===user.id;const isAdmin=user.role==="admin";const bType=existing?.type||"regular";
-  return (<div style={S.overlay} onClick={onClose}><div style={S.modal} onClick={e=>e.stopPropagation()}>
-    <div style={S.modalHeader}><div><div style={S.modalTitle}>{court?.name} · {slot} Uhr</div><div style={S.modalSub}>{DE_FULL[dayOfWeek(date)]}, {fmtDate(d)}</div></div><button style={S.closeBtn} onClick={onClose}>✕</button></div>
-    {!existing&&(<><p style={{color:"#6B7280",marginBottom:20,fontSize:14}}>Dieser Slot ist verfügbar.</p><div style={{display:"flex",gap:10}}><button style={S.primaryBtn} onClick={()=>onBook(courtId,date,slot)}>Jetzt buchen</button><button style={S.ghostBtn} onClick={onClose}>Abbrechen</button></div></>)}
-    {existing&&(<><div style={{background:"#F9FAFB",borderRadius:8,padding:"12px 14px",marginBottom:16}}><div style={{fontSize:12,color:"#6B7280",marginBottom:4}}>Gebucht von</div><div style={{fontWeight:700,fontSize:16}}>{existing.userName}</div><span style={{fontSize:12,padding:"2px 8px",borderRadius:20,background:BOOKING_TYPE_COLORS[bType]+"22",color:BOOKING_TYPE_COLORS[bType],fontWeight:600,marginTop:6,display:"inline-block"}}>{bType==="training"?"🏋️ Training":bType==="match"?"🏆 Spieltag":"📅 Standard"}</span></div>
-    {(isOwn||isAdmin)?(<div style={{display:"flex",gap:10}}><button style={{...S.cancelBtn,padding:"10px 18px",fontSize:14}} onClick={()=>onCancel(existing.id)}>Stornieren</button><button style={S.ghostBtn} onClick={onClose}>Schließen</button></div>):(<button style={S.ghostBtn} onClick={onClose}>Schließen</button>)}</>)}
-  </div></div>);
+// ═══════════════════════════════════════════════════════════════════════════
+// LOGIN
+// ═══════════════════════════════════════════════════════════════════════════
+function LoginScreen() {
+  const [mode,setMode]=useState("login");const [email,setEmail]=useState("");const [password,setPassword]=useState("");const [name,setName]=useState("");const [msg,setMsg]=useState(null);const [loading,setLoading]=useState(false);
+  const handle=async()=>{
+    setLoading(true);setMsg(null);
+    if(mode==="login"){ const {error}=await sb.auth.signInWithPassword({email,password}); if(error)setMsg({text:error.message,type:"error"}); }
+    else if(mode==="register"){ const {error}=await sb.auth.signUp({email,password,options:{data:{name}}}); if(error)setMsg({text:error.message,type:"error"}); else setMsg({text:"Bitte bestätige deine E-Mail, dann kannst du dich anmelden.",type:"ok"}); }
+    else { const {error}=await sb.auth.resetPasswordForEmail(email); if(error)setMsg({text:error.message,type:"error"}); else setMsg({text:"Passwort-Reset-Link gesendet.",type:"ok"}); }
+    setLoading(false);
+  };
+  return (
+    <div style={S.loginWrap}>
+      <div style={S.loginCard}>
+        <div style={{textAlign:"center",marginBottom:28}}><TennisBall size={52}/><h1 style={{fontSize:22,fontWeight:800,letterSpacing:-.5,marginTop:12}}>Tennis Herrieden</h1><p style={{color:"#6B7280",fontSize:13,marginTop:4}}>Tennisplatz-Buchungssystem</p></div>
+        <div style={{display:"flex",gap:6,marginBottom:20}}>{[["login","Anmelden"],["register","Registrieren"]].map(([m,l])=>(<button key={m} style={{...S.tabBtn,flex:1,...(mode===m?S.tabBtnActive:{})}} onClick={()=>{setMode(m);setMsg(null);}}>{l}</button>))}</div>
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          {mode==="register"&&<input placeholder="Vollständiger Name" value={name} onChange={e=>setName(e.target.value)} style={S.input}/>}
+          <input type="email" placeholder="E-Mail" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handle()} style={S.input}/>
+          {mode!=="reset"&&<input type="password" placeholder="Passwort" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handle()} style={S.input}/>}
+          {msg&&<div style={{padding:"10px 12px",borderRadius:8,fontSize:13,background:msg.type==="error"?"#FEE2E2":"#DCFCE7",color:msg.type==="error"?"#991B1B":"#166534"}}>{msg.text}</div>}
+          <button style={{...S.primaryBtn,marginTop:4,opacity:loading?.6:1}} onClick={handle} disabled={loading}>{loading?"…":mode==="login"?"Anmelden":mode==="register"?"Registrieren":"Link senden"}</button>
+          {mode==="login"&&<button style={{background:"none",border:"none",color:"#6B7280",cursor:"pointer",fontSize:12}} onClick={()=>{setMode("reset");setMsg(null);}}>Passwort vergessen?</button>}
+        </div>
+      </div>
+    </div>
+  );
 }
 
-function TennisBall({size=32}){return(<svg width={size} height={size} viewBox="0 0 32 32" fill="none" style={{display:"block"}}><circle cx="16" cy="16" r="15" stroke="#22C55E" strokeWidth="2"/><ellipse cx="16" cy="16" rx="5" ry="14" stroke="#22C55E" strokeWidth="1.5"/><line x1="1" y1="16" x2="31" y2="16" stroke="#22C55E" strokeWidth="1.5"/></svg>);}
+function TennisBall({size=32}){return(<svg width={size} height={size} viewBox="0 0 32 32" fill="none" style={{display:"block",margin:"0 auto"}}><circle cx="16" cy="16" r="15" stroke="#22C55E" strokeWidth="2"/><ellipse cx="16" cy="16" rx="5" ry="14" stroke="#22C55E" strokeWidth="1.5"/><line x1="1" y1="16" x2="31" y2="16" stroke="#22C55E" strokeWidth="1.5"/></svg>);}
 function Av({name}){return(<div style={{width:34,height:34,borderRadius:"50%",background:"#22C55E",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:14,flexShrink:0}}>{name?.[0]||"?"}</div>);}
 function Loading({msg="Laden…"}){return(<div style={{display:"flex",justifyContent:"center",alignItems:"center",height:"100vh",background:"#F9FAFB"}}><div style={{textAlign:"center"}}><div style={{fontSize:36,marginBottom:12}}>🎾</div><div style={{color:"#6B7280"}}>{msg}</div></div></div>);}
 function SectTitle({children}){return <div style={{fontSize:13,fontWeight:800,color:"#374151",textTransform:"uppercase",letterSpacing:.6,marginBottom:10}}>{children}</div>;}
