@@ -11,21 +11,175 @@ const DE_FULL  = ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag
 const DE_MONTH = ["Jan","Feb","Mär","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","Dez"];
 const COURT_COLORS = ["#22C55E","#EF4444","#3B82F6","#F59E0B","#8B5CF6","#EC4899","#14B8A6","#F97316"];
 const BOOKING_TYPE_COLORS = { regular:"#6B7280", training:"#3B82F6", match:"#EF4444" };
+const BOOKING_TYPE_MAP = { regular:{icon:"🎾",color:"#22C55E"}, training:{icon:"🏋️",color:"#3B82F6"}, match:{icon:"🏆",color:"#EF4444"} };
 const ROLE_LABELS = { admin:"Administrator", member2:"Mitglied Plus", member:"Mitglied" };
+const KASSE_EMOJIS = ["🍺","🥤","🍎","💧","🍊","☕","🧃","🍵","🥛","🍋","🫖","🧋","🍷","🥂","🫙"];
 
-function fmt(d)     { return d.toISOString().slice(0,10); }
-function today()    { return fmt(new Date()); }
-function fmtDate(d) { return `${d.getDate()}. ${DE_MONTH[d.getMonth()]} ${d.getFullYear()}`; }
-function eur(n)     { return (n||0).toFixed(2).replace(".",",") + " €"; }
+function fmt(d)      { return d.toISOString().slice(0,10); }
+function today()     { return fmt(new Date()); }
+function fmtDate(d)  { return `${d.getDate()}. ${DE_MONTH[d.getMonth()]} ${d.getFullYear()}`; }
+function fmtDateShort(s) { const d=new Date(s+"T12:00:00"); return d.toLocaleDateString("de-DE",{weekday:"short",day:"numeric",month:"short"}); }
+function eur(n)      { return (n||0).toFixed(2).replace(".",",")+" €"; }
 function dayOfWeek(s){ const d=new Date(s+"T12:00:00"); return d.getDay()===0?6:d.getDay()-1; }
 function getWeekDays(base){ const m=new Date(base); const dw=m.getDay(); m.setDate(m.getDate()-(dw===0?6:dw-1)); return Array.from({length:7},(_,i)=>{ const d=new Date(m); d.setDate(m.getDate()+i); return d; }); }
 function addDays(s,n){ const d=new Date(s+"T12:00:00"); d.setDate(d.getDate()+n); return fmt(d); }
 function datesBetween(from,to){ const dates=[]; let cur=from; while(cur<=to){ dates.push(cur); cur=addDays(cur,1); } return dates; }
+function daysUntil(s){ const diff=Math.round((new Date(s+"T12:00:00")-new Date())/86400000); if(diff===0)return"Heute"; if(diff===1)return"Morgen"; return`in ${diff} Tagen`; }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ROOT
 // ═══════════════════════════════════════════════════════════════════════════
 export default function App() {
   const [session,setSession]   = useState(undefined);
   const [profile,setProfile]   = useState(null);
+  const [screen,setScreen]     = useState("home"); // "home" | "booking" | "kasse"
+
+  useEffect(()=>{
+    sb.auth.getSession().then(({data:{session}})=>setSession(session));
+    const {data:{subscription}}=sb.auth.onAuthStateChange((_,session)=>setSession(session));
+    return ()=>subscription.unsubscribe();
+  },[]);
+
+  useEffect(()=>{
+    if(!session){ setProfile(null); return; }
+    sb.from("profiles").select("*").eq("id",session.user.id).single().then(({data})=>setProfile(data));
+  },[session]);
+
+  if(session===undefined) return <Loading msg="Verbinde mit Datenbank…"/>;
+  if(!session) return <LoginScreen/>;
+  if(!profile) return <Loading msg="Lade Profil…"/>;
+
+  if(screen==="booking") return <BookingApp profile={profile} onBack={()=>setScreen("home")}/>;
+  if(screen==="kasse")   return <KasseApp   profile={profile} onBack={()=>setScreen("home")}/>;
+  return <HomeScreen profile={profile} onGoBooking={()=>setScreen("booking")} onGoKasse={()=>setScreen("kasse")}/>;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// HOME SCREEN
+// ═══════════════════════════════════════════════════════════════════════════
+function HomeScreen({profile,onGoBooking,onGoKasse}) {
+  const [nextBookings,setNextBookings] = useState([]);
+  const [openLog,setOpenLog]           = useState([]);
+  const [openTotal,setOpenTotal]       = useState(0);
+
+  useEffect(()=>{
+    // next 2 bookings
+    sb.from("bookings").select("*,courts(name,surface)").eq("user_id",profile.id).gte("date",today()).order("date").order("slot").limit(2)
+      .then(({data})=>setNextBookings(data||[]));
+    // open kasse items
+    sb.from("kasse_log").select("*").eq("user_id",profile.id).eq("paid",false)
+      .then(({data})=>{ setOpenLog(data||[]); setOpenTotal((data||[]).reduce((s,l)=>s+l.price,0)); });
+  },[profile.id]);
+
+  return (
+    <div style={H.wrap}>
+      <div style={H.glow}/>
+      <div style={H.inner}>
+        {/* Header */}
+        <div style={H.header}>
+          <TennisBall size={52}/>
+          <h1 style={H.title}>Tennis Herrieden</h1>
+          <p style={H.greeting}>Hallo, {profile.name} 👋</p>
+        </div>
+
+        {/* ── Widgets ── */}
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+
+          {/* Next bookings */}
+          <div style={H.widget} onClick={onGoBooking}>
+            <div style={H.widgetLabel}>📅 Nächste Buchungen</div>
+            {nextBookings.length===0
+              ? <div style={{fontSize:13,color:"#475569",padding:"6px 0"}}>Keine bevorstehenden Buchungen</div>
+              : nextBookings.map(b=>{
+                  const t=BOOKING_TYPE_MAP[b.type]||BOOKING_TYPE_MAP.regular;
+                  return (
+                    <div key={b.id} style={H.bookingRow}>
+                      <div style={{...H.bookingDot,background:t.color+"22",border:`1.5px solid ${t.color}44`}}>
+                        <span style={{fontSize:15}}>{t.icon}</span>
+                      </div>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontWeight:700,fontSize:13,color:"#F1F5F9",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                          {b.label||b.courts?.name||"?"} · {b.slot} Uhr
+                        </div>
+                        <div style={{fontSize:11,color:"#64748B",marginTop:1}}>
+                          {fmtDateShort(b.date)} · {b.courts?.name} · {b.courts?.surface}
+                        </div>
+                      </div>
+                      <div style={{fontSize:11,fontWeight:700,color:t.color,background:t.color+"18",borderRadius:20,padding:"3px 8px",flexShrink:0}}>
+                        {daysUntil(b.date)}
+                      </div>
+                    </div>
+                  );
+                })
+            }
+            <div style={H.widgetLink}>Alle anzeigen →</div>
+          </div>
+
+          {/* Open drinks – compact */}
+          <div style={{...H.widgetCompact,...(openLog.length>0?H.widgetWarn:H.widgetOk)}} onClick={onGoKasse}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <span style={{fontSize:18}}>🧾</span>
+              <div style={{flex:1}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#475569",textTransform:"uppercase",letterSpacing:.7}}>Offene Getränke</div>
+                {openLog.length===0
+                  ? <span style={{fontSize:13,fontWeight:700,color:"#4ADE80"}}>✅ Alles bezahlt</span>
+                  : <span style={{fontSize:18,fontWeight:800,color:"#F59E0B"}}>{eur(openTotal)} <span style={{fontSize:12,fontWeight:500,color:"#92400E"}}>({openLog.length})</span></span>
+                }
+              </div>
+              <span style={{fontSize:12,color:openLog.length>0?"#D97706":"#475569"}}>→</span>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Nav tiles ── */}
+        <div style={H.navGrid}>
+          <button style={{...H.navTile,borderColor:"#22C55E33"}} onClick={onGoBooking}>
+            <span style={{fontSize:28}}>📅</span>
+            <span style={H.navTileLabel}>Buchungssystem</span>
+            <span style={H.navTileSub}>Plätze reservieren</span>
+          </button>
+          <button style={{...H.navTile,borderColor:"#F59E0B33"}} onClick={onGoKasse}>
+            <span style={{fontSize:28}}>🧾</span>
+            <span style={H.navTileLabel}>Kasse</span>
+            <span style={H.navTileSub}>Getränke & Abrechnung</span>
+          </button>
+        </div>
+
+        {/* Logout */}
+        <div style={{textAlign:"center",paddingBottom:8}}>
+          <button style={H.logoutBtn} onClick={()=>sb.auth.signOut()}>Abmelden</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const H={
+  wrap:         {minHeight:"100vh",background:"#0F172A",fontFamily:"'DM Sans',system-ui,sans-serif",display:"flex",flexDirection:"column",alignItems:"center",position:"relative",overflowX:"hidden"},
+  glow:         {position:"absolute",top:0,left:"50%",transform:"translateX(-50%)",width:600,height:300,background:"radial-gradient(ellipse at 50% 0%, #22C55E14, transparent 70%)",pointerEvents:"none"},
+  inner:        {width:"100%",maxWidth:480,padding:"52px 20px 32px",display:"flex",flexDirection:"column",gap:20},
+  header:       {textAlign:"center",paddingTop:16},
+  title:        {fontSize:26,fontWeight:800,color:"#F8FAFC",letterSpacing:-.8,margin:"12px 0 4px"},
+  greeting:     {color:"#475569",fontSize:14,margin:0},
+  widget:       {background:"#1E293B",border:"1.5px solid #334155",borderRadius:14,padding:"16px 18px",cursor:"pointer",display:"flex",flexDirection:"column",gap:0},
+  widgetCompact:{background:"#1E293B",border:"1.5px solid #334155",borderRadius:12,padding:"12px 16px",cursor:"pointer"},
+  widgetWarn:   {borderColor:"#F59E0B55",background:"#1C1810"},
+  widgetOk:     {borderColor:"#22C55E33"},
+  widgetLabel:  {fontSize:11,fontWeight:700,color:"#475569",textTransform:"uppercase",letterSpacing:.8,marginBottom:10},
+  widgetLink:   {fontSize:12,color:"#475569",marginTop:10,textAlign:"right"},
+  bookingRow:   {display:"flex",alignItems:"center",gap:10,marginBottom:8},
+  bookingDot:   {width:34,height:34,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0},
+  navGrid:      {display:"grid",gridTemplateColumns:"1fr 1fr",gap:10},
+  navTile:      {background:"#1E293B",border:"1.5px solid #334155",borderRadius:12,padding:"18px 12px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:6},
+  navTileLabel: {fontSize:14,fontWeight:700,color:"#94A3B8"},
+  navTileSub:   {fontSize:11,color:"#475569"},
+  logoutBtn:    {background:"none",border:"1px solid #1E293B",borderRadius:6,color:"#334155",cursor:"pointer",fontSize:12,padding:"6px 16px"},
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BOOKING APP  (existing logic, wrapped with a back button)
+// ═══════════════════════════════════════════════════════════════════════════
+function BookingApp({profile,onBack}) {
   const [courts,setCourts]     = useState([]);
   const [bookings,setBookings] = useState([]);
   const [guestFee,setGuestFee] = useState(5.00);
@@ -40,54 +194,33 @@ export default function App() {
   const showToast=(msg,type="success")=>{ setToast({msg,type}); setTimeout(()=>setToast(null),3200); };
 
   useEffect(()=>{
-    sb.auth.getSession().then(({data:{session}})=>setSession(session));
-    const {data:{subscription}}=sb.auth.onAuthStateChange((_,session)=>setSession(session));
-    return ()=>subscription.unsubscribe();
-  },[]);
-
-  useEffect(()=>{
-    if(!session){ setProfile(null); return; }
-    sb.from("profiles").select("*").eq("id",session.user.id).single().then(({data})=>setProfile(data));
-  },[session]);
-
-  useEffect(()=>{
-    if(!session) return;
     sb.from("courts").select("*").order("sort_order").then(({data})=>{ setCourts(data||[]); setSelCourt(s=>s||(data?.[0]?.id||null)); });
     sb.from("settings").select("*").eq("key","guest_fee").single().then(({data})=>{ if(data) setGuestFee(parseFloat(data.value)||5); });
-  },[session]);
+  },[]);
 
   const loadBookings=useCallback(async()=>{
-    if(!session) return;
     const from=addDays(today(),-30);
     const {data}=await sb.from("bookings").select("*").gte("date",from).order("date").order("slot");
     setBookings(data||[]);
-  },[session]);
+  },[]);
 
   useEffect(()=>{ loadBookings(); },[loadBookings]);
 
   useEffect(()=>{
-    if(!session) return;
     const ch=sb.channel("bookings-live").on("postgres_changes",{event:"*",schema:"public",table:"bookings"},()=>loadBookings()).subscribe();
     return ()=>sb.removeChannel(ch);
-  },[session,loadBookings]);
-
-  if(session===undefined) return <Loading msg="Verbinde mit Datenbank…"/>;
-  if(!session) return <LoginScreen/>;
-  if(!profile) return <Loading msg="Lade Profil…"/>;
+  },[loadBookings]);
 
   const canMassBook=profile.role==="admin"||profile.role==="member2";
   const adaptedBookings=bookings.map(b=>({...b,courtId:b.court_id,userId:b.user_id,userName:b.user_name}));
   const adaptedData={bookings:adaptedBookings,courts};
 
-  // ── Single booking ──
   const bookSingle=async(courtId,date,slot,type="regular",label="",withGuest=false)=>{
     const {error}=await sb.from("bookings").insert({court_id:courtId,user_id:profile.id,user_name:profile.name,date,slot,type,label,with_guest:withGuest,guest_fee:withGuest?guestFee:0});
     if(error){ showToast(error.code==="23505"?"Dieser Slot ist bereits belegt.":error.message,"error"); return; }
     await loadBookings(); setModal(null);
     showToast(`${slot} Uhr auf ${courts.find(c=>c.id===courtId)?.name} gebucht ✓`);
   };
-
-  // ── Mass booking ──
   const massBook=async({courtIds,dateFrom,dateTo,weekdays,slots,type,label})=>{
     const allDates=datesBetween(dateFrom,dateTo).filter(d=>weekdays.includes(dayOfWeek(d)));
     const rows=[];
@@ -100,8 +233,6 @@ export default function App() {
     }
     await loadBookings(); showToast(`${added} Slots gebucht.`); setModal(null);
   };
-
-  // ── Cancel ──
   const cancel=async(bookingId)=>{
     const bk=bookings.find(b=>b.id===bookingId); if(!bk) return;
     if(bk.user_id!==profile.id&&profile.role!=="admin"){ showToast("Keine Berechtigung.","error"); return; }
@@ -109,35 +240,26 @@ export default function App() {
     await loadBookings(); showToast("Buchung storniert."); setModal(null);
   };
   const cancelMany=async(ids)=>{ await sb.from("bookings").delete().in("id",ids); await loadBookings(); showToast(`${ids.length} Buchungen storniert.`); };
-
-  // ── Mark guest fee paid ──
   const markGuestPaid=async(userId)=>{
     await sb.from("bookings").update({guest_paid:true}).eq("user_id",userId).eq("with_guest",true).eq("guest_paid",false);
     await loadBookings(); showToast("Als bezahlt markiert ✓");
   };
-
-  // ── Courts ──
   const addCourt=async(name,surface)=>{ await sb.from("courts").insert({name,surface,sort_order:courts.length+1}); const {data}=await sb.from("courts").select("*").order("sort_order"); setCourts(data||[]); showToast(`${name} hinzugefügt ✓`); };
   const updateCourt=async(id,name,surface)=>{ await sb.from("courts").update({name,surface}).eq("id",id); const {data}=await sb.from("courts").select("*").order("sort_order"); setCourts(data||[]); showToast("Aktualisiert ✓"); };
   const deleteCourt=async(id)=>{ await sb.from("courts").delete().eq("id",id); const {data}=await sb.from("courts").select("*").order("sort_order"); setCourts(data||[]); showToast("Gelöscht."); };
-
-  // ── Save guest fee ──
-  const saveGuestFee=async(fee)=>{
-    await sb.from("settings").upsert({key:"guest_fee",value:String(fee)},{onConflict:"key"});
-    setGuestFee(fee); showToast(`Gebühr auf ${eur(fee)} gesetzt ✓`);
-  };
-
-  // ── Users ──
-  const addUser=async(name,email,password,role)=>{ if(bookings.find(b=>b.user_name===name)) return; showToast("Mitglieder registrieren sich selbst.","error"); };
+  const saveGuestFee=async(fee)=>{ await sb.from("settings").upsert({key:"guest_fee",value:String(fee)},{onConflict:"key"}); setGuestFee(fee); showToast(`Gebühr auf ${eur(fee)} gesetzt ✓`); };
   const deleteUser=async(uid)=>{ await sb.from("bookings").delete().eq("user_id",uid); await sb.from("profiles").delete().eq("id",uid); showToast("Gelöscht."); };
 
   const days=getWeekDays(weekBase);
   const navItems=[
+    {id:"back",   icon:"🏠",label:"Startseite"},
     {id:"calendar",icon:"📅",label:"Buchungskalender"},
     {id:"myBookings",icon:"📋",label:"Meine Buchungen"},
     ...(canMassBook?[{id:"massbook",icon:"📆",label:"Massenbuchung"}]:[]),
     ...(profile.role==="admin"?[{id:"admin",icon:"⚙️",label:"Administration"}]:[]),
   ];
+
+  const handleNav=(id)=>{ if(id==="back"){ onBack(); return; } setView(id); };
 
   return (
     <>
@@ -149,30 +271,26 @@ export default function App() {
         <aside className="desktop-sidebar" style={{...S.sidebar,display:"none"}}>
           <div style={S.logo}><TennisBall size={28}/><span style={S.logoText}>Tennis Herrieden</span></div>
           <nav style={S.nav}>
-            {navItems.map(item=>(<button key={item.id} style={{...S.navBtn,...(view===item.id?S.navBtnActive:{})}} onClick={()=>setView(item.id)}><span style={{fontSize:16}}>{item.icon}</span><span>{item.label}</span></button>))}
+            {navItems.map(item=>(<button key={item.id} style={{...S.navBtn,...(view===item.id?S.navBtnActive:{})}} onClick={()=>handleNav(item.id)}><span style={{fontSize:16}}>{item.icon}</span><span>{item.label}</span></button>))}
           </nav>
           <div style={S.sidebarBottom}>
             <div style={S.userChip}><Av name={profile.name}/><div><div style={{fontWeight:700,fontSize:13}}>{profile.name}</div><div style={{fontSize:11,color:"#6B7280"}}>{ROLE_LABELS[profile.role]}</div></div></div>
             <button style={S.logoutBtn} onClick={()=>sb.auth.signOut()}>Abmelden</button>
           </div>
         </aside>
-
         <main className="app-main" style={S.main}>
           <div className="mobile-top-bar" style={{display:"none",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",background:"#0F172A",position:"sticky",top:0,zIndex:50}}>
             <div style={{display:"flex",alignItems:"center",gap:8}}><TennisBall size={22}/><span style={{color:"#fff",fontWeight:800,fontSize:15}}>Tennis Herrieden</span></div>
             <div style={{display:"flex",alignItems:"center",gap:8}}><Av name={profile.name}/><button style={{background:"none",border:"1px solid #334155",borderRadius:6,color:"#94A3B8",cursor:"pointer",fontSize:12,padding:"5px 10px"}} onClick={()=>sb.auth.signOut()}>Abmelden</button></div>
           </div>
-
           {view==="calendar"&&<CalendarView data={adaptedData} user={profile} calMode={calMode} setCalMode={setCalMode} days={days} weekBase={weekBase} setWeekBase={setWeekBase} dayBase={dayBase} setDayBase={setDayBase} selCourt={selCourt||courts[0]?.id} setSelCourt={setSelCourt} onSlotClick={(courtId,date,slot,existing)=>setModal({type:"slot",courtId,date,slot,existing})}/>}
           {view==="myBookings"&&<MyBookings data={adaptedData} user={profile} onCancel={cancel} guestFee={guestFee} onMarkPaid={()=>markGuestPaid(profile.id)}/>}
           {view==="massbook"&&canMassBook&&<MassBookView data={adaptedData} user={profile} onMassBook={massBook} onCancelMany={cancelMany}/>}
           {view==="admin"&&profile.role==="admin"&&<AdminView data={adaptedData} allBookings={bookings} guestFee={guestFee} onSaveGuestFee={saveGuestFee} onAddCourt={addCourt} onUpdateCourt={updateCourt} onDeleteCourt={deleteCourt} onDeleteUser={deleteUser} onCancelBooking={cancel} onMarkPaid={markGuestPaid}/>}
         </main>
-
         <nav className="mobile-bottom-nav" style={{display:"none",position:"fixed",bottom:0,left:0,right:0,background:"#0F172A",borderTop:"1px solid #1E293B",zIndex:100,justifyContent:"space-around",padding:"8px 0",paddingBottom:"env(safe-area-inset-bottom)"}}>
-          {navItems.map(item=>(<button key={item.id} onClick={()=>setView(item.id)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,background:"none",border:"none",cursor:"pointer",padding:"6px 12px",borderRadius:8,color:view===item.id?"#4ADE80":"#64748B"}}><span style={{fontSize:22}}>{item.icon}</span><span style={{fontSize:10,fontWeight:600}}>{item.label.split(" ")[0]}</span></button>))}
+          {navItems.map(item=>(<button key={item.id} onClick={()=>handleNav(item.id)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,background:"none",border:"none",cursor:"pointer",padding:"6px 12px",borderRadius:8,color:view===item.id?"#4ADE80":"#64748B"}}><span style={{fontSize:22}}>{item.icon}</span><span style={{fontSize:10,fontWeight:600}}>{item.label.split(" ")[0]}</span></button>))}
         </nav>
-
         {modal?.type==="slot"&&<SlotModal modal={modal} data={adaptedData} user={profile} guestFee={guestFee} onBook={bookSingle} onCancel={cancel} onClose={()=>setModal(null)}/>}
         {toast&&<div style={{...S.toast,background:toast.type==="error"?"#EF4444":"#10B981"}}>{toast.msg}</div>}
       </div>
@@ -181,7 +299,517 @@ export default function App() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SLOT MODAL – with guest option
+// KASSE APP
+// ═══════════════════════════════════════════════════════════════════════════
+function KasseApp({profile,onBack}) {
+  const [tab,setTab]       = useState("drinks");
+  const [favs,setFavs]     = useState([]);
+  const [log,setLog]       = useState([]);
+  const [toast,setToast]   = useState(null);
+
+  const isAdmin = profile.role==="admin";
+  const showToast=(msg,type="success")=>{ setToast({msg,type}); setTimeout(()=>setToast(null),2800); };
+
+  const loadFavs = useCallback(async()=>{
+    const {data}=await sb.from("kasse_favorites").select("*").eq("user_id",profile.id).order("sort_order");
+    setFavs(data||[]);
+  },[profile.id]);
+
+  const loadLog = useCallback(async()=>{
+    const q = isAdmin
+      ? sb.from("kasse_log").select("*,profiles(name)").order("created_at",{ascending:false})
+      : sb.from("kasse_log").select("*").eq("user_id",profile.id).order("created_at",{ascending:false});
+    const {data}=await q;
+    setLog(data||[]);
+  },[profile.id,isAdmin]);
+
+  useEffect(()=>{ loadFavs(); loadLog(); },[loadFavs,loadLog]);
+
+  // ── Favorites CRUD ──
+  const addFav=async(name,price,emoji)=>{
+    await sb.from("kasse_favorites").insert({user_id:profile.id,name,price,emoji,sort_order:favs.length});
+    await loadFavs();
+  };
+  const updateFav=async(id,name,price,emoji)=>{
+    await sb.from("kasse_favorites").update({name,price,emoji}).eq("id",id);
+    await loadFavs();
+  };
+  const deleteFav=async(id)=>{
+    await sb.from("kasse_favorites").delete().eq("id",id);
+    await loadFavs();
+  };
+
+  // ── Log drink (qty entries) ──
+  const logDrink=async(name,price,emoji,qty=1)=>{
+    const rows=Array.from({length:qty},()=>({user_id:profile.id,drink_name:name,price,emoji,qty:1,date:today(),paid:false}));
+    await sb.from("kasse_log").insert(rows);
+    await loadLog();
+    const label=qty>1?`${qty}× ${name}`:name;
+    showToast(`${emoji} ${label} notiert!`);
+  };
+
+  // ── Mark paid ──
+  const markPaid=async(userId)=>{
+    await sb.from("kasse_log").update({paid:true}).eq("user_id",userId).eq("paid",false);
+    await loadLog(); showToast("Als bezahlt markiert ✓");
+  };
+
+  // ── Delete entry ──
+  const deleteEntry=async(id)=>{
+    await sb.from("kasse_log").delete().eq("id",id);
+    await loadLog();
+  };
+
+  const myLog   = log.filter(l=>l.user_id===profile.id);
+  const myOpen  = myLog.filter(l=>!l.paid);
+  const myTotal = myOpen.reduce((s,l)=>s+l.price,0);
+
+  const tabs=[
+    {id:"drinks",  label:"Getränke",      icon:"🥤"},
+    {id:"log",     label:"Meine Notizen", icon:"📋"},
+    {id:"settings",label:"Einstellungen", icon:"⚙️"},
+    ...(isAdmin?[{id:"admin",label:"Übersicht",icon:"👁️"}]:[]),
+  ];
+
+  return (
+    <>
+      <style>{`
+        @media(max-width:767px){.k-sidebar{display:none!important}.k-bottom-nav{display:flex!important}.k-top-bar{display:flex!important}.k-main{padding-bottom:72px!important}}
+        @media(min-width:768px){.k-sidebar{display:flex!important}.k-bottom-nav{display:none!important}.k-top-bar{display:none!important}}
+      `}</style>
+      <div style={S.shell}>
+        <aside className="k-sidebar" style={{...K.sidebar,display:"none"}}>
+          <button style={K.backBtn} onClick={onBack}>← Startseite</button>
+          <div style={K.logo}>
+            <div style={{fontSize:24}}>🧾</div>
+            <div style={{fontWeight:800,color:"#F8FAFC",fontSize:15}}>Kasse</div>
+          </div>
+          {myOpen.length>0&&(
+            <div style={K.openChip}>
+              <div style={{fontSize:10,color:"#D97706",fontWeight:700}}>OFFEN</div>
+              <div style={{fontWeight:800,fontSize:20,color:"#F59E0B"}}>{eur(myTotal)}</div>
+              <div style={{fontSize:10,color:"#92400E"}}>{myOpen.length} Getränke</div>
+            </div>
+          )}
+          <nav style={{marginTop:12}}>
+            {tabs.map(t=>(<button key={t.id} style={{...S.navBtn,...(tab===t.id?S.navBtnActive:{})}} onClick={()=>setTab(t.id)}><span style={{fontSize:15}}>{t.icon}</span><span>{t.label}</span></button>))}
+          </nav>
+          <div style={S.sidebarBottom}>
+            <div style={S.userChip}><Av name={profile.name}/><div><div style={{fontWeight:700,fontSize:13}}>{profile.name}</div><div style={{fontSize:11,color:"#6B7280"}}>{ROLE_LABELS[profile.role]}</div></div></div>
+            <button style={S.logoutBtn} onClick={()=>sb.auth.signOut()}>Abmelden</button>
+          </div>
+        </aside>
+
+        <main className="k-main" style={S.main}>
+          <div className="k-top-bar" style={{display:"none",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",background:"#0F172A",position:"sticky",top:0,zIndex:50}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <button style={{background:"none",border:"none",color:"#94A3B8",cursor:"pointer",fontSize:13,fontWeight:600,padding:0}} onClick={onBack}>← Startseite</button>
+            </div>
+            <span style={{color:"#fff",fontWeight:800,fontSize:15}}>🧾 Kasse</span>
+            {myOpen.length>0
+              ? <span style={{fontSize:13,fontWeight:700,color:"#F59E0B"}}>{eur(myTotal)}</span>
+              : <span style={{fontSize:13,color:"#475569"}}>{profile.name}</span>
+            }
+          </div>
+
+          {tab==="drinks"  &&<KasseDrinksTab  favs={favs} onLogDrink={logDrink} onGoSettings={()=>setTab("settings")}/>}
+          {tab==="log"     &&<KasseLogTab     myLog={myLog} myOpen={myOpen} myTotal={myTotal} onMarkPaid={()=>markPaid(profile.id)} onDeleteEntry={deleteEntry} onLogDrink={logDrink}/>}
+          {tab==="settings"&&<KasseSettingsTab favs={favs} onAddFav={addFav} onUpdateFav={updateFav} onDeleteFav={deleteFav}/>}
+          {tab==="admin"&&isAdmin&&<KasseAdminTab log={log} onMarkPaid={markPaid}/>}
+        </main>
+
+        <nav className="k-bottom-nav" style={{display:"none",position:"fixed",bottom:0,left:0,right:0,background:"#0F172A",borderTop:"1px solid #1E293B",zIndex:100,justifyContent:"space-around",padding:"8px 0",paddingBottom:"env(safe-area-inset-bottom)"}}>
+          <button onClick={onBack} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,background:"none",border:"none",cursor:"pointer",padding:"6px 12px",borderRadius:8,color:"#64748B"}}><span style={{fontSize:22}}>🏠</span><span style={{fontSize:10,fontWeight:600}}>Start</span></button>
+          {tabs.map(t=>(<button key={t.id} onClick={()=>setTab(t.id)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,background:"none",border:"none",cursor:"pointer",padding:"6px 12px",borderRadius:8,color:tab===t.id?"#4ADE80":"#64748B"}}><span style={{fontSize:22}}>{t.icon}</span><span style={{fontSize:10,fontWeight:600}}>{t.label.split(" ")[0]}</span></button>))}
+        </nav>
+
+        {toast&&<div style={{...S.toast,background:toast.type==="error"?"#EF4444":"#10B981"}}>{toast.msg}</div>}
+      </div>
+    </>
+  );
+}
+
+// ── DRINKS TAB ────────────────────────────────────────────────────────────
+function KasseDrinksTab({favs,onLogDrink,onGoSettings}) {
+  const [quickModal,setQuickModal] = useState(false);
+  const [confirmed,setConfirmed]   = useState(null);
+  const [pending,setPending]       = useState(null);
+  const [qtys,setQtys]             = useState({});
+
+  const getQty=(id)=>qtys[id]||1;
+  const setQty=(id,val)=>setQtys(prev=>({...prev,[id]:Math.max(1,val)}));
+
+  const handleTap=(f)=>setPending(f.id);
+  const handleConfirm=(f)=>{
+    const q=getQty(f.id);
+    onLogDrink(f.name,f.price,f.emoji,q);
+    setPending(null); setConfirmed(f.id);
+    setQtys(prev=>({...prev,[f.id]:1}));
+    setTimeout(()=>setConfirmed(null),1200);
+  };
+
+  return (
+    <div style={K.page}>
+      <div style={{marginBottom:20}}>
+        <h1 style={S.pageTitle}>Getränke</h1>
+        <p style={S.pageSub}>Tippe zum Notieren · wird in „Meine Notizen" gelistet</p>
+      </div>
+
+      {favs.length===0?(
+        <div style={{...S.card,textAlign:"center",padding:"40px 20px",borderStyle:"dashed"}}>
+          <div style={{fontSize:40,marginBottom:12}}>🥤</div>
+          <div style={{fontWeight:700,marginBottom:6}}>Noch keine Favoriten</div>
+          <div style={{fontSize:13,color:"#9CA3AF",marginBottom:16}}>Hinterlege deine Lieblingsgetränke unter Einstellungen.</div>
+          <button style={S.primaryBtn} onClick={onGoSettings}>Favoriten einrichten →</button>
+        </div>
+      ):(
+        <div style={K.drinkGrid}>
+          {/* Anderes – immer zuerst */}
+          <div style={{...K.drinkTile,borderStyle:"dashed",borderColor:"#D1D5DB",background:"#FAFAFA",cursor:"pointer"}} onClick={()=>setQuickModal(true)}>
+            <span style={{fontSize:38,lineHeight:1,color:"#9CA3AF"}}>＋</span>
+            <span style={{fontWeight:700,fontSize:13,color:"#9CA3AF",marginTop:4}}>Anderes</span>
+            <span style={{fontSize:12,color:"#D1D5DB",fontWeight:500}}>Einmalig</span>
+            <div style={{...K.qtyRow,visibility:"hidden"}}><button style={K.qtyBtn}>−</button><span style={K.qtyVal}>1</span><button style={K.qtyBtn}>+</button></div>
+            <button style={{...K.notierBtn,background:"#F3F4F6",color:"#9CA3AF"}}>Notieren</button>
+          </div>
+
+          {favs.map(f=>{
+            const done=confirmed===f.id;
+            const isPend=pending===f.id;
+            const q=getQty(f.id);
+            return (
+              <div key={f.id} style={{...K.drinkTile,...(done?K.drinkTileDone:isPend?K.drinkTilePend:{})}}>
+                <span style={{fontSize:38,lineHeight:1}}>{done?"✓":f.emoji}</span>
+                <span style={{fontWeight:700,fontSize:13,color:done?"#4ADE80":isPend?"#92400E":"#111827",marginTop:4}}>{f.name}</span>
+                <span style={{fontSize:14,fontWeight:800,color:done?"#4ADE80":isPend?"#D97706":"#22C55E"}}>
+                  {q>1?`${q}× ${eur(f.price)}`:eur(f.price)}
+                </span>
+                {isPend?(
+                  <>
+                    <div style={{fontSize:11,color:"#92400E",fontWeight:700,marginTop:4,textAlign:"center"}}>Wirklich notieren?</div>
+                    <div style={{display:"flex",gap:5,width:"100%",marginTop:4}}>
+                      <button style={{...K.notierBtn,flex:1,background:"#22C55E",color:"#fff"}} onClick={()=>handleConfirm(f)}>✓ Ja</button>
+                      <button style={{...K.notierBtn,flex:1,background:"#F3F4F6",color:"#6B7280"}} onClick={()=>setPending(null)}>✕ Nein</button>
+                    </div>
+                  </>
+                ):(
+                  <>
+                    <div style={K.qtyRow} onClick={e=>e.stopPropagation()}>
+                      <button style={K.qtyBtn} onClick={()=>setQty(f.id,q-1)}>−</button>
+                      <span style={K.qtyVal}>{q}</span>
+                      <button style={K.qtyBtn} onClick={()=>setQty(f.id,q+1)}>+</button>
+                    </div>
+                    <button style={{...K.notierBtn,...(done?{background:"#4ADE80",color:"#fff"}:{})}} onClick={()=>handleTap(f)}>
+                      {done?"✓ Notiert":q>1?`${q}× notieren`:"Notieren"}
+                    </button>
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {quickModal&&<KasseQuickModal onLog={(n,p,e,q)=>{onLogDrink(n,p,e,q);setQuickModal(false);}} onClose={()=>setQuickModal(false)}/>}
+    </div>
+  );
+}
+
+// ── LOG TAB ────────────────────────────────────────────────────────────────
+function KasseLogTab({myLog,myOpen,myTotal,onMarkPaid,onDeleteEntry,onLogDrink}) {
+  const [quickModal,setQuickModal]   = useState(false);
+  const [showPaid,setShowPaid]       = useState(false);
+  const [showConfirm,setShowConfirm] = useState(false);
+
+  const paid=myLog.filter(l=>l.paid);
+  const byDate={};
+  for(const l of myOpen){ if(!byDate[l.date])byDate[l.date]=[]; byDate[l.date].push(l); }
+  const sortedDates=Object.keys(byDate).sort((a,b)=>b.localeCompare(a));
+
+  return (
+    <div style={K.page}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
+        <div><h1 style={S.pageTitle}>Meine Notizen</h1><p style={S.pageSub}>Noch nicht bezahlt</p></div>
+        <button style={S.primaryBtn} onClick={()=>setQuickModal(true)}>+ Eintragen</button>
+      </div>
+
+      {myOpen.length>0&&(
+        <div style={K.summaryBar}>
+          <div>
+            <div style={{fontSize:11,fontWeight:700,color:"#94A3B8"}}>OFFEN</div>
+            <div style={{fontSize:28,fontWeight:800,color:"#F59E0B"}}>{eur(myTotal)}</div>
+            <div style={{fontSize:12,color:"#64748B"}}>{myOpen.length} Getränke</div>
+          </div>
+          <button style={K.payBtn} onClick={()=>setShowConfirm(true)}>✓ Als bezahlt<br/>markieren</button>
+        </div>
+      )}
+
+      {myOpen.length===0&&!showPaid&&(
+        <div style={{textAlign:"center",padding:"40px 0",color:"#9CA3AF"}}>
+          <div style={{fontSize:44}}>✅</div>
+          <div style={{fontWeight:700,marginTop:8,color:"#374151"}}>Alles bezahlt!</div>
+        </div>
+      )}
+
+      {sortedDates.map(date=>(
+        <div key={date} style={{marginBottom:20}}>
+          <div style={{fontSize:11,fontWeight:700,color:"#9CA3AF",textTransform:"uppercase",letterSpacing:.8,marginBottom:6}}>{fmtDateShort(date)}</div>
+          {byDate[date].map(entry=>(
+            <div key={entry.id} style={{...S.card,borderLeft:"4px solid #F59E0B",display:"flex",alignItems:"center",gap:12}}>
+              <span style={{fontSize:24}}>{entry.emoji}</span>
+              <div style={{flex:1}}><div style={{fontWeight:700,fontSize:14}}>{entry.drink_name}</div></div>
+              <div style={{fontWeight:800,fontSize:15}}>{eur(entry.price)}</div>
+              <button style={{background:"none",border:"none",color:"#D1D5DB",cursor:"pointer",fontSize:14,fontWeight:700}} onClick={()=>onDeleteEntry(entry.id)}>✕</button>
+            </div>
+          ))}
+          <div style={{fontSize:12,color:"#6B7280",textAlign:"right",marginTop:4,paddingRight:36}}>
+            Summe: <strong>{eur(byDate[date].reduce((s,l)=>s+l.price,0))}</strong>
+          </div>
+        </div>
+      ))}
+
+      {paid.length>0&&(
+        <div style={{marginTop:8}}>
+          <button style={{background:"none",border:"none",color:"#9CA3AF",cursor:"pointer",fontSize:13,padding:"4px 0",marginBottom:8}} onClick={()=>setShowPaid(p=>!p)}>
+            {showPaid?"▲ Bezahlte ausblenden":`▼ Bezahlte anzeigen (${paid.length})`}
+          </button>
+          {showPaid&&paid.map(entry=>(
+            <div key={entry.id} style={{...S.card,borderLeft:"4px solid #D1D5DB",display:"flex",alignItems:"center",gap:12,opacity:.6}}>
+              <span style={{fontSize:24}}>{entry.emoji}</span>
+              <div style={{flex:1}}><div style={{fontWeight:700,fontSize:14}}>{entry.drink_name}</div><div style={{fontSize:11,color:"#9CA3AF"}}>Bezahlt ✓</div></div>
+              <div style={{fontWeight:800,fontSize:15,color:"#9CA3AF"}}>{eur(entry.price)}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {quickModal&&<KasseQuickModal onLog={(n,p,e,q)=>{onLogDrink(n,p,e,q);setQuickModal(false);}} onClose={()=>setQuickModal(false)}/>}
+
+      {showConfirm&&(
+        <div style={S.overlay} onClick={()=>setShowConfirm(false)}>
+          <div style={S.modal} onClick={e=>e.stopPropagation()}>
+            <div style={S.modalHeader}><div style={S.modalTitle}>Bezahlung bestätigen</div><button style={S.closeBtn} onClick={()=>setShowConfirm(false)}>✕</button></div>
+            <p style={{color:"#6B7280",fontSize:13,marginBottom:16}}>Bitte bestätige, dass du die Getränke beim Kassenwart bezahlt hast.</p>
+            <div style={{background:"#FEF3C7",borderRadius:10,padding:14,textAlign:"center",marginBottom:20}}>
+              <div style={{fontSize:11,color:"#92400E",fontWeight:700,marginBottom:4}}>BETRAG</div>
+              <div style={{fontSize:32,fontWeight:800}}>{eur(myTotal)}</div>
+              <div style={{fontSize:12,color:"#6B7280",marginTop:4}}>{myOpen.length} Getränke</div>
+            </div>
+            <button style={{...S.primaryBtn,width:"100%",background:"#22C55E",color:"#fff",marginBottom:8}} onClick={()=>{onMarkPaid();setShowConfirm(false);}}>✓ Ja, bezahlt</button>
+            <button style={{...S.ghostBtn,width:"100%"}} onClick={()=>setShowConfirm(false)}>Abbrechen</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── SETTINGS TAB ──────────────────────────────────────────────────────────
+function KasseSettingsTab({favs,onAddFav,onUpdateFav,onDeleteFav}) {
+  const [showForm,setShowForm] = useState(false);
+  const [editId,setEditId]     = useState(null);
+  const [name,setName]         = useState("");
+  const [price,setPrice]       = useState("");
+  const [emoji,setEmoji]       = useState("🥤");
+
+  const openAdd=()=>{ setEditId(null);setName("");setPrice("");setEmoji("🥤");setShowForm(true); };
+  const openEdit=(f)=>{ setEditId(f.id);setName(f.name);setPrice(String(f.price).replace(".",","));setEmoji(f.emoji);setShowForm(true); };
+  const handleSave=()=>{
+    const p=parseFloat(price.replace(",","."));
+    if(!name||isNaN(p)) return;
+    if(editId) onUpdateFav(editId,name,p,emoji); else onAddFav(name,p,emoji);
+    setShowForm(false);
+  };
+
+  return (
+    <div style={K.page}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
+        <div><h1 style={S.pageTitle}>Meine Favoriten</h1><p style={S.pageSub}>Erscheinen als Schnell-Kacheln unter Getränke</p></div>
+        <button style={S.primaryBtn} onClick={openAdd}>+ Hinzufügen</button>
+      </div>
+
+      {showForm&&(
+        <div style={{...S.card,borderLeft:"4px solid #22C55E",marginBottom:20}}>
+          <div style={{fontWeight:700,marginBottom:14}}>{editId?"Getränk bearbeiten":"Neues Lieblingsgetränk"}</div>
+          <div style={{marginBottom:12}}>
+            <Lbl>Emoji</Lbl>
+            <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+              {KASSE_EMOJIS.map(e=>(<button key={e} onClick={()=>setEmoji(e)} style={{fontSize:18,padding:"4px 6px",border:`2px solid ${emoji===e?"#22C55E":"#E5E7EB"}`,borderRadius:6,background:emoji===e?"#DCFCE7":"#fff",cursor:"pointer"}}>{e}</button>))}
+            </div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr auto auto",gap:10,alignItems:"flex-end"}}>
+            <div><Lbl>Name</Lbl><input placeholder="z.B. Cola" value={name} onChange={e=>setName(e.target.value)} style={S.input}/></div>
+            <div style={{width:90}}><Lbl>Preis (€)</Lbl><input placeholder="2,00" value={price} onChange={e=>setPrice(e.target.value)} style={S.input} inputMode="decimal"/></div>
+            <div style={{display:"flex",gap:6}}>
+              <button style={S.primaryBtn} onClick={handleSave}>{editId?"Speichern":"Hinzufügen"}</button>
+              <button style={S.cancelBtn} onClick={()=>setShowForm(false)}>✕</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {favs.length===0&&!showForm&&(
+        <div style={{textAlign:"center",padding:"40px 0",color:"#9CA3AF"}}>
+          <div style={{fontSize:36}}>🥤</div>
+          <div style={{marginTop:8}}>Noch keine Favoriten</div>
+        </div>
+      )}
+
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:10}}>
+        {favs.map(f=>(
+          <div key={f.id} style={{...S.card,display:"flex",alignItems:"center",gap:12}}>
+            <span style={{fontSize:30}}>{f.emoji}</span>
+            <div style={{flex:1}}><div style={{fontWeight:700}}>{f.name}</div><div style={{fontSize:13,color:"#6B7280"}}>{eur(f.price)}</div></div>
+            <div style={{display:"flex",gap:4}}>
+              <button style={{background:"none",border:"1px solid #E5E7EB",borderRadius:6,cursor:"pointer",fontSize:14,padding:"4px 7px"}} onClick={()=>openEdit(f)}>✏️</button>
+              <button style={{...S.cancelBtn,padding:"4px 8px",fontSize:13}} onClick={()=>onDeleteFav(f.id)}>✕</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── ADMIN TAB ──────────────────────────────────────────────────────────────
+function KasseAdminTab({log,onMarkPaid}) {
+  const [subtab,setSubtab]     = useState("open");
+  const [profiles,setProfiles] = useState([]);
+  const [confirmPay,setConfirmPay] = useState(null);
+
+  useEffect(()=>{ sb.from("profiles").select("*").then(({data})=>setProfiles(data||[])); },[]);
+
+  const getName=(uid)=>profiles.find(p=>p.id===uid)?.name||"Unbekannt";
+  const userIds=[...new Set(log.map(l=>l.user_id))];
+  const userStats=userIds.map(uid=>{
+    const open=log.filter(l=>l.user_id===uid&&!l.paid);
+    const paid=log.filter(l=>l.user_id===uid&&l.paid);
+    return { uid, name:getName(uid), openCount:open.length, openTotal:open.reduce((s,l)=>s+l.price,0), paidTotal:paid.reduce((s,l)=>s+l.price,0), openItems:open };
+  });
+  const totalOpen=userStats.reduce((s,u)=>s+u.openTotal,0);
+
+  return (
+    <div style={K.page}>
+      <h1 style={S.pageTitle}>Kassenverwaltung</h1>
+      <p style={S.pageSub}>Übersicht für Administratoren</p>
+
+      <div style={{background:"#0F172A",borderRadius:12,padding:"16px 20px",marginBottom:20,display:"flex",alignItems:"center",gap:16,marginTop:16}}>
+        <div>
+          <div style={{fontSize:11,color:"#94A3B8",fontWeight:700}}>GESAMT OFFEN</div>
+          <div style={{fontSize:30,fontWeight:800,color:"#F59E0B"}}>{eur(totalOpen)}</div>
+        </div>
+        <div style={{fontSize:12,color:"#475569",borderLeft:"1px solid #334155",paddingLeft:16}}>
+          {userStats.filter(u=>u.openCount>0).length} Mitglieder mit offenen Getränken
+        </div>
+      </div>
+
+      <div style={{display:"flex",gap:8,marginBottom:16}}>
+        {[["open","Offene Beträge"],["history","Historie"]].map(([id,l])=>(<button key={id} style={{...S.tabBtn,...(subtab===id?S.tabBtnActive:{})}} onClick={()=>setSubtab(id)}>{l}</button>))}
+      </div>
+
+      {subtab==="open"&&userStats.filter(u=>u.openCount>0).map(u=>(
+        <div key={u.uid} style={{...S.card,borderLeft:"4px solid #F59E0B",marginBottom:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+            <div>
+              <div style={{fontWeight:700,fontSize:15}}>{u.name}</div>
+              <div style={{fontSize:12,color:"#6B7280"}}>{u.openCount} offene Getränke</div>
+            </div>
+            <div style={{textAlign:"right"}}>
+              <div style={{fontWeight:800,fontSize:20,color:"#D97706"}}>{eur(u.openTotal)}</div>
+              <button style={{fontSize:11,padding:"3px 8px",background:"#DCFCE7",color:"#16A34A",border:"none",borderRadius:20,cursor:"pointer",fontWeight:700,marginTop:3}} onClick={()=>setConfirmPay(u)}>Als bezahlt markieren</button>
+            </div>
+          </div>
+          <div style={{borderTop:"1px solid #F3F4F6",paddingTop:8,display:"flex",flexWrap:"wrap",gap:6}}>
+            {u.openItems.map(item=>(<div key={item.id} style={{fontSize:12,background:"#FEF3C7",borderRadius:20,padding:"3px 10px",color:"#92400E",fontWeight:600}}>{item.emoji} {item.drink_name} · {eur(item.price)}</div>))}
+          </div>
+        </div>
+      ))}
+      {subtab==="open"&&userStats.filter(u=>u.openCount>0).length===0&&(
+        <div style={{textAlign:"center",padding:"40px 0",color:"#9CA3AF"}}><div style={{fontSize:36}}>✅</div><div style={{marginTop:8}}>Alle auf dem neusten Stand!</div></div>
+      )}
+
+      {subtab==="history"&&userStats.map(u=>(
+        <div key={u.uid} style={{...S.card,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div style={{fontWeight:700}}>{u.name}</div>
+          <div style={{display:"flex",gap:16,fontSize:13}}>
+            <div style={{color:"#D97706",fontWeight:700}}>{eur(u.openTotal)} offen</div>
+            <div style={{color:"#22C55E",fontWeight:700}}>{eur(u.paidTotal)} bezahlt</div>
+          </div>
+        </div>
+      ))}
+
+      {confirmPay&&(
+        <div style={S.overlay} onClick={()=>setConfirmPay(null)}>
+          <div style={S.modal} onClick={e=>e.stopPropagation()}>
+            <div style={S.modalHeader}><div style={S.modalTitle}>Zahlung bestätigen</div><button style={S.closeBtn} onClick={()=>setConfirmPay(null)}>✕</button></div>
+            <p style={{color:"#6B7280",fontSize:13,marginBottom:16}}>{confirmPay.name} als bezahlt markieren?</p>
+            <div style={{background:"#FEF3C7",borderRadius:10,padding:14,textAlign:"center",marginBottom:20}}>
+              <div style={{fontSize:11,color:"#92400E",fontWeight:700,marginBottom:4}}>BETRAG</div>
+              <div style={{fontSize:32,fontWeight:800}}>{eur(confirmPay.openTotal)}</div>
+            </div>
+            <button style={{...S.primaryBtn,width:"100%",background:"#22C55E",color:"#fff",marginBottom:8}} onClick={()=>{onMarkPaid(confirmPay.uid);setConfirmPay(null);}}>✓ Als bezahlt markieren</button>
+            <button style={{...S.ghostBtn,width:"100%"}} onClick={()=>setConfirmPay(null)}>Abbrechen</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── QUICK LOG MODAL ────────────────────────────────────────────────────────
+function KasseQuickModal({onLog,onClose}) {
+  const [name,setName]   = useState("");
+  const [price,setPrice] = useState("");
+  const [emoji,setEmoji] = useState("🥤");
+  const [qty,setQty]     = useState(1);
+
+  const handle=()=>{
+    const p=parseFloat(price.replace(",","."));
+    if(isNaN(p)||p<=0) return;
+    onLog(name.trim()||"Getränk",p,emoji,qty);
+  };
+
+  return (
+    <div style={S.overlay} onClick={onClose}>
+      <div style={{...S.modal,maxHeight:"90vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
+        <div style={S.modalHeader}><div style={S.modalTitle}>Getränk notieren</div><button style={S.closeBtn} onClick={onClose}>✕</button></div>
+        <div style={{marginBottom:14}}>
+          <Lbl>Emoji</Lbl>
+          <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+            {KASSE_EMOJIS.map(e=>(<button key={e} onClick={()=>setEmoji(e)} style={{fontSize:18,padding:"4px 6px",border:`2px solid ${emoji===e?"#22C55E":"#E5E7EB"}`,borderRadius:6,background:emoji===e?"#DCFCE7":"#fff",cursor:"pointer"}}>{e}</button>))}
+          </div>
+        </div>
+        <div style={{marginBottom:14}}>
+          <Lbl>Name <span style={{color:"#9CA3AF",fontWeight:400,textTransform:"none",letterSpacing:0}}>(optional)</span></Lbl>
+          <input placeholder="z.B. Bier" value={name} onChange={e=>setName(e.target.value)} style={S.input}/>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:12,marginBottom:16,alignItems:"flex-end"}}>
+          <div>
+            <Lbl>Preis pro Stück (€) <span style={{color:"#EF4444"}}>*</span></Lbl>
+            <input placeholder="2,50" value={price} onChange={e=>setPrice(e.target.value)} style={S.input} inputMode="decimal"/>
+          </div>
+          <div>
+            <Lbl>Anzahl</Lbl>
+            <div style={{display:"flex",alignItems:"center",border:"1.5px solid #E5E7EB",borderRadius:8,overflow:"hidden",height:40}}>
+              <button style={{width:36,height:"100%",border:"none",background:"#F3F4F6",color:"#374151",fontSize:18,fontWeight:700,cursor:"pointer"}} onClick={()=>setQty(q=>Math.max(1,q-1))}>−</button>
+              <span style={{width:36,textAlign:"center",fontWeight:800,fontSize:16}}>{qty}</span>
+              <button style={{width:36,height:"100%",border:"none",background:"#F3F4F6",color:"#374151",fontSize:18,fontWeight:700,cursor:"pointer"}} onClick={()=>setQty(q=>q+1)}>+</button>
+            </div>
+          </div>
+        </div>
+        {price&&!isNaN(parseFloat(price.replace(",","."))&&(
+          <div style={{background:"#F9FAFB",borderRadius:8,padding:"10px 14px",marginBottom:16,display:"flex",justifyContent:"space-between",fontSize:13}}>
+            <span style={{color:"#6B7280"}}>{qty}× {eur(parseFloat(price.replace(",",".")))}</span>
+            <span style={{fontWeight:800}}>= {eur(qty*parseFloat(price.replace(",",".")))}</span>
+          </div>
+        ))}
+        <button style={{...S.primaryBtn,width:"100%",opacity:(!price||isNaN(parseFloat(price.replace(",","."))))?0.4:1}} onClick={handle}>Notieren</button>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EXISTING BOOKING COMPONENTS (unverändert)
 // ═══════════════════════════════════════════════════════════════════════════
 function SlotModal({modal,data,user,guestFee,onBook,onCancel,onClose}) {
   const {courtId,date,slot,existing}=modal;
@@ -191,7 +819,6 @@ function SlotModal({modal,data,user,guestFee,onBook,onCancel,onClose}) {
   const isOwn=existing?.userId===user.id;
   const isAdmin=user.role==="admin";
   const bType=existing?.type||"regular";
-
   return (
     <div style={S.overlay} onClick={onClose}>
       <div style={{...S.modal,maxHeight:"90vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
@@ -199,73 +826,38 @@ function SlotModal({modal,data,user,guestFee,onBook,onCancel,onClose}) {
           <div><div style={S.modalTitle}>{court?.name} · {slot} Uhr</div><div style={S.modalSub}>{DE_FULL[dayOfWeek(date)]}, {fmtDate(d)}</div></div>
           <button style={S.closeBtn} onClick={onClose}>✕</button>
         </div>
-
-        {!existing&&(
-          <>
-            {/* Slot info */}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:16}}>
-              {[["Platz",court?.name||"?"],["Uhrzeit",slot+" Uhr"],["Dauer","1 Std."]].map(([l,v])=>(
-                <div key={l} style={{background:"#F8FAFC",borderRadius:8,padding:"10px",textAlign:"center"}}>
-                  <div style={{fontSize:10,color:"#9CA3AF",fontWeight:700,marginBottom:3}}>{l}</div>
-                  <div style={{fontSize:13,fontWeight:800,color:"#111827"}}>{v}</div>
-                </div>
-              ))}
+        {!existing&&(<>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:16}}>
+            {[["Platz",court?.name||"?"],["Uhrzeit",slot+" Uhr"],["Dauer","1 Std."]].map(([l,v])=>(<div key={l} style={{background:"#F8FAFC",borderRadius:8,padding:"10px",textAlign:"center"}}><div style={{fontSize:10,color:"#9CA3AF",fontWeight:700,marginBottom:3}}>{l}</div><div style={{fontSize:13,fontWeight:800,color:"#111827"}}>{v}</div></div>))}
+          </div>
+          <div style={{background:"#FFFBEB",border:"1.5px solid #FDE68A",borderRadius:12,padding:14,marginBottom:16}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer"}} onClick={()=>setWithGuest(g=>!g)}>
+              <div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:22}}>👥</span><div><div style={{fontWeight:700,fontSize:14,color:"#111827"}}>Gastspieler</div><div style={{fontSize:11,color:"#92400E",marginTop:1}}>Gebühr wird am Jahresende abgerechnet</div></div></div>
+              <div style={{width:44,height:24,background:withGuest?"#F59E0B":"#E5E7EB",borderRadius:12,position:"relative",transition:"background .2s",flexShrink:0}}><div style={{width:20,height:20,background:"#fff",borderRadius:"50%",position:"absolute",top:2,left:withGuest?22:2,transition:"left .2s",boxShadow:"0 1px 4px rgba(0,0,0,.2)"}}></div></div>
             </div>
-
-            {/* Guest toggle */}
-            <div style={{background:"#FFFBEB",border:"1.5px solid #FDE68A",borderRadius:12,padding:14,marginBottom:16}}>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer"}} onClick={()=>setWithGuest(g=>!g)}>
-                <div style={{display:"flex",alignItems:"center",gap:10}}>
-                  <span style={{fontSize:22}}>👥</span>
-                  <div>
-                    <div style={{fontWeight:700,fontSize:14,color:"#111827"}}>Gastspieler</div>
-                    <div style={{fontSize:11,color:"#92400E",marginTop:1}}>Gebühr wird am Jahresende abgerechnet</div>
-                  </div>
-                </div>
-                {/* Toggle switch */}
-                <div style={{width:44,height:24,background:withGuest?"#F59E0B":"#E5E7EB",borderRadius:12,position:"relative",transition:"background .2s",flexShrink:0}}>
-                  <div style={{width:20,height:20,background:"#fff",borderRadius:"50%",position:"absolute",top:2,left:withGuest?22:2,transition:"left .2s",boxShadow:"0 1px 4px rgba(0,0,0,.2)"}}></div>
-                </div>
-              </div>
-              {withGuest&&(
-                <div style={{marginTop:10,padding:"10px 12px",background:"#FEF3C7",borderRadius:8,fontSize:12,color:"#92400E",fontWeight:600}}>
-                  💶 Gebühr: <strong>{eur(guestFee)}</strong> – wird in deinem Konto vorgemerkt
-                </div>
-              )}
+            {withGuest&&(<div style={{marginTop:10,padding:"10px 12px",background:"#FEF3C7",borderRadius:8,fontSize:12,color:"#92400E",fontWeight:600}}>💶 Gebühr: <strong>{eur(guestFee)}</strong> – wird in deinem Konto vorgemerkt</div>)}
+          </div>
+          <div style={{display:"flex",gap:10}}>
+            <button style={{...S.primaryBtn,flex:1}} onClick={()=>onBook(courtId,date,slot,"regular","",withGuest)}>{withGuest?"Mit Gastspieler buchen":"Jetzt buchen"}</button>
+            <button style={S.ghostBtn} onClick={onClose}>Abbrechen</button>
+          </div>
+        </>)}
+        {existing&&(<>
+          <div style={{background:"#F9FAFB",borderRadius:8,padding:"12px 14px",marginBottom:16}}>
+            <div style={{fontSize:12,color:"#6B7280",marginBottom:4}}>Gebucht von</div>
+            <div style={{fontWeight:700,fontSize:16}}>{existing.userName}</div>
+            <div style={{marginTop:6,display:"flex",gap:6,flexWrap:"wrap"}}>
+              <span style={{fontSize:12,padding:"2px 8px",borderRadius:20,background:BOOKING_TYPE_COLORS[bType]+"22",color:BOOKING_TYPE_COLORS[bType],fontWeight:600}}>{bType==="training"?"🏋️ Training":bType==="match"?"🏆 Spieltag":"📅 Standard"}</span>
+              {existing.with_guest&&<span style={{fontSize:12,padding:"2px 8px",borderRadius:20,background:"#FEF3C7",color:"#D97706",fontWeight:700}}>👥 Gastspieler</span>}
             </div>
-
-            <div style={{display:"flex",gap:10}}>
-              <button style={{...S.primaryBtn,flex:1}} onClick={()=>onBook(courtId,date,slot,"regular","",withGuest)}>
-                {withGuest?"Mit Gastspieler buchen":"Jetzt buchen"}
-              </button>
-              <button style={S.ghostBtn} onClick={onClose}>Abbrechen</button>
-            </div>
-          </>
-        )}
-
-        {existing&&(
-          <>
-            <div style={{background:"#F9FAFB",borderRadius:8,padding:"12px 14px",marginBottom:16}}>
-              <div style={{fontSize:12,color:"#6B7280",marginBottom:4}}>Gebucht von</div>
-              <div style={{fontWeight:700,fontSize:16}}>{existing.userName}</div>
-              <div style={{marginTop:6,display:"flex",gap:6,flexWrap:"wrap"}}>
-                <span style={{fontSize:12,padding:"2px 8px",borderRadius:20,background:BOOKING_TYPE_COLORS[bType]+"22",color:BOOKING_TYPE_COLORS[bType],fontWeight:600}}>
-                  {bType==="training"?"🏋️ Training":bType==="match"?"🏆 Spieltag":"📅 Standard"}
-                </span>
-                {existing.with_guest&&<span style={{fontSize:12,padding:"2px 8px",borderRadius:20,background:"#FEF3C7",color:"#D97706",fontWeight:700}}>👥 Gastspieler</span>}
-              </div>
-            </div>
-            {(isOwn||isAdmin)?(<div style={{display:"flex",gap:10}}><button style={{...S.cancelBtn,padding:"10px 18px",fontSize:14}} onClick={()=>onCancel(existing.id)}>Stornieren</button><button style={S.ghostBtn} onClick={onClose}>Schließen</button></div>):(<button style={S.ghostBtn} onClick={onClose}>Schließen</button>)}
-          </>
-        )}
+          </div>
+          {(isOwn||isAdmin)?(<div style={{display:"flex",gap:10}}><button style={{...S.cancelBtn,padding:"10px 18px",fontSize:14}} onClick={()=>onCancel(existing.id)}>Stornieren</button><button style={S.ghostBtn} onClick={onClose}>Schließen</button></div>):(<button style={S.ghostBtn} onClick={onClose}>Schließen</button>)}
+        </>)}
       </div>
     </div>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// CALENDAR VIEW
-// ═══════════════════════════════════════════════════════════════════════════
 function CalendarView({data,user,calMode,setCalMode,days,weekBase,setWeekBase,dayBase,setDayBase,selCourt,setSelCourt,onSlotClick}) {
   const todayStr=today();
   const prevWeek=()=>{const d=new Date(weekBase);d.setDate(d.getDate()-7);setWeekBase(d);};
@@ -274,14 +866,10 @@ function CalendarView({data,user,calMode,setCalMode,days,weekBase,setWeekBase,da
     <div style={{padding:"24px 28px"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:12}}>
         <div><h1 style={S.pageTitle}>Buchungskalender</h1><p style={S.pageSub}>Klicke auf einen freien Slot zum Buchen</p></div>
-        <div style={{display:"flex",gap:6}}>
-          {[["week","📅 Woche"],["day","🗓 Tag"]].map(([m,l])=>(<button key={m} style={{...S.tabBtn,...(calMode===m?S.tabBtnActive:{})}} onClick={()=>setCalMode(m)}>{l}</button>))}
-        </div>
+        <div style={{display:"flex",gap:6}}>{[["week","📅 Woche"],["day","🗓 Tag"]].map(([m,l])=>(<button key={m} style={{...S.tabBtn,...(calMode===m?S.tabBtnActive:{})}} onClick={()=>setCalMode(m)}>{l}</button>))}</div>
       </div>
       {calMode==="week"&&(<>
-        <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
-          {data.courts.map((c,i)=>(<button key={c.id} style={{...S.courtTab,...(selCourt===c.id?{background:COURT_COLORS[i%COURT_COLORS.length],color:"#fff",borderColor:COURT_COLORS[i%COURT_COLORS.length]}:{})}} onClick={()=>setSelCourt(c.id)}>{c.name}<br/><span style={{fontSize:10,opacity:.8}}>{c.surface}</span></button>))}
-        </div>
+        <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>{data.courts.map((c,i)=>(<button key={c.id} style={{...S.courtTab,...(selCourt===c.id?{background:COURT_COLORS[i%COURT_COLORS.length],color:"#fff",borderColor:COURT_COLORS[i%COURT_COLORS.length]}:{})}} onClick={()=>setSelCourt(c.id)}>{c.name}<br/><span style={{fontSize:10,opacity:.8}}>{c.surface}</span></button>))}</div>
         <div style={S.weekNav}>
           <button style={S.weekBtn} onClick={prevWeek}>← Vorwoche</button>
           <span style={{fontWeight:600,fontSize:14}}>{fmtDate(days[0])} – {fmtDate(days[6])}</span>
@@ -354,24 +942,17 @@ function DayGrid({data,user,date,todayStr,onSlotClick}) {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// MY BOOKINGS – with guest fee summary
-// ═══════════════════════════════════════════════════════════════════════════
 function MyBookings({data,user,onCancel,guestFee,onMarkPaid}) {
   const todayStr=today();
   const [openGroups,setOpenGroups]=useState({});
   const [showPast,setShowPast]=useState(false);
   const [showPayConfirm,setShowPayConfirm]=useState(false);
-
   const mine=data.bookings.filter(b=>b.userId===user.id).sort((a,b)=>(a.date+a.slot).localeCompare(b.date+b.slot));
   const upcoming=mine.filter(b=>b.date>=todayStr);
   const past=mine.filter(b=>b.date<todayStr);
-
-  // Guest fee calculation
   const openGuestBookings=mine.filter(b=>b.with_guest&&!b.guest_paid);
   const openAmount=openGuestBookings.length*guestFee;
   const paidBookings=mine.filter(b=>b.with_guest&&b.guest_paid);
-
   const massGroups={};const singles=[];
   for(const b of upcoming){if(b.type==="training"||b.type==="match"){const key=`${b.type}||${b.label||""}`;if(!massGroups[key])massGroups[key]={type:b.type,label:b.label||"",bookings:[]};massGroups[key].bookings.push(b);}else singles.push(b);}
   const toggleGroup=key=>setOpenGroups(o=>({...o,[key]:!o[key]}));
@@ -379,13 +960,10 @@ function MyBookings({data,user,onCancel,guestFee,onMarkPaid}) {
   const groupDateRange=bs=>{const dates=bs.map(b=>b.date).sort();if(dates.length===1)return fmtDate(new Date(dates[0]+"T12:00:00"));return `${fmtDate(new Date(dates[0]+"T12:00:00"))} – ${fmtDate(new Date(dates[dates.length-1]+"T12:00:00"))}`;};
   const groupSlots=bs=>[...new Set(bs.map(b=>b.slot))].sort().join(", ")+" Uhr";
   const nextOcc=bs=>{const f=bs.filter(b=>b.date>=todayStr).sort((a,b)=>a.date.localeCompare(b.date));if(!f.length)return null;const d=new Date(f[0].date+"T12:00:00");return `${DE_FULL[dayOfWeek(f[0].date)]}, ${fmtDate(d)}, ${f[0].slot} Uhr`;};
-
   return (
     <div style={{padding:"24px 28px",maxWidth:820}}>
       <h1 style={S.pageTitle}>Meine Buchungen</h1>
       <p style={S.pageSub}>{user.name} · {ROLE_LABELS[user.role]}</p>
-
-      {/* Guest fee banner */}
       {(openGuestBookings.length>0||paidBookings.length>0)&&(
         <div style={{background:openAmount>0?"linear-gradient(135deg,#FEF3C7,#FDE68A)":"linear-gradient(135deg,#DCFCE7,#BBF7D0)",border:`1.5px solid ${openAmount>0?"#F59E0B":"#22C55E"}`,borderRadius:14,padding:16,marginBottom:20,display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
           <div>
@@ -393,16 +971,10 @@ function MyBookings({data,user,onCancel,guestFee,onMarkPaid}) {
             <div style={{fontSize:28,fontWeight:800,color:"#111827"}}>{eur(openAmount)}</div>
             <div style={{fontSize:12,color:"#6B7280",marginTop:2}}>{openGuestBookings.length} offene Buchungen · {eur(guestFee)} pro Buchung</div>
           </div>
-          {openAmount>0&&(
-            <button style={{...S.primaryBtn,background:"#0F172A",whiteSpace:"nowrap"}} onClick={()=>setShowPayConfirm(true)}>
-              Als bezahlt<br/>markieren
-            </button>
-          )}
+          {openAmount>0&&(<button style={{...S.primaryBtn,background:"#0F172A",whiteSpace:"nowrap"}} onClick={()=>setShowPayConfirm(true)}>Als bezahlt<br/>markieren</button>)}
           {openAmount===0&&<div style={{fontSize:24}}>✅</div>}
         </div>
       )}
-
-      {/* Mass groups */}
       {Object.keys(massGroups).length>0&&(<div style={{marginBottom:28}}><SectTitle>Serien & Veranstaltungen</SectTitle>
         {Object.entries(massGroups).map(([key,g])=>{
           const isOpen=!!openGroups[key];const typeColor=BOOKING_TYPE_COLORS[g.type];
@@ -434,7 +1006,6 @@ function MyBookings({data,user,onCancel,guestFee,onMarkPaid}) {
           </div>);
         })}
       </div>)}
-
       {singles.length>0&&(<div style={{marginBottom:28}}><SectTitle>Einzelbuchungen ({singles.length})</SectTitle>
         {singles.map(b=>{const court=data.courts.find(c=>c.id===b.courtId);const ci=data.courts.findIndex(c=>c.id===b.courtId);const color=b.with_guest?"#16A34A":COURT_COLORS[ci%COURT_COLORS.length];const d=new Date(b.date+"T12:00:00");
           return (<div key={b.id} style={{...S.card,borderLeft:`4px solid ${color}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
@@ -443,9 +1014,7 @@ function MyBookings({data,user,onCancel,guestFee,onMarkPaid}) {
           </div>);
         })}
       </div>)}
-
       {upcoming.length===0&&<Em msg="Keine bevorstehenden Buchungen"/>}
-
       <div>
         <button style={{...S.ghostBtn,fontSize:13,padding:"7px 14px",marginBottom:12}} onClick={()=>setShowPast(p=>!p)}>{showPast?"▲ Vergangene ausblenden":`▼ Vergangene Buchungen (${past.length})`}</button>
         {showPast&&[...past].reverse().slice(0,20).map(b=>{const court=data.courts.find(c=>c.id===b.courtId);const ci=data.courts.findIndex(c=>c.id===b.courtId);const color=b.with_guest?"#16A34A":COURT_COLORS[ci%COURT_COLORS.length];const bType=b.type||"regular";const icon=bType==="training"?"🏋️":bType==="match"?"🏆":b.with_guest?"👥":"📅";const d=new Date(b.date+"T12:00:00");
@@ -455,30 +1024,21 @@ function MyBookings({data,user,onCancel,guestFee,onMarkPaid}) {
           </div>);
         })}
       </div>
-
-      {/* Pay confirm modal */}
-      {showPayConfirm&&(
-        <div style={S.overlay} onClick={()=>setShowPayConfirm(false)}>
-          <div style={S.modal} onClick={e=>e.stopPropagation()}>
-            <div style={S.modalHeader}><div style={S.modalTitle}>Zahlung bestätigen</div><button style={S.closeBtn} onClick={()=>setShowPayConfirm(false)}>✕</button></div>
-            <p style={{color:"#6B7280",fontSize:13,marginBottom:16}}>Bitte bestätige, dass du den offenen Betrag an den Verein bezahlt hast.</p>
-            <div style={{background:"#FEF3C7",borderRadius:10,padding:14,textAlign:"center",marginBottom:20}}>
-              <div style={{fontSize:11,color:"#92400E",fontWeight:700,marginBottom:4}}>ZU BEZAHLENDER BETRAG</div>
-              <div style={{fontSize:28,fontWeight:800,color:"#111827"}}>{eur(openAmount)}</div>
-              <div style={{fontSize:12,color:"#6B7280",marginTop:4}}>{openGuestBookings.length} Buchungen × {eur(guestFee)}</div>
-            </div>
-            <button style={{...S.primaryBtn,width:"100%",background:"#22C55E",color:"#fff",marginBottom:8}} onClick={()=>{onMarkPaid();setShowPayConfirm(false);}}>✓ Ja, ich habe bezahlt</button>
-            <button style={{...S.ghostBtn,width:"100%"}} onClick={()=>setShowPayConfirm(false)}>Abbrechen</button>
-          </div>
+      {showPayConfirm&&(<div style={S.overlay} onClick={()=>setShowPayConfirm(false)}><div style={S.modal} onClick={e=>e.stopPropagation()}>
+        <div style={S.modalHeader}><div style={S.modalTitle}>Zahlung bestätigen</div><button style={S.closeBtn} onClick={()=>setShowPayConfirm(false)}>✕</button></div>
+        <p style={{color:"#6B7280",fontSize:13,marginBottom:16}}>Bitte bestätige, dass du den offenen Betrag an den Verein bezahlt hast.</p>
+        <div style={{background:"#FEF3C7",borderRadius:10,padding:14,textAlign:"center",marginBottom:20}}>
+          <div style={{fontSize:11,color:"#92400E",fontWeight:700,marginBottom:4}}>ZU BEZAHLENDER BETRAG</div>
+          <div style={{fontSize:28,fontWeight:800,color:"#111827"}}>{eur(openAmount)}</div>
+          <div style={{fontSize:12,color:"#6B7280",marginTop:4}}>{openGuestBookings.length} Buchungen × {eur(guestFee)}</div>
         </div>
-      )}
+        <button style={{...S.primaryBtn,width:"100%",background:"#22C55E",color:"#fff",marginBottom:8}} onClick={()=>{onMarkPaid();setShowPayConfirm(false);}}>✓ Ja, ich habe bezahlt</button>
+        <button style={{...S.ghostBtn,width:"100%"}} onClick={()=>setShowPayConfirm(false)}>Abbrechen</button>
+      </div></div>)}
     </div>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// MASS BOOKING
-// ═══════════════════════════════════════════════════════════════════════════
 function MassBookView({data,user,onMassBook,onCancelMany}) {
   const [tab,setTab]=useState("create");
   const [form,setForm]=useState({type:"training",label:"",dateFrom:today(),dateTo:addDays(today(),27),weekdays:[1,2,3,4],courtIds:data.courts.length>0?[data.courts[0].id]:[],slots:["09:00","10:00"]});
@@ -530,44 +1090,34 @@ function MassBookView({data,user,onMassBook,onCancelMany}) {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// ADMIN VIEW – with guest fee management
-// ═══════════════════════════════════════════════════════════════════════════
 function AdminView({data,allBookings,guestFee,onSaveGuestFee,onAddCourt,onUpdateCourt,onDeleteCourt,onDeleteUser,onCancelBooking,onMarkPaid}) {
   const [tab,setTab]=useState("courts");
   const [courtForm,setCourtForm]=useState({name:"",surface:"Sand"});
   const [editCourt,setEditCourt]=useState(null);
   const [supaUsers,setSupaUsers]=useState([]);
   const [feeInput,setFeeInput]=useState(String(guestFee));
-  const [confirmPay,setConfirmPay]=useState(null); // {userId, name, amount, count}
-
+  const [confirmPay,setConfirmPay]=useState(null);
   useEffect(()=>{
     if(tab!=="members"&&tab!=="guest") return;
     sb.from("profiles").select("*").order("created_at").then(({data})=>setSupaUsers(data||[]));
   },[tab]);
-
   const updateRole=async(uid,role)=>{ await sb.from("profiles").update({role}).eq("id",uid); setSupaUsers(u=>u.map(x=>x.id===uid?{...x,role}:x)); };
   const deleteUser=async(uid)=>{ await onDeleteUser(uid); setSupaUsers(u=>u.filter(x=>x.id!==uid)); };
-
-  // Guest fee stats per user
   const guestStats=supaUsers.map(u=>{
     const userBookings=allBookings.filter(b=>b.user_id===u.id&&b.with_guest);
     const open=userBookings.filter(b=>!b.guest_paid);
     const paid=userBookings.filter(b=>b.guest_paid);
     const paidAmount=paid.reduce((s)=>s+guestFee,0);
-    return {...u, openCount:open.length, openAmount:open.length*guestFee, paidAmount, openBookings:open };
+    return {...u,openCount:open.length,openAmount:open.length*guestFee,paidAmount,openBookings:open};
   });
   const totalOpen=guestStats.reduce((s,u)=>s+u.openAmount,0);
   const totalPaid=guestStats.reduce((s,u)=>s+u.paidAmount,0);
-
   return (
     <div style={{padding:"24px 28px"}}>
       <h1 style={S.pageTitle}>Administration</h1>
       <div style={{display:"flex",gap:8,marginBottom:24,flexWrap:"wrap"}}>
         {[["courts","🎾 Plätze"],["members","👥 Mitglieder"],["guest","💶 Gastspieler"],["bookings","📅 Buchungen"]].map(([id,l])=>(<button key={id} style={{...S.tabBtn,...(tab===id?S.tabBtnActive:{})}} onClick={()=>setTab(id)}>{l}</button>))}
       </div>
-
-      {/* ── COURTS ── */}
       {tab==="courts"&&(<>
         <div style={S.card}><h3 style={{fontWeight:700,marginBottom:14}}>Neuen Platz hinzufügen</h3>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><input placeholder="Platzname" value={courtForm.name} onChange={e=>setCourtForm(f=>({...f,name:e.target.value}))} style={S.input}/><select value={courtForm.surface} onChange={e=>setCourtForm(f=>({...f,surface:e.target.value}))} style={S.input}>{["Sand","Hartplatz","Rasen","Teppich","Kunstrasen"].map(s=><option key={s}>{s}</option>)}</select></div>
@@ -577,8 +1127,6 @@ function AdminView({data,allBookings,guestFee,onSaveGuestFee,onAddCourt,onUpdate
           :(<div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><div style={{fontWeight:700}}>{c.name}</div><div style={{fontSize:12,color:"#6B7280"}}>{c.surface}</div></div><div style={{display:"flex",gap:8}}><button style={{...S.ghostBtn,padding:"6px 12px",fontSize:13}} onClick={()=>setEditCourt({id:c.id,name:c.name,surface:c.surface})}>Bearbeiten</button><button style={S.cancelBtn} onClick={()=>onDeleteCourt(c.id)}>Löschen</button></div></div>)}
         </div>))}</div>
       </>)}
-
-      {/* ── MEMBERS ── */}
       {tab==="members"&&(<>
         <div style={{...S.card,background:"#EFF6FF",border:"1px solid #BFDBFE",marginBottom:16}}><div style={{fontWeight:700,marginBottom:6}}>ℹ️ Mitglieder einladen</div><div style={{fontSize:13,color:"#1D4ED8",lineHeight:1.6}}>Mitglieder registrieren sich selbst. Danach kannst du hier Rollen zuweisen oder Mitglieder löschen.</div></div>
         {supaUsers.map(u=>(<div key={u.id} style={{...S.card,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
@@ -589,10 +1137,7 @@ function AdminView({data,allBookings,guestFee,onSaveGuestFee,onAddCourt,onUpdate
           </div>
         </div>))}
       </>)}
-
-      {/* ── GUEST FEE ── */}
       {tab==="guest"&&(<>
-        {/* Fee setting */}
         <div style={{background:"#EFF6FF",border:"1.5px solid #BFDBFE",borderRadius:12,padding:14,marginBottom:16}}>
           <div style={{fontWeight:800,fontSize:13,color:"#1E40AF",marginBottom:10}}>⚙️ Gebühr pro Gastspieler-Buchung</div>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -602,14 +1147,10 @@ function AdminView({data,allBookings,guestFee,onSaveGuestFee,onAddCourt,onUpdate
           </div>
           <div style={{fontSize:11,color:"#6B7280",marginTop:8}}>Gilt für alle zukünftigen Buchungen mit Gastspieler.</div>
         </div>
-
-        {/* Totals */}
         <div style={{background:"#0F172A",borderRadius:12,padding:14,marginBottom:16,display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
           <div style={{textAlign:"center"}}><div style={{color:"#94A3B8",fontSize:11,fontWeight:700,marginBottom:4}}>GESAMT OFFEN {new Date().getFullYear()}</div><div style={{color:"#F59E0B",fontSize:22,fontWeight:800}}>{eur(totalOpen)}</div></div>
           <div style={{textAlign:"center"}}><div style={{color:"#94A3B8",fontSize:11,fontWeight:700,marginBottom:4}}>BEZAHLT {new Date().getFullYear()}</div><div style={{color:"#4ADE80",fontSize:22,fontWeight:800}}>{eur(totalPaid)}</div></div>
         </div>
-
-        {/* Per member */}
         <SectTitle>Alle Mitglieder</SectTitle>
         {guestStats.filter(u=>u.openCount>0||u.paidAmount>0).map(u=>(
           <div key={u.id} style={{...S.card,borderLeft:`4px solid ${u.openAmount>0?"#F59E0B":"#22C55E"}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
@@ -621,29 +1162,19 @@ function AdminView({data,allBookings,guestFee,onSaveGuestFee,onAddCourt,onUpdate
                 {u.openAmount>0&&<button style={{...S.cancelBtn,background:"#FEF3C7",color:"#D97706",border:"1px solid #FDE68A",marginTop:6,padding:"5px 10px",fontSize:11}} onClick={()=>setConfirmPay({userId:u.id,name:u.name,amount:u.openAmount,count:u.openCount})}>Als bezahlt markieren</button>}
               </div>
             </div>
-            <div style={{textAlign:"right"}}>
-              <div style={{fontSize:18,fontWeight:800,color:u.openAmount>0?"#D97706":"#22C55E"}}>{eur(u.openAmount)}</div>
-              <div style={{fontSize:11,color:"#9CA3AF"}}>offen</div>
-            </div>
+            <div style={{textAlign:"right"}}><div style={{fontSize:18,fontWeight:800,color:u.openAmount>0?"#D97706":"#22C55E"}}>{eur(u.openAmount)}</div><div style={{fontSize:11,color:"#9CA3AF"}}>offen</div></div>
           </div>
         ))}
         {guestStats.every(u=>u.openCount===0&&u.paidAmount===0)&&<Em msg="Keine Gastspieler-Buchungen vorhanden"/>}
-
-        {/* Payment history */}
-        {guestStats.some(u=>u.paidAmount>0)&&(<>
-          <SectTitle style={{marginTop:16}}>Zahlungshistorie</SectTitle>
-          <div style={S.card}>
-            {guestStats.filter(u=>u.paidAmount>0).map(u=>(
-              <div key={u.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid #F3F4F6"}}>
-                <div><div style={{fontWeight:600,fontSize:13}}>{u.name}</div><div style={{fontSize:11,color:"#6B7280"}}>Bezahlt</div></div>
-                <div style={{textAlign:"right"}}><div style={{fontWeight:800,color:"#16A34A"}}>{eur(u.paidAmount)}</div><span style={{fontSize:10,padding:"2px 8px",borderRadius:20,background:"#DCFCE7",color:"#16A34A",fontWeight:700}}>Bezahlt ✓</span></div>
-              </div>
-            ))}
-          </div>
+        {guestStats.some(u=>u.paidAmount>0)&&(<><SectTitle style={{marginTop:16}}>Zahlungshistorie</SectTitle>
+          <div style={S.card}>{guestStats.filter(u=>u.paidAmount>0).map(u=>(
+            <div key={u.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid #F3F4F6"}}>
+              <div><div style={{fontWeight:600,fontSize:13}}>{u.name}</div><div style={{fontSize:11,color:"#6B7280"}}>Bezahlt</div></div>
+              <div style={{textAlign:"right"}}><div style={{fontWeight:800,color:"#16A34A"}}>{eur(u.paidAmount)}</div><span style={{fontSize:10,padding:"2px 8px",borderRadius:20,background:"#DCFCE7",color:"#16A34A",fontWeight:700}}>Bezahlt ✓</span></div>
+            </div>
+          ))}</div>
         </>)}
       </>)}
-
-      {/* ── BOOKINGS ── */}
       {tab==="bookings"&&(<div><h3 style={{fontWeight:700,marginBottom:14}}>Bevorstehende Buchungen</h3>
         {data.bookings.filter(b=>b.date>=today()).sort((a,b)=>(a.date+a.slot).localeCompare(b.date+b.slot)).map(b=>{const court=data.courts.find(c=>c.id===b.courtId);const ci=data.courts.findIndex(c=>c.id===b.courtId);const icon=b.type==="training"?"🏋️":b.type==="match"?"🏆":"📅";
           return (<div key={b.id} style={{...S.card,borderLeft:`4px solid ${COURT_COLORS[ci%COURT_COLORS.length]}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -652,30 +1183,21 @@ function AdminView({data,allBookings,guestFee,onSaveGuestFee,onAddCourt,onUpdate
           </div>);
         })}
       </div>)}
-
-      {/* Confirm pay modal */}
-      {confirmPay&&(
-        <div style={S.overlay} onClick={()=>setConfirmPay(null)}>
-          <div style={S.modal} onClick={e=>e.stopPropagation()}>
-            <div style={S.modalHeader}><div style={S.modalTitle}>Zahlung bestätigen</div><button style={S.closeBtn} onClick={()=>setConfirmPay(null)}>✕</button></div>
-            <p style={{color:"#6B7280",fontSize:13,marginBottom:16}}>{confirmPay.name} als bezahlt markieren?</p>
-            <div style={{background:"#FEF3C7",borderRadius:10,padding:14,textAlign:"center",marginBottom:20}}>
-              <div style={{fontSize:11,color:"#92400E",fontWeight:700,marginBottom:4}}>BETRAG</div>
-              <div style={{fontSize:28,fontWeight:800,color:"#111827"}}>{eur(confirmPay.amount)}</div>
-              <div style={{fontSize:12,color:"#6B7280",marginTop:4}}>{confirmPay.count} Buchungen × {eur(guestFee)}</div>
-            </div>
-            <button style={{...S.primaryBtn,width:"100%",background:"#22C55E",color:"#fff",marginBottom:8}} onClick={()=>{onMarkPaid(confirmPay.userId);setConfirmPay(null);}}>✓ Als bezahlt markieren</button>
-            <button style={{...S.ghostBtn,width:"100%"}} onClick={()=>setConfirmPay(null)}>Abbrechen</button>
-          </div>
+      {confirmPay&&(<div style={S.overlay} onClick={()=>setConfirmPay(null)}><div style={S.modal} onClick={e=>e.stopPropagation()}>
+        <div style={S.modalHeader}><div style={S.modalTitle}>Zahlung bestätigen</div><button style={S.closeBtn} onClick={()=>setConfirmPay(null)}>✕</button></div>
+        <p style={{color:"#6B7280",fontSize:13,marginBottom:16}}>{confirmPay.name} als bezahlt markieren?</p>
+        <div style={{background:"#FEF3C7",borderRadius:10,padding:14,textAlign:"center",marginBottom:20}}>
+          <div style={{fontSize:11,color:"#92400E",fontWeight:700,marginBottom:4}}>BETRAG</div>
+          <div style={{fontSize:28,fontWeight:800,color:"#111827"}}>{eur(confirmPay.amount)}</div>
+          <div style={{fontSize:12,color:"#6B7280",marginTop:4}}>{confirmPay.count} Buchungen × {eur(guestFee)}</div>
         </div>
-      )}
+        <button style={{...S.primaryBtn,width:"100%",background:"#22C55E",color:"#fff",marginBottom:8}} onClick={()=>{onMarkPaid(confirmPay.userId);setConfirmPay(null);}}>✓ Als bezahlt markieren</button>
+        <button style={{...S.ghostBtn,width:"100%"}} onClick={()=>setConfirmPay(null)}>Abbrechen</button>
+      </div></div>)}
     </div>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// LOGIN
-// ═══════════════════════════════════════════════════════════════════════════
 function LoginScreen() {
   const [mode,setMode]=useState("login");const [email,setEmail]=useState("");const [password,setPassword]=useState("");const [name,setName]=useState("");const [msg,setMsg]=useState(null);const [loading,setLoading]=useState(false);
   const handle=async()=>{
@@ -703,12 +1225,33 @@ function LoginScreen() {
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// SHARED COMPONENTS & STYLES
+// ═══════════════════════════════════════════════════════════════════════════
 function TennisBall({size=32}){return(<svg width={size} height={size} viewBox="0 0 32 32" fill="none" style={{display:"block",margin:"0 auto"}}><circle cx="16" cy="16" r="15" stroke="#22C55E" strokeWidth="2"/><ellipse cx="16" cy="16" rx="5" ry="14" stroke="#22C55E" strokeWidth="1.5"/><line x1="1" y1="16" x2="31" y2="16" stroke="#22C55E" strokeWidth="1.5"/></svg>);}
 function Av({name}){return(<div style={{width:34,height:34,borderRadius:"50%",background:"#22C55E",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:14,flexShrink:0}}>{name?.[0]||"?"}</div>);}
 function Loading({msg="Laden…"}){return(<div style={{display:"flex",justifyContent:"center",alignItems:"center",height:"100vh",background:"#F9FAFB"}}><div style={{textAlign:"center"}}><div style={{fontSize:36,marginBottom:12}}>🎾</div><div style={{color:"#6B7280"}}>{msg}</div></div></div>);}
 function SectTitle({children}){return <div style={{fontSize:13,fontWeight:800,color:"#374151",textTransform:"uppercase",letterSpacing:.6,marginBottom:10}}>{children}</div>;}
 function Em({msg}){return <div style={{color:"#9CA3AF",padding:"18px 0",fontSize:14}}>– {msg}</div>;}
 function Lbl({children}){return <div style={{fontSize:12,fontWeight:700,color:"#374151",marginBottom:6,textTransform:"uppercase",letterSpacing:.5}}>{children}</div>;}
+
+const K={
+  sidebar:    {width:210,background:"#0F172A",display:"flex",flexDirection:"column",padding:"16px 0",flexShrink:0},
+  backBtn:    {margin:"0 12px 14px",padding:"6px 12px",background:"none",border:"1px solid #334155",borderRadius:7,color:"#94A3B8",cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left"},
+  logo:       {padding:"0 16px 14px",borderBottom:"1px solid #1E293B",marginBottom:12,display:"flex",flexDirection:"column",gap:4},
+  openChip:   {margin:"0 12px 8px",background:"#1E293B",border:"1px solid #F59E0B44",borderRadius:10,padding:"10px 12px",textAlign:"center"},
+  page:       {padding:"28px 32px",maxWidth:860},
+  summaryBar: {background:"#0F172A",borderRadius:12,padding:"16px 20px",marginBottom:24,display:"flex",justifyContent:"space-between",alignItems:"center"},
+  payBtn:     {padding:"10px 16px",background:"#F59E0B",color:"#0F172A",border:"none",borderRadius:8,fontWeight:800,cursor:"pointer",fontSize:13,lineHeight:1.4,textAlign:"center"},
+  drinkGrid:  {display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:12},
+  drinkTile:  {background:"#fff",border:"1.5px solid #E5E7EB",borderRadius:14,padding:"18px 10px 12px",display:"flex",flexDirection:"column",alignItems:"center",gap:5,textAlign:"center",boxShadow:"0 1px 4px rgba(0,0,0,.06)",transition:"all .15s"},
+  drinkTileDone:{background:"#DCFCE7",borderColor:"#22C55E"},
+  drinkTilePend:{background:"#FFFBEB",borderColor:"#F59E0B"},
+  qtyRow:     {display:"flex",alignItems:"center",border:"1.5px solid #E5E7EB",borderRadius:8,overflow:"hidden",marginTop:4,width:"100%"},
+  qtyBtn:     {flex:"0 0 30px",height:28,border:"none",background:"#F9FAFB",color:"#374151",fontSize:16,fontWeight:700,cursor:"pointer"},
+  qtyVal:     {flex:1,textAlign:"center",fontWeight:800,fontSize:14,color:"#111827"},
+  notierBtn:  {marginTop:4,width:"100%",padding:"8px 0",background:"#0F172A",color:"#4ADE80",border:"none",borderRadius:8,fontWeight:700,cursor:"pointer",fontSize:12},
+};
 
 const S={
   shell:{display:"flex",height:"100vh",fontFamily:"'DM Sans',system-ui,sans-serif",background:"#F3F4F6",color:"#111827"},
