@@ -144,30 +144,66 @@ export default function App() {
   ];
 
   return (
-    <div style={S.shell}>
-      <aside style={S.sidebar}>
-        <div style={S.logo}><TennisBall size={28}/><span style={S.logoText}>Tennis Herrieden</span></div>
-        <nav style={S.nav}>
+    <>
+      <style>{`
+        @media (max-width: 767px) {
+          .desktop-sidebar { display: none !important; }
+          .mobile-bottom-nav { display: flex !important; }
+          .mobile-top-bar { display: flex !important; }
+          .app-main { padding-bottom: 72px !important; }
+        }
+        @media (min-width: 768px) {
+          .desktop-sidebar { display: flex !important; }
+          .mobile-bottom-nav { display: none !important; }
+          .mobile-top-bar { display: none !important; }
+        }
+      `}</style>
+
+      <div style={S.shell}>
+        <aside className="desktop-sidebar" style={{...S.sidebar, display:"none"}}>
+          <div style={S.logo}><TennisBall size={28}/><span style={S.logoText}>Tennis Herrieden</span></div>
+          <nav style={S.nav}>
+            {navItems.map(item=>(
+              <button key={item.id} style={{...S.navBtn,...(view===item.id?S.navBtnActive:{})}} onClick={()=>setView(item.id)}>
+                <span style={{fontSize:16}}>{item.icon}</span><span>{item.label}</span>
+              </button>
+            ))}
+          </nav>
+          <div style={S.sidebarBottom}>
+            <div style={S.userChip}><Av name={profile.name}/><div><div style={{fontWeight:700,fontSize:13}}>{profile.name}</div><div style={{fontSize:11,color:"#6B7280"}}>{ROLE_LABELS[profile.role]}</div></div></div>
+            <button style={S.logoutBtn} onClick={()=>sb.auth.signOut()}>Abmelden</button>
+          </div>
+        </aside>
+
+        <main className="app-main" style={S.main}>
+          <div className="mobile-top-bar" style={{display:"none",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",background:"#0F172A",position:"sticky",top:0,zIndex:50}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}><TennisBall size={22}/><span style={{color:"#fff",fontWeight:800,fontSize:15}}>Tennis Herrieden</span></div>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <Av name={profile.name}/>
+              <button style={{background:"none",border:"1px solid #334155",borderRadius:6,color:"#94A3B8",cursor:"pointer",fontSize:12,padding:"5px 10px"}} onClick={()=>sb.auth.signOut()}>Abmelden</button>
+            </div>
+          </div>
+
+          {view==="calendar"&&<CalendarView data={adaptedData} user={profile} calMode={calMode} setCalMode={setCalMode} days={days} weekBase={weekBase} setWeekBase={setWeekBase} dayBase={dayBase} setDayBase={setDayBase} selCourt={selCourt||courts[0]?.id} setSelCourt={setSelCourt} onSlotClick={(courtId,date,slot,existing)=>setModal({type:"slot",courtId,date,slot,existing})}/>}
+          {view==="myBookings"&&<MyBookings data={adaptedData} user={profile} onCancel={cancel}/>}
+          {view==="massbook"&&canMassBook&&<MassBookView data={adaptedData} user={profile} onMassBook={massBook} onCancelMany={cancelMany}/>}
+          {view==="admin"&&profile.role==="admin"&&<AdminView data={adaptedData} onAddCourt={addCourt} onUpdateCourt={updateCourt} onDeleteCourt={deleteCourt} onCancelBooking={cancel}/>}
+        </main>
+
+        <nav className="mobile-bottom-nav" style={{display:"none",position:"fixed",bottom:0,left:0,right:0,background:"#0F172A",borderTop:"1px solid #1E293B",zIndex:100,justifyContent:"space-around",padding:"8px 0",paddingBottom:"env(safe-area-inset-bottom)"}}>
           {navItems.map(item=>(
-            <button key={item.id} style={{...S.navBtn,...(view===item.id?S.navBtnActive:{})}} onClick={()=>setView(item.id)}>
-              <span style={{fontSize:16}}>{item.icon}</span><span>{item.label}</span>
+            <button key={item.id} onClick={()=>setView(item.id)}
+              style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,background:"none",border:"none",cursor:"pointer",padding:"6px 12px",borderRadius:8,color:view===item.id?"#4ADE80":"#64748B"}}>
+              <span style={{fontSize:22}}>{item.icon}</span>
+              <span style={{fontSize:10,fontWeight:600}}>{item.label.split(" ")[0]}</span>
             </button>
           ))}
         </nav>
-        <div style={S.sidebarBottom}>
-          <div style={S.userChip}><Av name={profile.name}/><div><div style={{fontWeight:700,fontSize:13}}>{profile.name}</div><div style={{fontSize:11,color:"#6B7280"}}>{ROLE_LABELS[profile.role]}</div></div></div>
-          <button style={S.logoutBtn} onClick={()=>sb.auth.signOut()}>Abmelden</button>
-        </div>
-      </aside>
-      <main style={S.main}>
-        {view==="calendar"&&<CalendarView data={adaptedData} user={profile} calMode={calMode} setCalMode={setCalMode} days={days} weekBase={weekBase} setWeekBase={setWeekBase} dayBase={dayBase} setDayBase={setDayBase} selCourt={selCourt||courts[0]?.id} setSelCourt={setSelCourt} onSlotClick={(courtId,date,slot,existing)=>setModal({type:"slot",courtId,date,slot,existing})}/>}
-        {view==="myBookings"&&<MyBookings data={adaptedData} user={profile} onCancel={cancel}/>}
-        {view==="massbook"&&canMassBook&&<MassBookView data={adaptedData} user={profile} onMassBook={massBook} onCancelMany={cancelMany}/>}
-        {view==="admin"&&profile.role==="admin"&&<AdminView data={adaptedData} onAddCourt={addCourt} onUpdateCourt={updateCourt} onDeleteCourt={deleteCourt} onCancelBooking={cancel}/>}
-      </main>
-      {modal?.type==="slot"&&<SlotModal modal={modal} data={adaptedData} user={profile} onBook={bookSingle} onCancel={cancel} onClose={()=>setModal(null)}/>}
-      {toast&&<div style={{...S.toast,background:toast.type==="error"?"#EF4444":"#10B981"}}>{toast.msg}</div>}
-    </div>
+
+        {modal?.type==="slot"&&<SlotModal modal={modal} data={adaptedData} user={profile} onBook={bookSingle} onCancel={cancel} onClose={()=>setModal(null)}/>}
+        {toast&&<div style={{...S.toast,background:toast.type==="error"?"#EF4444":"#10B981"}}>{toast.msg}</div>}
+      </div>
+    </>
   );
 }
 
