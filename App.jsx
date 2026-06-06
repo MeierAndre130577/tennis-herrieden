@@ -63,8 +63,8 @@ function HomeScreen({profile,onGoBooking,onGoKasse}) {
   const [openTotal,setOpenTotal]       = useState(0);
 
   useEffect(()=>{
-    // next 2 bookings – nur reguläre Einzelbuchungen
-    sb.from("bookings").select("*,courts(name,surface)").eq("user_id",profile.id).eq("type","regular").gte("date",today()).order("date").order("slot").limit(2)
+    // next 2 bookings
+    sb.from("bookings").select("*,courts(name,surface)").eq("user_id",profile.id).gte("date",today()).order("date").order("slot").limit(2)
       .then(({data})=>setNextBookings(data||[]));
     // open kasse items
     sb.from("kasse_log").select("*").eq("user_id",profile.id).eq("paid",false)
