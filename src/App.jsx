@@ -1040,52 +1040,209 @@ function MyBookings({data,user,onCancel,guestFee,onMarkPaid}) {
 }
 
 function MassBookView({data,user,onMassBook,onCancelMany}) {
-  const [tab,setTab]=useState("create");
-  const [form,setForm]=useState({type:"training",label:"",dateFrom:today(),dateTo:addDays(today(),27),weekdays:[1,2,3,4],courtIds:data.courts.length>0?[data.courts[0].id]:[],slots:["09:00","10:00"]});
-  const [preview,setPreview]=useState(null);
+  const [tab,setTab]     = useState("create");
+  const [type,setType]   = useState("training"); // "training" | "match"
+
+  // Training form
+  const [tForm,setTForm] = useState({label:"",dateFrom:today(),dateTo:addDays(today(),27),weekdays:[1,2,3,4],courtIds:data.courts.length>0?[data.courts[0].id]:[],slots:["09:00","10:00"]});
+  const [preview,setPreview] = useState(null);
+
+  // Spieltag form
+  const [mForm,setMForm] = useState({label:"",date:today(),courtIds:data.courts.length>0?[data.courts[0].id]:[],slots:["09:00"]});
+  const [mConflicts,setMConflicts] = useState([]);
+
   const WD=["Mo","Di","Mi","Do","Fr","Sa","So"];
-  const toggleWd=i=>setForm(f=>({...f,weekdays:f.weekdays.includes(i)?f.weekdays.filter(d=>d!==i):[...f.weekdays,i].sort()}));
-  const toggleCourt=id=>setForm(f=>({...f,courtIds:f.courtIds.includes(id)?f.courtIds.filter(c=>c!==id):[...f.courtIds,id]}));
-  const toggleSlot=s=>setForm(f=>({...f,slots:f.slots.includes(s)?f.slots.filter(x=>x!==s):[...f.slots,s].sort()}));
+  const toggleWd =i => setTForm(f=>({...f,weekdays:f.weekdays.includes(i)?f.weekdays.filter(d=>d!==i):[...f.weekdays,i].sort()}));
+  const toggleTCourt=id=>setTForm(f=>({...f,courtIds:f.courtIds.includes(id)?f.courtIds.filter(c=>c!==id):[...f.courtIds,id]}));
+  const toggleTSlot =s =>setTForm(f=>({...f,slots:f.slots.includes(s)?f.slots.filter(x=>x!==s):[...f.slots,s].sort()}));
+  const toggleMCourt=id=>setMForm(f=>({...f,courtIds:f.courtIds.includes(id)?f.courtIds.filter(c=>c!==id):[...f.courtIds,id]}));
+  const toggleMSlot =s =>setMForm(f=>({...f,slots:f.slots.includes(s)?f.slots.filter(x=>x!==s):[...f.slots,s].sort()}));
+
+  // Training preview
   const calcPreview=()=>{
-    const allDates=datesBetween(form.dateFrom,form.dateTo).filter(d=>form.weekdays.includes(dayOfWeek(d)));
-    const total=allDates.length*form.courtIds.length*form.slots.length;let conflicts=0;
-    for(const date of allDates) for(const cId of form.courtIds) for(const slot of form.slots) if(data.bookings.find(b=>b.courtId===cId&&b.date===date&&b.slot===slot)) conflicts++;
+    const allDates=datesBetween(tForm.dateFrom,tForm.dateTo).filter(d=>tForm.weekdays.includes(dayOfWeek(d)));
+    const total=allDates.length*tForm.courtIds.length*tForm.slots.length;let conflicts=0;
+    for(const date of allDates) for(const cId of tForm.courtIds) for(const slot of tForm.slots) if(data.bookings.find(b=>b.courtId===cId&&b.date===date&&b.slot===slot)) conflicts++;
     setPreview({days:allDates.length,total,conflicts,toBook:total-conflicts,dates:allDates.slice(0,5)});
   };
-  const myMass=data.bookings.filter(b=>b.userId===user.id&&(b.type==="training"||b.type==="match")&&b.date>=today());
-  const groups={};for(const b of myMass){const key=`${b.type}__${b.label||""}`;if(!groups[key])groups[key]={type:b.type,label:b.label,ids:[],count:0};groups[key].ids.push(b.id);groups[key].count++;}
+
+  // Spieltag: check conflicts on the fly
+  const calcMatchConflicts=()=>{
+    const c=[];
+    for(const cId of mForm.courtIds) for(const slot of mForm.slots) if(data.bookings.find(b=>b.courtId===cId&&b.date===mForm.date&&b.slot===slot)) c.push(`${data.courts.find(x=>x.id===cId)?.name} ${slot}`);
+    setMConflicts(c);
+  };
+  const bookMatch=()=>{
+    const toBook=[];
+    for(const cId of mForm.courtIds) for(const slot of mForm.slots) if(!data.bookings.find(b=>b.courtId===cId&&b.date===mForm.date&&b.slot===slot)) toBook.push({courtId:cId,date:mForm.date,slot});
+    if(!toBook.length) return;
+    onMassBook({courtIds:mForm.courtIds,dateFrom:mForm.date,dateTo:mForm.date,weekdays:[0,1,2,3,4,5,6],slots:mForm.slots,type:"match",label:mForm.label});
+    setMConflicts([]);
+  };
+
+  // Groups for manage tab – training only in series, match as single entries
+  const myTraining=data.bookings.filter(b=>b.userId===user.id&&b.type==="training"&&b.date>=today());
+  const myMatch   =data.bookings.filter(b=>b.userId===user.id&&b.type==="match"   &&b.date>=today());
+  const tGroups={};
+  for(const b of myTraining){const key=`training__${b.label||""}`;if(!tGroups[key])tGroups[key]={label:b.label,ids:[],count:0,dates:[]};tGroups[key].ids.push(b.id);tGroups[key].count++;tGroups[key].dates.push(b.date);}
+  const mGroups={};
+  for(const b of myMatch){const key=`match__${b.date}__${b.label||""}`;if(!mGroups[key])mGroups[key]={label:b.label,date:b.date,ids:[],slots:[]};mGroups[key].ids.push(b.id);mGroups[key].slots.push(b.slot);}
+
   return (
     <div style={{padding:"24px 28px"}}>
-      <h1 style={S.pageTitle}>Massenbuchung</h1><p style={S.pageSub}>Trainingstage & Spieltage buchen</p>
-      <div style={{display:"flex",gap:8,marginBottom:24}}>{[["create","Buchung erstellen"],["manage","Buchungen verwalten"]].map(([id,l])=>(<button key={id} style={{...S.tabBtn,...(tab===id?S.tabBtnActive:{})}} onClick={()=>setTab(id)}>{l}</button>))}</div>
-      {tab==="create"&&(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,alignItems:"start"}}>
-        <div style={S.card}>
-          <h3 style={{fontWeight:700,marginBottom:16}}>Parameter</h3>
-          <Lbl>Typ</Lbl><div style={{display:"flex",gap:8,marginBottom:14}}>{[["training","🏋️ Training","#3B82F6"],["match","🏆 Spieltag","#EF4444"]].map(([val,lab,col])=>(<button key={val} style={{flex:1,padding:"10px 8px",border:`2px solid ${form.type===val?col:"#E5E7EB"}`,borderRadius:8,background:form.type===val?col+"11":"#fff",cursor:"pointer",fontWeight:600,color:form.type===val?col:"#374151",fontSize:13}} onClick={()=>setForm(f=>({...f,type:val}))}>{lab}</button>))}</div>
-          <Lbl>Bezeichnung</Lbl><input placeholder="z.B. Herren-Training" value={form.label} onChange={e=>setForm(f=>({...f,label:e.target.value}))} style={{...S.input,marginBottom:14}}/>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}><div><Lbl>Von</Lbl><input type="date" value={form.dateFrom} onChange={e=>setForm(f=>({...f,dateFrom:e.target.value}))} style={S.input}/></div><div><Lbl>Bis</Lbl><input type="date" value={form.dateTo} onChange={e=>setForm(f=>({...f,dateTo:e.target.value}))} style={S.input}/></div></div>
-          <Lbl>Wochentage</Lbl><div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap"}}>{WD.map((l,i)=>(<button key={i} style={{width:36,height:36,borderRadius:"50%",border:`2px solid ${form.weekdays.includes(i)?"#111827":"#E5E7EB"}`,background:form.weekdays.includes(i)?"#111827":"#fff",color:form.weekdays.includes(i)?"#4ADE80":"#374151",fontWeight:700,cursor:"pointer",fontSize:12}} onClick={()=>toggleWd(i)}>{l}</button>))}</div>
-          <Lbl>Plätze</Lbl><div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>{data.courts.map((c,i)=>(<button key={c.id} style={{padding:"6px 12px",borderRadius:7,border:`2px solid ${form.courtIds.includes(c.id)?COURT_COLORS[i%COURT_COLORS.length]:"#E5E7EB"}`,background:form.courtIds.includes(c.id)?COURT_COLORS[i%COURT_COLORS.length]+"11":"#fff",color:form.courtIds.includes(c.id)?COURT_COLORS[i%COURT_COLORS.length]:"#374151",fontWeight:600,cursor:"pointer",fontSize:13}} onClick={()=>toggleCourt(c.id)}>{c.name}</button>))}</div>
-          <Lbl>Zeitslots</Lbl><div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:18}}>{SLOTS.map(s=>(<button key={s} style={{padding:"5px 10px",borderRadius:6,border:`1.5px solid ${form.slots.includes(s)?"#111827":"#E5E7EB"}`,background:form.slots.includes(s)?"#111827":"#fff",color:form.slots.includes(s)?"#4ADE80":"#374151",fontWeight:600,cursor:"pointer",fontSize:12}} onClick={()=>toggleSlot(s)}>{s}</button>))}</div>
-          <button style={{...S.primaryBtn,width:"100%"}} onClick={calcPreview}>Vorschau berechnen</button>
+      <h1 style={S.pageTitle}>Serienbuchung</h1>
+      <p style={S.pageSub}>Training & Spieltage buchen</p>
+      <div style={{display:"flex",gap:8,marginBottom:24,marginTop:4}}>
+        {[["create","Buchung erstellen"],["manage","Buchungen verwalten"]].map(([id,l])=>(<button key={id} style={{...S.tabBtn,...(tab===id?S.tabBtnActive:{})}} onClick={()=>setTab(id)}>{l}</button>))}
+      </div>
+
+      {tab==="create"&&(<>
+        {/* Type toggle */}
+        <div style={{display:"flex",gap:10,marginBottom:20}}>
+          {[["training","🏋️ Training","#3B82F6"],["match","🏆 Spieltag","#EF4444"]].map(([val,lab,col])=>(
+            <button key={val} style={{flex:1,padding:"12px 8px",border:`2px solid ${type===val?col:"#E5E7EB"}`,borderRadius:10,background:type===val?col+"11":"#fff",cursor:"pointer",fontWeight:700,color:type===val?col:"#374151",fontSize:14}} onClick={()=>{setType(val);setPreview(null);setMConflicts([]);}}>
+              {lab}
+            </button>
+          ))}
         </div>
-        <div>{!preview&&<div style={{...S.card,textAlign:"center",color:"#9CA3AF",padding:"40px 20px"}}><div style={{fontSize:32,marginBottom:8}}>📊</div><div>Klicke auf „Vorschau berechnen"</div></div>}
-          {preview&&(<div style={S.card}><h3 style={{fontWeight:700,marginBottom:16}}>Vorschau</h3>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>{[["Tage",preview.days,"#111827"],["Gesamt",preview.total,"#111827"],["Belegt",preview.conflicts,"#EF4444"],["Gebucht",preview.toBook,"#22C55E"]].map(([l,v,c])=>(<div key={l} style={{background:"#F9FAFB",borderRadius:8,padding:"12px",textAlign:"center"}}><div style={{fontSize:22,fontWeight:800,color:c}}>{v}</div><div style={{fontSize:12,color:"#6B7280"}}>{l}</div></div>))}</div>
-            {preview.dates.map(d=>(<div key={d} style={{fontSize:13,padding:"4px 0",borderBottom:"1px solid #F3F4F6"}}>{DE_FULL[dayOfWeek(d)]}, {fmtDate(new Date(d+"T12:00:00"))}</div>))}
-            {preview.days>5&&<div style={{fontSize:12,color:"#9CA3AF",marginTop:4}}>...und {preview.days-5} weitere</div>}
-            <div style={{marginTop:16}}>{preview.toBook>0?<button style={{...S.primaryBtn,width:"100%",background:"#22C55E",color:"#fff"}} onClick={()=>{onMassBook({...form});setPreview(null);}}>{preview.toBook} Slots buchen</button>:<div style={{padding:"12px",background:"#FEF3C7",borderRadius:8,fontSize:13,color:"#92400E",textAlign:"center"}}>Alle Slots belegt.</div>}</div>
-          </div>)}
+
+        {/* ── TRAINING ── */}
+        {type==="training"&&(
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,alignItems:"start"}}>
+            <div style={S.card}>
+              <h3 style={{fontWeight:700,marginBottom:16}}>Parameter</h3>
+              <Lbl>Bezeichnung</Lbl>
+              <input placeholder="z.B. Herren-Training" value={tForm.label} onChange={e=>setTForm(f=>({...f,label:e.target.value}))} style={{...S.input,marginBottom:14}}/>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+                <div><Lbl>Von</Lbl><input type="date" value={tForm.dateFrom} onChange={e=>setTForm(f=>({...f,dateFrom:e.target.value}))} style={S.input}/></div>
+                <div><Lbl>Bis</Lbl><input type="date" value={tForm.dateTo} onChange={e=>setTForm(f=>({...f,dateTo:e.target.value}))} style={S.input}/></div>
+              </div>
+              <Lbl>Wochentage</Lbl>
+              <div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap"}}>
+                {WD.map((l,i)=>(<button key={i} style={{width:36,height:36,borderRadius:"50%",border:`2px solid ${tForm.weekdays.includes(i)?"#111827":"#E5E7EB"}`,background:tForm.weekdays.includes(i)?"#111827":"#fff",color:tForm.weekdays.includes(i)?"#4ADE80":"#374151",fontWeight:700,cursor:"pointer",fontSize:12}} onClick={()=>toggleWd(i)}>{l}</button>))}
+              </div>
+              <Lbl>Plätze</Lbl>
+              <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
+                {data.courts.map((c,i)=>(<button key={c.id} style={{padding:"6px 12px",borderRadius:7,border:`2px solid ${tForm.courtIds.includes(c.id)?COURT_COLORS[i%COURT_COLORS.length]:"#E5E7EB"}`,background:tForm.courtIds.includes(c.id)?COURT_COLORS[i%COURT_COLORS.length]+"11":"#fff",color:tForm.courtIds.includes(c.id)?COURT_COLORS[i%COURT_COLORS.length]:"#374151",fontWeight:600,cursor:"pointer",fontSize:13}} onClick={()=>toggleTCourt(c.id)}>{c.name}</button>))}
+              </div>
+              <Lbl>Zeitslots</Lbl>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:18}}>
+                {SLOTS.map(s=>(<button key={s} style={{padding:"5px 10px",borderRadius:6,border:`1.5px solid ${tForm.slots.includes(s)?"#111827":"#E5E7EB"}`,background:tForm.slots.includes(s)?"#111827":"#fff",color:tForm.slots.includes(s)?"#4ADE80":"#374151",fontWeight:600,cursor:"pointer",fontSize:12}} onClick={()=>toggleTSlot(s)}>{s}</button>))}
+              </div>
+              <button style={{...S.primaryBtn,width:"100%"}} onClick={calcPreview}>Vorschau berechnen</button>
+            </div>
+            <div>
+              {!preview&&<div style={{...S.card,textAlign:"center",color:"#9CA3AF",padding:"40px 20px"}}><div style={{fontSize:32,marginBottom:8}}>📊</div><div>Klicke auf „Vorschau berechnen"</div></div>}
+              {preview&&(<div style={S.card}>
+                <h3 style={{fontWeight:700,marginBottom:16}}>Vorschau</h3>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
+                  {[["Tage",preview.days,"#111827"],["Gesamt",preview.total,"#111827"],["Belegt",preview.conflicts,"#EF4444"],["Gebucht",preview.toBook,"#22C55E"]].map(([l,v,c])=>(<div key={l} style={{background:"#F9FAFB",borderRadius:8,padding:"12px",textAlign:"center"}}><div style={{fontSize:22,fontWeight:800,color:c}}>{v}</div><div style={{fontSize:12,color:"#6B7280"}}>{l}</div></div>))}
+                </div>
+                {preview.dates.map(d=>(<div key={d} style={{fontSize:13,padding:"4px 0",borderBottom:"1px solid #F3F4F6"}}>{DE_FULL[dayOfWeek(d)]}, {fmtDate(new Date(d+"T12:00:00"))}</div>))}
+                {preview.days>5&&<div style={{fontSize:12,color:"#9CA3AF",marginTop:4}}>...und {preview.days-5} weitere</div>}
+                <div style={{marginTop:16}}>
+                  {preview.toBook>0
+                    ?<button style={{...S.primaryBtn,width:"100%",background:"#22C55E",color:"#fff"}} onClick={()=>{onMassBook({...tForm,type:"training"});setPreview(null);}}>{preview.toBook} Slots buchen</button>
+                    :<div style={{padding:"12px",background:"#FEF3C7",borderRadius:8,fontSize:13,color:"#92400E",textAlign:"center"}}>Alle Slots belegt.</div>
+                  }
+                </div>
+              </div>)}
+            </div>
+          </div>
+        )}
+
+        {/* ── SPIELTAG ── */}
+        {type==="match"&&(
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,alignItems:"start"}}>
+            <div style={S.card}>
+              <h3 style={{fontWeight:700,marginBottom:16}}>Spieltag buchen</h3>
+              <Lbl>Bezeichnung</Lbl>
+              <input placeholder="z.B. Vereinsmeisterschaft" value={mForm.label} onChange={e=>setMForm(f=>({...f,label:e.target.value}))} style={{...S.input,marginBottom:14}}/>
+              <Lbl>Datum</Lbl>
+              <input type="date" value={mForm.date} onChange={e=>{setMForm(f=>({...f,date:e.target.value}));setMConflicts([]);}} style={{...S.input,marginBottom:14,fontSize:15,fontWeight:700}}/>
+              <div style={{background:"#EFF6FF",border:"1px solid #BFDBFE",borderRadius:8,padding:"10px 12px",marginBottom:14,fontSize:12,color:"#1D4ED8"}}>
+                📅 {DE_FULL[dayOfWeek(mForm.date)]}, {fmtDate(new Date(mForm.date+"T12:00:00"))}
+              </div>
+              <Lbl>Plätze</Lbl>
+              <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
+                {data.courts.map((c,i)=>(<button key={c.id} style={{padding:"6px 12px",borderRadius:7,border:`2px solid ${mForm.courtIds.includes(c.id)?COURT_COLORS[i%COURT_COLORS.length]:"#E5E7EB"}`,background:mForm.courtIds.includes(c.id)?COURT_COLORS[i%COURT_COLORS.length]+"11":"#fff",color:mForm.courtIds.includes(c.id)?COURT_COLORS[i%COURT_COLORS.length]:"#374151",fontWeight:600,cursor:"pointer",fontSize:13}} onClick={()=>toggleMCourt(c.id)}>{c.name}</button>))}
+              </div>
+              <Lbl>Zeitslots</Lbl>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:18}}>
+                {SLOTS.map(s=>(<button key={s} style={{padding:"5px 10px",borderRadius:6,border:`1.5px solid ${mForm.slots.includes(s)?"#EF4444":"#E5E7EB"}`,background:mForm.slots.includes(s)?"#EF444411":"#fff",color:mForm.slots.includes(s)?"#EF4444":"#374151",fontWeight:600,cursor:"pointer",fontSize:12}} onClick={()=>toggleMSlot(s)}>{s}</button>))}
+              </div>
+              <button style={{...S.primaryBtn,width:"100%"}} onClick={calcMatchConflicts}>Vorschau berechnen</button>
+            </div>
+            <div>
+              {mConflicts.length===0&&mForm.slots.length>0&&(
+                <div style={{...S.card,textAlign:"center",color:"#9CA3AF",padding:"40px 20px"}}>
+                  <div style={{fontSize:32,marginBottom:8}}>🏆</div>
+                  <div>Klicke auf „Vorschau berechnen"</div>
+                </div>
+              )}
+              {mConflicts.length>=0&&mForm.slots.length>0&&mConflicts!==null&&(
+                <div style={S.card}>
+                  <h3 style={{fontWeight:700,marginBottom:16}}>Vorschau</h3>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
+                    <div style={{background:"#F9FAFB",borderRadius:8,padding:"12px",textAlign:"center"}}><div style={{fontSize:22,fontWeight:800,color:"#22C55E"}}>{mForm.courtIds.length*mForm.slots.length-mConflicts.length}</div><div style={{fontSize:12,color:"#6B7280"}}>Buchbar</div></div>
+                    <div style={{background:"#F9FAFB",borderRadius:8,padding:"12px",textAlign:"center"}}><div style={{fontSize:22,fontWeight:800,color:"#EF4444"}}>{mConflicts.length}</div><div style={{fontSize:12,color:"#6B7280"}}>Belegt</div></div>
+                  </div>
+                  {mConflicts.length>0&&(
+                    <div style={{background:"#FEE2E2",borderRadius:8,padding:"10px 12px",marginBottom:12,fontSize:12,color:"#DC2626"}}>
+                      <div style={{fontWeight:700,marginBottom:4}}>Bereits belegt:</div>
+                      {mConflicts.map(c=>(<div key={c}>· {c}</div>))}
+                    </div>
+                  )}
+                  <div style={{fontSize:13,padding:"6px 0",borderBottom:"1px solid #F3F4F6",marginBottom:12}}>
+                    🏆 {mForm.label||"Spieltag"} · {DE_FULL[dayOfWeek(mForm.date)]}, {fmtDate(new Date(mForm.date+"T12:00:00"))}
+                  </div>
+                  {(mForm.courtIds.length*mForm.slots.length-mConflicts.length)>0
+                    ?<button style={{...S.primaryBtn,width:"100%",background:"#EF4444",color:"#fff"}} onClick={bookMatch}>{mForm.courtIds.length*mForm.slots.length-mConflicts.length} Slots buchen</button>
+                    :<div style={{padding:"12px",background:"#FEF3C7",borderRadius:8,fontSize:13,color:"#92400E",textAlign:"center"}}>Alle Slots belegt.</div>
+                  }
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </>)}
+
+      {tab==="manage"&&(
+        <div>
+          {/* Training series */}
+          {Object.keys(tGroups).length>0&&(<>
+            <SectTitle>Training-Serien</SectTitle>
+            {Object.entries(tGroups).map(([key,g])=>{
+              const dates=g.dates.filter(d=>d>=today()).sort();
+              return (
+                <div key={key} style={{...S.card,borderLeft:"4px solid #3B82F6",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
+                  <div>
+                    <div style={{fontWeight:700}}>🏋️ Training{g.label&&<span style={{marginLeft:8,fontWeight:400,color:"#6B7280"}}>– {g.label}</span>}</div>
+                    <div style={{fontSize:12,color:"#6B7280"}}>{g.count} Slots gesamt · nächster: {dates[0]?fmtDate(new Date(dates[0]+"T12:00:00")):"–"}</div>
+                  </div>
+                  <button style={S.cancelBtn} onClick={()=>onCancelMany(g.ids)}>Alle stornieren</button>
+                </div>
+              );
+            })}
+          </>)}
+
+          {/* Spieltage */}
+          {Object.keys(mGroups).length>0&&(<>
+            <SectTitle style={{marginTop:16}}>Spieltage</SectTitle>
+            {Object.entries(mGroups).sort(([,a],[,b])=>a.date.localeCompare(b.date)).map(([key,g])=>(
+              <div key={key} style={{...S.card,borderLeft:"4px solid #EF4444",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
+                <div>
+                  <div style={{fontWeight:700}}>🏆 {g.label||"Spieltag"}</div>
+                  <div style={{fontSize:12,color:"#6B7280"}}>{fmtDate(new Date(g.date+"T12:00:00"))} · {g.slots.sort().join(", ")} Uhr</div>
+                </div>
+                <button style={S.cancelBtn} onClick={()=>onCancelMany(g.ids)}>Stornieren</button>
+              </div>
+            ))}
+          </>)}
+
+          {Object.keys(tGroups).length===0&&Object.keys(mGroups).length===0&&<Em msg="Keine Buchungen vorhanden"/>}
         </div>
-      </div>)}
-      {tab==="manage"&&(<div><h3 style={{fontWeight:700,marginBottom:14}}>Meine Massenbuchungen</h3>
-        {Object.keys(groups).length===0&&<Em msg="Keine Massenbuchungen vorhanden"/>}
-        {Object.entries(groups).map(([key,g])=>(<div key={key} style={{...S.card,display:"flex",justifyContent:"space-between",alignItems:"center",borderLeft:`4px solid ${BOOKING_TYPE_COLORS[g.type]}`}}>
-          <div><div style={{fontWeight:700}}>{g.type==="training"?"🏋️ Training":"🏆 Spieltag"}{g.label&&<span style={{marginLeft:8,fontWeight:400,color:"#6B7280"}}>– {g.label}</span>}</div><div style={{fontSize:13,color:"#6B7280"}}>{g.count} Slots</div></div>
-          <button style={S.cancelBtn} onClick={()=>onCancelMany(g.ids)}>Alle stornieren</button>
-        </div>))}
-      </div>)}
+      )}
     </div>
   );
 }
