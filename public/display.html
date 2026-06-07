@@ -415,9 +415,15 @@ function render() {
         let icon = "";
         let label = booking.user_name?.split(" ")[0] || "–";
 
-        if (type === "training") { cls = "slot-training"; icon = "🏋️"; label = booking.label || "Training"; }
-        else if (type === "match") { cls = "slot-match"; icon = "🏆"; label = booking.label || "Spieltag"; }
-        else if (withGuest)       { cls = "slot-guest";  icon = "👥"; }
+        if (type === "training") {
+          cls = "slot-training"; icon = "🏋️";
+          label = booking.label || "Training";
+        } else if (type === "match") {
+          cls = "slot-match"; icon = "🏆";
+          label = booking.label || "Spieltag";
+        } else if (withGuest) {
+          cls = "slot-guest"; icon = "👥";
+        }
 
         cellHtml = `<div class="slot-btn ${cls}">${icon ? `<span>${icon}</span>` : ""}<span>${label}</span></div>`;
       } else if (past) {

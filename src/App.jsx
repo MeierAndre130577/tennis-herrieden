@@ -912,7 +912,17 @@ function WeekGrid({data,user,days,selCourt,todayStr,onSlotClick}) {
             const slotColor=isOwn?(booking?.with_guest?"#16A34A":color):bColor;
             return (<td key={di} style={S.tdSlot}><button disabled={isPast&&!booking} onClick={()=>onSlotClick(selCourt,dateStr,slot,booking||null)}
               style={{...S.slotBtn,...(booking?{background:slotColor+"22",borderColor:slotColor,color:slotColor,fontWeight:700}:{}),...(isPast&&!booking?S.slotPast:{})}}>
-              {booking?(()=>{const icon=bType==="training"?"🏋️":bType==="match"?"🏆":booking.with_guest?"👥":"";const name=isOwn?"✓ Du":booking.userName.split(" ")[0];return `${icon} ${name}`.trim();})():(isPast?"—":"Frei")}</button></td>);
+              {booking?(()=>{
+                const bType=booking?.type||"regular";
+                const icon=bType==="training"?"🏋️":bType==="match"?"🏆":booking.with_guest?"👥":"";
+                let label;
+                if(bType==="training"||bType==="match"){
+                  label=booking.label||( bType==="training"?"Training":"Spieltag");
+                } else {
+                  label=isOwn?"✓ Du":booking.userName.split(" ")[0];
+                }
+                return `${icon} ${label}`.trim();
+              })():(isPast?"—":"Frei")}</button></td>);
           })}</tr>))}</tbody>
       </table>
     </div>
@@ -935,7 +945,17 @@ function DayGrid({data,user,date,todayStr,onSlotClick}) {
             const slotColor=isOwn?(booking?.with_guest?"#16A34A":color):bColor;
             return (<td key={c.id} style={{...S.tdSlot,borderLeft:`2px solid ${color}22`}}><button disabled={isPastDay&&!booking} onClick={()=>onSlotClick(c.id,date,slot,booking||null)}
               style={{...S.slotBtn,...(booking?{background:slotColor+"22",borderColor:slotColor,color:slotColor,fontWeight:700}:{}),...(isPastDay&&!booking?S.slotPast:{})}}>
-              {booking?(()=>{const icon=bType==="training"?"🏋️":bType==="match"?"🏆":booking.with_guest?"👥":"";const name=isOwn?"✓ Du":booking.userName.split(" ")[0];return `${icon} ${name}`.trim();})():(isPastDay?"—":"Frei")}</button></td>);
+              {booking?(()=>{
+                const bType=booking?.type||"regular";
+                const icon=bType==="training"?"🏋️":bType==="match"?"🏆":booking.with_guest?"👥":"";
+                let label;
+                if(bType==="training"||bType==="match"){
+                  label=booking.label||(bType==="training"?"Training":"Spieltag");
+                } else {
+                  label=isOwn?"✓ Du":booking.userName.split(" ")[0];
+                }
+                return `${icon} ${label}`.trim();
+              })():(isPastDay?"—":"Frei")}</button></td>);
           })}</tr>))}</tbody>
       </table>
     </div>
@@ -1433,7 +1453,7 @@ const S={
   thDayToday:{background:"#F0FDF4"},
   tdTime:{padding:"4px 8px",fontSize:12,color:"#9CA3AF",textAlign:"right",borderTop:"1px solid #F8FAFC",whiteSpace:"nowrap"},
   tdSlot:{padding:3,borderLeft:"1px solid #F8FAFC",borderTop:"1px solid #F8FAFC"},
-  slotBtn:{width:"100%",padding:"5px 4px",border:"1px solid #E5E7EB",borderRadius:5,background:"#F9FAFB",cursor:"pointer",fontSize:11,fontWeight:500,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"},
+  slotBtn:{width:"100%",padding:"5px 4px",border:"1px solid #E5E7EB",borderRadius:5,background:"#F9FAFB",cursor:"pointer",fontSize:11,fontWeight:500,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:"100%",display:"block"},
   slotPast:{background:"#F9FAFB",color:"#D1D5DB",cursor:"not-allowed"},
   card:{background:"#fff",borderRadius:10,padding:"14px 16px",marginBottom:10,boxShadow:"0 1px 3px rgba(0,0,0,.05)"},
   overlay:{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999},
