@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tennis Herrieden – Belegungsplan</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:  #0F172A;
+      --navy2: #1E293B;
+      --green: #22C55E;
+      --blue:  #3B82F6;
+      --red:   #EF4444;
+      --slate: #94A3B8;
+      --light: #F8FAFC;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--navy);
+      color: var(--light);
+      font-family: 'DM Sans', system-ui, sans-serif;
+      overflow: hidden;
+    }
+
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      padding: 20px 28px 16px;
+      gap: 14px;
+    }
+
+    /* ── HEADER ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .logo-area {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .logo-title { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; color: #fff; }
+    .logo-sub   { font-size: 12px; color: var(--slate); margin-top: 2px; }
+
+    .header-right { text-align: right; }
+    #time-display {
+      font-size: 38px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -1px;
+      line-height: 1;
+    }
+
+    /* ── DATE NAV ── */
+    #date-nav {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      flex-shrink: 0;
+      background: var(--navy2);
+      border-radius: 14px;
+      padding: 10px 20px;
+    }
+
+    .nav-arrow {
+      background: #334155;
+      border: none;
+      color: #fff;
+      font-size: 20px;
+      font-weight: 800;
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background .15s;
+    }
+    .nav-arrow:hover { background: #475569; }
+
+    #date-center {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    #date-display {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--green);
+      letter-spacing: -0.3px;
+      white-space: nowrap;
+    }
+
+    #today-btn {
+      background: none;
+      border: 1.5px solid #334155;
+      color: var(--slate);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 5px 12px;
+      border-radius: 20px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all .15s;
+    }
+    #today-btn:hover { border-color: var(--green); color: var(--green); }
+    #today-btn.active { border-color: var(--green); color: var(--green); background: #22C55E11; }
+
+    #date-picker {
+      background: #334155;
+      border: none;
+      color: #fff;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 6px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      outline: none;
+    }
+    #date-picker::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
+
+    /* ── STATUS ── */
+    #status-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--slate);
+      flex-shrink: 0;
+    }
+
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse 2s infinite;
+      flex-shrink: 0;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    /* ── GRID ── */
+    #grid-wrap { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+
+    .cal-table {
+      width: 100%; height: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    .cal-table th {
+      background: var(--navy2);
+      padding: 10px 8px;
+      text-align: center;
+      font-weight: 800;
+      border-bottom: 2px solid var(--navy);
+      position: sticky; top: 0; z-index: 2;
+    }
+
+    .th-time { width: 68px; font-size: 12px; color: var(--slate); }
+    .th-court { font-size: 15px; color: #fff; border-left: 3px solid transparent; }
+    .th-court .surface { font-size: 11px; color: var(--slate); font-weight: 600; margin-top: 2px; }
+
+    .cal-table td { border-top: 1px solid #1E293B; padding: 0; vertical-align: middle; }
+
+    .td-time {
+      text-align: right; padding: 0 12px 0 0;
+      font-size: 13px; color: var(--slate); font-weight: 600; white-space: nowrap;
+    }
+    .td-slot { padding: 3px 4px; border-left: 1px solid #1E293B; }
+
+    .slot-btn {
+      width: 100%; height: 100%; min-height: 36px;
+      border-radius: 6px; border: 1.5px solid transparent;
+      background: #1E293B; color: var(--slate);
+      font-family: inherit; font-size: 13px; font-weight: 600;
+      cursor: default;
+      display: block;
+      overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+      padding: 0 8px; line-height: 36px;
+    }
+
+    .slot-free     { background: #161F2E; color: #334155; border-color: #1E293B; font-size: 11px; }
+    .slot-past     { background: #0F172A; color: #1E293B; border-color: transparent; }
+    .slot-regular  { background: #22C55E22; border-color: #22C55E66; color: #4ADE80; }
+    .slot-guest    { background: #16A34A22; border-color: #16A34A66; color: #4ADE80; }
+    .slot-training { background: #3B82F622; border-color: #3B82F666; color: #93C5FD; }
+    .slot-match    { background: #EF444422; border-color: #EF444466; color: #FCA5A5; }
+
+    .row-current .td-time { color: var(--green); font-weight: 800; }
+    .row-current .slot-free { background: #0F2318; border-color: #14532D44; }
+
+    /* ── LEGEND ── */
+    #legend {
+      display: flex; gap: 20px; align-items: center;
+      flex-shrink: 0; flex-wrap: wrap;
+    }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--slate); }
+    .legend-dot  { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+
+    /* ── LOADING ── */
+    #loading {
+      position: fixed; inset: 0; background: var(--navy);
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 16px; font-size: 16px; color: var(--slate); z-index: 100;
+    }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid #1E293B; border-top-color: var(--green);
+      border-radius: 50%; animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <div>Lade Buchungen…</div>
+</div>
+
+<div id="app" style="display:none">
+  <header>
+    <div class="logo-area">
+      <svg width="44" height="44" viewBox="0 0 32 32" fill="none">
+        <circle cx="16" cy="16" r="15" stroke="#22C55E" stroke-width="2"/>
+        <ellipse cx="16" cy="16" rx="5" ry="14" stroke="#22C55E" stroke-width="1.5"/>
+        <line x1="1" y1="16" x2="31" y2="16" stroke="#22C55E" stroke-width="1.5"/>
+      </svg>
+      <div>
+        <div class="logo-title">Tennis Herrieden</div>
+        <div class="logo-sub">Belegungsplan</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div id="time-display">–:–</div>
+    </div>
+  </header>
+
+  <!-- Date navigation -->
+  <div id="date-nav">
+    <button class="nav-arrow" id="btn-prev" title="Vorheriger Tag">←</button>
+    <div id="date-center">
+      <div id="date-display">–</div>
+      <button id="today-btn">Heute</button>
+      <input type="date" id="date-picker" title="Datum wählen"/>
+    </div>
+    <button class="nav-arrow" id="btn-next" title="Nächster Tag">→</button>
+  </div>
+
+  <div id="status-bar">
+    <div class="dot"></div>
+    <span id="status-text">Verbunden · wird automatisch aktualisiert</span>
+  </div>
+
+  <div id="grid-wrap">
+    <table class="cal-table">
+      <thead id="cal-head"></thead>
+      <tbody id="cal-body"></tbody>
+    </table>
+  </div>
+
+  <div id="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#22C55E"></div>Gebucht</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#16A34A"></div>Mit Gastspieler</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#3B82F6"></div>Training</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#EF4444"></div>Spieltag</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#1E293B;border:1px solid #334155"></div>Frei</div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL  = "https://irszeiamvwyrntyauury.supabase.co";
+const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlyc3plaWFtdnd5cm50eWF1dXJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2Mzc1MjcsImV4cCI6MjA5NjIxMzUyN30.ryxib1E5E2cfkwfXj6i2EnmD56tyCtz_39u7Bpw7qSc";
+
+const SLOTS = ["08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00"];
+const COURT_COLORS = ["#22C55E","#EF4444","#3B82F6","#F59E0B","#8B5CF6","#EC4899","#14B8A6","#F97316"];
+const DE_DAYS  = ["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"];
+const DE_MONTH = ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+let courts   = [];
+let bookings = [];
+let currentDate = todayStr();
+
+// ── HELPERS ───────────────────────────────────────────────────────────────
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function addDays(str, n) {
+  const d = new Date(str + "T12:00:00");
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+function formatDisplayDate(str) {
+  const d = new Date(str + "T12:00:00");
+  return `${DE_DAYS[d.getDay()]}, ${d.getDate()}. ${DE_MONTH[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function currentSlot() {
+  if (currentDate !== todayStr()) return null;
+  const h = new Date().getHours();
+  if (h < 8 || h >= 20) return null;
+  return String(h).padStart(2, "0") + ":00";
+}
+
+function isPast(slot) {
+  if (currentDate < todayStr()) return true;
+  if (currentDate > todayStr()) return false;
+  return parseInt(slot) < new Date().getHours();
+}
+
+// ── CLOCK ─────────────────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  const hh  = String(now.getHours()).padStart(2, "0");
+  const mm  = String(now.getMinutes()).padStart(2, "0");
+  document.getElementById("time-display").textContent = `${hh}:${mm}`;
+}
+
+// ── UPDATE DATE UI ────────────────────────────────────────────────────────
+function updateDateUI() {
+  document.getElementById("date-display").textContent = formatDisplayDate(currentDate);
+  document.getElementById("date-picker").value = currentDate;
+  const todayBtn = document.getElementById("today-btn");
+  if (currentDate === todayStr()) {
+    todayBtn.classList.add("active");
+    todayBtn.textContent = "Heute";
+  } else {
+    todayBtn.classList.remove("active");
+    todayBtn.textContent = "Heute";
+  }
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────
+function render() {
+  const cur = currentSlot();
+
+  // HEAD
+  const head = document.getElementById("cal-head");
+  let headHtml = `<tr><th class="th-time"></th>`;
+  courts.forEach((c, i) => {
+    const color = COURT_COLORS[i % COURT_COLORS.length];
+    headHtml += `<th class="th-court" style="border-left-color:${color}">
+      ${c.name}<div class="surface">${c.surface}</div>
+    </th>`;
+  });
+  headHtml += `</tr>`;
+  head.innerHTML = headHtml;
+
+  // BODY
+  const body = document.getElementById("cal-body");
+  let bodyHtml = "";
+
+  SLOTS.forEach(slot => {
+    const isCur  = slot === cur;
+    const past   = isPast(slot);
+    bodyHtml += `<tr${isCur ? ' class="row-current"' : ""}>`;
+    bodyHtml += `<td class="td-time">${slot}</td>`;
+
+    courts.forEach(court => {
+      const booking = bookings.find(b =>
+        b.court_id === court.id && b.date === currentDate && b.slot === slot
+      );
+
+      let cellHtml = "";
+      if (booking) {
+        const type      = booking.type || "regular";
+        const withGuest = booking.with_guest;
+        let cls = "slot-regular";
+        let icon = "";
+        let label = booking.user_name?.split(" ")[0] || "–";
+
+        if (type === "training") {
+          cls = "slot-training"; icon = "🏋️";
+          label = booking.label || "Training";
+        } else if (type === "match") {
+          cls = "slot-match"; icon = "🏆";
+          label = booking.label || "Spieltag";
+        } else if (withGuest) {
+          cls = "slot-guest"; icon = "👥";
+        }
+
+        cellHtml = `<div class="slot-btn ${cls}">${icon ? icon + " " : ""}${label}</div>`;
+      } else if (past) {
+        cellHtml = `<div class="slot-btn slot-past">—</div>`;
+      } else {
+        cellHtml = `<div class="slot-btn slot-free">Frei</div>`;
+      }
+
+      bodyHtml += `<td class="td-slot">${cellHtml}</td>`;
+    });
+
+    bodyHtml += `</tr>`;
+  });
+
+  body.innerHTML = bodyHtml;
+
+  // Scroll current slot into view (only for today)
+  if (cur) {
+    const rows = body.querySelectorAll("tr");
+    const idx  = SLOTS.indexOf(cur);
+    if (idx >= 0 && rows[idx]) {
+      rows[idx].scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+  }
+}
+
+// ── LOAD DATA ─────────────────────────────────────────────────────────────
+async function loadData() {
+  const [courtsRes, bookingsRes] = await Promise.all([
+    sb.from("courts").select("*").order("sort_order"),
+    sb.from("bookings").select("*").eq("date", currentDate).order("slot"),
+  ]);
+
+  courts   = courtsRes.data  || [];
+  bookings = bookingsRes.data || [];
+
+  document.getElementById("status-text").textContent =
+    `Zuletzt aktualisiert: ${new Date().toLocaleTimeString("de-DE")} · wird automatisch aktualisiert`;
+
+  render();
+}
+
+// ── NAVIGATION ────────────────────────────────────────────────────────────
+function goToDate(str) {
+  currentDate = str;
+  updateDateUI();
+  loadData();
+}
+
+document.getElementById("btn-prev").addEventListener("click", () => {
+  goToDate(addDays(currentDate, -1));
+});
+
+document.getElementById("btn-next").addEventListener("click", () => {
+  goToDate(addDays(currentDate, 1));
+});
+
+document.getElementById("today-btn").addEventListener("click", () => {
+  goToDate(todayStr());
+});
+
+document.getElementById("date-picker").addEventListener("change", (e) => {
+  if (e.target.value) goToDate(e.target.value);
+});
+
+// Keyboard arrows
+document.addEventListener("keydown", (e) => {
+  if (e.key === "ArrowLeft")  goToDate(addDays(currentDate, -1));
+  if (e.key === "ArrowRight") goToDate(addDays(currentDate,  1));
+  if (e.key === "t" || e.key === "T") goToDate(todayStr());
+});
+
+// ── REALTIME ──────────────────────────────────────────────────────────────
+function subscribeRealtime() {
+  sb.channel("display2-live")
+    .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, () => {
+      loadData();
+    })
+    .subscribe();
+}
+
+// ── MIDNIGHT RELOAD ───────────────────────────────────────────────────────
+function scheduleMidnightReload() {
+  const now  = new Date();
+  const next = new Date(now);
+  next.setHours(24, 0, 5, 0);
+  setTimeout(() => location.reload(), next - now);
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+(async function init() {
+  updateClock();
+  setInterval(updateClock, 30_000);
+
+  updateDateUI();
+  await loadData();
+  setInterval(loadData, 60_000);
+
+  subscribeRealtime();
+  scheduleMidnightReload();
+
+  document.getElementById("loading").style.display = "none";
+  document.getElementById("app").style.display     = "flex";
+})();
+</script>
+</body>
+</html>
