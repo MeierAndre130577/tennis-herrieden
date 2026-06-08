@@ -1,7 +1,5 @@
 #!/usr/bin/env node
 // scripts/fetch-btv.js – GitHub Actions Fr/Sa/So alle 10 Minuten
-// Nutzt btv-prod.burdadigitalsystems.de (zugänglich von GitHub Actions)
-// um den Spielstand zu cachen.
 
 const { chromium } = require("playwright");
 const { createClient } = require("@supabase/supabase-js");
@@ -26,72 +24,92 @@ async function saveResult(key, value) {
   );
 }
 
-// ── btv-prod Seite laden (ZK Framework, braucht JavaScript) ───────────────
-async function loadBtvProd(page, url) {
+// ── Browser mit Anti-Bot-Maßnahmen starten ─────────────────────────────────
+async function makeBrowser() {
+  const browser = await chromium.launch({
+    headless: true,
+    args: [
+      "--no-sandbox",
+      "--disable-blink-features=AutomationControlled",
+      "--disable-web-security",
+    ],
+  });
+  const context = await browser.newContext({
+    userAgent:
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+      "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+    locale: "de-DE",
+    extraHTTPHeaders: {
+      "Accept-Language": "de-DE,de;q=0.9",
+      "Accept":
+        "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    },
+  });
+  // navigator.webdriver verstecken
+  await context.addInitScript(() => {
+    Object.defineProperty(navigator, "webdriver", { get: () => undefined });
+    window.chrome = { runtime: {} };
+  });
+  const page = await context.newPage();
+  return { browser, page };
+}
+
+// ── Seite laden + auf ZK-Inhalt warten ────────────────────────────────────
+async function loadPage(page, url, referer) {
   console.log(`Lade: ${url}`);
-  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
-  // Warten bis ZK "Verarbeitung..." weg ist
+  if (referer) await page.setExtraHTTPHeaders({ Referer: referer });
+  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 40_000 });
+  // ZK "Verarbeitung..." wegwarten
   try {
     await page.waitForFunction(
-      () => {
-        const zp = document.getElementById("zk_proc");
-        return !zp || zp.style.display === "none" || zp.offsetParent === null
-               || !document.body.textContent.includes("Verarbeitung");
-      },
+      () => !document.body.innerText.includes("Verarbeitung"),
       { timeout: 25_000 }
     );
   } catch (_) {
-    console.log("Warnung: ZK lädt noch nach 25s");
+    console.log("Warnung: ZK noch nicht fertig nach 25s");
   }
   await page.waitForTimeout(3000);
-
-  const snippet = await page.evaluate(() => document.body.innerText.slice(0, 600));
-  console.log("Seiten-Inhalt:\n" + snippet);
+  const txt = await page.evaluate(() => document.body.innerText.slice(0, 500));
+  console.log("Inhalt:\n" + txt);
 }
 
-// ── Spielbericht-Link auf Meetings-Seite finden ───────────────────────────
-async function findReportUrl(page, heimTeam, gastTeam) {
-  const result = await page.evaluate(({ heim, gast }) => {
-    const rows = Array.from(document.querySelectorAll("tr, [class*='row'], [class*='meet']"));
-    const allTexts = rows.map(r => r.textContent.trim().replace(/\s+/g," ").slice(0,150));
+// ── Spielbericht-Link in Seite finden ─────────────────────────────────────
+async function findLink(page, heim, gast) {
+  return await page.evaluate(({ heim, gast }) => {
+    const rows = Array.from(
+      document.querySelectorAll("tr, [class*='row'], [class*='meet'], [class*='beg']")
+    );
+    const texts = rows.map(r => r.textContent.trim().replace(/\s+/g, " ").slice(0, 150));
 
     for (let i = 0; i < rows.length; i++) {
-      const text = rows[i].textContent;
-      if (!text.includes(heim) || !text.includes(gast)) continue;
-
-      const rowHtml = rows[i].outerHTML;
-      console.log && console.log("Treffer:", allTexts[i]);
-
-      // Alle möglichen Link-Quellen durchsuchen
-      for (const a of rows[i].querySelectorAll("a")) {
+      if (!texts[i].includes(heim) || !texts[i].includes(gast)) continue;
+      console.log("Treffer:", texts[i]);
+      const row = rows[i];
+      // href
+      for (const a of row.querySelectorAll("a")) {
         const h = a.getAttribute("href") || "";
-        if (h && h !== "#" && !h.startsWith("javascript") && h.length > 3)
-          return { url: h.startsWith("http") ? h : `https://btv-prod.burdadigitalsystems.de${h}`, how: "href" };
+        if (h && h !== "#" && !h.startsWith("javascript") && h.length > 5)
+          return h.startsWith("http") ? h : `https://btv-prod.burdadigitalsystems.de${h}`;
       }
-      for (const el of rows[i].querySelectorAll("[onclick]")) {
+      // onclick
+      for (const el of row.querySelectorAll("[onclick]")) {
         const oc = el.getAttribute("onclick") || "";
-        const mu = oc.match(/(https?:\/\/[^\s'"]+)/);
-        if (mu) return { url: mu[1], how: "onclick-url" };
-        const mi = oc.match(/\b(\d{5,})\b/);
-        if (mi) return { url: `https://btv-prod.burdadigitalsystems.de/btvmatches/?begid=${mi[1]}`, how: "onclick-id" };
+        const u = oc.match(/(https?:\/\/[^\s'"]+)/);
+        if (u) return u[1];
+        const id = oc.match(/\b(\d{5,})\b/);
+        if (id)
+          return `https://btv-prod.burdadigitalsystems.de/btvmatches/?begid=${id[1]}`;
       }
-      return { url: null, rowHtml };
+      return "__row__" + row.outerHTML.slice(0, 800);
     }
-    return { url: null, allTexts };
-  }, { heim: heimTeam, gast: gastTeam });
-
-  if (result.url) {
-    console.log(`Link gefunden (${result.how}): ${result.url}`);
-    return result.url;
-  }
-  if (result.rowHtml) console.log("Row-HTML:\n" + result.rowHtml);
-  if (result.allTexts) console.log("Alle Zeilen:\n  " + result.allTexts.join("\n  "));
-  return null;
+    // Kein Treffer – alle Zeilen ausgeben
+    return "__rows__" + texts.filter(t => t.length > 5).slice(0, 30).join("\n");
+  }, { heim, gast });
 }
 
 // ── Spielbericht parsen ────────────────────────────────────────────────────
-async function parseMatchReport(page, reportUrl, heimTeam, gastTeam) {
-  await loadBtvProd(page, reportUrl);
+async function parseReport(page, url, heim, gast) {
+  await loadPage(page, url);
   return await page.evaluate(({ heim, gast }) => {
     const text = document.body.textContent || "";
     let status = "upcoming";
@@ -99,105 +117,101 @@ async function parseMatchReport(page, reportUrl, heimTeam, gastTeam) {
     else if (text.match(/\d:\d/) && !/Blanko/i.test(text)) status = "live";
 
     let homeTeam = heim, awayTeam = gast;
-    const teamEls = Array.from(
+    const els = Array.from(
       document.querySelectorAll("h1,h2,h3,.z-label,[class*='team'],[class*='club']")
-    ).map(el => el.textContent.trim()).filter(t => t.length > 3 && t.length < 80);
-    if (teamEls.length >= 2) { homeTeam = teamEls[0]; awayTeam = teamEls[1]; }
+    ).map(e => e.textContent.trim()).filter(t => t.length > 3 && t.length < 80);
+    if (els.length >= 2) { homeTeam = els[0]; awayTeam = els[1]; }
 
-    let league = "–";
-    const lgEl = document.querySelector("[class*='liga'],[class*='league'],[class*='gruppe']");
-    if (lgEl) league = lgEl.textContent.trim();
-
-    let time = "–";
+    let league = "–", time = "–", homeScore = 0, awayScore = 0;
+    const lg = document.querySelector("[class*='liga'],[class*='league'],[class*='gruppe']");
+    if (lg) league = lg.textContent.trim();
     const tm = text.match(/(\d{1,2}:\d{2})\s*Uhr/);
     if (tm) time = tm[1] + " Uhr";
-
-    let homeScore = 0, awayScore = 0;
-    const scoreM = text.match(/(\d{1,2})\s*:\s*(\d{1,2})/);
-    if (scoreM) { homeScore = parseInt(scoreM[1]); awayScore = parseInt(scoreM[2]); }
+    const sc = text.match(/(\d{1,2})\s*:\s*(\d{1,2})/);
+    if (sc) { homeScore = +sc[1]; awayScore = +sc[2]; }
 
     const rubbers = [];
     for (const row of document.querySelectorAll("tr")) {
-      const cells = Array.from(row.querySelectorAll("td")).map(td => td.textContent.trim());
+      const cells = [...row.querySelectorAll("td")].map(td => td.textContent.trim());
       if (cells.length < 3) continue;
       const idM = cells.join(" ").match(/\b(E[1-6]|D[1-3])\b/i);
       if (!idM) continue;
       const id = idM[1].toUpperCase();
-      const home = cells[1]||"–", away = cells[2]||"–", score = cells[3]||"–";
+      const score = cells[3] || "–";
       let result = "open";
       const sets = score.match(/(\d):(\d)/g) || [];
       if (sets.length) {
         let hw=0,aw=0;
-        for (const s of sets) { const [hn,an]=s.split(":").map(Number); if(hn>an)hw++;else aw++; }
+        sets.forEach(s => { const [a,b]=s.split(":").map(Number); a>b?hw++:aw++; });
         result = hw+aw>=2 ? (hw>aw?"win":"loss") : "live";
       }
-      rubbers.push({ id, home, away, score, result });
+      rubbers.push({ id, home:cells[1]||"–", away:cells[2]||"–", score, result });
     }
     return { status, homeTeam, awayTeam, league, time, homeScore, awayScore, rubbers };
-  }, { heim: heimTeam, gast: gastTeam });
+  }, { heim, gast });
 }
 
 // ── MAIN ──────────────────────────────────────────────────────────────────
 (async () => {
-  const s        = await getSettings();
-  const heimTeam = s.display_mannschaft  || "";
-  const gastTeam = s.display_gegner      || "";
-  const groupUrl = s.display_match_url   || "";
-  const clubnr   = String(s.display_vereinsnummer || "6085").padStart(5, "0");
+  const cfg      = await getSettings();
+  const heim     = cfg.display_mannschaft  || "";
+  const gast     = cfg.display_gegner      || "";
+  const groupUrl = cfg.display_match_url   || "";
+  const clubnr   = String(cfg.display_vereinsnummer || "6085").padStart(5, "0");
 
-  console.log(`Heim: "${heimTeam}"  Gast: "${gastTeam}"`);
-  console.log(`Gruppe: "${groupUrl}"  Clubnr: ${clubnr}`);
+  console.log(`Heim: "${heim}"  Gast: "${gast}"`);
+  if (!heim || !gast) { console.log("Nicht konfiguriert."); return; }
 
-  if (!heimTeam || !gastTeam) {
-    console.log("Nicht konfiguriert – nichts zu tun.");
-    return;
-  }
-
-  // groupid aus Staffel-URL extrahieren
   const groupIdM = groupUrl.match(/groupid=(\d+)/);
-  const groupId  = groupIdM ? groupIdM[1] : null;
+  const groupId  = groupIdM?.[1];
 
-  // URLs die wir ausprobieren (btv-prod ist von GitHub Actions erreichbar)
-  const meetingsUrls = [
-    groupId && `https://btv-prod.burdadigitalsystems.de/btvmeetings/?groupid=${groupId}`,
-    `https://btv-prod.burdadigitalsystems.de/btvmeetings/?clubnr=${clubnr}`,
+  // Alle Kandidaten-URLs (widget.btv.de zuerst, dann btv-prod Fallback)
+  const candidates = [
+    groupId && { url:`https://widget.btv.de/btvgroup/?groupid=${groupId}`, ref:"https://www.btv.de/" },
+    groupId && { url:`https://btv-prod.burdadigitalsystems.de/btvmeetings/?groupid=${groupId}` },
+    { url:`https://btv-prod.burdadigitalsystems.de/btvmeetings/?clubnr=${clubnr}` },
   ].filter(Boolean);
 
-  const browser = await chromium.launch({ headless: true });
-  const page    = await browser.newPage();
-  await page.setViewportSize({ width: 1280, height: 800 });
-
+  const { browser, page } = await makeBrowser();
   try {
     let reportUrl = null;
 
-    for (const url of meetingsUrls) {
+    for (const { url, ref } of candidates) {
       try {
-        await loadBtvProd(page, url);
-        reportUrl = await findReportUrl(page, heimTeam, gastTeam);
-        if (reportUrl) break;
-        console.log(`Kein Treffer auf: ${url}`);
+        await loadPage(page, url, ref);
+        const result = await findLink(page, heim, gast);
+
+        if (!result) { console.log("Kein Treffer."); continue; }
+        if (result.startsWith("__rows__")) {
+          console.log("Alle Zeilen:\n" + result.slice(8));
+          continue;
+        }
+        if (result.startsWith("__row__")) {
+          console.log("Row-HTML (kein Link):\n" + result.slice(7));
+          continue;
+        }
+        reportUrl = result;
+        break;
       } catch (e) {
         console.log(`Fehler bei ${url}: ${e.message}`);
       }
     }
 
     if (!reportUrl) {
-      console.log("Kein Spielbericht gefunden – speichere upcoming-Status.");
+      console.log("Kein Spielbericht gefunden → upcoming.");
       await saveResult("btv_match_cache", {
-        status:"upcoming", homeTeam:heimTeam, awayTeam:gastTeam,
+        status:"upcoming", homeTeam:heim, awayTeam:gast,
         league:"–", time:"–", homeScore:0, awayScore:0, rubbers:[],
       });
       return;
     }
 
-    const match = await parseMatchReport(page, reportUrl, heimTeam, gastTeam);
+    console.log(`Spielbericht: ${reportUrl}`);
+    const match = await parseReport(page, reportUrl, heim, gast);
     await saveResult("btv_match_cache", match);
-    console.log(`Gespeichert: ${match.status}  ${match.homeScore}:${match.awayScore}  ${match.rubbers.length} Einzel`);
+    console.log(`OK: ${match.status}  ${match.homeScore}:${match.awayScore}  ${match.rubbers.length} Einzel`);
 
   } finally {
     await browser.close();
   }
-})().catch(err => {
-  console.error("FEHLER:", err.message);
-  process.exit(1);
-});
+})().catch(err => { console.error("FEHLER:", err.message); process.exit(1); });
