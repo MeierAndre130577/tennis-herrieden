@@ -20,7 +20,7 @@ module.exports = async function handler(req, res) {
       args:            chromium.args,
       defaultViewport: { width: 1280, height: 900 },
       executablePath:  await chromium.executablePath(),
-      headless:        chromium.headless,
+      headless:        true,
     });
 
     const page = await browser.newPage();
