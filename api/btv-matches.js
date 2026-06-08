@@ -1,25 +1,26 @@
 // api/btv-matches.js
-// Vercel Serverless Function – holt Heimspieldaten von btv.de via Playwright
+// Vercel Serverless Function – holt live Spielstanddaten von btv.de via Playwright
 //
 // Query-Parameter:
-//   clubnr  – BTV-Vereinsnummer, z.B. "6085" oder "06085"
-//   saison  – Saison-Jahr, z.B. "2026"
+//   clubnr      – BTV-Vereinsnummer, z.B. "6085" oder "06085"
+//   saison      – Saison-Jahr, z.B. "2026"
+//   mannschaft  – Mannschaftsname, z.B. "Herren I"
+//   gegner      – Gegnername, z.B. "TC Ansbach 1920 e.V."
 
 const chromium = require("@sparticuz/chromium");
 const { chromium: playwright } = require("playwright-core");
 
-// Vercel Function Config
-module.exports.config = {
-  maxDuration: 45,
-};
+module.exports.config = { maxDuration: 45 };
 
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=30");
 
-  const rawNr  = req.query.clubnr  || "06085";
-  const saison = req.query.saison  || "2026";
-  const clubnr = String(rawNr).padStart(5, "0");
+  const rawNr      = req.query.clubnr      || "06085";
+  const saison     = req.query.saison      || "2026";
+  const mannschaft = req.query.mannschaft  || "";
+  const gegner     = req.query.gegner      || "";
+  const clubnr     = String(rawNr).padStart(5, "0");
 
   let browser;
   try {
@@ -41,88 +42,80 @@ module.exports = async function handler(req, res) {
 
     // ── 2. „Heimspiele"-Filter klicken ───────────────────────────────────
     try {
-      // Suche Button/Tab der "Heimspiele" enthält
       const heimBtn = page.locator("text=Heimspiele").first();
       await heimBtn.click({ timeout: 5000 });
       await page.waitForTimeout(2000);
-    } catch (_) {
-      // Falls kein Filter vorhanden, alle Spiele nehmen
-    }
+    } catch (_) { /* kein Filter */ }
 
-    // ── 3. Heute's Spiel finden ──────────────────────────────────────────
-    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    // ── 3. Passendes Spiel finden ─────────────────────────────────────────
+    // Suche: Wenn Mannschaft+Gegner angegeben → gezielt; sonst heute
+    const today = new Date().toISOString().slice(0, 10);
 
-    // Alle Zeilen der Begegnungsliste auslesen
-    const matches = await page.evaluate((todayStr) => {
+    const matches = await page.evaluate((opts) => {
+      const { todayStr, mannschaft, gegner } = opts;
       const rows = Array.from(document.querySelectorAll("tr, .z-row, .begegnung-row, [class*='row']"));
       const results = [];
 
       for (const row of rows) {
         const text = row.textContent || "";
-        // Suche nach Datumsangaben im deutschen Format (TT.MM.JJJJ)
         const dateMatch = text.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
         if (!dateMatch) continue;
-
         const [, d, m, y] = dateMatch;
         const rowDate = `${y}-${m.padStart(2,"0")}-${d.padStart(2,"0")}`;
-        if (rowDate !== todayStr) continue;
 
-        // Teams aus der Zeile extrahieren
-        const cells = Array.from(row.querySelectorAll("td, .z-cell, span, div")).map(el => el.textContent.trim()).filter(Boolean);
-        results.push({ rowDate, cells, html: row.innerHTML });
+        // Filter 1: Wenn Gegner angegeben → muss im Text vorkommen
+        if (gegner && !text.includes(gegner)) continue;
+        // Filter 2: Wenn Mannschaft angegeben → muss im Text vorkommen
+        if (mannschaft && !text.includes(mannschaft)) continue;
+        // Filter 3: Kein Gegner angegeben → nur heutiges Datum
+        if (!gegner && rowDate !== todayStr) continue;
+
+        const cells = Array.from(row.querySelectorAll("td, .z-cell, span, div"))
+          .map(el => el.textContent.trim()).filter(Boolean);
+        const link = row.querySelector("a[href*='begid'], a[href*='btvmatchreport'], a[href*='spielbericht']");
+        const href = link ? link.getAttribute("href") : null;
+
+        results.push({ rowDate, cells, href });
       }
-
       return results;
-    }, today);
+    }, { todayStr: today, mannschaft, gegner });
 
     if (matches.length === 0) {
-      // Kein Spiel heute → prüfe ob demnächst
-      const upcoming = await page.evaluate(() => {
-        const rows = Array.from(document.querySelectorAll("tr, .z-row, [class*='row']"));
-        for (const row of rows) {
-          const text = row.textContent || "";
-          const dateMatch = text.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
-          if (!dateMatch) continue;
-          const [, d, m, y] = dateMatch;
-          const cells = Array.from(row.querySelectorAll("td, span, div")).map(el => el.textContent.trim()).filter(t => t.length > 0);
-          return { date: `${d}.${m}.${y}`, cells };
-        }
-        return null;
-      });
-
       await browser.close();
       return res.json({
         match: null,
-        debug: { message: "Kein Heimspiel heute", nextMatch: upcoming, clubnr, saison }
+        debug: { message: "Kein passendes Spiel gefunden", clubnr, mannschaft, gegner, today }
       });
     }
 
-    // ── 4. Matchdetails laden ────────────────────────────────────────────
-    // Klicke auf das erste heutige Spiel um Spielbericht zu öffnen
+    // ── 4. Spielbericht laden ────────────────────────────────────────────
     const matchRow = matches[0];
-
-    // Versuche einen Link im Row zu finden
     let matchData = null;
+
+    // Link aus geparsten Matches oder direkt von der Seite
+    const rawHref = matchRow.href || null;
     try {
-      // Suche Spielbericht-Link
-      const link = await page.locator(`a[href*='btvmatchreport'], a[href*='begid'], a[href*='spielbericht']`).first();
-      const href = await link.getAttribute("href");
-      if (href) {
-        const reportUrl = href.startsWith("http") ? href : `https://btv-prod.burdadigitalsystems.de${href}`;
+      let reportHref = rawHref;
+      if (!reportHref) {
+        const link = await page.locator("a[href*='btvmatchreport'], a[href*='begid'], a[href*='spielbericht']").first();
+        reportHref = await link.getAttribute("href").catch(() => null);
+      }
+      if (reportHref) {
+        const reportUrl = reportHref.startsWith("http")
+          ? reportHref
+          : `https://btv-prod.burdadigitalsystems.de${reportHref}`;
         await page.goto(reportUrl, { waitUntil: "networkidle", timeout: 20_000 });
         await page.waitForTimeout(2000);
-        matchData = await parseMatchReport(page);
+        matchData = await parseMatchReport(page, { mannschaft, gegner });
       }
-    } catch (_) {
-      // Fallback: Daten direkt aus der Liste
-    }
+    } catch (_) { /* Fallback */ }
 
     if (!matchData) {
-      matchData = buildMatchFromRow(matchRow);
+      matchData = buildMatchFromRow(matchRow, { mannschaft, gegner });
     }
 
     await browser.close();
-    res.json({ match: matchData, debug: { clubnr, saison, today } });
+    res.json({ match: matchData, debug: { clubnr, saison, mannschaft, gegner } });
 
   } catch (err) {
     if (browser) await browser.close();
@@ -132,8 +125,8 @@ module.exports = async function handler(req, res) {
 };
 
 // ── Spielbericht-Seite parsen ──────────────────────────────────────────────
-async function parseMatchReport(page) {
-  return await page.evaluate(() => {
+async function parseMatchReport(page, hints = {}) {
+  return await page.evaluate((h) => {
     const text = document.body.textContent || "";
 
     // Status ermitteln
@@ -141,19 +134,19 @@ async function parseMatchReport(page) {
     if (text.includes("abgeschlossen") || text.includes("Abgeschlossen")) status = "done";
     else if (text.match(/\d:\d/) && !text.includes("Blanko")) status = "live";
 
-    // Teams
+    // Teams – Hints als Fallback nutzen
     const teamEls = document.querySelectorAll(".z-label, h1, h2, .team-name, [class*='team']");
-    let homeTeam = "Tennis Herrieden", awayTeam = "–";
-    const teams = Array.from(teamEls).map(el => el.textContent.trim()).filter(t => t.length > 3 && t.length < 60);
-    if (teams.length >= 2) { homeTeam = teams[0]; awayTeam = teams[1]; }
+    let homeTeam = h.mannschaft || "Tennis Herrieden", awayTeam = h.gegner || "–";
+    const teamTexts = Array.from(teamEls).map(el => el.textContent.trim()).filter(t => t.length > 3 && t.length < 60);
+    if (teamTexts.length >= 2) { homeTeam = teamTexts[0]; awayTeam = teamTexts[1]; }
 
     // Liga
     let league = "–";
     const lgEl = document.querySelector(".liga, .league, [class*='liga'], [class*='league']");
     if (lgEl) league = lgEl.textContent.trim();
 
-    // Mannschaft
-    let teamName = "–";
+    // Mannschaft (teamName = Kurzform wie "Herren I")
+    let teamName = h.mannschaft || "–";
     const mnEl = document.querySelector(".mannschaft, [class*='mannschaft']");
     if (mnEl) teamName = mnEl.textContent.trim();
 
@@ -201,18 +194,18 @@ async function parseMatchReport(page) {
     }
 
     return { status, homeTeam, awayTeam, league, teamName, time, rubbers };
-  });
+  }, hints);
 }
 
 // ── Fallback: Match aus Listeneintrag bauen ────────────────────────────────
-function buildMatchFromRow(matchRow) {
+function buildMatchFromRow(matchRow, hints = {}) {
   const cells = matchRow.cells || [];
   const combined = cells.join(" ");
 
-  // Teams aus Text extrahieren
+  // Teams – Hints als Fallback
   const vsMatch = combined.match(/(.+?)\s+[-–:vs]+\s+(.+?)(?:\s+\d|$)/i);
-  const homeTeam = vsMatch ? vsMatch[1].trim() : "Tennis Herrieden";
-  const awayTeam = vsMatch ? vsMatch[2].trim() : "–";
+  const homeTeam = vsMatch ? vsMatch[1].trim() : (hints.mannschaft || "Tennis Herrieden");
+  const awayTeam = vsMatch ? vsMatch[2].trim() : (hints.gegner     || "–");
 
   // Zeit
   const timeMatch = combined.match(/(\d{1,2}:\d{2})/);
@@ -222,9 +215,9 @@ function buildMatchFromRow(matchRow) {
     status: "upcoming",
     homeTeam,
     awayTeam,
-    league: "–",
-    teamName: "–",
+    league:   "–",
+    teamName: hints.mannschaft || "–",
     time,
-    rubbers: [],
+    rubbers:  [],
   };
 }

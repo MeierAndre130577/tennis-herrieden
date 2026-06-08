@@ -1069,15 +1069,23 @@ function SettingsMembersTab({onToast}) {
 
 // ── SETTINGS: DISPLAY ────────────────────────────────────────────────────
 function SettingsDisplayTab({onToast}) {
-  const [mode,     setMode]   = useState("schedule");
-  const [theme,    setTheme]  = useState("dark");
-  const [vereinsnr,setVernr]  = useState("6085");
-  const [saison,   setSaison] = useState("2026");
-  const [saving,   setSaving] = useState(false);
+  const [mode,        setMode]       = useState("schedule");
+  const [theme,       setTheme]      = useState("dark");
+  const [vereinsnr,   setVernr]      = useState("6085");
+  const [saison,      setSaison]     = useState("2026");
+  const [mannschaft,  setMannschaft] = useState("");
+  const [gegner,      setGegner]     = useState("");
+  const [teams,       setTeams]      = useState([]);
+  const [spiele,      setSpiele]     = useState([]);
+  const [teamsLoading,setTeamsLoad]  = useState(false);
+  const [spieleLoading,setSpieleLoad]= useState(false);
+  const [teamsErr,    setTeamsErr]   = useState("");
+  const [saving,      setSaving]     = useState(false);
 
   useEffect(()=>{
     sb.from("settings").select("*")
-      .in("key",["display_mode","display_theme","display_vereinsnummer","display_saison"])
+      .in("key",["display_mode","display_theme","display_vereinsnummer","display_saison",
+                 "display_mannschaft","display_gegner"])
       .then(({data})=>{
         if(!data) return;
         const map=Object.fromEntries(data.map(r=>[r.key,r.value]));
@@ -1085,8 +1093,47 @@ function SettingsDisplayTab({onToast}) {
         if(map.display_theme)         setTheme(map.display_theme);
         if(map.display_vereinsnummer) setVernr(map.display_vereinsnummer);
         if(map.display_saison)        setSaison(map.display_saison);
+        if(map.display_mannschaft)    setMannschaft(map.display_mannschaft);
+        if(map.display_gegner)        setGegner(map.display_gegner);
       });
   },[]);
+
+  // Wenn gespeicherte Mannschaft vorhanden → Spiele nachladen
+  useEffect(()=>{
+    if(mannschaft && vereinsnr) loadSpiele(mannschaft);
+  },[mannschaft]);// eslint-disable-line
+
+  const loadTeams=async()=>{
+    setTeamsErr(""); setTeams([]); setSpiele([]); setMannschaft(""); setGegner("");
+    setTeamsLoad(true);
+    try {
+      const clubnr=String(vereinsnr).padStart(5,"0");
+      const r=await fetch(`/api/btv-teams?clubnr=${clubnr}`);
+      const d=await r.json();
+      if(d.error) throw new Error(d.error);
+      if(!d.teams?.length) throw new Error("Keine Mannschaften gefunden – Vereinsnummer prüfen");
+      setTeams(d.teams);
+    } catch(e){ setTeamsErr(e.message); }
+    setTeamsLoad(false);
+  };
+
+  const loadSpiele=async(mann)=>{
+    setSpiele([]); setGegner("");
+    setSpieleLoad(true);
+    try {
+      const clubnr=String(vereinsnr).padStart(5,"0");
+      const r=await fetch(`/api/btv-spiele?clubnr=${clubnr}&mannschaft=${encodeURIComponent(mann)}`);
+      const d=await r.json();
+      if(d.error) throw new Error(d.error);
+      setSpiele(d.spiele||[]);
+    } catch(e){ onToast(`Fehler beim Laden der Spiele: ${e.message}`,"error"); }
+    setSpieleLoad(false);
+  };
+
+  const handleMannschaft=async(val)=>{
+    setMannschaft(val);
+    if(val) await loadSpiele(val);
+  };
 
   const save=async()=>{
     setSaving(true);
@@ -1095,11 +1142,15 @@ function SettingsDisplayTab({onToast}) {
       {key:"display_theme",         value:theme},
       {key:"display_vereinsnummer", value:vereinsnr},
       {key:"display_saison",        value:saison},
+      {key:"display_mannschaft",    value:mannschaft},
+      {key:"display_gegner",        value:gegner},
     ],{onConflict:"key"});
     setSaving(false);
     if(error){ onToast(`Fehler: ${error.message}`,"error"); return; }
     onToast("Display-Einstellungen gespeichert ✓");
   };
+
+  const selectStyle={...S.input,width:"100%",cursor:"pointer"};
 
   const modes=[
     {id:"schedule",  icon:"📅", label:"Tagesbelegungsplan", desc:"Zeigt die heutigen Buchungen aller Plätze"},
@@ -1136,20 +1187,74 @@ function SettingsDisplayTab({onToast}) {
         </div>
 
         {mode==="heimspiel"&&(
-          <div style={{marginBottom:24}}>
-            <SectTitle>Heimspiel-Einstellungen</SectTitle>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <div style={{marginBottom:24,background:"#F9FAFB",border:"1.5px solid #E5E7EB",borderRadius:12,padding:16}}>
+            <div style={{fontWeight:700,fontSize:13,color:"#374151",marginBottom:14}}>🏆 Heimspiel konfigurieren</div>
+
+            {/* Schritt 1: Vereinsnummer + Saison */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr auto",gap:10,alignItems:"flex-end",marginBottom:14}}>
               <div>
-                <div style={{fontSize:12,fontWeight:700,color:"#374151",marginBottom:6}}>Vereinsnummer (BTV)</div>
-                <input value={vereinsnr} onChange={e=>setVernr(e.target.value)}
+                <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>VEREINSNUMMER (BTV)</div>
+                <input value={vereinsnr} onChange={e=>{setVernr(e.target.value);setTeams([]);setSpiele([]);}}
                   placeholder="z.B. 6085" style={{...S.input,width:"100%"}}/>
               </div>
               <div>
-                <div style={{fontSize:12,fontWeight:700,color:"#374151",marginBottom:6}}>Saison</div>
+                <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>SAISON</div>
                 <input value={saison} onChange={e=>setSaison(e.target.value)}
                   placeholder="z.B. 2026" style={{...S.input,width:"100%"}}/>
               </div>
+              <button onClick={loadTeams} disabled={teamsLoading||!vereinsnr}
+                style={{...S.primaryBtn,background:"#6366F1",opacity:teamsLoading||!vereinsnr?0.5:1,
+                  padding:"9px 14px",fontSize:13,whiteSpace:"nowrap"}}>
+                {teamsLoading?"⏳ Laden…":"🔍 Laden"}
+              </button>
             </div>
+
+            {teamsErr&&(
+              <div style={{background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:8,padding:"10px 12px",
+                fontSize:12,color:"#B91C1C",marginBottom:14}}>⚠️ {teamsErr}</div>
+            )}
+
+            {/* Schritt 2: Mannschaft */}
+            {teams.length>0&&(
+              <div style={{marginBottom:14}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>MANNSCHAFT</div>
+                <select value={mannschaft} onChange={e=>handleMannschaft(e.target.value)} style={selectStyle}>
+                  <option value="">– Mannschaft auswählen –</option>
+                  {teams.map(t=><option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+            )}
+
+            {/* Schritt 3: Gegner */}
+            {mannschaft&&(
+              <div>
+                <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>
+                  HEIMSPIEL GEGEN {spieleLoading&&<span style={{fontWeight:400}}>⏳ lädt…</span>}
+                </div>
+                <select value={gegner} onChange={e=>setGegner(e.target.value)}
+                  disabled={spieleLoading} style={selectStyle}>
+                  <option value="">– Gegner auswählen –</option>
+                  {spiele.map(s=>(
+                    <option key={s.isoDate+s.gegner} value={s.gegner}>
+                      {s.displayDate} · {s.gegner}
+                    </option>
+                  ))}
+                </select>
+                {!spieleLoading&&spiele.length===0&&(
+                  <div style={{fontSize:11,color:"#9CA3AF",marginTop:6}}>
+                    Keine Heimspiele für diese Mannschaft gefunden.
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Zusammenfassung */}
+            {mannschaft&&gegner&&(
+              <div style={{marginTop:14,background:"#EFF6FF",border:"1px solid #BFDBFE",borderRadius:8,
+                padding:"10px 12px",fontSize:12,color:"#1E40AF"}}>
+                ✅ Display zeigt: <strong>{mannschaft}</strong> vs. <strong>{gegner}</strong>
+              </div>
+            )}
           </div>
         )}
 

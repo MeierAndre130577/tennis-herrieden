@@ -648,16 +648,20 @@ function subscribeRealtime() {
 }
 
 // ── SETTINGS POLLING ──────────────────────────────────────────────────────
-function startSettingsPolling(mode, theme, vereinsnr, saison) {
+function startSettingsPolling(mode, theme, vereinsnr, saison, mannschaft, gegner) {
   setInterval(async () => {
     const { data } = await sb.from("settings").select("*")
-      .in("key", ["display_mode","display_theme","display_vereinsnummer","display_saison"]);
+      .in("key", ["display_mode","display_theme","display_vereinsnummer","display_saison",
+                  "display_mannschaft","display_gegner"]);
     const s = Object.fromEntries((data || []).map(r => [r.key, r.value]));
-    const newMode  = s.display_mode          || "schedule";
-    const newTheme = s.display_theme         || "dark";
-    const newVernr = s.display_vereinsnummer || "";
-    const newSais  = s.display_saison        || "";
-    if (newMode !== mode || newTheme !== theme || newVernr !== vereinsnr || newSais !== saison) {
+    if (
+      (s.display_mode          || "schedule") !== mode     ||
+      (s.display_theme         || "dark")     !== theme    ||
+      (s.display_vereinsnummer || "")         !== vereinsnr||
+      (s.display_saison        || "")         !== saison   ||
+      (s.display_mannschaft    || "")         !== mannschaft||
+      (s.display_gegner        || "")         !== gegner
+    ) {
       location.reload();
     }
   }, 10_000);
@@ -759,10 +763,13 @@ function renderHsMatch(match) {
     ${middleHtml}`;
 }
 
-async function loadHsMatch(vereinsnr, saison) {
+async function loadHsMatch(vereinsnr, saison, mannschaft, gegner) {
   try {
     const clubnr = String(vereinsnr).padStart(5, "0");
-    const resp = await fetch(`/api/btv-matches?clubnr=${clubnr}&saison=${saison}`);
+    const params = new URLSearchParams({ clubnr, saison });
+    if (mannschaft) params.set("mannschaft", mannschaft);
+    if (gegner)     params.set("gegner", gegner);
+    const resp = await fetch(`/api/btv-matches?${params}`);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
     renderHsMatch(data.match || null);
@@ -773,7 +780,7 @@ async function loadHsMatch(vereinsnr, saison) {
   }
 }
 
-function startHeimspielmodus(vereinsnr, saison) {
+function startHeimspielmodus(vereinsnr, saison, mannschaft, gegner) {
   // IDs umbenennen damit Uhr funktioniert
   document.getElementById("hs-date").id = "date-display2";
   document.getElementById("hs-time").id = "time-display2";
@@ -783,8 +790,8 @@ function startHeimspielmodus(vereinsnr, saison) {
 
   document.getElementById("heimspiel-app").style.display = "grid";
 
-  loadHsMatch(vereinsnr, saison);
-  setInterval(() => loadHsMatch(vereinsnr, saison), 60_000);
+  loadHsMatch(vereinsnr, saison, mannschaft, gegner);
+  setInterval(() => loadHsMatch(vereinsnr, saison, mannschaft, gegner), 60_000);
 }
 
 // ── MIDNIGHT RELOAD ───────────────────────────────────────────────────────
@@ -805,6 +812,8 @@ function scheduleMidnightReload() {
   const displayTheme = settings.display_theme         || "dark";
   const vereinsnr    = settings.display_vereinsnummer || "06085";
   const saison       = settings.display_saison        || "2026";
+  const mannschaft   = settings.display_mannschaft    || "";
+  const gegner       = settings.display_gegner        || "";
 
   // Theme gilt für alle Modi – immer zuerst setzen
   if (displayTheme === "light")    document.body.classList.add("theme-light");
@@ -812,7 +821,7 @@ function scheduleMidnightReload() {
 
   document.getElementById("loading").style.display = "none";
 
-  startSettingsPolling(displayMode, displayTheme, vereinsnr, saison);
+  startSettingsPolling(displayMode, displayTheme, vereinsnr, saison, mannschaft, gegner);
 
   // Weißer Bildschirm
   if (displayMode === "white") {
@@ -822,7 +831,7 @@ function scheduleMidnightReload() {
 
   // Heimspielmodus
   if (displayMode === "heimspiel") {
-    startHeimspielmodus(vereinsnr, saison);
+    startHeimspielmodus(vereinsnr, saison, mannschaft, gegner);
     scheduleMidnightReload();
     return;
   }
