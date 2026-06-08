@@ -1065,15 +1065,23 @@ function SettingsDisplayTab({onToast}) {
 
   const uploadBild=async(file)=>{
     setUploading(true);
-    const ext=file.name.split('.').pop().toLowerCase();
-    const path=`background.${ext}`;
-    const {error:upErr}=await sb.storage.from("display").upload(path,file,{upsert:true});
-    if(upErr){ onToast(`Upload-Fehler: ${upErr.message}`,"error"); setUploading(false); return; }
-    const {data:{publicUrl}}=sb.storage.from("display").getPublicUrl(path);
-    await sb.from("settings").upsert([{key:"display_bild_url",value:publicUrl}],{onConflict:"key"});
-    setBildUrl(publicUrl);
-    setUploading(false);
-    onToast("Bild hochgeladen ✓");
+    const img=new Image();
+    const objUrl=URL.createObjectURL(file);
+    img.onload=async()=>{
+      const maxW=1920;
+      const ratio=Math.min(1,maxW/img.width);
+      const canvas=document.createElement("canvas");
+      canvas.width=Math.round(img.width*ratio);
+      canvas.height=Math.round(img.height*ratio);
+      canvas.getContext("2d").drawImage(img,0,0,canvas.width,canvas.height);
+      URL.revokeObjectURL(objUrl);
+      const dataUrl=canvas.toDataURL("image/jpeg",0.85);
+      const {error}=await sb.from("settings").upsert([{key:"display_bild_url",value:dataUrl}],{onConflict:"key"});
+      if(error){ onToast(`Fehler: ${error.message}`,"error"); }
+      else{ setBildUrl(dataUrl); onToast("Bild gespeichert ✓"); }
+      setUploading(false);
+    };
+    img.src=objUrl;
   };
 
   const save=async()=>{
