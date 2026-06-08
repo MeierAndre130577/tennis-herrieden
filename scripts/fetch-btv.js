@@ -69,74 +69,82 @@ async function loadPage(page, url) {
   await page.waitForTimeout(2000);
 }
 
-// ── In einem Frame (Hauptseite oder iframe) nach Spielbericht suchen ──────
-async function searchForMatch(frame, heimTeam, gastTeam) {
-  // "Spielplan"-Tab klicken falls vorhanden
-  for (const label of ["Spielplan", "Spiele", "Begegnungen", "Spielergebnisse"]) {
-    try {
-      await frame.locator(`text=${label}`).first().click({ timeout: 2000 });
-      await frame.waitForTimeout(1500);
-      break;
-    } catch (_) {}
+
+// ── groupid aus btv.de URL extrahieren → widget.btv.de direkt öffnen ─────
+function toWidgetUrl(url) {
+  // https://www.btv.de/de/spielbetrieb/tabelle-spielplan.html?groupid=2165685
+  // → https://widget.btv.de/btvgroup/?groupid=2165685
+  const m = url.match(/groupid=(\d+)/);
+  if (m) return `https://widget.btv.de/btvgroup/?groupid=${m[1]}`;
+  // Falls schon eine widget.btv.de URL: direkt zurückgeben
+  if (url.includes("widget.btv.de")) return url;
+  return null;
+}
+
+// ── Auf dem Widget den Spielbericht-Link finden ───────────────────────────
+async function findMatchReportUrl(page, groupUrl, heimTeam, gastTeam) {
+  const widgetUrl = toWidgetUrl(groupUrl);
+  if (!widgetUrl) {
+    console.log(`Kann keine Widget-URL ableiten von: ${groupUrl}`);
+    return null;
   }
+  console.log(`Lade Widget direkt: ${widgetUrl}`);
+  await loadPage(page, widgetUrl);
 
-  const snippet = await frame.evaluate(() => document.body.innerText.slice(0, 800));
-  console.log("Frame-Inhalt (Auszug):\n" + snippet);
+  const snippet = await page.evaluate(() => document.body.innerText.slice(0, 600));
+  console.log("Widget-Inhalt (Auszug):\n" + snippet);
 
-  const allRows = await frame.evaluate(() =>
-    Array.from(document.querySelectorAll("tr, [class*='row'], [class*='match'], [class*='begegnung'], [class*='meeting']"))
+  // Alle Zeilen für Diagnose
+  const allRows = await page.evaluate(() =>
+    Array.from(document.querySelectorAll("tr"))
       .map(r => r.textContent.trim().replace(/\s+/g, " ").slice(0, 150))
-      .filter(t => t.length > 10)
-      .slice(0, 25)
+      .filter(t => t.length > 10).slice(0, 30)
   );
-  console.log("Zeilen im Frame:\n  " + allRows.join("\n  "));
+  console.log("Zeilen:\n  " + allRows.join("\n  "));
 
-  return await frame.evaluate(({ heim, gast }) => {
-    const rows = Array.from(
-      document.querySelectorAll("tr, [class*='row'], [class*='match'], [class*='begegnung'], [class*='meeting']")
-    );
+  // Matching-Zeile finden + alle möglichen Link-Varianten prüfen
+  const result = await page.evaluate(({ heim, gast }) => {
+    const rows = Array.from(document.querySelectorAll("tr"));
     for (const row of rows) {
       const text = row.textContent || "";
-      if (text.includes(heim) && text.includes(gast)) {
-        const prio = row.querySelector(
-          "a[href*='matchReport'], a[href*='spielbericht'], a[href*='begegnung'], a[href*='begid']"
-        );
-        if (prio) return prio.href;
-        const any = row.querySelector("a[href]");
-        if (any) return any.href;
+      if (!text.includes(heim) || !text.includes(gast)) continue;
+
+      // 1) Alle <a> mit echtem href
+      for (const a of row.querySelectorAll("a[href]")) {
+        const h = a.href;
+        if (h && h !== location.href && !h.endsWith("#") && !h.startsWith("javascript")) {
+          return { url: h, method: "a-href" };
+        }
       }
+      // 2) onclick-Attribute auslesen (z.B. onclick="openMatch(12345)")
+      for (const el of row.querySelectorAll("[onclick]")) {
+        const oc = el.getAttribute("onclick") || "";
+        const m = oc.match(/['"]?(https?:\/\/[^'"]+)['"]?/);
+        if (m) return { url: m[1], method: "onclick-url" };
+        const idm = oc.match(/\d{4,}/);
+        if (idm) return { url: `https://btv-prod.burdadigitalsystems.de/btvmatches/?begid=${idm[0]}`, method: "onclick-id" };
+      }
+      // 3) data-* Attribute
+      for (const el of row.querySelectorAll("[data-href],[data-url],[data-link],[data-begid]")) {
+        const val = el.dataset.href || el.dataset.url || el.dataset.link || el.dataset.begid;
+        if (val) return { url: val.startsWith("http") ? val : `https://btv-prod.burdadigitalsystems.de${val}`, method: "data-attr" };
+      }
+      // 4) HTML der Zeile für Diagnose zurückgeben
+      return { url: null, rowHtml: row.outerHTML.slice(0, 600) };
     }
     return null;
   }, { heim: heimTeam, gast: gastTeam });
-}
 
-// ── Auf Staffelseite den Link zum heutigen Spielbericht suchen ─────────────
-async function findMatchReportUrl(page, groupUrl, heimTeam, gastTeam) {
-  await loadPage(page, groupUrl);
-
-  // 1. Hauptseite durchsuchen
-  console.log("Suche in Hauptseite...");
-  let href = await searchForMatch(page, heimTeam, gastTeam);
-  if (href) { console.log(`Spielbericht in Hauptseite gefunden: ${href}`); return href; }
-
-  // 2. Alle iframes durchsuchen (btv.de bettet das Widget als iframe ein)
-  const frames = page.frames();
-  console.log(`Anzahl Frames: ${frames.length}`);
-  for (const frame of frames) {
-    const frameUrl = frame.url();
-    if (frameUrl === "about:blank" || frameUrl === "") continue;
-    console.log(`Suche in Frame: ${frameUrl}`);
-    try {
-      // Warten bis Frame geladen
-      await frame.waitForLoadState("load", { timeout: 8000 });
-      href = await searchForMatch(frame, heimTeam, gastTeam);
-      if (href) { console.log(`Spielbericht in Frame gefunden: ${href}`); return href; }
-    } catch (e) {
-      console.log(`Frame übersprungen: ${e.message}`);
-    }
+  if (!result) {
+    console.log("Keine Zeile mit beiden Teams gefunden.");
+    return null;
   }
-
-  console.log("Kein Spielbericht-Link gefunden.");
+  if (result.url) {
+    console.log(`Spielbericht gefunden (${result.method}): ${result.url}`);
+    return result.url;
+  }
+  // Kein Link gefunden – HTML ausgeben für weiteres Debugging
+  console.log("Zeile gefunden, aber kein Link. Row-HTML:\n" + result.rowHtml);
   return null;
 }
 
