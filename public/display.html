@@ -112,6 +112,35 @@
       background: #fff;
     }
 
+    /* ── BILD MODE ── */
+    #bild-screen {
+      display: none;
+      flex-direction: column;
+      height: 100vh;
+    }
+    #bild-screen header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 28px;
+      flex-shrink: 0;
+      background: var(--bg);
+    }
+    #bild-img-wrap {
+      flex: 1;
+      overflow: hidden;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #bild-img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: none;
+    }
+
     /* ── HEIMSPIEL MODE ── */
     #heimspiel-app {
       display: none;
@@ -444,6 +473,30 @@
 
 <div id="white-screen"></div>
 
+<!-- ── BILD MODE ── -->
+<div id="bild-screen">
+  <header>
+    <div class="logo-area">
+      <svg width="44" height="44" viewBox="0 0 32 32" fill="none">
+        <circle cx="16" cy="16" r="15" stroke="#22C55E" stroke-width="2"/>
+        <ellipse cx="16" cy="16" rx="5" ry="14" stroke="#22C55E" stroke-width="1.5"/>
+        <line x1="1" y1="16" x2="31" y2="16" stroke="#22C55E" stroke-width="1.5"/>
+      </svg>
+      <div>
+        <div class="logo-title">Tennis Herrieden</div>
+        <div class="logo-sub">Bildanzeige</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div id="bild-date" style="font-size:22px;font-weight:800;color:var(--green);letter-spacing:-0.3px;">–</div>
+      <div id="bild-time" style="font-size:42px;font-weight:800;color:var(--fg);letter-spacing:-1px;line-height:1;margin-top:2px;">–:–</div>
+    </div>
+  </header>
+  <div id="bild-img-wrap">
+    <img id="bild-img" alt=""/>
+  </div>
+</div>
+
 <!-- ── HEIMSPIEL ── -->
 <div id="heimspiel-app">
   <header id="hs-header">
@@ -647,6 +700,19 @@ function subscribeRealtime() {
     .subscribe();
 }
 
+// ── BILD CLOCK ────────────────────────────────────────────────────────────
+function updateBildClock() {
+  const now = new Date();
+  const day = DE_DAYS[now.getDay()];
+  const date = now.getDate();
+  const month = DE_MONTH[now.getMonth()];
+  const year = now.getFullYear();
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mm = String(now.getMinutes()).padStart(2, "0");
+  document.getElementById("bild-date").textContent = `${day}, ${date}. ${month} ${year}`;
+  document.getElementById("bild-time").textContent = `${hh}:${mm}`;
+}
+
 // ── SETTINGS POLLING ──────────────────────────────────────────────────────
 function startSettingsPolling(mode, theme, vereinsnr, saison, mannschaft, gegner) {
   setInterval(async () => {
@@ -806,7 +872,8 @@ function scheduleMidnightReload() {
 // ── INIT ──────────────────────────────────────────────────────────────────
 (async function init() {
   const { data: settingsData } = await sb.from("settings").select("*")
-    .in("key", ["display_mode","display_theme","display_vereinsnummer","display_saison"]);
+    .in("key", ["display_mode","display_theme","display_vereinsnummer","display_saison",
+                "display_bild_url"]);
   const settings    = Object.fromEntries((settingsData || []).map(r => [r.key, r.value]));
   const displayMode  = settings.display_mode          || "schedule";
   const displayTheme = settings.display_theme         || "dark";
@@ -814,6 +881,7 @@ function scheduleMidnightReload() {
   const saison       = settings.display_saison        || "2026";
   const mannschaft   = settings.display_mannschaft    || "";
   const gegner       = settings.display_gegner        || "";
+  const bildUrl      = settings.display_bild_url      || "";
 
   // Theme gilt für alle Modi – immer zuerst setzen
   if (displayTheme === "light")    document.body.classList.add("theme-light");
@@ -823,9 +891,24 @@ function scheduleMidnightReload() {
 
   startSettingsPolling(displayMode, displayTheme, vereinsnr, saison, mannschaft, gegner);
 
-  // Weißer Bildschirm
+  // Weißer Bildschirm (legacy)
   if (displayMode === "white") {
     document.getElementById("white-screen").style.display = "block";
+    return;
+  }
+
+  // Bildanzeige
+  if (displayMode === "bild") {
+    const screen = document.getElementById("bild-screen");
+    screen.style.display = "flex";
+    if (bildUrl) {
+      const img = document.getElementById("bild-img");
+      img.src = bildUrl;
+      img.style.display = "block";
+    }
+    updateBildClock();
+    setInterval(updateBildClock, 30_000);
+    scheduleMidnightReload();
     return;
   }
 

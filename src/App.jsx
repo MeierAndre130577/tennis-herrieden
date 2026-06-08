@@ -1041,12 +1041,14 @@ function SettingsDisplayTab({onToast}) {
   const [mannschaft,  setMannschaft] = useState("");
   const [gegner,      setGegner]     = useState("");
   const [matchUrl,    setMatchUrl]   = useState("");
+  const [bildUrl,     setBildUrl]    = useState("");
+  const [uploading,   setUploading]  = useState(false);
   const [saving,      setSaving]     = useState(false);
 
   useEffect(()=>{
     sb.from("settings").select("*")
       .in("key",["display_mode","display_theme","display_vereinsnummer","display_saison",
-                 "display_mannschaft","display_gegner","display_match_url"])
+                 "display_mannschaft","display_gegner","display_match_url","display_bild_url"])
       .then(({data})=>{
         if(!data) return;
         const map=Object.fromEntries(data.map(r=>[r.key,r.value]));
@@ -1057,8 +1059,22 @@ function SettingsDisplayTab({onToast}) {
         if(map.display_mannschaft)    setMannschaft(map.display_mannschaft);
         if(map.display_gegner)        setGegner(map.display_gegner);
         if(map.display_match_url)     setMatchUrl(map.display_match_url);
+        if(map.display_bild_url)      setBildUrl(map.display_bild_url);
       });
   },[]);
+
+  const uploadBild=async(file)=>{
+    setUploading(true);
+    const ext=file.name.split('.').pop().toLowerCase();
+    const path=`background.${ext}`;
+    const {error:upErr}=await sb.storage.from("display").upload(path,file,{upsert:true});
+    if(upErr){ onToast(`Upload-Fehler: ${upErr.message}`,"error"); setUploading(false); return; }
+    const {data:{publicUrl}}=sb.storage.from("display").getPublicUrl(path);
+    await sb.from("settings").upsert([{key:"display_bild_url",value:publicUrl}],{onConflict:"key"});
+    setBildUrl(publicUrl);
+    setUploading(false);
+    onToast("Bild hochgeladen ✓");
+  };
 
   const save=async()=>{
     setSaving(true);
@@ -1079,7 +1095,7 @@ function SettingsDisplayTab({onToast}) {
   const modes=[
     {id:"schedule",  icon:"📅", label:"Tagesbelegungsplan", desc:"Zeigt die heutigen Buchungen aller Plätze"},
     {id:"heimspiel", icon:"🏆", label:"Heimspielmodus",     desc:"Zeigt live den aktuellen Spielstand eines Heimspiels (BTV)"},
-    {id:"white",     icon:"⬜", label:"Weißer Bildschirm",  desc:"Leerer weißer Bildschirm (Testmodus)"},
+    {id:"bild",      icon:"🖼️", label:"Bildanzeige",        desc:"Zeigt ein Bild mit Kopfleiste (Datum & Uhrzeit)"},
   ];
   const themes=[
     {id:"dark",     label:"Dunkel",        desc:"Navy-Blau Hintergrund (Standard)",       bg:"#0F172A",fg:"#F8FAFC"},
@@ -1152,6 +1168,29 @@ function SettingsDisplayTab({onToast}) {
                 {matchUrl&&<div style={{marginTop:6,wordBreak:"break-all",opacity:0.7,fontSize:11}}>
                   🔗 {matchUrl.slice(0,70)}{matchUrl.length>70?"…":""}
                 </div>}
+              </div>
+            )}
+          </div>
+        )}
+
+        {mode==="bild"&&(
+          <div style={{marginBottom:24,background:"#F9FAFB",border:"1.5px solid #E5E7EB",borderRadius:12,padding:16}}>
+            <div style={{fontWeight:700,fontSize:13,color:"#374151",marginBottom:14}}>🖼️ Bild auswählen</div>
+            <input type="file" accept="image/*" id="bild-file-input" style={{display:"none"}}
+              onChange={e=>e.target.files[0]&&uploadBild(e.target.files[0])}/>
+            <label htmlFor="bild-file-input"
+              style={{...S.primaryBtn,display:"inline-block",cursor:uploading?"not-allowed":"pointer",opacity:uploading?0.6:1}}>
+              {uploading?"Hochladen…":"📁 Bild hochladen"}
+            </label>
+            {bildUrl&&(
+              <div style={{marginTop:14}}>
+                <img src={bildUrl} alt="" style={{width:"100%",maxHeight:180,objectFit:"contain",borderRadius:8,background:"#E5E7EB"}}/>
+                <div style={{fontSize:11,color:"#9CA3AF",marginTop:6}}>Aktuell hinterlegtes Bild · wird sofort auf dem Display angezeigt</div>
+              </div>
+            )}
+            {!bildUrl&&(
+              <div style={{marginTop:10,fontSize:12,color:"#9CA3AF"}}>
+                Noch kein Bild — weißer Hintergrund mit Kopfleiste wird angezeigt.
               </div>
             )}
           </div>
