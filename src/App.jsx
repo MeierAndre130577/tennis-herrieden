@@ -1086,11 +1086,12 @@ function SettingsDisplayTab({onToast}) {
 
   const save=async()=>{
     setSaving(true);
-    await sb.from("settings").upsert([
+    const {error}=await sb.from("settings").upsert([
       {key:"display_mode",value:mode},
       {key:"display_theme",value:theme},
     ],{onConflict:"key"});
     setSaving(false);
+    if(error){ onToast(`Fehler: ${error.message}`,"error"); return; }
     onToast("Display-Einstellungen gespeichert ✓");
   };
 
