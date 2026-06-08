@@ -2,8 +2,8 @@
 // Gibt alle Mannschaften eines Vereins zurück
 // GET /api/btv-teams?clubnr=06085
 
-const chromium = require("@sparticuz/chromium");
-const { chromium: playwright } = require("playwright-core");
+const chromium  = require("@sparticuz/chromium");
+const puppeteer = require("puppeteer-core");
 
 module.exports.config = { maxDuration: 45 };
 
@@ -15,7 +15,7 @@ module.exports = async function handler(req, res) {
 
   let browser;
   try {
-    browser = await playwright.launch({
+    browser = await puppeteer.launch({
       args:            chromium.args,
       defaultViewport: { width: 1280, height: 900 },
       executablePath:  await chromium.executablePath(),
@@ -25,14 +25,13 @@ module.exports = async function handler(req, res) {
     const page = await browser.newPage();
     await page.goto(
       `https://btv-prod.burdadigitalsystems.de/btvteams/?clubnr=${clubnr}`,
-      { waitUntil: "networkidle", timeout: 25_000 }
+      { waitUntil: "networkidle0", timeout: 25_000 }
     );
     await page.waitForTimeout(2500);
 
     const teams = await page.evaluate(() => {
-      // ZK Framework rendert Mannschaftsnamen als Labels/Links
       const candidates = Array.from(
-        document.querySelectorAll("a, span, td, .z-label, .z-listitem")
+        document.querySelectorAll("a, span, td, label")
       )
         .map(el => el.textContent.trim())
         .filter(t =>
@@ -46,7 +45,7 @@ module.exports = async function handler(req, res) {
     await browser.close();
     res.json({ teams, clubnr });
   } catch (err) {
-    if (browser) await browser.close();
+    if (browser) await browser.close().catch(() => {});
     console.error("btv-teams error:", err.message);
     res.status(500).json({ error: err.message, teams: [] });
   }

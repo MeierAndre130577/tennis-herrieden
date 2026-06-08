@@ -1,9 +1,9 @@
 // api/btv-spiele.js
-// Gibt alle Heimspiele einer Mannschaft zurück
+// Gibt Heimspiele einer Mannschaft zurück
 // GET /api/btv-spiele?clubnr=06085&mannschaft=Herren+I
 
-const chromium = require("@sparticuz/chromium");
-const { chromium: playwright } = require("playwright-core");
+const chromium  = require("@sparticuz/chromium");
+const puppeteer = require("puppeteer-core");
 
 module.exports.config = { maxDuration: 45 };
 
@@ -11,12 +11,12 @@ module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Cache-Control", "s-maxage=1800, stale-while-revalidate=300");
 
-  const clubnr     = String(req.query.clubnr     || "06085").padStart(5, "0");
+  const clubnr     = String(req.query.clubnr || "06085").padStart(5, "0");
   const mannschaft = req.query.mannschaft || "";
 
   let browser;
   try {
-    browser = await playwright.launch({
+    browser = await puppeteer.launch({
       args:            chromium.args,
       defaultViewport: { width: 1280, height: 900 },
       executablePath:  await chromium.executablePath(),
@@ -26,85 +26,68 @@ module.exports = async function handler(req, res) {
     const page = await browser.newPage();
     await page.goto(
       `https://btv-prod.burdadigitalsystems.de/btvmeetings/?clubnr=${clubnr}`,
-      { waitUntil: "networkidle", timeout: 25_000 }
+      { waitUntil: "networkidle0", timeout: 25_000 }
     );
     await page.waitForTimeout(2500);
 
-    // Klick auf "Heimspiele"-Filter
+    // Heimspiele-Filter klicken
     try {
-      const heimBtn = page.locator("text=Heimspiele").first();
-      await heimBtn.click({ timeout: 5000 });
+      await page.evaluate(() => {
+        const els = Array.from(document.querySelectorAll("button, a, span, td, label"));
+        const el  = els.find(e => e.textContent.trim() === "Heimspiele");
+        if (el) el.click();
+      });
       await page.waitForTimeout(2000);
-    } catch (_) { /* kein Filter vorhanden */ }
-
-    // Falls Mannschaft angegeben: nach ihr filtern
-    if (mannschaft) {
-      try {
-        // Versuche einen Mannschafts-Tab/-Filter anzuklicken
-        const mBtn = page.locator(`text=${mannschaft}`).first();
-        await mBtn.click({ timeout: 4000 });
-        await page.waitForTimeout(1500);
-      } catch (_) { /* kein Mannschaftsfilter */ }
-    }
+    } catch (_) {}
 
     const spiele = await page.evaluate((mName) => {
       const result = [];
-      const rows = Array.from(document.querySelectorAll("tr, .z-row, [class*='row']"));
+      const rows   = Array.from(document.querySelectorAll("tr, [class*='row']"));
 
       for (const row of rows) {
         const text = row.textContent || "";
-        // Datumsformat TT.MM.JJJJ
+        if (mName && !text.includes(mName)) continue;
+
         const dateMatch = text.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
         if (!dateMatch) continue;
         const [, d, m, y] = dateMatch;
-        const isoDate = `${y}-${m.padStart(2,"0")}-${d.padStart(2,"0")}`;
+        const isoDate     = `${y}-${m.padStart(2,"0")}-${d.padStart(2,"0")}`;
         const displayDate = `${d}.${m}.${y}`;
 
-        // Wenn Mannschaft angegeben, nur deren Spiele
-        if (mName && !text.includes(mName)) continue;
-
-        // Teams extrahieren
-        const cells = Array.from(row.querySelectorAll("td, .z-cell, span"))
+        const cells = Array.from(row.querySelectorAll("td, span"))
           .map(el => el.textContent.trim())
-          .filter(t => t.length > 2);
+          .filter(t => t.length > 2 && t.length < 80);
 
-        // Gegner herausfinden (erstes Team das nicht Heimteam ist)
-        let gegner = "–";
-        for (const cell of cells) {
+        // Gegner = erstes längeres Textfeld das kein Datum/Zahl/Mannschaftsname ist
+        let gegner = null;
+        for (const c of cells) {
           if (
-            cell.length > 4 &&
-            cell.length < 60 &&
-            !cell.match(/^\d/) &&
-            !cell.match(/^(Heimspiel|Auswärtsspiel)/i) &&
-            !cell.includes(mName || "")
+            c.length > 5 &&
+            !c.match(/^\d/) &&
+            !c.match(/^\d{1,2}\.\d{1,2}\./) &&
+            !(mName && c.includes(mName))
           ) {
-            gegner = cell;
+            gegner = c;
             break;
           }
         }
+        if (!gegner) continue;
 
-        // Begegnungs-ID aus Links suchen
-        let begid = null;
-        const link = row.querySelector("a[href*='begid'], a[href*='btvmatchreport']");
-        if (link) {
-          const href = link.getAttribute("href") || "";
-          const m2 = href.match(/begid[=\/](\d+)/i);
-          if (m2) begid = m2[1];
-        }
+        const link  = row.querySelector("a[href*='begid'], a[href*='spielbericht'], a[href*='matchreport']");
+        const href  = link ? link.getAttribute("href") : null;
+        const bm    = href ? href.match(/begid[=\/](\d+)/i) : null;
+        const begid = bm ? bm[1] : null;
 
-        if (gegner !== "–") {
-          result.push({ isoDate, displayDate, gegner, begid });
-        }
+        result.push({ isoDate, displayDate, gegner, begid });
       }
 
-      // Duplikate entfernen, nach Datum sortieren
+      // Deduplizieren + sortieren
       const seen = new Set();
       return result
         .filter(s => {
-          const key = s.isoDate + s.gegner;
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
+          const k = s.isoDate + s.gegner;
+          if (seen.has(k)) return false;
+          seen.add(k); return true;
         })
         .sort((a, b) => a.isoDate.localeCompare(b.isoDate));
     }, mannschaft);
@@ -112,7 +95,7 @@ module.exports = async function handler(req, res) {
     await browser.close();
     res.json({ spiele, clubnr, mannschaft });
   } catch (err) {
-    if (browser) await browser.close();
+    if (browser) await browser.close().catch(() => {});
     console.error("btv-spiele error:", err.message);
     res.status(500).json({ error: err.message, spiele: [] });
   }
