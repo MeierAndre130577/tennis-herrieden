@@ -51,17 +51,20 @@ async function acceptCookies(page) {
 
 // ── Seite laden + auf Inhalt warten ────────────────────────────────────────
 async function loadPage(page, url) {
-  await page.goto(url, { waitUntil: "networkidle", timeout: 30_000 });
-  // Cookie-Banner wegklicken
+  // domcontentloaded statt networkidle – btv.de macht endlos Tracker-Requests
+  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
+  // Cookie-Banner wegklicken (erscheint kurz nach dem Laden)
+  await page.waitForTimeout(2000);
   await acceptCookies(page);
-  // Warten bis "Processing..." weg ist
+  // Warten bis "Processing..." weg ist (SPA lädt Daten nach)
   try {
     await page.waitForFunction(
       () => !document.body.textContent.includes("Processing"),
-      { timeout: 20_000 }
+      { timeout: 25_000 }
     );
+    console.log("Inhalt geladen (Processing verschwunden)");
   } catch (_) {
-    console.log("Warnung: Seite zeigt noch 'Processing' nach 20s");
+    console.log("Warnung: Seite zeigt noch 'Processing' nach 25s");
   }
   await page.waitForTimeout(2000);
 }
@@ -125,7 +128,7 @@ async function findMatchReportUrl(page, groupUrl, heimTeam, gastTeam) {
     console.log(`Suche in Frame: ${frameUrl}`);
     try {
       // Warten bis Frame geladen
-      await frame.waitForLoadState("domcontentloaded", { timeout: 5000 });
+      await frame.waitForLoadState("load", { timeout: 8000 });
       href = await searchForMatch(frame, heimTeam, gastTeam);
       if (href) { console.log(`Spielbericht in Frame gefunden: ${href}`); return href; }
     } catch (e) {
