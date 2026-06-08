@@ -61,6 +61,9 @@ async function getWidgetHtml(groupUrl) {
 // ── Aus HTML-String: Spielbericht-Link für Heim vs. Gast finden ───────────
 function findReportLinkInHtml(html, heimTeam, gastTeam) {
   // Alle <tr>...</tr> Blöcke extrahieren
+  // HTML-Auszug für Diagnose
+  console.log("HTML-Auszug (erste 3000 Zeichen):\n" + html.slice(0, 3000));
+
   const trMatches = [...html.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)];
   console.log(`HTML-Zeilen (tr): ${trMatches.length}`);
 
