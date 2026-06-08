@@ -1069,25 +1069,32 @@ function SettingsMembersTab({onToast}) {
 
 // ── SETTINGS: DISPLAY ────────────────────────────────────────────────────
 function SettingsDisplayTab({onToast}) {
-  const [mode,setMode]   = useState("schedule");
-  const [theme,setTheme] = useState("dark");
-  const [saving,setSaving] = useState(false);
+  const [mode,     setMode]   = useState("schedule");
+  const [theme,    setTheme]  = useState("dark");
+  const [vereinsnr,setVernr]  = useState("6085");
+  const [saison,   setSaison] = useState("2026");
+  const [saving,   setSaving] = useState(false);
 
   useEffect(()=>{
-    sb.from("settings").select("*").in("key",["display_mode","display_theme"])
-      .then(({data,error})=>{
-        if(error) return;
-        const map=Object.fromEntries((data||[]).map(r=>[r.key,r.value]));
-        if(map.display_mode)  setMode(map.display_mode);
-        if(map.display_theme) setTheme(map.display_theme);
+    sb.from("settings").select("*")
+      .in("key",["display_mode","display_theme","display_vereinsnummer","display_saison"])
+      .then(({data})=>{
+        if(!data) return;
+        const map=Object.fromEntries(data.map(r=>[r.key,r.value]));
+        if(map.display_mode)          setMode(map.display_mode);
+        if(map.display_theme)         setTheme(map.display_theme);
+        if(map.display_vereinsnummer) setVernr(map.display_vereinsnummer);
+        if(map.display_saison)        setSaison(map.display_saison);
       });
   },[]);
 
   const save=async()=>{
     setSaving(true);
     const {error}=await sb.from("settings").upsert([
-      {key:"display_mode",value:mode},
-      {key:"display_theme",value:theme},
+      {key:"display_mode",          value:mode},
+      {key:"display_theme",         value:theme},
+      {key:"display_vereinsnummer", value:vereinsnr},
+      {key:"display_saison",        value:saison},
     ],{onConflict:"key"});
     setSaving(false);
     if(error){ onToast(`Fehler: ${error.message}`,"error"); return; }
@@ -1095,13 +1102,14 @@ function SettingsDisplayTab({onToast}) {
   };
 
   const modes=[
-    {id:"schedule",icon:"📅",label:"Tagesbelegungsplan",desc:"Zeigt die heutigen Buchungen aller Plätze"},
-    {id:"white",   icon:"⬜",label:"Weißer Bildschirm", desc:"Leerer weißer Bildschirm (Testmodus)"},
+    {id:"schedule",  icon:"📅", label:"Tagesbelegungsplan", desc:"Zeigt die heutigen Buchungen aller Plätze"},
+    {id:"heimspiel", icon:"🏆", label:"Heimspielmodus",     desc:"Zeigt live den aktuellen Spielstand eines Heimspiels (BTV)"},
+    {id:"white",     icon:"⬜", label:"Weißer Bildschirm",  desc:"Leerer weißer Bildschirm (Testmodus)"},
   ];
   const themes=[
-    {id:"dark",     label:"Dunkel",        desc:"Navy-Blau Hintergrund (Standard)",          bg:"#0F172A",fg:"#F8FAFC"},
-    {id:"light",    label:"Hell",           desc:"Weißer Hintergrund, dunkle Schrift",         bg:"#F8FAFC",fg:"#0F172A"},
-    {id:"contrast", label:"Hoher Kontrast", desc:"Schwarz-Weiß für sehr helle Umgebungen",    bg:"#FFFFFF",fg:"#000000"},
+    {id:"dark",     label:"Dunkel",        desc:"Navy-Blau Hintergrund (Standard)",       bg:"#0F172A",fg:"#F8FAFC"},
+    {id:"light",    label:"Hell",          desc:"Weißer Hintergrund, dunkle Schrift",      bg:"#F8FAFC",fg:"#0F172A"},
+    {id:"contrast", label:"Hoher Kontrast",desc:"Schwarz-Weiß für sehr helle Umgebungen", bg:"#FFFFFF",fg:"#000000"},
   ];
 
   return (
@@ -1113,7 +1121,10 @@ function SettingsDisplayTab({onToast}) {
         <SectTitle>Anzeigemodus</SectTitle>
         <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:24}}>
           {modes.map(m=>(
-            <button key={m.id} onClick={()=>setMode(m.id)} style={{...S.card,border:`2px solid ${mode===m.id?"#8B5CF6":"#E5E7EB"}`,background:mode===m.id?"#F5F3FF":"#fff",display:"flex",alignItems:"center",gap:14,padding:"14px 16px",marginBottom:0,cursor:"pointer",textAlign:"left"}}>
+            <button key={m.id} onClick={()=>setMode(m.id)}
+              style={{...S.card,border:`2px solid ${mode===m.id?"#8B5CF6":"#E5E7EB"}`,
+                background:mode===m.id?"#F5F3FF":"#fff",display:"flex",alignItems:"center",
+                gap:14,padding:"14px 16px",marginBottom:0,cursor:"pointer",textAlign:"left"}}>
               <span style={{fontSize:28}}>{m.icon}</span>
               <div style={{flex:1}}>
                 <div style={{fontWeight:700,fontSize:14}}>{m.label}</div>
@@ -1124,30 +1135,54 @@ function SettingsDisplayTab({onToast}) {
           ))}
         </div>
 
-        {mode==="schedule"&&(<>
-          <SectTitle>Farbschema des Tagesbelegungsplans</SectTitle>
-          <div style={{fontSize:12,color:"#6B7280",marginBottom:12}}>Das Display befindet sich in einer hellen Umgebung – wähle ein Schema mit ausreichend Kontrast.</div>
-          <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:24}}>
-            {themes.map(t=>(
-              <button key={t.id} onClick={()=>setTheme(t.id)} style={{...S.card,border:`2px solid ${theme===t.id?"#8B5CF6":"#E5E7EB"}`,background:theme===t.id?"#F5F3FF":"#fff",display:"flex",alignItems:"center",gap:14,padding:"14px 16px",marginBottom:0,cursor:"pointer",textAlign:"left"}}>
-                <div style={{width:36,height:36,borderRadius:8,background:t.bg,border:"1.5px solid #D1D5DB",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                  <span style={{color:t.fg,fontWeight:800,fontSize:13}}>Aa</span>
-                </div>
-                <div style={{flex:1}}>
-                  <div style={{fontWeight:700,fontSize:14}}>{t.label}</div>
-                  <div style={{fontSize:12,color:"#6B7280",marginTop:2}}>{t.desc}</div>
-                </div>
-                {theme===t.id&&<span style={{color:"#8B5CF6",fontWeight:800,fontSize:18}}>✓</span>}
-              </button>
-            ))}
+        {mode==="heimspiel"&&(
+          <div style={{marginBottom:24}}>
+            <SectTitle>Heimspiel-Einstellungen</SectTitle>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <div>
+                <div style={{fontSize:12,fontWeight:700,color:"#374151",marginBottom:6}}>Vereinsnummer (BTV)</div>
+                <input value={vereinsnr} onChange={e=>setVernr(e.target.value)}
+                  placeholder="z.B. 6085" style={{...S.input,width:"100%"}}/>
+              </div>
+              <div>
+                <div style={{fontSize:12,fontWeight:700,color:"#374151",marginBottom:6}}>Saison</div>
+                <input value={saison} onChange={e=>setSaison(e.target.value)}
+                  placeholder="z.B. 2026" style={{...S.input,width:"100%"}}/>
+              </div>
+            </div>
           </div>
-        </>)}
+        )}
+
+        <SectTitle>Farbschema</SectTitle>
+        <div style={{fontSize:12,color:"#6B7280",marginBottom:12}}>
+          Gilt übergreifend für alle Anzeigemodi.
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:24}}>
+          {themes.map(t=>(
+            <button key={t.id} onClick={()=>setTheme(t.id)}
+              style={{...S.card,border:`2px solid ${theme===t.id?"#8B5CF6":"#E5E7EB"}`,
+                background:theme===t.id?"#F5F3FF":"#fff",display:"flex",alignItems:"center",
+                gap:14,padding:"14px 16px",marginBottom:0,cursor:"pointer",textAlign:"left"}}>
+              <div style={{width:36,height:36,borderRadius:8,background:t.bg,border:"1.5px solid #D1D5DB",
+                display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                <span style={{color:t.fg,fontWeight:800,fontSize:13}}>Aa</span>
+              </div>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:700,fontSize:14}}>{t.label}</div>
+                <div style={{fontSize:12,color:"#6B7280",marginTop:2}}>{t.desc}</div>
+              </div>
+              {theme===t.id&&<span style={{color:"#8B5CF6",fontWeight:800,fontSize:18}}>✓</span>}
+            </button>
+          ))}
+        </div>
 
         <div style={{display:"flex",alignItems:"center",gap:16}}>
-          <button style={{...S.primaryBtn,background:"#8B5CF6",opacity:saving?0.6:1}} onClick={save} disabled={saving}>
+          <button style={{...S.primaryBtn,background:"#8B5CF6",opacity:saving?0.6:1}}
+            onClick={save} disabled={saving}>
             {saving?"Speichern…":"Einstellungen speichern"}
           </button>
-          <a href="/display.html" target="_blank" rel="noopener noreferrer" style={{color:"#8B5CF6",fontSize:13,fontWeight:600,textDecoration:"none"}}>
+          <a href="/display.html" target="_blank" rel="noopener noreferrer"
+            style={{color:"#8B5CF6",fontSize:13,fontWeight:600,textDecoration:"none"}}>
             Display öffnen ↗
           </a>
         </div>

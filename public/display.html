@@ -112,6 +112,85 @@
       background: #fff;
     }
 
+    /* ── HEIMSPIEL MODE ── */
+    #heimspiel-app {
+      display: none;
+      grid-template-rows: auto 1fr auto;
+      height: 100vh;
+      padding: 2vh 2.5vw 1.5vh;
+      gap: 1.5vh;
+    }
+
+    /* Zusätzliche CSS-Vars für Heimspiel-Farben */
+    :root {
+      --win-bg:   #14532D; --win-fg:  #4ADE80;
+      --loss-bg:  #450A0A; --loss-fg: #FCA5A5;
+      --live-bg:  #78350F; --live-fg: #FCD34D;
+      --bg3:      #334155;
+    }
+    body.theme-light {
+      --win-bg:   #DCFCE7; --win-fg:  #166534;
+      --loss-bg:  #FEE2E2; --loss-fg: #991B1B;
+      --live-bg:  #FEF3C7; --live-fg: #92400E;
+      --bg3:      #E2E8F0;
+    }
+    body.theme-contrast {
+      --win-bg:   #052E16; --win-fg:  #86EFAC;
+      --loss-bg:  #450A0A; --loss-fg: #FCA5A5;
+      --live-bg:  #451A03; --live-fg: #FDE68A;
+      --bg3:      #1A1A1A;
+    }
+
+    /* Header */
+    #hs-header { display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+    .hs-header-left { display:flex; flex-direction:column; gap:2px; }
+    .hs-league { font-size:clamp(11px,1.1vw,16px); font-weight:700; color:var(--slate); text-transform:uppercase; letter-spacing:.8px; }
+    .hs-team   { font-size:clamp(18px,2vw,30px);   font-weight:800; color:var(--fg); }
+
+    /* Scoreboard */
+    .hs-scoreboard { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:2vw; flex-shrink:0; }
+    .hs-team-block { display:flex; flex-direction:column; gap:4px; }
+    .hs-team-home  { text-align:right; }
+    .hs-team-away  { text-align:left; }
+    .hs-team-label { font-size:clamp(10px,.9vw,14px); font-weight:700; text-transform:uppercase; letter-spacing:.8px; color:var(--slate); }
+    .hs-team-name  { font-size:clamp(20px,3vw,46px); font-weight:800; line-height:1.1; color:var(--fg); }
+    .hs-team-away .hs-team-name { color:var(--slate); }
+    .hs-score-center { display:flex; flex-direction:column; align-items:center; gap:8px; min-width:12vw; }
+    .hs-score-big { font-size:clamp(60px,10vw,130px); font-weight:800; letter-spacing:-4px; line-height:1; }
+    .hs-score-done     { color:var(--win-fg); }
+    .hs-score-live     { color:var(--live-fg); }
+    .hs-score-upcoming { color:var(--slate); }
+    .hs-badge { font-size:clamp(10px,.9vw,13px); font-weight:800; padding:4px 14px; border-radius:20px; letter-spacing:.7px; text-transform:uppercase; white-space:nowrap; }
+    .hs-badge-done     { background:var(--win-bg);  color:var(--win-fg); }
+    .hs-badge-live     { background:var(--live-bg); color:var(--live-fg); animation:livepulse 1.5s ease-in-out infinite; }
+    .hs-badge-upcoming { background:var(--bg2);     color:var(--slate); border:1px solid var(--border); }
+    @keyframes livepulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+    /* Rubbers */
+    .hs-rubbers { flex:1; display:flex; flex-direction:column; gap:.8vh; min-height:0; }
+    .hs-rubbers-label { font-size:clamp(10px,.9vw,13px); font-weight:700; color:var(--slate); text-transform:uppercase; letter-spacing:.8px; text-align:center; border-top:1px solid var(--border); padding-top:.8vh; }
+    .hs-rubbers-grid { flex:1; display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr); gap:clamp(4px,.6vw,10px); min-height:0; }
+    .hs-rubber { background:var(--bg2); border-radius:clamp(6px,.6vw,12px); padding:clamp(8px,.8vh,14px) clamp(10px,1vw,18px); display:flex; align-items:center; gap:clamp(6px,.7vw,12px); }
+    .hs-rubber-num { font-size:clamp(22px,2.2vw,34px); font-weight:800; color:var(--slate); min-width:clamp(36px,3.5vw,56px); text-transform:uppercase; flex-shrink:0; }
+    .hs-rubber-players { flex:1; min-width:0; }
+    .hs-rubber-home { font-size:clamp(22px,2.2vw,36px); font-weight:700; color:var(--slate); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .hs-rubber-away { font-size:clamp(16px,1.6vw,26px); color:var(--slate); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; opacity:.7; }
+    .hs-rubber-score { font-size:clamp(22px,2.2vw,36px); font-weight:800; white-space:nowrap; color:var(--fg); flex-shrink:0; }
+    .hs-rubber-score.live { color:var(--live-fg); }
+    .hs-rubber-result { width:clamp(36px,3.2vw,52px); height:clamp(36px,3.2vw,52px); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:clamp(16px,1.6vw,26px); font-weight:800; flex-shrink:0; }
+    .hs-result-win  { background:var(--win-bg);  color:var(--win-fg); }
+    .hs-result-loss { background:var(--loss-bg); color:var(--loss-fg); }
+    .hs-result-live { background:var(--live-bg); color:var(--live-fg); }
+    .hs-result-open { background:var(--bg2); color:var(--border); border:1px solid var(--border); }
+
+    /* Upcoming box */
+    .hs-upcoming { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1.5vh; background:var(--bg2); border-radius:clamp(8px,1vw,16px); text-align:center; }
+    .hs-upcoming-time { font-size:clamp(48px,8vw,110px); font-weight:800; color:var(--slate); letter-spacing:-2px; line-height:1; }
+    .hs-upcoming-hint { font-size:clamp(13px,1.3vw,20px); color:var(--slate); font-weight:600; }
+
+    /* Loading state within heimspiel */
+    .hs-loading { flex:1; display:flex; align-items:center; justify-content:center; color:var(--slate); font-size:clamp(14px,1.4vw,20px); gap:12px; }
+
     /* ── LAYOUT ── */
     #app {
       display: flex;
@@ -365,6 +444,27 @@
 
 <div id="white-screen"></div>
 
+<!-- ── HEIMSPIEL ── -->
+<div id="heimspiel-app">
+  <header id="hs-header">
+    <div class="hs-header-left">
+      <div class="hs-league" id="hs-league">–</div>
+      <div class="hs-team"   id="hs-team">–</div>
+    </div>
+    <div class="header-right">
+      <div id="hs-date">–</div>
+      <div id="hs-time">–:–</div>
+    </div>
+  </header>
+  <main id="hs-main" style="display:flex;flex-direction:column;justify-content:flex-start;gap:1.5vh;min-height:0;flex:1">
+    <div class="hs-loading"><div class="spinner"></div><span>Lade Spielstand…</span></div>
+  </main>
+  <footer style="display:flex;align-items:center;justify-content:space-between;font-size:clamp(10px,.9vw,13px);color:var(--slate)">
+    <div style="display:flex;align-items:center;gap:6px"><div class="dot"></div><span id="hs-status">Verbunden</span></div>
+    <span>Tennis Herrieden · Heimspielmodus</span>
+  </footer>
+</div>
+
 <div id="app" style="display:none">
   <header>
     <div class="logo-area">
@@ -548,16 +648,143 @@ function subscribeRealtime() {
 }
 
 // ── SETTINGS POLLING ──────────────────────────────────────────────────────
-function startSettingsPolling(mode, theme) {
+function startSettingsPolling(mode, theme, vereinsnr, saison) {
   setInterval(async () => {
-    const { data } = await sb.from("settings").select("*").in("key", ["display_mode", "display_theme"]);
+    const { data } = await sb.from("settings").select("*")
+      .in("key", ["display_mode","display_theme","display_vereinsnummer","display_saison"]);
     const s = Object.fromEntries((data || []).map(r => [r.key, r.value]));
-    const newMode  = s.display_mode  || "schedule";
-    const newTheme = s.display_theme || "dark";
-    if (newMode !== mode || newTheme !== theme) {
+    const newMode  = s.display_mode          || "schedule";
+    const newTheme = s.display_theme         || "dark";
+    const newVernr = s.display_vereinsnummer || "";
+    const newSais  = s.display_saison        || "";
+    if (newMode !== mode || newTheme !== theme || newVernr !== vereinsnr || newSais !== saison) {
       location.reload();
     }
   }, 10_000);
+}
+
+// ── HEIMSPIEL ─────────────────────────────────────────────────────────────
+const RUBBER_ORDER = ["E1","E3","E5","E2","E4","E6","D1","D2","D3"];
+const RESULT_LABEL = { win:"W", loss:"N", live:"●", open:"?" };
+
+function applyHsTheme() {
+  // Theme wurde schon auf body gesetzt – Uhr teilen
+  const el = document.getElementById("hs-date");
+  const et = document.getElementById("hs-time");
+  if (el && et) {
+    // Uhr-Elemente im hs-header nutzen dieselbe updateClock-Logik
+    document.getElementById("hs-date").id = "date-display2";
+    document.getElementById("hs-time").id = "time-display2";
+  }
+}
+
+function updateHsClock() {
+  const now = new Date();
+  const day = DE_DAYS[now.getDay()];
+  const date = now.getDate();
+  const month = DE_MONTH[now.getMonth()];
+  const year = now.getFullYear();
+  const hh = String(now.getHours()).padStart(2,"0");
+  const mm = String(now.getMinutes()).padStart(2,"0");
+  const d2 = document.getElementById("date-display2");
+  const t2 = document.getElementById("time-display2");
+  if (d2) d2.textContent = `${day}, ${date}. ${month} ${year}`;
+  if (t2) { t2.textContent = `${hh}:${mm}`; t2.style.cssText = "font-size:clamp(28px,3.5vw,52px);font-weight:800;color:var(--fg);letter-spacing:-1px;line-height:1"; }
+}
+
+function renderHsMatch(match) {
+  const main = document.getElementById("hs-main");
+  if (!match) {
+    main.innerHTML = `<div class="hs-loading">Kein Heimspiel heute gefunden</div>`;
+    return;
+  }
+
+  document.getElementById("hs-league").textContent = match.league || "–";
+  document.getElementById("hs-team").textContent   = (match.teamName || "–") + " · Tennis Herrieden";
+
+  const rubbers = match.rubbers || [];
+  const wins  = rubbers.filter(r => r.result === "win").length;
+  const losses= rubbers.filter(r => r.result === "loss").length;
+  const status= match.status; // "upcoming" | "live" | "done"
+
+  const scoreClass = { upcoming:"hs-score-upcoming", live:"hs-score-live", done:"hs-score-done" }[status] || "hs-score-upcoming";
+  const badgeClass = { upcoming:"hs-badge-upcoming", live:"hs-badge-live",  done:"hs-badge-done"  }[status] || "hs-badge-upcoming";
+  const badgeLabel = { upcoming:"Noch nicht begonnen", live:"● Läuft", done:"✓ Abgeschlossen" }[status] || "–";
+  const scoreText  = status === "upcoming" ? "–:–" : `${wins}:${losses}`;
+
+  let middleHtml = "";
+  if (status === "upcoming") {
+    middleHtml = `
+      <div class="hs-upcoming">
+        <div class="hs-upcoming-time">${match.time || "–"}</div>
+        <div class="hs-upcoming-hint">Aufstellung noch nicht eingetragen</div>
+      </div>`;
+  } else {
+    // Grid in Reihenfolge: E1,E3,E5 / E2,E4,E6 / D1,D2,D3
+    const rubberMap = Object.fromEntries(rubbers.map(r => [r.id, r]));
+    const rubbersOrdered = RUBBER_ORDER.map(id => rubberMap[id] || { id, home:"–", away:"–", score:"–", result:"open" });
+    const rubberRows = rubbersOrdered.map(r => `
+      <div class="hs-rubber">
+        <span class="hs-rubber-num">${r.id}</span>
+        <div class="hs-rubber-players">
+          <div class="hs-rubber-home">${r.home}</div>
+          <div class="hs-rubber-away">${r.away}</div>
+        </div>
+        <span class="hs-rubber-score${r.result==="live"?" live":""}">${r.score}</span>
+        <span class="hs-rubber-result hs-result-${r.result}">${RESULT_LABEL[r.result]||"?"}</span>
+      </div>`).join("");
+
+    middleHtml = `
+      <div class="hs-rubbers">
+        <div class="hs-rubbers-label">Einzel &amp; Doppel</div>
+        <div class="hs-rubbers-grid">${rubberRows}</div>
+      </div>`;
+  }
+
+  main.innerHTML = `
+    <div class="hs-scoreboard">
+      <div class="hs-team-block hs-team-home">
+        <div class="hs-team-label">Heim</div>
+        <div class="hs-team-name">${match.homeTeam || "Tennis Herrieden"}</div>
+      </div>
+      <div class="hs-score-center">
+        <div class="hs-score-big ${scoreClass}">${scoreText}</div>
+        <span class="hs-badge ${badgeClass}">${badgeLabel}</span>
+      </div>
+      <div class="hs-team-block hs-team-away">
+        <div class="hs-team-label">Gast</div>
+        <div class="hs-team-name">${match.awayTeam || "–"}</div>
+      </div>
+    </div>
+    ${middleHtml}`;
+}
+
+async function loadHsMatch(vereinsnr, saison) {
+  try {
+    const clubnr = String(vereinsnr).padStart(5, "0");
+    const resp = await fetch(`/api/btv-matches?clubnr=${clubnr}&saison=${saison}`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    renderHsMatch(data.match || null);
+    document.getElementById("hs-status").textContent =
+      `Zuletzt aktualisiert: ${new Date().toLocaleTimeString("de-DE")}`;
+  } catch (err) {
+    document.getElementById("hs-status").textContent = `Fehler: ${err.message}`;
+  }
+}
+
+function startHeimspielmodus(vereinsnr, saison) {
+  // IDs umbenennen damit Uhr funktioniert
+  document.getElementById("hs-date").id = "date-display2";
+  document.getElementById("hs-time").id = "time-display2";
+
+  updateHsClock();
+  setInterval(updateHsClock, 30_000);
+
+  document.getElementById("heimspiel-app").style.display = "grid";
+
+  loadHsMatch(vereinsnr, saison);
+  setInterval(() => loadHsMatch(vereinsnr, saison), 60_000);
 }
 
 // ── MIDNIGHT RELOAD ───────────────────────────────────────────────────────
@@ -571,22 +798,36 @@ function scheduleMidnightReload() {
 
 // ── INIT ──────────────────────────────────────────────────────────────────
 (async function init() {
-  const { data: settingsData } = await sb.from("settings").select("*").in("key", ["display_mode", "display_theme"]);
-  const settings = Object.fromEntries((settingsData || []).map(r => [r.key, r.value]));
-  const displayMode  = settings.display_mode  || "schedule";
-  const displayTheme = settings.display_theme || "dark";
+  const { data: settingsData } = await sb.from("settings").select("*")
+    .in("key", ["display_mode","display_theme","display_vereinsnummer","display_saison"]);
+  const settings    = Object.fromEntries((settingsData || []).map(r => [r.key, r.value]));
+  const displayMode  = settings.display_mode          || "schedule";
+  const displayTheme = settings.display_theme         || "dark";
+  const vereinsnr    = settings.display_vereinsnummer || "06085";
+  const saison       = settings.display_saison        || "2026";
 
-  document.getElementById("loading").style.display = "none";
-
-  if (displayMode === "white") {
-    document.getElementById("white-screen").style.display = "block";
-    startSettingsPolling(displayMode, displayTheme);
-    return;
-  }
-
+  // Theme gilt für alle Modi – immer zuerst setzen
   if (displayTheme === "light")    document.body.classList.add("theme-light");
   if (displayTheme === "contrast") document.body.classList.add("theme-contrast");
 
+  document.getElementById("loading").style.display = "none";
+
+  startSettingsPolling(displayMode, displayTheme, vereinsnr, saison);
+
+  // Weißer Bildschirm
+  if (displayMode === "white") {
+    document.getElementById("white-screen").style.display = "block";
+    return;
+  }
+
+  // Heimspielmodus
+  if (displayMode === "heimspiel") {
+    startHeimspielmodus(vereinsnr, saison);
+    scheduleMidnightReload();
+    return;
+  }
+
+  // Tagesbelegungsplan (Standard)
   updateClock();
   setInterval(updateClock, 30_000);
 
@@ -594,7 +835,6 @@ function scheduleMidnightReload() {
   setInterval(loadData, 60_000);
 
   subscribeRealtime();
-  startSettingsPolling(displayMode, displayTheme);
   scheduleMidnightReload();
 
   document.getElementById("app").style.display = "flex";
