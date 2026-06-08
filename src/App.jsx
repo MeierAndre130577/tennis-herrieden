@@ -1032,6 +1032,203 @@ function SettingsMembersTab({onToast}) {
   );
 }
 
+// ── HEIMSPIEL: MANUELLE EINGABE ──────────────────────────────────────────
+const RUBBER_RESULT_OPTS = [
+  {v:"open",  label:"Offen",      color:"#9CA3AF"},
+  {v:"live",  label:"● Läuft",    color:"#F59E0B"},
+  {v:"win",   label:"✓ Heimsieg", color:"#16A34A"},
+  {v:"loss",  label:"✗ Niederlage",color:"#DC2626"},
+];
+
+function HeimspieleManualEntry({onToast}) {
+  const [cache,   setCache]   = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving,  setSaving]  = useState(false);
+  const [open,    setOpen]    = useState(false);
+
+  // Editierbare Felder
+  const [status,     setStatus]     = useState("upcoming");
+  const [homeScore,  setHomeScore]  = useState(0);
+  const [awayScore,  setAwayScore]  = useState(0);
+  const [rubbers,    setRubbers]    = useState([]);
+
+  const reload = () => {
+    setLoading(true);
+    sb.from("settings").select("value").eq("key","btv_match_cache").single()
+      .then(({data})=>{
+        if(data?.value){
+          const m = typeof data.value==="string" ? JSON.parse(data.value) : data.value;
+          setCache(m);
+          setStatus(m.status||"upcoming");
+          setHomeScore(m.homeScore??0);
+          setAwayScore(m.awayScore??0);
+          setRubbers((m.rubbers||[]).map(r=>({...r})));
+        }
+        setLoading(false);
+      });
+  };
+  useEffect(reload,[]);
+
+  const updRubber=(id,field,val)=>
+    setRubbers(prev=>prev.map(r=>r.id===id?{...r,[field]:val}:r));
+
+  // Scores aus rubber-Ergebnissen neu berechnen wenn nötig
+  const recalcScore=()=>{
+    const w=rubbers.filter(r=>r.result==="win").length;
+    const l=rubbers.filter(r=>r.result==="loss").length;
+    setHomeScore(w); setAwayScore(l);
+  };
+
+  const save=async()=>{
+    setSaving(true);
+    const updated={
+      ...(cache||{}),
+      status,
+      homeScore:Number(homeScore),
+      awayScore:Number(awayScore),
+      rubbers,
+    };
+    const {error}=await sb.from("settings")
+      .upsert([{key:"btv_match_cache",value:JSON.stringify(updated)}],{onConflict:"key"});
+    setSaving(false);
+    if(error){onToast(`Fehler: ${error.message}`,"error");return;}
+    setCache(updated);
+    onToast("Spielstand manuell gespeichert ✓");
+  };
+
+  const singleRubbers = rubbers.filter(r=>r.id.startsWith("E"));
+  const doubleRubbers = rubbers.filter(r=>r.id.startsWith("D"));
+
+  return (
+    <div style={{marginBottom:24,border:"1.5px solid #FCD34D",borderRadius:12,overflow:"hidden"}}>
+      {/* Header – immer sichtbar */}
+      <button onClick={()=>setOpen(o=>!o)}
+        style={{width:"100%",background:"#FFFBEB",padding:"12px 16px",border:"none",
+          cursor:"pointer",display:"flex",alignItems:"center",gap:10,textAlign:"left"}}>
+        <span style={{fontSize:18}}>✏️</span>
+        <div style={{flex:1}}>
+          <div style={{fontWeight:700,fontSize:13,color:"#92400E"}}>Spielstand manuell einpflegen</div>
+          <div style={{fontSize:11,color:"#B45309",marginTop:1}}>
+            Fallback wenn BTV nicht erreichbar · Änderungen werden sofort angezeigt
+          </div>
+        </div>
+        <span style={{color:"#B45309",fontSize:14}}>{open?"▲":"▼"}</span>
+      </button>
+
+      {open&&(
+        <div style={{padding:16,background:"#fff",borderTop:"1px solid #FDE68A"}}>
+          {loading&&<div style={{fontSize:13,color:"#9CA3AF"}}>Lade Cache…</div>}
+
+          {!loading&&!cache&&(
+            <div style={{fontSize:13,color:"#DC2626",background:"#FEF2F2",border:"1px solid #FECACA",
+              borderRadius:8,padding:"10px 12px"}}>
+              ⚠ Noch kein Cache vorhanden. BTV-Daten müssen mindestens einmal automatisch
+              abgerufen worden sein, bevor du hier editieren kannst.
+            </div>
+          )}
+
+          {!loading&&cache&&(<>
+            {/* Teams-Info */}
+            <div style={{background:"#F9FAFB",border:"1px solid #E5E7EB",borderRadius:8,
+              padding:"10px 12px",fontSize:13,marginBottom:16,display:"flex",
+              alignItems:"center",justifyContent:"space-between",gap:8}}>
+              <span style={{fontWeight:700}}>{cache.homeTeam||"?"}</span>
+              <span style={{color:"#9CA3AF",fontSize:11}}>vs.</span>
+              <span style={{fontWeight:700}}>{cache.awayTeam||"?"}</span>
+              <button onClick={reload}
+                style={{marginLeft:"auto",background:"none",border:"1px solid #E5E7EB",
+                  borderRadius:6,padding:"3px 8px",fontSize:11,cursor:"pointer",color:"#6B7280"}}>
+                ↻ Cache neu laden
+              </button>
+            </div>
+
+            {/* Status */}
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:6}}>STATUS</div>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                {[["upcoming","Noch nicht begonnen","#6B7280"],["live","● Läuft","#F59E0B"],["done","✓ Abgeschlossen","#16A34A"]].map(([v,lbl,col])=>(
+                  <button key={v} onClick={()=>setStatus(v)}
+                    style={{padding:"6px 14px",borderRadius:20,border:`2px solid ${status===v?col:"#E5E7EB"}`,
+                      background:status===v?col+"22":"#fff",color:status===v?col:"#6B7280",
+                      fontWeight:status===v?700:400,fontSize:12,cursor:"pointer"}}>
+                    {lbl}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Gesamtstand */}
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:6}}>
+                GESAMTSTAND
+                <button onClick={recalcScore}
+                  style={{marginLeft:8,background:"none",border:"1px solid #E5E7EB",borderRadius:4,
+                    padding:"1px 6px",fontSize:10,cursor:"pointer",color:"#6B7280",fontWeight:400}}>
+                  ↻ aus Rubbers berechnen
+                </button>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <div style={{textAlign:"center"}}>
+                  <div style={{fontSize:10,color:"#9CA3AF",marginBottom:3}}>{cache.homeTeam?.split(" ").pop()||"Heim"}</div>
+                  <input type="number" min={0} max={9} value={homeScore} onChange={e=>setHomeScore(e.target.value)}
+                    style={{width:56,textAlign:"center",fontSize:22,fontWeight:800,
+                      border:"2px solid #E5E7EB",borderRadius:8,padding:"4px 0"}}/>
+                </div>
+                <span style={{fontSize:22,color:"#9CA3AF",fontWeight:700,marginTop:14}}>:</span>
+                <div style={{textAlign:"center"}}>
+                  <div style={{fontSize:10,color:"#9CA3AF",marginBottom:3}}>{cache.awayTeam?.split(" ").pop()||"Gast"}</div>
+                  <input type="number" min={0} max={9} value={awayScore} onChange={e=>setAwayScore(e.target.value)}
+                    style={{width:56,textAlign:"center",fontSize:22,fontWeight:800,
+                      border:"2px solid #E5E7EB",borderRadius:8,padding:"4px 0"}}/>
+                </div>
+              </div>
+            </div>
+
+            {/* Rubber-Liste */}
+            {rubbers.length>0&&(
+              <div style={{marginBottom:16}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:8}}>RUBBERS</div>
+                <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  {[...singleRubbers,...doubleRubbers].map(r=>(
+                    <div key={r.id} style={{border:"1px solid #E5E7EB",borderRadius:8,padding:"8px 10px",
+                      background:r.id.startsWith("D")?"#EFF6FF":"#fff"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                        <span style={{fontWeight:800,fontSize:13,minWidth:28,color:"#374151"}}>{r.id}</span>
+                        <span style={{fontSize:12,color:"#374151",flex:1,minWidth:100,
+                          overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                          {r.home} <span style={{color:"#9CA3AF"}}>vs</span> {r.away}
+                        </span>
+                        <input value={r.score} onChange={e=>updRubber(r.id,"score",e.target.value)}
+                          placeholder="z.B. 6:3 4:6 10:8"
+                          style={{width:130,fontSize:12,border:"1px solid #E5E7EB",borderRadius:6,
+                            padding:"3px 7px",background:"#F9FAFB"}}/>
+                        <select value={r.result} onChange={e=>updRubber(r.id,"result",e.target.value)}
+                          style={{fontSize:12,border:"1px solid #E5E7EB",borderRadius:6,
+                            padding:"3px 6px",background:"#fff",color:
+                              RUBBER_RESULT_OPTS.find(o=>o.v===r.result)?.color||"#374151",
+                            fontWeight:600}}>
+                          {RUBBER_RESULT_OPTS.map(o=>(
+                            <option key={o.v} value={o.v} style={{color:o.color}}>{o.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <button onClick={save} disabled={saving}
+              style={{...S.primaryBtn,background:"#D97706",width:"100%",opacity:saving?0.6:1}}>
+              {saving?"Speichern…":"📲 Spielstand auf Display übertragen"}
+            </button>
+          </>)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── SETTINGS: DISPLAY ────────────────────────────────────────────────────
 function SettingsDisplayTab({onToast}) {
   const [mode,        setMode]       = useState("schedule");
@@ -1179,6 +1376,11 @@ function SettingsDisplayTab({onToast}) {
               </div>
             )}
           </div>
+        )}
+
+        {/* Manuelle Score-Eingabe – Fallback wenn BTV nicht erreichbar */}
+        {mode==="heimspiel"&&(
+          <HeimspieleManualEntry onToast={onToast}/>
         )}
 
         {mode==="bild"&&(
