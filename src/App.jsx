@@ -62,8 +62,6 @@ function HomeScreen({profile,onGoBooking,onGoKasse,onGoSettings}) {
   const [nextBookings,setNextBookings] = useState([]);
   const [openLog,setOpenLog]           = useState([]);
   const [openTotal,setOpenTotal]       = useState(0);
-  const [displayModal,setDisplayModal] = useState(false);
-
   useEffect(()=>{
     // next 2 bookings – nur reguläre Einzelbuchungen
     sb.from("bookings").select("*,courts(name,surface)").eq("user_id",profile.id).eq("type","regular").gte("date",today()).order("date").order("slot").limit(2)
@@ -145,11 +143,6 @@ function HomeScreen({profile,onGoBooking,onGoKasse,onGoSettings}) {
             <span style={H.navTileLabel}>Kasse</span>
             <span style={H.navTileSub}>Getränke & Abrechnung</span>
           </button>
-          <button style={{...H.navTile,borderColor:"#3B82F633",gridColumn:"1 / -1"}} onClick={()=>setDisplayModal(true)}>
-            <span style={{fontSize:28}}>📺</span>
-            <span style={H.navTileLabel}>Anzeigetafel</span>
-            <span style={H.navTileSub}>Belegungsplan öffnen</span>
-          </button>
           {profile.role==="admin"&&(
             <button style={{...H.navTile,borderColor:"#8B5CF633",gridColumn:"1 / -1"}} onClick={onGoSettings}>
               <span style={{fontSize:28}}>⚙️</span>
@@ -165,34 +158,6 @@ function HomeScreen({profile,onGoBooking,onGoKasse,onGoSettings}) {
         </div>
       </div>
 
-      {/* Display modal */}
-      {displayModal&&(
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999}} onClick={()=>setDisplayModal(false)}>
-          <div style={{background:"#1E293B",borderRadius:16,padding:28,width:340,boxShadow:"0 20px 60px rgba(0,0,0,.4)"}} onClick={e=>e.stopPropagation()}>
-            <div style={{fontWeight:800,fontSize:18,color:"#F8FAFC",marginBottom:6}}>📺 Anzeigetafel</div>
-            <div style={{fontSize:13,color:"#64748B",marginBottom:20}}>Welche Ansicht möchtest du öffnen?</div>
-            <div style={{display:"flex",flexDirection:"column",gap:10}}>
-              {[
-                {label:"Heute",sub:"Immer der aktuelle Tag",icon:"📺",url:"https://tennis-herrieden.vercel.app/display.html"},
-                {label:"Kalender",sub:"Tag frei wählbar",icon:"🗓️",url:"https://tennis-herrieden.vercel.app/display2.html"},
-              ].map(d=>(
-                <a key={d.label} href={d.url} target="_blank" rel="noreferrer"
-                  style={{display:"flex",alignItems:"center",gap:14,background:"#0F172A",border:"1.5px solid #334155",borderRadius:12,padding:"14px 16px",cursor:"pointer",textDecoration:"none"}}>
-                  <span style={{fontSize:28,flexShrink:0}}>{d.icon}</span>
-                  <div>
-                    <div style={{fontWeight:700,fontSize:15,color:"#F1F5F9"}}>{d.label}</div>
-                    <div style={{fontSize:12,color:"#475569",marginTop:2}}>{d.sub}</div>
-                  </div>
-                  <span style={{marginLeft:"auto",fontSize:16,color:"#334155"}}>→</span>
-                </a>
-              ))}
-            </div>
-            <button style={{marginTop:16,width:"100%",background:"none",border:"1px solid #334155",borderRadius:8,color:"#64748B",padding:"9px",cursor:"pointer",fontSize:13,fontWeight:600}} onClick={()=>setDisplayModal(false)}>
-              Abbrechen
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
