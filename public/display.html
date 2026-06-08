@@ -196,17 +196,18 @@
     @keyframes livepulse { 0%,100%{opacity:1} 50%{opacity:.5} }
 
     /* Rubbers */
-    .hs-rubbers { flex:1; display:flex; flex-direction:column; gap:.8vh; min-height:0; }
-    .hs-rubbers-label { font-size:clamp(10px,.9vw,13px); font-weight:700; color:var(--slate); text-transform:uppercase; letter-spacing:.8px; text-align:center; border-top:1px solid var(--border); padding-top:.8vh; }
-    .hs-rubbers-grid { flex:1; display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr); gap:clamp(4px,.6vw,10px); min-height:0; }
-    .hs-rubber { background:var(--bg2); border-radius:clamp(6px,.6vw,12px); padding:clamp(8px,.8vh,14px) clamp(10px,1vw,18px); display:flex; align-items:center; gap:clamp(6px,.7vw,12px); }
-    .hs-rubber-num { font-size:clamp(22px,2.2vw,34px); font-weight:800; color:var(--slate); min-width:clamp(36px,3.5vw,56px); text-transform:uppercase; flex-shrink:0; }
+    .hs-rubbers { flex:1; display:flex; flex-direction:column; gap:.6vh; min-height:0; overflow:hidden; }
+    .hs-rubbers-label { font-size:clamp(10px,.9vw,13px); font-weight:700; color:var(--slate); text-transform:uppercase; letter-spacing:.8px; text-align:center; border-top:1px solid var(--border); padding-top:.6vh; flex-shrink:0; }
+    /* Grid: Spaltenanzahl wird per JS gesetzt (2 für ≤6 Rubbers, 3 für 9) */
+    .hs-rubbers-grid { flex:1; display:grid; gap:clamp(4px,.5vw,8px); min-height:0; overflow:hidden; }
+    .hs-rubber { background:var(--bg2); border-radius:clamp(4px,.5vw,10px); padding:clamp(6px,.7vh,12px) clamp(8px,.8vw,14px); display:flex; align-items:center; gap:clamp(4px,.5vw,9px); min-width:0; overflow:hidden; }
+    .hs-rubber-num { font-size:clamp(13px,1.4vw,22px); font-weight:800; color:var(--slate); min-width:clamp(26px,2.6vw,42px); text-transform:uppercase; flex-shrink:0; line-height:1; }
     .hs-rubber-players { flex:1; min-width:0; }
-    .hs-rubber-home { font-size:clamp(22px,2.2vw,36px); font-weight:700; color:var(--slate); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .hs-rubber-away { font-size:clamp(16px,1.6vw,26px); color:var(--slate); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; opacity:.7; }
-    .hs-rubber-score { font-size:clamp(22px,2.2vw,36px); font-weight:800; white-space:nowrap; color:var(--fg); flex-shrink:0; }
+    .hs-rubber-home { font-size:clamp(14px,1.5vw,24px); font-weight:700; color:var(--fg); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.2; }
+    .hs-rubber-away { font-size:clamp(11px,1.15vw,18px); color:var(--slate); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px; opacity:.8; line-height:1.2; }
+    .hs-rubber-score { font-size:clamp(14px,1.5vw,24px); font-weight:800; white-space:nowrap; color:var(--fg); flex-shrink:0; }
     .hs-rubber-score.live { color:var(--live-fg); }
-    .hs-rubber-result { width:clamp(36px,3.2vw,52px); height:clamp(36px,3.2vw,52px); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:clamp(16px,1.6vw,26px); font-weight:800; flex-shrink:0; }
+    .hs-rubber-result { width:clamp(26px,2.6vw,42px); height:clamp(26px,2.6vw,42px); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:clamp(12px,1.3vw,20px); font-weight:800; flex-shrink:0; }
     .hs-result-win  { background:var(--win-bg);  color:var(--win-fg); }
     .hs-result-loss { background:var(--loss-bg); color:var(--loss-fg); }
     .hs-result-live { background:var(--live-bg); color:var(--live-fg); }
@@ -734,7 +735,6 @@ function startSettingsPolling(mode, theme, vereinsnr, saison, mannschaft, gegner
 }
 
 // ── HEIMSPIEL ─────────────────────────────────────────────────────────────
-const RUBBER_ORDER = ["E1","E3","E5","E2","E4","E6","D1","D2","D3"];
 const RESULT_LABEL = { win:"W", loss:"N", live:"●", open:"?" };
 
 function applyHsTheme() {
@@ -770,12 +770,15 @@ function renderHsMatch(match) {
   }
 
   document.getElementById("hs-league").textContent = match.league || "–";
-  document.getElementById("hs-team").textContent   = (match.teamName || "–") + " · Tennis Herrieden";
+  document.getElementById("hs-team").textContent   = match.homeTeam || "Tennis Herrieden";
 
   const rubbers = match.rubbers || [];
-  const wins  = rubbers.filter(r => r.result === "win").length;
-  const losses= rubbers.filter(r => r.result === "loss").length;
-  const status= match.status; // "upcoming" | "live" | "done"
+  const status  = match.status; // "upcoming" | "live" | "done"
+
+  // Nutze direkt homeScore/awayScore aus dem Cache wenn vorhanden,
+  // sonst zählen aus Rubbers
+  const wins   = match.homeScore != null ? match.homeScore : rubbers.filter(r => r.result === "win").length;
+  const losses = match.awayScore != null ? match.awayScore : rubbers.filter(r => r.result === "loss").length;
 
   const scoreClass = { upcoming:"hs-score-upcoming", live:"hs-score-live", done:"hs-score-done" }[status] || "hs-score-upcoming";
   const badgeClass = { upcoming:"hs-badge-upcoming", live:"hs-badge-live",  done:"hs-badge-done"  }[status] || "hs-badge-upcoming";
@@ -790,10 +793,29 @@ function renderHsMatch(match) {
         <div class="hs-upcoming-hint">Aufstellung noch nicht eingetragen</div>
       </div>`;
   } else {
-    // Grid in Reihenfolge: E1,E3,E5 / E2,E4,E6 / D1,D2,D3
-    const rubberMap = Object.fromEntries(rubbers.map(r => [r.id, r]));
-    const rubbersOrdered = RUBBER_ORDER.map(id => rubberMap[id] || { id, home:"–", away:"–", score:"–", result:"open" });
-    const rubberRows = rubbersOrdered.map(r => `
+    // Rubbers nach Typ sortieren: E1–E6, dann D1–D3
+    const singles = rubbers.filter(r => r.id.startsWith("E")).sort((a,b) => a.id.localeCompare(b.id));
+    const doubles = rubbers.filter(r => r.id.startsWith("D")).sort((a,b) => a.id.localeCompare(b.id));
+    const allSorted = [...singles, ...doubles];
+
+    // Dynamisch: ≤6 Rubbers → 2 Spalten (4er-Mannschaft), >6 → 3 Spalten (6er-Mannschaft)
+    const cols = allSorted.length > 6 ? 3 : 2;
+    const rows = Math.ceil(allSorted.length / cols);
+
+    // Spalten-Major-Anordnung für CSS Grid (row-major Placement):
+    // Bei 3×3: Zeile0=[E1,E3,E5], Zeile1=[E2,E4,E6], Zeile2=[D1,D2,D3]
+    // → row-major Reihenfolge: E1,E3,E5, E2,E4,E6, D1,D2,D3
+    const ordered = [];
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const idx = c * rows + r;
+        ordered.push(allSorted[idx] || null);
+      }
+    }
+
+    const rubberHtml = ordered.map(r => {
+      if (!r) return `<div class="hs-rubber" style="opacity:0;pointer-events:none"></div>`;
+      return `
       <div class="hs-rubber">
         <span class="hs-rubber-num">${r.id}</span>
         <div class="hs-rubber-players">
@@ -802,12 +824,13 @@ function renderHsMatch(match) {
         </div>
         <span class="hs-rubber-score${r.result==="live"?" live":""}">${r.score}</span>
         <span class="hs-rubber-result hs-result-${r.result}">${RESULT_LABEL[r.result]||"?"}</span>
-      </div>`).join("");
+      </div>`;
+    }).join("");
 
     middleHtml = `
       <div class="hs-rubbers">
         <div class="hs-rubbers-label">Einzel &amp; Doppel</div>
-        <div class="hs-rubbers-grid">${rubberRows}</div>
+        <div class="hs-rubbers-grid" style="grid-template-columns:repeat(${cols},minmax(0,1fr))">${rubberHtml}</div>
       </div>`;
   }
 
@@ -829,16 +852,19 @@ function renderHsMatch(match) {
     ${middleHtml}`;
 }
 
-async function loadHsMatch(vereinsnr, saison, mannschaft, gegner) {
+async function loadHsMatch() {
   try {
-    const clubnr = String(vereinsnr).padStart(5, "0");
-    const params = new URLSearchParams({ clubnr, saison });
-    if (mannschaft) params.set("mannschaft", mannschaft);
-    if (gegner)     params.set("gegner", gegner);
-    const resp = await fetch(`/api/btv-matches?${params}`);
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const data = await resp.json();
-    renderHsMatch(data.match || null);
+    const { data, error } = await sb
+      .from("settings")
+      .select("value")
+      .eq("key", "btv_match_cache")
+      .single();
+    if (error) throw error;
+    let match = null;
+    if (data?.value) {
+      match = typeof data.value === "string" ? JSON.parse(data.value) : data.value;
+    }
+    renderHsMatch(match);
     document.getElementById("hs-status").textContent =
       `Zuletzt aktualisiert: ${new Date().toLocaleTimeString("de-DE")}`;
   } catch (err) {
@@ -846,7 +872,7 @@ async function loadHsMatch(vereinsnr, saison, mannschaft, gegner) {
   }
 }
 
-function startHeimspielmodus(vereinsnr, saison, mannschaft, gegner) {
+function startHeimspielmodus() {
   // IDs umbenennen damit Uhr funktioniert
   document.getElementById("hs-date").id = "date-display2";
   document.getElementById("hs-time").id = "time-display2";
@@ -856,8 +882,8 @@ function startHeimspielmodus(vereinsnr, saison, mannschaft, gegner) {
 
   document.getElementById("heimspiel-app").style.display = "grid";
 
-  loadHsMatch(vereinsnr, saison, mannschaft, gegner);
-  setInterval(() => loadHsMatch(vereinsnr, saison, mannschaft, gegner), 60_000);
+  loadHsMatch();
+  setInterval(loadHsMatch, 60_000);
 }
 
 // ── MIDNIGHT RELOAD ───────────────────────────────────────────────────────
@@ -914,7 +940,7 @@ function scheduleMidnightReload() {
 
   // Heimspielmodus
   if (displayMode === "heimspiel") {
-    startHeimspielmodus(vereinsnr, saison, mannschaft, gegner);
+    startHeimspielmodus();
     scheduleMidnightReload();
     return;
   }
