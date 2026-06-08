@@ -1075,11 +1075,6 @@ function SettingsDisplayTab({onToast}) {
   const [saison,      setSaison]     = useState("2026");
   const [mannschaft,  setMannschaft] = useState("");
   const [gegner,      setGegner]     = useState("");
-  const [teams,       setTeams]      = useState([]);
-  const [spiele,      setSpiele]     = useState([]);
-  const [teamsLoading,setTeamsLoad]  = useState(false);
-  const [spieleLoading,setSpieleLoad]= useState(false);
-  const [teamsErr,    setTeamsErr]   = useState("");
   const [saving,      setSaving]     = useState(false);
 
   useEffect(()=>{
@@ -1098,49 +1093,6 @@ function SettingsDisplayTab({onToast}) {
       });
   },[]);
 
-  // Wenn gespeicherte Mannschaft vorhanden → Spiele nachladen
-  useEffect(()=>{
-    if(mannschaft && vereinsnr) loadSpiele(mannschaft);
-  },[mannschaft]);// eslint-disable-line
-
-  const loadTeams=async()=>{
-    setTeamsErr(""); setTeams([]); setSpiele([]); setMannschaft(""); setGegner("");
-    setTeamsLoad(true);
-    try {
-      const clubnr=String(vereinsnr).padStart(5,"0");
-      const r=await fetch(`/api/btv-teams?clubnr=${clubnr}`);
-      const raw=await r.text();
-      let d;
-      try { d=JSON.parse(raw); }
-      catch(_){ throw new Error(`Server-Antwort (HTTP ${r.status}): ${raw.slice(0,300)}`); }
-      if(d.error) throw new Error(d.error);
-      if(!d.teams?.length) throw new Error("Keine Mannschaften gefunden – Vereinsnummer prüfen");
-      setTeams(d.teams);
-    } catch(e){ setTeamsErr(e.message); }
-    setTeamsLoad(false);
-  };
-
-  const loadSpiele=async(mann)=>{
-    setSpiele([]); setGegner("");
-    setSpieleLoad(true);
-    try {
-      const clubnr=String(vereinsnr).padStart(5,"0");
-      const r=await fetch(`/api/btv-spiele?clubnr=${clubnr}&mannschaft=${encodeURIComponent(mann)}`);
-      const raw=await r.text();
-      let d;
-      try { d=JSON.parse(raw); }
-      catch(_){ throw new Error(`Server-Antwort (HTTP ${r.status}): ${raw.slice(0,300)}`); }
-      if(d.error) throw new Error(d.error);
-      setSpiele(d.spiele||[]);
-    } catch(e){ onToast(`Fehler: ${e.message}`,"error"); }
-    setSpieleLoad(false);
-  };
-
-  const handleMannschaft=async(val)=>{
-    setMannschaft(val);
-    if(val) await loadSpiele(val);
-  };
-
   const save=async()=>{
     setSaving(true);
     const {error}=await sb.from("settings").upsert([
@@ -1155,8 +1107,6 @@ function SettingsDisplayTab({onToast}) {
     if(error){ onToast(`Fehler: ${error.message}`,"error"); return; }
     onToast("Display-Einstellungen gespeichert ✓");
   };
-
-  const selectStyle={...S.input,width:"100%",cursor:"pointer"};
 
   const modes=[
     {id:"schedule",  icon:"📅", label:"Tagesbelegungsplan", desc:"Zeigt die heutigen Buchungen aller Plätze"},
@@ -1196,11 +1146,11 @@ function SettingsDisplayTab({onToast}) {
           <div style={{marginBottom:24,background:"#F9FAFB",border:"1.5px solid #E5E7EB",borderRadius:12,padding:16}}>
             <div style={{fontWeight:700,fontSize:13,color:"#374151",marginBottom:14}}>🏆 Heimspiel konfigurieren</div>
 
-            {/* Schritt 1: Vereinsnummer + Saison */}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr auto",gap:10,alignItems:"flex-end",marginBottom:14}}>
+            {/* Vereinsnummer + Saison */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
               <div>
                 <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>VEREINSNUMMER (BTV)</div>
-                <input value={vereinsnr} onChange={e=>{setVernr(e.target.value);setTeams([]);setSpiele([]);}}
+                <input value={vereinsnr} onChange={e=>setVernr(e.target.value)}
                   placeholder="z.B. 6085" style={{...S.input,width:"100%"}}/>
               </div>
               <div>
@@ -1208,55 +1158,31 @@ function SettingsDisplayTab({onToast}) {
                 <input value={saison} onChange={e=>setSaison(e.target.value)}
                   placeholder="z.B. 2026" style={{...S.input,width:"100%"}}/>
               </div>
-              <button onClick={loadTeams} disabled={teamsLoading||!vereinsnr}
-                style={{...S.primaryBtn,background:"#6366F1",opacity:teamsLoading||!vereinsnr?0.5:1,
-                  padding:"9px 14px",fontSize:13,whiteSpace:"nowrap"}}>
-                {teamsLoading?"⏳ Laden…":"🔍 Laden"}
-              </button>
             </div>
 
-            {teamsErr&&(
-              <div style={{background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:8,padding:"10px 12px",
-                fontSize:12,color:"#B91C1C",marginBottom:14}}>⚠️ {teamsErr}</div>
-            )}
-
-            {/* Schritt 2: Mannschaft */}
-            {teams.length>0&&(
-              <div style={{marginBottom:14}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>MANNSCHAFT</div>
-                <select value={mannschaft} onChange={e=>handleMannschaft(e.target.value)} style={selectStyle}>
-                  <option value="">– Mannschaft auswählen –</option>
-                  {teams.map(t=><option key={t} value={t}>{t}</option>)}
-                </select>
+            {/* Mannschaft – Freitext */}
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>UNSERE MANNSCHAFT</div>
+              <input value={mannschaft} onChange={e=>setMannschaft(e.target.value)}
+                placeholder="z.B. Herren 1" style={{...S.input,width:"100%"}}/>
+              <div style={{fontSize:11,color:"#9CA3AF",marginTop:4}}>
+                Genau so wie auf btv.de angegeben (z.B. „Herren I" oder „Herren 50")
               </div>
-            )}
+            </div>
 
-            {/* Schritt 3: Gegner */}
-            {mannschaft&&(
-              <div>
-                <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>
-                  HEIMSPIEL GEGEN {spieleLoading&&<span style={{fontWeight:400}}>⏳ lädt…</span>}
-                </div>
-                <select value={gegner} onChange={e=>setGegner(e.target.value)}
-                  disabled={spieleLoading} style={selectStyle}>
-                  <option value="">– Gegner auswählen –</option>
-                  {spiele.map(s=>(
-                    <option key={s.isoDate+s.gegner} value={s.gegner}>
-                      {s.displayDate} · {s.gegner}
-                    </option>
-                  ))}
-                </select>
-                {!spieleLoading&&spiele.length===0&&(
-                  <div style={{fontSize:11,color:"#9CA3AF",marginTop:6}}>
-                    Keine Heimspiele für diese Mannschaft gefunden.
-                  </div>
-                )}
+            {/* Gegner – Freitext */}
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>GEGNER (HEUTIGES SPIEL)</div>
+              <input value={gegner} onChange={e=>setGegner(e.target.value)}
+                placeholder="z.B. TC Rothenburg" style={{...S.input,width:"100%"}}/>
+              <div style={{fontSize:11,color:"#9CA3AF",marginTop:4}}>
+                Vor jedem Heimspiel aktualisieren – muss mit dem Gegnernamen auf btv.de übereinstimmen
               </div>
-            )}
+            </div>
 
             {/* Zusammenfassung */}
             {mannschaft&&gegner&&(
-              <div style={{marginTop:14,background:"#EFF6FF",border:"1px solid #BFDBFE",borderRadius:8,
+              <div style={{marginTop:4,background:"#EFF6FF",border:"1px solid #BFDBFE",borderRadius:8,
                 padding:"10px 12px",fontSize:12,color:"#1E40AF"}}>
                 ✅ Display zeigt: <strong>{mannschaft}</strong> vs. <strong>{gegner}</strong>
               </div>
