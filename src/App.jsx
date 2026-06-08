@@ -1053,8 +1053,12 @@ const RUBBER_RESULT_OPTS = [
   {v:"win",   label:"✓ Heimsieg",   color:"#16A34A"},
   {v:"loss",  label:"✗ Niederlage", color:"#DC2626"},
 ];
-const DEFAULT_RUBBERS = () =>
-  ["E1","E2","E3","E4","E5","E6","D1","D2","D3"].map(id=>({id,home:"",away:"",score:"",result:"open"}));
+const RUBBER_IDS = {
+  "6er": ["E1","E2","E3","E4","E5","E6","D1","D2","D3"],
+  "4er": ["E1","E2","E3","E4","D1","D2"],
+};
+const DEFAULT_RUBBERS = (format="6er") =>
+  RUBBER_IDS[format].map(id=>({id,home:"",away:"",score:"",result:"open"}));
 
 function fmtTs(iso) {
   if(!iso) return null;
@@ -1075,13 +1079,14 @@ function HeimspieleManualEntry({onToast}) {
   const [source,   setSource]   = useState(null); // "auto" | "manual"
 
   // Editierbare Felder
+  const [format,     setFormat]     = useState("6er"); // "4er" | "6er"
   const [homeTeam,   setHomeTeam]   = useState("");
   const [awayTeam,   setAwayTeam]   = useState("");
   const [league,     setLeague]     = useState("");
   const [status,     setStatus]     = useState("upcoming");
   const [homeScore,  setHomeScore]  = useState(0);
   const [awayScore,  setAwayScore]  = useState(0);
-  const [rubbers,    setRubbers]    = useState(DEFAULT_RUBBERS());
+  const [rubbers,    setRubbers]    = useState(DEFAULT_RUBBERS("6er"));
 
   const applyMatch = (m) => {
     setHomeTeam(m.homeTeam  || "");
@@ -1090,14 +1095,23 @@ function HeimspieleManualEntry({onToast}) {
     setStatus(  m.status    || "upcoming");
     setHomeScore(m.homeScore ?? 0);
     setAwayScore(m.awayScore ?? 0);
-    const rubs = m.rubbers && m.rubbers.length > 0
-      ? m.rubbers.map(r=>({...r}))
-      : DEFAULT_RUBBERS();
-    setRubbers(rubs);
+    const rubs = m.rubbers && m.rubbers.length > 0 ? m.rubbers.map(r=>({...r})) : [];
+    const det = rubs.filter(r=>r.id.startsWith("E")).length <= 4 ? "4er" : "6er";
+    setFormat(det);
+    setRubbers(rubs.length > 0 ? rubs : DEFAULT_RUBBERS(det));
     setSavedAt(m._savedAt || null);
     setSource( m._source  || "auto");
     setDirty(false);
     setConfirmReload(false);
+  };
+
+  // Format-Wechsel: bestehende Rubber-Daten behalten, fehlende ergänzen, überschüssige entfernen
+  const switchFormat = (newFmt) => {
+    const ids = RUBBER_IDS[newFmt];
+    const rubberMap = Object.fromEntries(rubbers.map(r=>[r.id,r]));
+    setRubbers(ids.map(id => rubberMap[id] || {id,home:"",away:"",score:"",result:"open"}));
+    setFormat(newFmt);
+    setDirty(true);
   };
 
   const doReload = async () => {
@@ -1114,7 +1128,7 @@ function HeimspieleManualEntry({onToast}) {
       } else {
         setHomeTeam(""); setAwayTeam(""); setLeague("");
         setStatus("upcoming"); setHomeScore(0); setAwayScore(0);
-        setRubbers(DEFAULT_RUBBERS());
+        setFormat("6er"); setRubbers(DEFAULT_RUBBERS("6er"));
         setSavedAt(null); setSource(null); setDirty(false);
         onToast("Kein Cache vorhanden – leeres Formular");
       }
@@ -1240,6 +1254,22 @@ function HeimspieleManualEntry({onToast}) {
                 </div>
               </div>
             )}
+
+            {/* Format-Toggle */}
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:6}}>MANNSCHAFTSGRÖSSE</div>
+              <div style={{display:"flex",gap:8}}>
+                {["6er","4er"].map(f=>(
+                  <button key={f} onClick={()=>switchFormat(f)}
+                    style={{flex:1,padding:"8px 0",borderRadius:8,fontSize:13,fontWeight:700,cursor:"pointer",
+                      border:`2px solid ${format===f?"#8B5CF6":"#E5E7EB"}`,
+                      background:format===f?"#F5F3FF":"#fff",
+                      color:format===f?"#7C3AED":"#6B7280"}}>
+                    {f==="6er" ? "6er · E1–E6 + D1–D3" : "4er · E1–E4 + D1–D2"}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             {/* Teams + Reload */}
             <div style={{display:"grid",gridTemplateColumns:"1fr auto 1fr",gap:8,marginBottom:14,alignItems:"end"}}>
