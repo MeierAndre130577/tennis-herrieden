@@ -135,20 +135,35 @@ async function tryWidget(page, groupId, heim, gast) {
       m.textContent.trim().replace(/\s+/g, " ").slice(0, 120)
     );
 
+    // ── Liga/Staffelname aus Seiten-Header ──────────────────────────────────
+    // BTV widget zeigt Staffelname typischerweise als Überschrift über den Spielen
+    let league = "";
+    const headingCandidates = [
+      ...Array.from(document.querySelectorAll("h1,h2,h3,.z-caption,.gbgroup-title,[class*='group-title'],[class*='caption']")),
+      ...Array.from(document.querySelectorAll(".z-label,span")).filter(el =>
+        /liga|klasse|staffel|kreis|bezirk|landes|nord|süd|ost|west|gr\./i.test(el.textContent)
+      ),
+    ];
+    for (const el of headingCandidates) {
+      const t = el.textContent.trim().replace(/\s+/g," ");
+      if (t.length > 5 && t.length < 80 && /liga|klasse|staffel|gr\.\s*\d/i.test(t)) {
+        league = t; break;
+      }
+    }
+
     for (const m of meetings) {
       if (!m.textContent.toLowerCase().includes(heimL)) continue;
       if (!m.textContent.toLowerCase().includes(gastL)) continue;
 
-      // ── Status ──────────────────────────────────────────────────────────
       const mText = m.textContent;
+
+      // ── Status ──────────────────────────────────────────────────────────
       let status = "upcoming";
       if (/blanko/i.test(mText)) {
         status = "upcoming";
       } else if (/anzeigen/i.test(mText)) {
-        // Match-Score = alle Spans die genau "X:Y" (1 Ziffer je Seite) zeigen
         const singleScores = Array.from(m.querySelectorAll(".z-label, span"))
-          .map(el => el.textContent.trim())
-          .filter(t => /^\d:\d$/.test(t));   // nur einstellig: 0:9, 5:4 etc.
+          .map(el => el.textContent.trim()).filter(t => /^\d:\d$/.test(t));
         const first = singleScores[0] || "0:0";
         const [h, a] = first.split(":").map(Number);
         status = h + a >= 9 ? "done" : "live";
@@ -158,32 +173,38 @@ async function tryWidget(page, groupId, heim, gast) {
       const timeM = mText.match(/(\d{1,2}:\d{2})\s*Uhr/i);
       const time = timeM ? timeM[1] + " Uhr" : "–";
 
-      // ── Datum: DD.MM.YYYY oder DD.MM.YY ─────────────────────────────────
-      const dateM = mText.match(/(\d{1,2})\.(\d{1,2})\.(\d{2,4})/);
+      // ── Datum: DD.MM.YYYY, DD.MM.YY oder DD.MM. (ohne Jahr) ─────────────
+      const curYear = new Date().getFullYear();
       let matchDate = null;
-      if (dateM) {
-        const [, d, mo, y] = dateM;
+      const dateWithYear = mText.match(/(\d{1,2})\.(\d{1,2})\.(\d{2,4})/);
+      const dateNoYear   = mText.match(/(\d{1,2})\.(\d{1,2})\./);
+      if (dateWithYear) {
+        const [, d, mo, y] = dateWithYear;
         const year = y.length === 2 ? "20" + y : y;
         matchDate = `${year}-${mo.padStart(2,"0")}-${d.padStart(2,"0")}`;
+      } else if (dateNoYear) {
+        const [, d, mo] = dateNoYear;
+        matchDate = `${curYear}-${mo.padStart(2,"0")}-${d.padStart(2,"0")}`;
       }
 
-      // ── Gesamtergebnis: nur einstellige X:Y Spans ─────────────────────
+      // ── Gesamtergebnis ───────────────────────────────────────────────────
       const singleScores = Array.from(m.querySelectorAll(".z-label, span"))
-        .map(el => el.textContent.trim())
-        .filter(t => /^\d:\d$/.test(t));
+        .map(el => el.textContent.trim()).filter(t => /^\d:\d$/.test(t));
       const first = singleScores[0] || "0:0";
       const [homeScore, awayScore] = first.split(":").map(Number);
 
-      // ── "anzeigen"-Element-ID finden ─────────────────────────────────
+      // ── "anzeigen"-Element-ID ────────────────────────────────────────────
       let anzeigenId = null;
       for (const el of m.querySelectorAll(".z-label, span, a, button")) {
         if (/anzeigen/i.test(el.textContent.trim())) {
-          anzeigenId = el.id || null;
-          break;
+          anzeigenId = el.id || null; break;
         }
       }
 
-      return { found: true, status, time, matchDate, homeScore, awayScore, anzeigenId, allTexts };
+      // ── Debug: gesamter gbmeeting-Text ──────────────────────────────────
+      const debugText = mText.trim().replace(/\s+/g," ").slice(0, 300);
+
+      return { found: true, status, time, matchDate, league, homeScore, awayScore, anzeigenId, allTexts, debugText };
     }
     return { found: false, allTexts };
   }, { heim, gast });
@@ -195,7 +216,8 @@ async function tryWidget(page, groupId, heim, gast) {
   }
 
   console.log(`Match gefunden! Status: ${header.status}  Score: ${header.homeScore}:${header.awayScore}  Datum: ${header.matchDate}  Zeit: ${header.time}`);
-  console.log(`anzeigenId: ${header.anzeigenId}`);
+  console.log(`Liga: "${header.league}"  anzeigenId: ${header.anzeigenId}`);
+  console.log(`gbmeeting-Text: ${header.debugText}`);
 
   // ── Zeitfenster prüfen (anhand BTV-Datum + Uhrzeit) ──────────────────────
   if (header.matchDate && header.time && header.time !== "–") {
@@ -211,7 +233,7 @@ async function tryWidget(page, groupId, heim, gast) {
       // Basisdaten (ohne Rubbers) speichern damit Display Datum/Zeit anzeigen kann
       return {
         status: header.status, homeTeam: heim, awayTeam: gast,
-        league: "HERREN LANDESLIGA 2 GR. 127 NO",
+        league: header.league || "",
         time: header.time, matchDate: header.matchDate,
         homeScore: header.homeScore, awayScore: header.awayScore, rubbers: [],
       };
@@ -255,7 +277,7 @@ async function tryWidget(page, groupId, heim, gast) {
   return {
     status: header.status,
     homeTeam: heim, awayTeam: gast,
-    league: "HERREN LANDESLIGA 2 GR. 127 NO",
+    league: header.league || "",
     time: header.time,
     matchDate: header.matchDate,
     homeScore, awayScore, rubbers,
