@@ -860,9 +860,10 @@ function SettingsApp({profile,onBack}) {
   const showToast=(msg,type="success")=>{ setToast({msg,type}); setTimeout(()=>setToast(null),2800); };
 
   const tabs=[
-    {id:"booking", label:"Buchung",  icon:"📅"},
-    {id:"courts",  label:"Plätze",   icon:"🎾"},
+    {id:"booking", label:"Buchung",   icon:"📅"},
+    {id:"courts",  label:"Plätze",    icon:"🎾"},
     {id:"members", label:"Mitglieder",icon:"👤"},
+    {id:"display", label:"Display",   icon:"🖥️"},
   ];
 
   return (
@@ -897,6 +898,7 @@ function SettingsApp({profile,onBack}) {
           {tab==="booking" &&<SettingsBookingTab onToast={showToast}/>}
           {tab==="courts"  &&<SettingsCourtsTab  onToast={showToast}/>}
           {tab==="members" &&<SettingsMembersTab onToast={showToast}/>}
+          {tab==="display" &&<SettingsDisplayTab onToast={showToast}/>}
         </main>
 
         <nav className="cfg-bottom-nav" style={{display:"none",position:"fixed",bottom:0,left:0,right:0,background:"#0F172A",borderTop:"1px solid #1E293B",zIndex:100,justifyContent:"space-around",padding:"8px 0",paddingBottom:"env(safe-area-inset-bottom)"}}>
@@ -1060,6 +1062,95 @@ function SettingsMembersTab({onToast}) {
             <button style={{...S.cancelBtn,padding:"5px 9px",fontSize:13}} onClick={()=>deleteMember(m.id,m.name)}>✕</button>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// ── SETTINGS: DISPLAY ────────────────────────────────────────────────────
+function SettingsDisplayTab({onToast}) {
+  const [mode,setMode]   = useState("schedule");
+  const [theme,setTheme] = useState("dark");
+  const [saving,setSaving] = useState(false);
+  const [loaded,setLoaded] = useState(false);
+
+  useEffect(()=>{
+    sb.from("settings").select("*").in("key",["display_mode","display_theme"])
+      .then(({data})=>{
+        const map=Object.fromEntries((data||[]).map(r=>[r.key,r.value]));
+        setMode(map.display_mode||"schedule");
+        setTheme(map.display_theme||"dark");
+        setLoaded(true);
+      });
+  },[]);
+
+  const save=async()=>{
+    setSaving(true);
+    await sb.from("settings").upsert([
+      {key:"display_mode",value:mode},
+      {key:"display_theme",value:theme},
+    ],{onConflict:"key"});
+    setSaving(false);
+    onToast("Display-Einstellungen gespeichert ✓");
+  };
+
+  const modes=[
+    {id:"schedule",icon:"📅",label:"Tagesbelegungsplan",desc:"Zeigt die heutigen Buchungen aller Plätze"},
+    {id:"white",   icon:"⬜",label:"Weißer Bildschirm", desc:"Leerer weißer Bildschirm (Testmodus)"},
+  ];
+  const themes=[
+    {id:"dark",     label:"Dunkel",        desc:"Navy-Blau Hintergrund (Standard)",          bg:"#0F172A",fg:"#F8FAFC"},
+    {id:"light",    label:"Hell",           desc:"Weißer Hintergrund, dunkle Schrift",         bg:"#F8FAFC",fg:"#0F172A"},
+    {id:"contrast", label:"Hoher Kontrast", desc:"Schwarz-Weiß für sehr helle Umgebungen",    bg:"#FFFFFF",fg:"#000000"},
+  ];
+
+  return (
+    <div style={K.page}>
+      <h1 style={S.pageTitle}>Display-Einstellungen</h1>
+      <p style={S.pageSub}>Steuert, was auf dem Kiosk-Display angezeigt wird</p>
+
+      <div style={{marginTop:20}}>
+        <SectTitle>Anzeigemodus</SectTitle>
+        <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:24}}>
+          {modes.map(m=>(
+            <button key={m.id} onClick={()=>setMode(m.id)} style={{...S.card,border:`2px solid ${mode===m.id?"#8B5CF6":"#E5E7EB"}`,background:mode===m.id?"#F5F3FF":"#fff",display:"flex",alignItems:"center",gap:14,padding:"14px 16px",marginBottom:0,cursor:"pointer",textAlign:"left"}}>
+              <span style={{fontSize:28}}>{m.icon}</span>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:700,fontSize:14}}>{m.label}</div>
+                <div style={{fontSize:12,color:"#6B7280",marginTop:2}}>{m.desc}</div>
+              </div>
+              {mode===m.id&&<span style={{color:"#8B5CF6",fontWeight:800,fontSize:18}}>✓</span>}
+            </button>
+          ))}
+        </div>
+
+        {mode==="schedule"&&(<>
+          <SectTitle>Farbschema des Tagesbelegungsplans</SectTitle>
+          <div style={{fontSize:12,color:"#6B7280",marginBottom:12}}>Das Display befindet sich in einer hellen Umgebung – wähle ein Schema mit ausreichend Kontrast.</div>
+          <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:24}}>
+            {themes.map(t=>(
+              <button key={t.id} onClick={()=>setTheme(t.id)} style={{...S.card,border:`2px solid ${theme===t.id?"#8B5CF6":"#E5E7EB"}`,background:theme===t.id?"#F5F3FF":"#fff",display:"flex",alignItems:"center",gap:14,padding:"14px 16px",marginBottom:0,cursor:"pointer",textAlign:"left"}}>
+                <div style={{width:36,height:36,borderRadius:8,background:t.bg,border:"1.5px solid #D1D5DB",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                  <span style={{color:t.fg,fontWeight:800,fontSize:13}}>Aa</span>
+                </div>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:700,fontSize:14}}>{t.label}</div>
+                  <div style={{fontSize:12,color:"#6B7280",marginTop:2}}>{t.desc}</div>
+                </div>
+                {theme===t.id&&<span style={{color:"#8B5CF6",fontWeight:800,fontSize:18}}>✓</span>}
+              </button>
+            ))}
+          </div>
+        </>)}
+
+        <div style={{display:"flex",alignItems:"center",gap:16}}>
+          <button style={{...S.primaryBtn,background:"#8B5CF6",opacity:saving||!loaded?0.6:1}} onClick={save} disabled={saving||!loaded}>
+            {saving?"Speichern…":"Einstellungen speichern"}
+          </button>
+          <a href="/display.html" target="_blank" rel="noopener noreferrer" style={{color:"#8B5CF6",fontSize:13,fontWeight:600,textDecoration:"none"}}>
+            Display öffnen ↗
+          </a>
+        </div>
       </div>
     </div>
   );
