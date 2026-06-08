@@ -115,39 +115,98 @@ async function tryWidget(page, groupId, heim, gast) {
   }
   await page.waitForTimeout(2000);
 
-  // Inhalt analysieren
+  // Inhalt analysieren + Rubber direkt im DOM parsen
   const result = await page.evaluate(({ heim, gast }) => {
     const heimL = heim.toLowerCase();
     const gastL = gast.toLowerCase();
 
     const meetings = Array.from(document.querySelectorAll('[class*="gbmeet"]'));
-    console.log("gbmeetings:", meetings.length);
-
-    // Alle Meetings auflisten
     const allTexts = meetings.map(m =>
       m.textContent.trim().replace(/\s+/g, " ").slice(0, 120)
     );
 
-    // Passendes Meeting suchen (case-insensitive)
     for (const m of meetings) {
       const t = m.textContent.toLowerCase();
       if (!t.includes(heimL) || !t.includes(gastL)) continue;
 
       const mText = m.textContent.trim().replace(/\s+/g, " ");
 
-      // Status
+      // ── Status ──────────────────────────────────────────────────────────
+      // "anzeigen" = Spielbericht existiert = Spiel abgeschlossen (oder läuft)
+      // "blanko"   = Spielbericht noch leer = Spiel noch nicht gestartet
       let status = "upcoming";
-      if (/abgeschlossen|beendet/i.test(mText)) status = "done";
-      else if (/\d:\d/.test(mText) && !/blanko/i.test(mText)) status = "live";
+      if (/blanko/i.test(mText)) {
+        status = "upcoming";
+      } else if (/anzeigen/i.test(mText)) {
+        // Abgeschlossen wenn Gesamtergebnis eine runde Zahl (z.B. 9:0, 0:9, 5:4)
+        const scM = mText.match(/(\d+):(\d+)/);
+        const total = scM ? (+scM[1] + +scM[2]) : 0;
+        status = total >= 9 ? "done" : "live";
+      }
 
-      // Zeit
+      // ── Zeit ────────────────────────────────────────────────────────────
       const timeM = mText.match(/(\d{1,2}:\d{2})\s*Uhr/i);
       const time = timeM ? timeM[1] + " Uhr" : "–";
 
-      // HTML für Rubber-Parsing
-      const html = m.outerHTML;
+      // ── Gesamtergebnis (erstes X:Y-Paar nach dem Heimteam-Namen) ────────
+      // Rohtext-Format: "SG Herrieden0:93:1851:1031. FC Nürnberg III anzeigen"
+      // Wir extrahieren alle Zahlen-Paare und nehmen das erste
+      const allScores = [...mText.matchAll(/(\d+):(\d+)/g)];
+      const matchScore = allScores[0];
+      const homeScore = matchScore ? +matchScore[1] : 0;
+      const awayScore = matchScore ? +matchScore[2] : 0;
 
-      return { found: true, status, time, html, rawText: mText.slice(0, 500), allTexts };
+      // ── HTML des Groupbox-Bodies für Rubber-Parsing ──────────────────────
+      const bodyEl = m.querySelector('.z-groupbox-cnt, [class*="groupbox-cnt"], [class*="groupbox-body"]');
+      const bodyHtml = bodyEl ? bodyEl.outerHTML : m.outerHTML.slice(2000);
+
+      // ── Rubber direkt im DOM parsen ──────────────────────────────────────
+      const rubbers = [];
+
+      // Alle z-label-Spans im Container holen, dann nach E1..E6, D1..D3 suchen
+      const labels = Array.from(m.querySelectorAll('.z-label, span, td'))
+        .map(el => el.textContent.trim())
+        .filter(t => t.length > 0);
+
+      // Suche nach Rubber-IDs und hole umgebende Werte
+      for (let i = 0; i < labels.length; i++) {
+        if (!/^(E[1-6]|D[1-3])$/i.test(labels[i])) continue;
+        const id = labels[i].toUpperCase();
+        // Nächste 10 Labels: Heimspieler, Gastspieler, Ergebnis
+        const chunk = labels.slice(i + 1, i + 15);
+        // Ergebnis = erstes Label das wie "6:2 6:1" oder "6:2" aussieht
+        const scoreIdx = chunk.findIndex(l => /^\d:\d/.test(l));
+        const score = scoreIdx >= 0 ? chunk[scoreIdx] : "–";
+        const home = chunk[0] || "–";
+        const away = scoreIdx > 1 ? chunk[scoreIdx - 1] : (chunk[1] || "–");
+        // Ergebnis bewerten
+        const sets = score.match(/(\d):(\d)/g) || [];
+        let rubResult = "open";
+        if (sets.length) {
+          let hw = 0, aw = 0;
+          sets.forEach(s => { const [a, b] = s.split(":").map(Number); a > b ? hw++ : aw++; });
+          rubResult = hw + aw >= 2 ? (hw > aw ? "win" : "loss") : "live";
+        }
+        rubbers.push({ id, home, away, score, result: rubResult });
+      }
+
+      // Gruppen-Deduplizierung (manchmal kommen Labels doppelt vor)
+      const seen = new Set();
+      const uniqueRubbers = rubbers.filter(r => {
+        const key = r.id + r.score;
+        if (seen.has(key)) return false;
+        seen.add(key); return true;
+      });
+
+      return {
+        found: true, status, time,
+        homeScore, awayScore,
+        rubbers: uniqueRubbers,
+        rawText: mText.slice(0, 300),
+        bodyHtml: bodyHtml.slice(0, 4000),
+        labelSample: labels.slice(0, 60).join(" | "),
+        allTexts,
+      };
     }
 
     return { found: false, allTexts };
@@ -159,25 +218,15 @@ async function tryWidget(page, groupId, heim, gast) {
     return null;
   }
 
-  console.log("Match gefunden! Status:", result.status);
-  console.log("Rohtext:", result.rawText);
-  console.log("HTML (2000):\n", result.html.slice(0, 2000));
-
-  // Rubber-Daten aus dem Meeting-HTML parsen
-  const rubbers = parseRubbersFromHtml(result.html);
-  console.log("Rubbers gefunden:", rubbers.length);
-
-  // Gesamtpunkte zählen
-  let homeScore = 0, awayScore = 0;
-  rubbers.forEach(r => {
-    if (r.result === "win")  homeScore++;
-    if (r.result === "loss") awayScore++;
-  });
-
-  // Falls kein Rubber aber score im Text
-  if (!rubbers.length) {
-    const scM = result.rawText.match(/(\d+)\s*:\s*(\d+)/);
-    if (scM) { homeScore = +scM[1]; awayScore = +scM[2]; }
+  console.log("Match gefunden! Status:", result.status,
+    " Score:", result.homeScore, ":", result.awayScore);
+  console.log("Labels (Sample):", result.labelSample);
+  console.log("Rubbers gefunden:", result.rubbers.length);
+  result.rubbers.forEach(r =>
+    console.log(`  ${r.id}: ${r.home} vs ${r.away} → ${r.score} (${r.result})`)
+  );
+  if (!result.rubbers.length) {
+    console.log("Body-HTML:\n", result.bodyHtml);
   }
 
   return {
@@ -185,18 +234,19 @@ async function tryWidget(page, groupId, heim, gast) {
     homeTeam: heim, awayTeam: gast,
     league: "HERREN LANDESLIGA 2 GR. 127 NO",
     time: result.time,
-    homeScore, awayScore, rubbers,
+    homeScore: result.homeScore,
+    awayScore: result.awayScore,
+    rubbers: result.rubbers,
   };
 }
 
-// Rubber-Ergebnisse aus gbmeeting-HTML extrahieren
-function parseRubbersFromHtml(html) {
-  // Wir arbeiten mit dem rohen HTML als Text
-  // ZK-Struktur: z-label-Elemente mit Spielnr, Spielern, Ergebnis
-  const rubbers = [];
-  // Suche nach Mustern wie "E1", "E2"... "D1"... mit Ergebnis
-  const parts = html.split(/<[^>]+>/g).map(s => s.trim()).filter(s => s.length > 0);
-  let i = 0;
+// (parseRubbersFromHtml entfernt – Rubber-Parsing erfolgt jetzt direkt im DOM via page.evaluate)
+
+// Dummy-Platzhalter damit nichts bricht
+function parseRubbersFromHtml(_html) {
+  return [];
+  // Legacy-Code entfernt – siehe tryWidget()
+  const parts = []; let i = 0;
   while (i < parts.length) {
     const rubberM = parts[i].match(/^(E[1-6]|D[1-3])$/i);
     if (rubberM) {
