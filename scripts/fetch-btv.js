@@ -219,36 +219,30 @@ async function tryWidget(page, groupId, heim, gast) {
 async function parseRubbersFromPage(page) {
   // Debugging: was steht jetzt auf der Seite?
   const debug = await page.evaluate(() => {
-    // Alle sichtbaren groupbox-content Divs (nicht display:none)
     const contents = Array.from(
       document.querySelectorAll('[class*="groupbox-content"], [class*="groupbox-cnt"]')
     ).filter(el => !el.style.display || el.style.display !== "none");
 
-    // Gesamter Seitentext nach dem Klick
-    const pageText = document.body.innerText.slice(0, 1500);
-
-    // HTML der ersten sichtbaren groupbox-content
     const firstContent = contents[0];
-    const contentHtml = firstContent ? firstContent.outerHTML.slice(0, 5000) : null;
+    if (!firstContent) return { contentCount: 0 };
 
-    // Alle Labels/Spans die E1-E6 oder D1-D3 enthalten
-    const rubberLabels = Array.from(document.querySelectorAll(".z-label, span, td"))
-      .map(el => el.textContent.trim())
-      .filter(t => /^(E[1-6]|D[1-3])$/i.test(t));
-
+    const html = firstContent.outerHTML;
     return {
       contentCount: contents.length,
-      contentHtml,
-      pageText,
-      rubberLabelCount: rubberLabels.length,
+      // innerText zeigt die realen Textwerte – viel lesbarer als HTML
+      innerText: firstContent.innerText.slice(0, 3000),
+      // HTML in 3 Abschnitten um die Rubber-Zeilen zu finden
+      html0: html.slice(0, 3000),
+      html3: html.slice(3000, 6000),
+      html6: html.slice(6000, 9000),
     };
   });
 
   console.log(`Sichtbare groupbox-contents: ${debug.contentCount}`);
-  console.log(`Rubber-Labels gefunden: ${debug.rubberLabelCount}`);
-  if (!debug.rubberLabelCount) {
-    console.log("Seitentext nach Klick:\n", debug.pageText);
-    if (debug.contentHtml) console.log("Content-HTML:\n", debug.contentHtml);
+  if (debug.innerText) {
+    console.log("=== innerText des Contents ===\n" + debug.innerText);
+    console.log("=== HTML 3000-6000 ===\n" + (debug.html3 || "–"));
+    console.log("=== HTML 6000-9000 ===\n" + (debug.html6 || "–"));
   }
 
   return await page.evaluate(() => {
