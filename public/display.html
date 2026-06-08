@@ -156,21 +156,24 @@
       --loss-bg:       #450A0A; --loss-fg: #FCA5A5;
       --live-bg:       #78350F; --live-fg: #FCD34D;
       --bg3:           #334155;
-      --bg-double:     #243044;
+      --bg-double:        #243044;
+      --border-double:    #3B82F6;
     }
     body.theme-light {
-      --win-bg:        #DCFCE7; --win-fg:  #166534;
-      --loss-bg:       #FEE2E2; --loss-fg: #991B1B;
-      --live-bg:       #FEF3C7; --live-fg: #92400E;
-      --bg3:           #E2E8F0;
-      --bg-double:     #D1DCF0;
+      --win-bg:           #DCFCE7; --win-fg:  #166534;
+      --loss-bg:          #FEE2E2; --loss-fg: #991B1B;
+      --live-bg:          #FEF3C7; --live-fg: #92400E;
+      --bg3:              #E2E8F0;
+      --bg-double:        #D1DCF0;
+      --border-double:    #2563EB;
     }
     body.theme-contrast {
-      --win-bg:        #052E16; --win-fg:  #86EFAC;
-      --loss-bg:       #450A0A; --loss-fg: #FCA5A5;
-      --live-bg:       #451A03; --live-fg: #FDE68A;
-      --bg3:           #1A1A1A;
-      --bg-double:     #1A2535;
+      --win-bg:           #052E16; --win-fg:  #86EFAC;
+      --loss-bg:          #450A0A; --loss-fg: #FCA5A5;
+      --live-bg:          #451A03; --live-fg: #FDE68A;
+      --bg3:              #1A1A1A;
+      --bg-double:        #1E293B; /* wie bg2, Unterschied nur über Border */
+      --border-double:    #60A5FA; /* helles Blau für Kontrast-Theme */
     }
 
     /* Header */
@@ -204,7 +207,7 @@
     /* Grid: Spaltenanzahl wird per JS gesetzt (2 für ≤6 Rubbers, 3 für 9) */
     .hs-rubbers-grid { flex:1; display:grid; gap:clamp(4px,.5vw,8px); min-height:0; overflow:hidden; }
     .hs-rubber { background:var(--bg2); border-radius:clamp(4px,.5vw,10px); padding:clamp(6px,.7vh,12px) clamp(8px,.8vw,14px); display:flex; align-items:center; gap:clamp(4px,.5vw,9px); min-width:0; overflow:hidden; }
-    .hs-rubber--double { background:var(--bg-double); }
+    .hs-rubber--double { background:var(--bg-double); border-left:3px solid var(--border-double); }
     .hs-rubber-num { font-size:clamp(13px,1.4vw,22px); font-weight:800; color:var(--slate); min-width:clamp(26px,2.6vw,42px); text-transform:uppercase; flex-shrink:0; line-height:1; }
     .hs-rubber-players { flex:1; min-width:0; }
     .hs-rubber-home { font-size:clamp(14px,1.5vw,24px); font-weight:700; color:var(--fg); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.2; }
@@ -798,15 +801,36 @@ function renderHsMatch(match) {
         <div class="hs-upcoming-hint">Aufstellung noch nicht eingetragen</div>
       </div>`;
   } else {
-    // Rubbers sequenziell sortieren: E1,E2,E3... dann D1,D2,D3
+    // Rubbers sortieren: Einzel E1–E6, dann Doppel D1–D3
     const singles = rubbers.filter(r => r.id.startsWith("E")).sort((a,b) => a.id.localeCompare(b.id));
     const doubles = rubbers.filter(r => r.id.startsWith("D")).sort((a,b) => a.id.localeCompare(b.id));
-    const allSorted = [...singles, ...doubles];
 
-    // Dynamisch: ≤6 Rubbers → 2 Spalten (4er-Mannschaft), >6 → 3 Spalten (6er-Mannschaft)
-    const cols = allSorted.length > 6 ? 3 : 2;
+    // Dynamisch: ≤4 Einzel → 2 Spalten (4er-Mannschaft), sonst 3 Spalten
+    const cols = singles.length > 4 ? 3 : 2;
 
-    const rubberHtml = allSorted.map(r => {
+    // Column-Major-Anordnung innerhalb Einzel: E1 E3 E5 / E2 E4 E6
+    // Formel: Zeile r, Spalte c → singles[c * numSingleRows + r]
+    const numSingleRows = Math.ceil(singles.length / cols);
+    const singleGrid = [];
+    for (let r = 0; r < numSingleRows; r++) {
+      for (let c = 0; c < cols; c++) {
+        singleGrid.push(singles[c * numSingleRows + r] ?? null);
+      }
+    }
+
+    // Doppel: sequentiell D1 D2 D3 (bei 1 Zeile = auch column-major)
+    const numDoubleRows = Math.ceil(doubles.length / cols);
+    const doubleGrid = [];
+    for (let r = 0; r < numDoubleRows; r++) {
+      for (let c = 0; c < cols; c++) {
+        doubleGrid.push(doubles[c * numDoubleRows + r] ?? null);
+      }
+    }
+
+    const allOrdered = [...singleGrid, ...doubleGrid];
+
+    const rubberHtml = allOrdered.map(r => {
+      if (!r) return `<div class="hs-rubber" style="visibility:hidden"></div>`;
       const isDouble = r.id.startsWith("D");
       return `
       <div class="hs-rubber${isDouble ? " hs-rubber--double" : ""}">
