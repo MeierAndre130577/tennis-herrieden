@@ -1149,52 +1149,34 @@ function SettingsDisplayTab({onToast}) {
           <div style={{marginBottom:24,background:"#F9FAFB",border:"1.5px solid #E5E7EB",borderRadius:12,padding:16}}>
             <div style={{fontWeight:700,fontSize:13,color:"#374151",marginBottom:14}}>🏆 Heimspiel konfigurieren</div>
 
-            {/* Vereinsnummer + Saison */}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
-              <div>
-                <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>VEREINSNUMMER (BTV)</div>
-                <input value={vereinsnr} onChange={e=>setVernr(e.target.value)}
-                  placeholder="z.B. 6085" style={{...S.input,width:"100%"}}/>
-              </div>
-              <div>
-                <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>SAISON</div>
-                <input value={saison} onChange={e=>setSaison(e.target.value)}
-                  placeholder="z.B. 2026" style={{...S.input,width:"100%"}}/>
-              </div>
-            </div>
-
-            {/* Mannschaft – Freitext */}
+            {/* Staffel-URL – einmal pro Saison */}
             <div style={{marginBottom:14}}>
-              <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>UNSERE MANNSCHAFT</div>
-              <input value={mannschaft} onChange={e=>setMannschaft(e.target.value)}
-                placeholder="z.B. Herren 1" style={{...S.input,width:"100%"}}/>
-              <div style={{fontSize:11,color:"#9CA3AF",marginTop:4}}>
-                Genau so wie auf btv.de angegeben (z.B. „Herren I" oder „Herren 50")
-              </div>
-            </div>
-
-            {/* Gegner – Freitext */}
-            <div style={{marginBottom:14}}>
-              <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>GEGNER (HEUTIGES SPIEL)</div>
-              <input value={gegner} onChange={e=>setGegner(e.target.value)}
-                placeholder="z.B. TC Rothenburg" style={{...S.input,width:"100%"}}/>
-              <div style={{fontSize:11,color:"#9CA3AF",marginTop:4}}>
-                Vor jedem Heimspiel aktualisieren
-              </div>
-            </div>
-
-            {/* Spielbericht-URL */}
-            <div style={{marginBottom:14}}>
-              <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>
-                SPIELBERICHT-URL <span style={{fontWeight:400,color:"#9CA3AF"}}>(empfohlen)</span>
-              </div>
+              <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>STAFFEL-URL (BTV)</div>
               <input value={matchUrl} onChange={e=>setMatchUrl(e.target.value)}
-                placeholder="https://btv.liga.nu/…/matchReport?…"
+                placeholder="https://www.btv.de/de/spielbetrieb/tabelle-spielplan.html?groupid=…"
                 style={{...S.input,width:"100%",fontSize:12}}/>
               <div style={{fontSize:11,color:"#9CA3AF",marginTop:4}}>
-                Direktlink zum Spielbericht auf btv.de oder nuLiga – wird bevorzugt gegenüber automatischer Suche.
-                Vor jedem Heimspiel aktualisieren.
+                Einmal pro Saison eintragen – bleibt für alle Spieltage gleich
               </div>
+            </div>
+
+            {/* Heimmannschaft – einmal pro Saison */}
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>HEIMMANNSCHAFT</div>
+              <input value={mannschaft} onChange={e=>setMannschaft(e.target.value)}
+                placeholder="z.B. SG TSV/DJK Herrieden" style={{...S.input,width:"100%"}}/>
+              <div style={{fontSize:11,color:"#9CA3AF",marginTop:4}}>
+                Genau so wie auf btv.de angegeben – einmal pro Saison
+              </div>
+            </div>
+
+            {/* Gastmannschaft – vor jedem Spiel */}
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>
+                GASTMANNSCHAFT <span style={{fontWeight:400,color:"#EF4444"}}>↺ vor jedem Spiel aktualisieren</span>
+              </div>
+              <input value={gegner} onChange={e=>setGegner(e.target.value)}
+                placeholder="z.B. TC Rothenburg" style={{...S.input,width:"100%"}}/>
             </div>
 
             {/* Zusammenfassung */}
@@ -1202,7 +1184,9 @@ function SettingsDisplayTab({onToast}) {
               <div style={{marginTop:4,background:"#EFF6FF",border:"1px solid #BFDBFE",borderRadius:8,
                 padding:"10px 12px",fontSize:12,color:"#1E40AF"}}>
                 ✅ Display zeigt: <strong>{mannschaft}</strong> vs. <strong>{gegner}</strong>
-                {matchUrl&&<div style={{marginTop:4,wordBreak:"break-all",opacity:0.7}}>🔗 {matchUrl.slice(0,60)}{matchUrl.length>60?"…":""}</div>}
+                {matchUrl&&<div style={{marginTop:6,wordBreak:"break-all",opacity:0.7,fontSize:11}}>
+                  🔗 {matchUrl.slice(0,70)}{matchUrl.length>70?"…":""}
+                </div>}
               </div>
             )}
           </div>
