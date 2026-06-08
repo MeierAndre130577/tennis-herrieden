@@ -1109,7 +1109,10 @@ function SettingsDisplayTab({onToast}) {
     try {
       const clubnr=String(vereinsnr).padStart(5,"0");
       const r=await fetch(`/api/btv-teams?clubnr=${clubnr}`);
-      const d=await r.json();
+      const raw=await r.text();
+      let d;
+      try { d=JSON.parse(raw); }
+      catch(_){ throw new Error(`Server-Antwort (HTTP ${r.status}): ${raw.slice(0,300)}`); }
       if(d.error) throw new Error(d.error);
       if(!d.teams?.length) throw new Error("Keine Mannschaften gefunden – Vereinsnummer prüfen");
       setTeams(d.teams);
@@ -1123,10 +1126,13 @@ function SettingsDisplayTab({onToast}) {
     try {
       const clubnr=String(vereinsnr).padStart(5,"0");
       const r=await fetch(`/api/btv-spiele?clubnr=${clubnr}&mannschaft=${encodeURIComponent(mann)}`);
-      const d=await r.json();
+      const raw=await r.text();
+      let d;
+      try { d=JSON.parse(raw); }
+      catch(_){ throw new Error(`Server-Antwort (HTTP ${r.status}): ${raw.slice(0,300)}`); }
       if(d.error) throw new Error(d.error);
       setSpiele(d.spiele||[]);
-    } catch(e){ onToast(`Fehler beim Laden der Spiele: ${e.message}`,"error"); }
+    } catch(e){ onToast(`Fehler: ${e.message}`,"error"); }
     setSpieleLoad(false);
   };
 
