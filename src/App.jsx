@@ -1529,7 +1529,7 @@ function SettingsDisplayTab({onToast}) {
             </div>
 
 
-            {/* Zusammenfassung */}
+            {/* Zusammenfassung + Erstfetch */}
             {mannschaft&&gegner&&(
               <div style={{marginTop:4,background:"#EFF6FF",border:"1px solid #BFDBFE",borderRadius:8,
                 padding:"10px 12px",fontSize:12,color:"#1E40AF"}}>
@@ -1537,6 +1537,18 @@ function SettingsDisplayTab({onToast}) {
                 {matchUrl&&<div style={{marginTop:6,wordBreak:"break-all",opacity:0.7,fontSize:11}}>
                   🔗 {matchUrl.slice(0,70)}{matchUrl.length>70?"…":""}
                 </div>}
+                <div style={{marginTop:10,paddingTop:10,borderTop:"1px solid #BFDBFE"}}>
+                  <a href="https://github.com/MeierAndre130577/tennis-herrieden/actions/workflows/btv-fetch.yml"
+                    target="_blank" rel="noopener noreferrer"
+                    style={{display:"inline-flex",alignItems:"center",gap:6,
+                      background:"#1E40AF",color:"#fff",borderRadius:6,
+                      padding:"6px 12px",fontSize:11,fontWeight:700,textDecoration:"none"}}>
+                    ▶ Erstfetch jetzt starten
+                  </a>
+                  <div style={{marginTop:5,fontSize:10,color:"#6B7280"}}>
+                    Nach Gegner-Änderung einmal klicken → GitHub öffnet sich → „Run workflow"
+                  </div>
+                </div>
               </div>
             )}
           </div>

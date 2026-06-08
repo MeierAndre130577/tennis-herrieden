@@ -583,6 +583,55 @@ async function parseReport(page, url, heim, gast) {
   console.log(`Heim: "${heim}"  Gast: "${gast}"`);
   if (!heim || !gast) { console.log("Nicht konfiguriert."); return; }
 
+  // ── Billiger Pre-Check: Cache lesen bevor Playwright startet ────────────────
+  const today = new Date().toISOString().slice(0, 10);
+  try {
+    const { data: preData } = await sb.from("settings")
+      .select("value").eq("key", "btv_match_cache").single();
+
+    if (preData?.value) {
+      const cached   = typeof preData.value === "string" ? JSON.parse(preData.value) : preData.value;
+      const cDate    = cached?.matchDate || null;          // "2026-06-13"
+      const cTime    = (cached?.time || "").replace(/\s*Uhr/i,"").trim(); // "10:00"
+      const cGegner  = (cached?.awayTeam || "").toLowerCase();
+
+      if (cGegner === gast.toLowerCase()) {
+        // Gleicher Gegner – Datum prüfen
+        if (cDate && cDate > today) {
+          console.log(`⏸ Spiel gegen ${gast} am ${cDate} liegt in der Zukunft – kein Fetch.`);
+          return;
+        }
+        if (cDate && cDate < today) {
+          console.log(`⏸ Spiel gegen ${gast} am ${cDate} ist bereits vorbei – warte auf neuen Gegner.`);
+          return;
+        }
+        if (cDate === today && cTime) {
+          if (!isInMatchWindow(today, cTime)) {
+            const [h, m] = cTime.split(":").map(Number);
+            const matchMs = new Date(`${today}T${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:00`).getTime();
+            const diffMin = Math.round((matchMs - Date.now()) / 60_000);
+            const msg = diffMin > 0
+              ? `noch ${diffMin} Min bis Fenster-Start (1h vor ${cTime} Uhr)`
+              : `${Math.abs(diffMin)} Min nach Fenster-Ende`;
+            console.log(`⏸ Spieltag, aber außerhalb Zeitfenster – ${msg}`);
+            return;
+          }
+          const [h, m] = cTime.split(":").map(Number);
+          const matchMs = new Date(`${today}T${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:00`).getTime();
+          const diffMin = Math.round((matchMs - Date.now()) / 60_000);
+          if (diffMin > 0) console.log(`⏱ Im Fenster: Anpfiff ${cTime} Uhr, noch ${diffMin} Min`);
+          else             console.log(`⏱ Im Fenster: Spiel läuft/beendet`);
+        }
+      } else {
+        console.log(`🆕 Neuer Gegner (${gast} ≠ ${cached?.awayTeam || "–"}) – initialer Fetch`);
+      }
+    } else {
+      console.log("🆕 Kein Cache vorhanden – initialer Fetch");
+    }
+  } catch (e) {
+    console.log(`Pre-Check Fehler (ignoriert): ${e.message}`);
+  }
+
   const groupIdM = groupUrl.match(/groupid=(\d+)/);
   const groupId  = groupIdM?.[1];
 
