@@ -201,10 +201,11 @@ async function tryWidget(page, groupId, heim, gast) {
         }
       }
 
-      // ── Debug: gesamter gbmeeting-Text ──────────────────────────────────
+      // ── Debug: Text + Bilder ─────────────────────────────────────────────
       const debugText = mText.trim().replace(/\s+/g," ").slice(0, 300);
+      const debugImgs = Array.from(m.querySelectorAll("img")).map(img => img.src).filter(Boolean);
 
-      return { found: true, status, time, matchDate, league, homeScore, awayScore, anzeigenId, allTexts, debugText };
+      return { found: true, status, time, matchDate, league, homeScore, awayScore, anzeigenId, allTexts, debugText, debugImgs };
     }
     return { found: false, allTexts };
   }, { heim, gast });
@@ -218,6 +219,7 @@ async function tryWidget(page, groupId, heim, gast) {
   console.log(`Match gefunden! Status: ${header.status}  Score: ${header.homeScore}:${header.awayScore}  Datum: ${header.matchDate}  Zeit: ${header.time}`);
   console.log(`Liga: "${header.league}"  anzeigenId: ${header.anzeigenId}`);
   console.log(`gbmeeting-Text: ${header.debugText}`);
+  console.log(`gbmeeting-Bilder: ${(header.debugImgs||[]).join(" | ") || "(keine)"}`);
 
   // ── Zeitfenster prüfen (anhand BTV-Datum + Uhrzeit) ──────────────────────
   if (header.matchDate && header.time && header.time !== "–") {
