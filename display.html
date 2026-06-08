@@ -544,10 +544,21 @@ function subscribeRealtime() {
     .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, () => {
       loadData();
     })
-    .on("postgres_changes", { event: "*", schema: "public", table: "settings" }, () => {
-      location.reload();
-    })
     .subscribe();
+}
+
+// ── SETTINGS POLLING ──────────────────────────────────────────────────────
+// Polls every 30s and reloads if display_mode or display_theme changed
+function startSettingsPolling(mode, theme) {
+  setInterval(async () => {
+    const { data } = await sb.from("settings").select("*").in("key", ["display_mode", "display_theme"]);
+    const s = Object.fromEntries((data || []).map(r => [r.key, r.value]));
+    const newMode  = s.display_mode  || "schedule";
+    const newTheme = s.display_theme || "dark";
+    if (newMode !== mode || newTheme !== theme) {
+      location.reload();
+    }
+  }, 30_000);
 }
 
 // ── MIDNIGHT RELOAD ───────────────────────────────────────────────────────
@@ -570,7 +581,7 @@ function scheduleMidnightReload() {
 
   if (displayMode === "white") {
     document.getElementById("white-screen").style.display = "block";
-    subscribeRealtime();
+    startSettingsPolling(displayMode, displayTheme);
     return;
   }
 
@@ -584,6 +595,7 @@ function scheduleMidnightReload() {
   setInterval(loadData, 60_000);
 
   subscribeRealtime();
+  startSettingsPolling(displayMode, displayTheme);
   scheduleMidnightReload();
 
   document.getElementById("app").style.display = "flex";
