@@ -1161,8 +1161,12 @@ function HeimspieleManualEntry({onToast}) {
   const save = async () => {
     setSaving(true);
     const now = new Date().toISOString();
+    // Status automatisch aus Rubbers ableiten
+    const openCount    = rubbers.filter(r => r.result === "open").length;
+    const nonOpenCount = rubbers.filter(r => r.result !== "open").length;
+    const autoStatus   = nonOpenCount === 0 ? "upcoming" : openCount === 0 ? "done" : "live";
     const payload = {
-      homeTeam, awayTeam, league, status,
+      homeTeam, awayTeam, league, status: autoStatus,
       homeScore: Number(homeScore),
       awayScore: Number(awayScore),
       rubbers,
@@ -1295,27 +1299,6 @@ function HeimspieleManualEntry({onToast}) {
               </button>
             </div>
 
-            {/* Status */}
-            <div style={{marginBottom:14}}>
-              <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:6}}>STATUS</div>
-              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                {[["upcoming","Noch nicht begonnen","#6B7280"],
-                  ["live",null,"#F59E0B"],
-                  ["done","✓ Abgeschlossen","#16A34A"]].map(([v,lbl,col])=>(
-                  <button key={v} onClick={()=>mark(setStatus)(v)}
-                    style={{padding:"6px 14px",borderRadius:20,
-                      border:`2px solid ${status===v?col:"#E5E7EB"}`,
-                      background:status===v?col+"22":"#fff",
-                      color:status===v?col:"#6B7280",
-                      fontWeight:status===v?700:400,fontSize:12,cursor:"pointer",
-                      display:"flex",alignItems:"center",gap:5}}>
-                    {v==="live"
-                      ? <><SpinningBall size={14}/> Läuft</>
-                      : lbl}
-                  </button>
-                ))}
-              </div>
-            </div>
 
             {/* Gesamtstand */}
             <div style={{marginBottom:14}}>
