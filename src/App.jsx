@@ -80,7 +80,7 @@ function HomeScreen({profile,onGoBooking,onGoKasse,onGoSettings}) {
         {/* Header */}
         <div style={H.header}>
           <TennisBall size={52}/>
-          <h1 style={H.title}>Tennis Herrieden</h1>
+          <h1 style={H.title}>Tennis Herrieden </h1>
           <p style={H.greeting}>Hallo, {profile.name} 👋</p>
         </div>
 
