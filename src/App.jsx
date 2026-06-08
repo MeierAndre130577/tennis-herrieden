@@ -1072,15 +1072,14 @@ function SettingsDisplayTab({onToast}) {
   const [mode,setMode]   = useState("schedule");
   const [theme,setTheme] = useState("dark");
   const [saving,setSaving] = useState(false);
-  const [loaded,setLoaded] = useState(false);
 
   useEffect(()=>{
     sb.from("settings").select("*").in("key",["display_mode","display_theme"])
-      .then(({data})=>{
+      .then(({data,error})=>{
+        if(error) return;
         const map=Object.fromEntries((data||[]).map(r=>[r.key,r.value]));
-        setMode(map.display_mode||"schedule");
-        setTheme(map.display_theme||"dark");
-        setLoaded(true);
+        if(map.display_mode)  setMode(map.display_mode);
+        if(map.display_theme) setTheme(map.display_theme);
       });
   },[]);
 
@@ -1145,7 +1144,7 @@ function SettingsDisplayTab({onToast}) {
         </>)}
 
         <div style={{display:"flex",alignItems:"center",gap:16}}>
-          <button style={{...S.primaryBtn,background:"#8B5CF6",opacity:saving||!loaded?0.6:1}} onClick={save} disabled={saving||!loaded}>
+          <button style={{...S.primaryBtn,background:"#8B5CF6",opacity:saving?0.6:1}} onClick={save} disabled={saving}>
             {saving?"Speichern…":"Einstellungen speichern"}
           </button>
           <a href="/display.html" target="_blank" rel="noopener noreferrer" style={{color:"#8B5CF6",fontSize:13,fontWeight:600,textDecoration:"none"}}>
