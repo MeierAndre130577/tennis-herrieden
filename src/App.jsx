@@ -1505,7 +1505,7 @@ function SettingsDisplayTab({onToast}) {
                 placeholder="https://www.btv.de/de/spielbetrieb/tabelle-spielplan.html?groupid=…"
                 style={{...S.input,width:"100%",fontSize:12}}/>
               <div style={{fontSize:11,color:"#9CA3AF",marginTop:4}}>
-                Einmal pro Saison eintragen – bleibt für alle Spieltage gleich
+                Einmal pro Mannschaft eintragen – bleibt dauerhaft gleich
               </div>
             </div>
 
@@ -1515,7 +1515,7 @@ function SettingsDisplayTab({onToast}) {
               <input value={mannschaft} onChange={e=>setMannschaft(e.target.value)}
                 placeholder="z.B. SG TSV/DJK Herrieden" style={{...S.input,width:"100%"}}/>
               <div style={{fontSize:11,color:"#9CA3AF",marginTop:4}}>
-                Genau so wie auf btv.de angegeben – einmal pro Saison
+                Genau so wie auf btv.de angegeben – einmal eintragen
               </div>
             </div>
 
