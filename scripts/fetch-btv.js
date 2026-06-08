@@ -12,9 +12,32 @@ const sb = createClient(
 async function getSettings() {
   const { data } = await sb.from("settings").select("*")
     .in("key", ["display_mannschaft", "display_gegner",
-                "display_match_url", "display_vereinsnummer"]);
+                "display_match_url", "display_vereinsnummer",
+                "display_match_date"]);
   if (!data) return {};
   return Object.fromEntries(data.map(r => [r.key, r.value]));
+}
+
+// ── Cached Match-Zeit aus Supabase lesen (z.B. "10:00 Uhr") ─────────────────
+async function getCachedMatchTime() {
+  try {
+    const { data } = await sb.from("settings")
+      .select("value").eq("key", "btv_match_cache").single();
+    if (!data?.value) return null;
+    const m = typeof data.value === "string" ? JSON.parse(data.value) : data.value;
+    return m?.time || null; // z.B. "10:00 Uhr"
+  } catch (_) { return null; }
+}
+
+// ── Zeitfenster prüfen: 1h vor bis 10h nach Spielbeginn ─────────────────────
+// matchDate: "2026-06-14"  matchTime: "10:00 Uhr"
+function isInMatchWindow(matchDate, matchTime) {
+  const timeStr = (matchTime || "").replace(/\s*Uhr/i, "").trim(); // "10:00"
+  const [h, min] = timeStr.split(":").map(Number);
+  if (isNaN(h) || isNaN(min)) return true; // Zeit unbekannt → immer laufen
+  const matchMs = new Date(`${matchDate}T${String(h).padStart(2,"0")}:${String(min).padStart(2,"0")}:00`).getTime();
+  const nowMs   = Date.now();
+  return nowMs >= matchMs - 60 * 60 * 1000 && nowMs <= matchMs + 10 * 60 * 60 * 1000;
 }
 
 async function saveResult(key, value) {
@@ -215,36 +238,62 @@ async function tryWidget(page, groupId, heim, gast) {
   };
 }
 
-// ── Rubbers aus der Seite parsen (ZK hat inline per AJAX geladen) ────────────
-async function parseRubbersFromPage(page) {
-  const contentText = await page.evaluate(() => {
-    const el = document.querySelector('[class*="groupbox-content"]:not([style*="display:none"])');
-    return el ? el.innerText : null;
-  });
+// ── Rubbers aus der Seite parsen – mit Retry falls ZK-AJAX noch lädt ────────
+async function parseRubbersFromPage(page, maxRetries = 4) {
+  let rubbers = [];
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    if (attempt > 1) {
+      console.log(`  Versuch ${attempt}/${maxRetries} – warte 2s auf ZK-AJAX…`);
+      await page.waitForTimeout(2000);
+    }
 
-  if (!contentText) {
-    console.log("Kein sichtbarer Content nach Klick");
-    return [];
+    const contentText = await page.evaluate(() => {
+      const el = document.querySelector('[class*="groupbox-content"]:not([style*="display:none"])');
+      return el ? el.innerText : null;
+    });
+
+    if (!contentText) {
+      console.log("Kein sichtbarer Content nach Klick");
+      continue;
+    }
+
+    // ── DEBUG: erste 600 Zeichen des rohen innerText loggen ──────────────
+    if (attempt === 1) {
+      console.log("  [DEBUG innerText erste 600 Zeichen]");
+      console.log(contentText.slice(0, 600).replace(/\n/g, "↵\n"));
+      console.log("  [/DEBUG]");
+    }
+
+    rubbers = parseRubbersFromText(contentText);
+    const nonOpen = rubbers.filter(r => r.result !== "open").length;
+
+    // Fertig wenn ≥9 Rubbers (6er) oder ≥6 (4er) und mindestens ein Ergebnis vorhanden
+    if (rubbers.length >= 6 && nonOpen > 0) {
+      console.log(`  ✓ ${rubbers.length} Rubbers nach Versuch ${attempt} geladen (${nonOpen} mit Ergebnis)`);
+      return rubbers;
+    }
+
+    console.log(`  Versuch ${attempt}: ${rubbers.length} Rubbers, ${nonOpen} mit Ergebnis – noch nicht vollständig`);
   }
-
-  const rubbers = parseRubbersFromText(contentText);
   return rubbers;
 }
 
 // ── innerText-Parser für BTV Spielbericht ─────────────────────────────────
 // Format:  Einzelspiele | Doppelspiele
-//          [Spielername GER (Nr)]  [P] [S1] [S2] [S3?] [MP] [SÄ] [SP] [P]  [Spielername GER (Nr)]
+//          [Spielername NAT (Nr)]  [P] [S1] [S2] [S3?] [MP] [SÄ] [SP] [P]  [Spielername NAT (Nr)]
+// Nationalität kann GER, CZE, AUT, SUI, USA, ... sein (immer 3 Großbuchstaben)
 function parseRubbersFromText(text) {
   const lines = text.split("\n").map(l => l.trim()).filter(l => l.length > 0);
 
-  // Spielername:  enthält "GER ("
-  const isPlayer = l => /GER\s*\(/.test(l);
+  // Spielername:  enthält 3-Buchstaben-Ländercode gefolgt von " ("
+  const isPlayer = l => /\b[A-Z]{3}\s*\(/.test(l);
   // Score-Zeile:  Format N:N (beliebige Zahlen)
   const isScore  = l => /^\d+:\d+$/.test(l);
   // MP-Zeile:     0:1 oder 1:0 (Matchpunkt)
   const isMp     = l => /^[01]:[01]$/.test(l) && l[0] !== l[2];
 
-  const cleanName = l => l.replace(/\s+GER\s*\(.*$/, "").trim();
+  // Ländercode + alles dahinter entfernen: "Bartl, Jaroslav CZE (3, LK5,1)" → "Bartl, Jaroslav"
+  const cleanName = l => l.replace(/\s+[A-Z]{3}\s*\(.*$/, "").trim();
 
   let inSingles = false, inDoubles = false;
   const singles = [], doubles = [];
@@ -483,8 +532,42 @@ async function parseReport(page, url, heim, gast) {
   const groupUrl = cfg.display_match_url   || "";
   const clubnr   = String(cfg.display_vereinsnummer || "6085").padStart(5, "0");
 
-  console.log(`Heim: "${heim}"  Gast: "${gast}"`);
+  const matchDate = cfg.display_match_date || "";
+  const today     = new Date().toISOString().slice(0, 10); // "2026-06-14"
+  console.log(`Heim: "${heim}"  Gast: "${gast}"  Spieltag: "${matchDate}"  Heute: "${today}"`);
   if (!heim || !gast) { console.log("Nicht konfiguriert."); return; }
+
+  // ── Schritt 1: Falscher Tag → sofortiger Exit (kein Playwright-Start) ──────
+  if (matchDate && matchDate !== today) {
+    console.log(`⏸ Kein Spieltag – kein Fetch. (Spiel: ${matchDate})`);
+    return;
+  }
+
+  // ── Schritt 2: Richtige Tag → Uhrzeit aus Cache lesen, Fenster prüfen ──────
+  if (matchDate) {
+    const cachedTime = await getCachedMatchTime(); // z.B. "10:00 Uhr" oder null
+    if (cachedTime) {
+      if (!isInMatchWindow(matchDate, cachedTime)) {
+        const timeStr = cachedTime.replace(/\s*Uhr/i, "").trim();
+        const [h, min] = timeStr.split(":").map(Number);
+        const matchMs  = new Date(`${matchDate}T${String(h).padStart(2,"0")}:${String(min).padStart(2,"0")}:00`).getTime();
+        const diffMin  = Math.round((matchMs - Date.now()) / 60_000);
+        const diffStr  = diffMin > 0
+          ? `noch ${diffMin} Min bis Fenster-Start (1h vor ${cachedTime})`
+          : `${Math.abs(diffMin)} Min nach Fenster-Ende`;
+        console.log(`⏸ Außerhalb des Zeitfensters – kein Fetch. (${diffStr})`);
+        return;
+      }
+      const timeStr = cachedTime.replace(/\s*Uhr/i, "").trim();
+      const [h, min] = timeStr.split(":").map(Number);
+      const matchMs  = new Date(`${matchDate}T${String(h).padStart(2,"0")}:${String(min).padStart(2,"0")}:00`).getTime();
+      const diffMin  = Math.round((matchMs - Date.now()) / 60_000);
+      if (diffMin > 0) console.log(`⏱ Im Fenster: Anpfiff ${cachedTime}, noch ${diffMin} Min`);
+      else             console.log(`⏱ Im Fenster: Spiel läuft / beendet (${Math.abs(diffMin)} Min nach ${cachedTime})`);
+    } else {
+      console.log(`⏱ Spieltag, noch keine BTV-Zeit im Cache – erster Fetch des Tages`);
+    }
+  }
 
   const groupIdM = groupUrl.match(/groupid=(\d+)/);
   const groupId  = groupIdM?.[1];
@@ -527,10 +610,12 @@ async function parseReport(page, url, heim, gast) {
       return;
     }
 
+    matchData._source  = "auto";
+    matchData._savedAt = new Date().toISOString();
     await saveResult("btv_match_cache", matchData);
     // Fehler-Flag löschen wenn erfolgreich
     await saveResult("btv_fetch_error", null);
-    console.log(`\n✓ Gespeichert: ${matchData.status}  ${matchData.homeScore}:${matchData.awayScore}  ${matchData.rubbers.length} Rubbers`);
+    console.log(`\n✓ Gespeichert: ${matchData.status}  ${matchData.homeScore}:${matchData.awayScore}  ${matchData.rubbers.length} Rubbers  [auto ${matchData._savedAt}]`);
 
   } finally {
     await browser.close();

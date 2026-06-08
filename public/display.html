@@ -728,7 +728,7 @@ function startSettingsPolling(mode, theme, vereinsnr, saison, mannschaft, gegner
   setInterval(async () => {
     const { data } = await sb.from("settings").select("*")
       .in("key", ["display_mode","display_theme","display_vereinsnummer","display_saison",
-                  "display_mannschaft","display_gegner"]);
+                  "display_mannschaft","display_gegner","display_match_date"]);
     const s = Object.fromEntries((data || []).map(r => [r.key, r.value]));
     if (
       (s.display_mode          || "schedule") !== mode     ||
@@ -930,7 +930,7 @@ function scheduleMidnightReload() {
 (async function init() {
   const { data: settingsData } = await sb.from("settings").select("*")
     .in("key", ["display_mode","display_theme","display_vereinsnummer","display_saison",
-                "display_bild_url","display_mannschaft","display_gegner"]);
+                "display_bild_url","display_mannschaft","display_gegner","display_match_date"]);
   const settings    = Object.fromEntries((settingsData || []).map(r => [r.key, r.value]));
   const displayMode  = settings.display_mode          || "schedule";
   const displayTheme = settings.display_theme         || "dark";

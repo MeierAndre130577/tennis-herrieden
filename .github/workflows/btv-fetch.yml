@@ -1,10 +1,11 @@
 name: BTV Daten holen
 
 on:
-  # Freitags, samstags und sonntags alle 10 Minuten zwischen 8:00 und 20:00 Uhr
+  # Alle 10 Minuten, täglich – das Skript prüft selbst ob ein Spiel im Zeitfenster liegt
+  # (1h vor bis 10h nach Spielbeginn). Außerhalb: sofortiger Exit, ~0 Rechenzeit.
   schedule:
-    - cron: '*/10 6-18 * * 5,6,0'
-  # Manuell auslösbar (z.B. aus den Einstellungen)
+    - cron: '*/10 * * * *'
+  # Manuell auslösbar (z.B. für Tests)
   workflow_dispatch:
 
 jobs:
