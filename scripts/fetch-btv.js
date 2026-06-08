@@ -54,8 +54,26 @@ async function findMatchReportUrl(page, groupUrl, heimTeam, gastTeam) {
     } catch (_) {}
   }
 
-  const snippet = await page.evaluate(() => document.body.innerText.slice(0, 600));
-  console.log("Staffelseite-Inhalt (Auszug):", snippet);
+  const snippet = await page.evaluate(() => document.body.innerText.slice(0, 1000));
+  console.log("Staffelseite-Inhalt (Auszug):\n" + snippet);
+
+  // Alle Links auf der Seite loggen
+  const allLinks = await page.evaluate(() =>
+    Array.from(document.querySelectorAll("a[href]"))
+      .map(a => `${a.textContent.trim().slice(0,50)} → ${a.href}`)
+      .filter(s => s.length > 5)
+      .slice(0, 30)
+  );
+  console.log("Alle Links:", allLinks.join("\n  "));
+
+  // Alle Zeilen mit Text loggen (um Teamnamen zu sehen)
+  const allRows = await page.evaluate(() =>
+    Array.from(document.querySelectorAll("tr, [class*='row'], [class*='match'], [class*='begegnung']"))
+      .map(r => r.textContent.trim().replace(/\s+/g, " ").slice(0, 120))
+      .filter(t => t.length > 10)
+      .slice(0, 20)
+  );
+  console.log("Gefundene Zeilen:", allRows.join("\n  "));
 
   // Zeile finden, die beide Teams enthält, und Link extrahieren
   const href = await page.evaluate(({ heim, gast }) => {
