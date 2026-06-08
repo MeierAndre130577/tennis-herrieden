@@ -1075,12 +1075,13 @@ function SettingsDisplayTab({onToast}) {
   const [saison,      setSaison]     = useState("2026");
   const [mannschaft,  setMannschaft] = useState("");
   const [gegner,      setGegner]     = useState("");
+  const [matchUrl,    setMatchUrl]   = useState("");
   const [saving,      setSaving]     = useState(false);
 
   useEffect(()=>{
     sb.from("settings").select("*")
       .in("key",["display_mode","display_theme","display_vereinsnummer","display_saison",
-                 "display_mannschaft","display_gegner"])
+                 "display_mannschaft","display_gegner","display_match_url"])
       .then(({data})=>{
         if(!data) return;
         const map=Object.fromEntries(data.map(r=>[r.key,r.value]));
@@ -1090,6 +1091,7 @@ function SettingsDisplayTab({onToast}) {
         if(map.display_saison)        setSaison(map.display_saison);
         if(map.display_mannschaft)    setMannschaft(map.display_mannschaft);
         if(map.display_gegner)        setGegner(map.display_gegner);
+        if(map.display_match_url)     setMatchUrl(map.display_match_url);
       });
   },[]);
 
@@ -1102,6 +1104,7 @@ function SettingsDisplayTab({onToast}) {
       {key:"display_saison",        value:saison},
       {key:"display_mannschaft",    value:mannschaft},
       {key:"display_gegner",        value:gegner},
+      {key:"display_match_url",     value:matchUrl},
     ],{onConflict:"key"});
     setSaving(false);
     if(error){ onToast(`Fehler: ${error.message}`,"error"); return; }
@@ -1176,7 +1179,21 @@ function SettingsDisplayTab({onToast}) {
               <input value={gegner} onChange={e=>setGegner(e.target.value)}
                 placeholder="z.B. TC Rothenburg" style={{...S.input,width:"100%"}}/>
               <div style={{fontSize:11,color:"#9CA3AF",marginTop:4}}>
-                Vor jedem Heimspiel aktualisieren – muss mit dem Gegnernamen auf btv.de übereinstimmen
+                Vor jedem Heimspiel aktualisieren
+              </div>
+            </div>
+
+            {/* Spielbericht-URL */}
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>
+                SPIELBERICHT-URL <span style={{fontWeight:400,color:"#9CA3AF"}}>(empfohlen)</span>
+              </div>
+              <input value={matchUrl} onChange={e=>setMatchUrl(e.target.value)}
+                placeholder="https://btv.liga.nu/…/matchReport?…"
+                style={{...S.input,width:"100%",fontSize:12}}/>
+              <div style={{fontSize:11,color:"#9CA3AF",marginTop:4}}>
+                Direktlink zum Spielbericht auf btv.de oder nuLiga – wird bevorzugt gegenüber automatischer Suche.
+                Vor jedem Heimspiel aktualisieren.
               </div>
             </div>
 
@@ -1185,6 +1202,7 @@ function SettingsDisplayTab({onToast}) {
               <div style={{marginTop:4,background:"#EFF6FF",border:"1px solid #BFDBFE",borderRadius:8,
                 padding:"10px 12px",fontSize:12,color:"#1E40AF"}}>
                 ✅ Display zeigt: <strong>{mannschaft}</strong> vs. <strong>{gegner}</strong>
+                {matchUrl&&<div style={{marginTop:4,wordBreak:"break-all",opacity:0.7}}>🔗 {matchUrl.slice(0,60)}{matchUrl.length>60?"…":""}</div>}
               </div>
             )}
           </div>
