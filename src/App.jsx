@@ -32,7 +32,7 @@ function daysUntil(s){ const diff=Math.round((new Date(s+"T12:00:00")-new Date()
 export default function App() {
   const [session,setSession]   = useState(undefined);
   const [profile,setProfile]   = useState(null);
-  const [screen,setScreen]     = useState("home"); // "home" | "booking" | "kasse"
+  const [screen,setScreen]     = useState("home"); // "home" | "booking" | "kasse" | "settings"
 
   useEffect(()=>{
     sb.auth.getSession().then(({data:{session}})=>setSession(session));
@@ -49,15 +49,16 @@ export default function App() {
   if(!session) return <LoginScreen/>;
   if(!profile) return <Loading msg="Lade Profil…"/>;
 
-  if(screen==="booking") return <BookingApp profile={profile} onBack={()=>setScreen("home")}/>;
-  if(screen==="kasse")   return <KasseApp   profile={profile} onBack={()=>setScreen("home")}/>;
-  return <HomeScreen profile={profile} onGoBooking={()=>setScreen("booking")} onGoKasse={()=>setScreen("kasse")}/>;
+  if(screen==="booking")  return <BookingApp  profile={profile} onBack={()=>setScreen("home")}/>;
+  if(screen==="kasse")    return <KasseApp    profile={profile} onBack={()=>setScreen("home")}/>;
+  if(screen==="settings") return <SettingsApp profile={profile} onBack={()=>setScreen("home")}/>;
+  return <HomeScreen profile={profile} onGoBooking={()=>setScreen("booking")} onGoKasse={()=>setScreen("kasse")} onGoSettings={()=>setScreen("settings")}/>;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HOME SCREEN
 // ═══════════════════════════════════════════════════════════════════════════
-function HomeScreen({profile,onGoBooking,onGoKasse}) {
+function HomeScreen({profile,onGoBooking,onGoKasse,onGoSettings}) {
   const [nextBookings,setNextBookings] = useState([]);
   const [openLog,setOpenLog]           = useState([]);
   const [openTotal,setOpenTotal]       = useState(0);
@@ -149,6 +150,13 @@ function HomeScreen({profile,onGoBooking,onGoKasse}) {
             <span style={H.navTileLabel}>Anzeigetafel</span>
             <span style={H.navTileSub}>Belegungsplan öffnen</span>
           </button>
+          {profile.role==="admin"&&(
+            <button style={{...H.navTile,borderColor:"#8B5CF633",gridColumn:"1 / -1"}} onClick={onGoSettings}>
+              <span style={{fontSize:28}}>⚙️</span>
+              <span style={H.navTileLabel}>Einstellungen</span>
+              <span style={H.navTileSub}>Systemkonfiguration</span>
+            </button>
+          )}
         </div>
 
         {/* Logout */}
@@ -838,6 +846,220 @@ function KasseQuickModal({onLog,onClose}) {
           </div>
         ))}
         <button style={{...S.primaryBtn,width:"100%",opacity:(!price||isNaN(parseFloat(price.replace(",","."))))?0.4:1}} onClick={handle}>Notieren</button>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SETTINGS APP
+// ═══════════════════════════════════════════════════════════════════════════
+function SettingsApp({profile,onBack}) {
+  const [tab,setTab]       = useState("booking");
+  const [toast,setToast]   = useState(null);
+  const showToast=(msg,type="success")=>{ setToast({msg,type}); setTimeout(()=>setToast(null),2800); };
+
+  const tabs=[
+    {id:"booking", label:"Buchung",  icon:"📅"},
+    {id:"courts",  label:"Plätze",   icon:"🎾"},
+    {id:"members", label:"Mitglieder",icon:"👤"},
+  ];
+
+  return (
+    <>
+      <style>{`
+        @media(max-width:767px){.cfg-sidebar{display:none!important}.cfg-bottom-nav{display:flex!important}.cfg-top-bar{display:flex!important}.cfg-main{padding-bottom:72px!important}}
+        @media(min-width:768px){.cfg-sidebar{display:flex!important}.cfg-bottom-nav{display:none!important}.cfg-top-bar{display:none!important}}
+      `}</style>
+      <div style={S.shell}>
+        <aside className="cfg-sidebar" style={{...K.sidebar,display:"none"}}>
+          <button style={K.backBtn} onClick={onBack}>← Startseite</button>
+          <div style={K.logo}>
+            <div style={{fontSize:24}}>⚙️</div>
+            <div style={{fontWeight:800,color:"#F8FAFC",fontSize:15}}>Einstellungen</div>
+          </div>
+          <nav style={{marginTop:12}}>
+            {tabs.map(t=>(<button key={t.id} style={{...S.navBtn,...(tab===t.id?S.navBtnActive:{})}} onClick={()=>setTab(t.id)}><span style={{fontSize:15}}>{t.icon}</span><span>{t.label}</span></button>))}
+          </nav>
+          <div style={S.sidebarBottom}>
+            <div style={S.userChip}><Av name={profile.name}/><div><div style={{fontWeight:700,fontSize:13}}>{profile.name}</div><div style={{fontSize:11,color:"#6B7280"}}>{ROLE_LABELS[profile.role]}</div></div></div>
+            <button style={S.logoutBtn} onClick={()=>sb.auth.signOut()}>Abmelden</button>
+          </div>
+        </aside>
+
+        <main className="cfg-main" style={S.main}>
+          <div className="cfg-top-bar" style={{display:"none",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",background:"#0F172A",position:"sticky",top:0,zIndex:50}}>
+            <button style={{background:"none",border:"none",color:"#94A3B8",cursor:"pointer",fontSize:13,fontWeight:600,padding:0}} onClick={onBack}>← Startseite</button>
+            <span style={{color:"#fff",fontWeight:800,fontSize:15}}>⚙️ Einstellungen</span>
+            <span style={{width:80}}/>
+          </div>
+
+          {tab==="booking" &&<SettingsBookingTab onToast={showToast}/>}
+          {tab==="courts"  &&<SettingsCourtsTab  onToast={showToast}/>}
+          {tab==="members" &&<SettingsMembersTab onToast={showToast}/>}
+        </main>
+
+        <nav className="cfg-bottom-nav" style={{display:"none",position:"fixed",bottom:0,left:0,right:0,background:"#0F172A",borderTop:"1px solid #1E293B",zIndex:100,justifyContent:"space-around",padding:"8px 0",paddingBottom:"env(safe-area-inset-bottom)"}}>
+          <button onClick={onBack} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,background:"none",border:"none",cursor:"pointer",padding:"6px 12px",borderRadius:8,color:"#64748B"}}><span style={{fontSize:22}}>🏠</span><span style={{fontSize:10,fontWeight:600}}>Start</span></button>
+          {tabs.map(t=>(<button key={t.id} onClick={()=>setTab(t.id)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,background:"none",border:"none",cursor:"pointer",padding:"6px 12px",borderRadius:8,color:tab===t.id?"#8B5CF6":"#64748B"}}><span style={{fontSize:22}}>{t.icon}</span><span style={{fontSize:10,fontWeight:600}}>{t.label.split(" ")[0]}</span></button>))}
+        </nav>
+
+        {toast&&<div style={{...S.toast,background:toast.type==="error"?"#EF4444":"#10B981"}}>{toast.msg}</div>}
+      </div>
+    </>
+  );
+}
+
+// ── SETTINGS: BUCHUNG ─────────────────────────────────────────────────────
+function SettingsBookingTab({onToast}) {
+  const [guestFee,setGuestFee]   = useState("");
+  const [saving,setSaving]       = useState(false);
+  const [loaded,setLoaded]       = useState(false);
+
+  useEffect(()=>{
+    sb.from("settings").select("*").eq("key","guest_fee").single()
+      .then(({data})=>{ setGuestFee(data?String(parseFloat(data.value)||5).replace(".",","):"5,00"); setLoaded(true); });
+  },[]);
+
+  const save=async()=>{
+    const fee=parseFloat(guestFee.replace(",","."));
+    if(isNaN(fee)||fee<0) return;
+    setSaving(true);
+    await sb.from("settings").upsert({key:"guest_fee",value:String(fee)},{onConflict:"key"});
+    setSaving(false);
+    onToast(`Gästegebühr auf ${eur(fee)} gesetzt ✓`);
+  };
+
+  return (
+    <div style={K.page}>
+      <h1 style={S.pageTitle}>Buchungseinstellungen</h1>
+      <p style={S.pageSub}>Übergreifende Parameter für das Buchungssystem</p>
+
+      <div style={{...S.card,borderLeft:"4px solid #8B5CF6",marginTop:20}}>
+        <div style={{fontWeight:700,fontSize:15,marginBottom:4}}>Gästegebühr</div>
+        <div style={{fontSize:13,color:"#6B7280",marginBottom:16}}>Betrag pro Buchung mit Gastspieler – wird am Jahresende abgerechnet</div>
+        <div style={{display:"flex",alignItems:"flex-end",gap:12}}>
+          <div style={{flex:1,maxWidth:160}}>
+            <Lbl>Betrag (€)</Lbl>
+            <input value={guestFee} onChange={e=>setGuestFee(e.target.value)} style={S.input} inputMode="decimal" placeholder="5,00" disabled={!loaded}/>
+          </div>
+          <button style={{...S.primaryBtn,background:"#8B5CF6",marginBottom:1,opacity:saving?0.6:1}} onClick={save} disabled={saving}>
+            {saving?"Speichern…":"Speichern"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── SETTINGS: PLÄTZE ──────────────────────────────────────────────────────
+function SettingsCourtsTab({onToast}) {
+  const [courts,setCourts] = useState([]);
+  const [showForm,setShowForm] = useState(false);
+  const [editId,setEditId]   = useState(null);
+  const [name,setName]       = useState("");
+  const [surface,setSurface] = useState("");
+
+  const load=async()=>{ const {data}=await sb.from("courts").select("*").order("sort_order"); setCourts(data||[]); };
+  useEffect(()=>{ load(); },[]);
+
+  const openAdd=()=>{ setEditId(null);setName("");setSurface("");setShowForm(true); };
+  const openEdit=(c)=>{ setEditId(c.id);setName(c.name);setSurface(c.surface);setShowForm(true); };
+  const handleSave=async()=>{
+    if(!name.trim()) return;
+    if(editId){ await sb.from("courts").update({name:name.trim(),surface:surface.trim()}).eq("id",editId); onToast("Platz aktualisiert ✓"); }
+    else { await sb.from("courts").insert({name:name.trim(),surface:surface.trim(),sort_order:courts.length+1}); onToast(`${name} hinzugefügt ✓`); }
+    setShowForm(false); load();
+  };
+  const handleDelete=async(id,cname)=>{
+    if(!window.confirm(`Platz „${cname}" wirklich löschen?`)) return;
+    await sb.from("courts").delete().eq("id",id);
+    onToast("Gelöscht."); load();
+  };
+
+  return (
+    <div style={K.page}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
+        <div><h1 style={S.pageTitle}>Platzverwaltung</h1><p style={S.pageSub}>Tennisplätze anlegen und bearbeiten</p></div>
+        <button style={{...S.primaryBtn,background:"#8B5CF6"}} onClick={openAdd}>+ Hinzufügen</button>
+      </div>
+
+      {showForm&&(
+        <div style={{...S.card,borderLeft:"4px solid #8B5CF6",marginBottom:20}}>
+          <div style={{fontWeight:700,marginBottom:14}}>{editId?"Platz bearbeiten":"Neuer Platz"}</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr auto",gap:10,alignItems:"flex-end"}}>
+            <div><Lbl>Name</Lbl><input placeholder="z.B. Platz 1" value={name} onChange={e=>setName(e.target.value)} style={S.input}/></div>
+            <div><Lbl>Belag</Lbl><input placeholder="z.B. Sand" value={surface} onChange={e=>setSurface(e.target.value)} style={S.input}/></div>
+            <div style={{display:"flex",gap:6}}>
+              <button style={{...S.primaryBtn,background:"#8B5CF6"}} onClick={handleSave}>{editId?"Speichern":"Hinzufügen"}</button>
+              <button style={S.cancelBtn} onClick={()=>setShowForm(false)}>✕</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {courts.length===0&&!showForm&&(
+        <div style={{textAlign:"center",padding:"40px 0",color:"#9CA3AF"}}><div style={{fontSize:36}}>🎾</div><div style={{marginTop:8}}>Noch keine Plätze angelegt</div></div>
+      )}
+
+      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+        {courts.map((c,i)=>(
+          <div key={c.id} style={{...S.card,display:"flex",alignItems:"center",gap:14}}>
+            <div style={{width:10,height:10,borderRadius:"50%",background:COURT_COLORS[i%COURT_COLORS.length],flexShrink:0}}/>
+            <div style={{flex:1}}><div style={{fontWeight:700}}>{c.name}</div><div style={{fontSize:12,color:"#6B7280"}}>{c.surface}</div></div>
+            <div style={{display:"flex",gap:6}}>
+              <button style={{background:"none",border:"1px solid #E5E7EB",borderRadius:6,cursor:"pointer",fontSize:14,padding:"4px 7px"}} onClick={()=>openEdit(c)}>✏️</button>
+              <button style={{...S.cancelBtn,padding:"4px 8px",fontSize:13}} onClick={()=>handleDelete(c.id,c.name)}>✕</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── SETTINGS: MITGLIEDER ──────────────────────────────────────────────────
+function SettingsMembersTab({onToast}) {
+  const [members,setMembers]   = useState([]);
+  const [saving,setSaving]     = useState(null);
+
+  const load=async()=>{ const {data}=await sb.from("profiles").select("*").order("name"); setMembers(data||[]); };
+  useEffect(()=>{ load(); },[]);
+
+  const changeRole=async(uid,role)=>{
+    setSaving(uid);
+    await sb.from("profiles").update({role}).eq("id",uid);
+    setSaving(null); onToast("Rolle aktualisiert ✓"); load();
+  };
+  const deleteMember=async(uid,mname)=>{
+    if(!window.confirm(`Mitglied „${mname}" und alle Buchungen wirklich löschen?`)) return;
+    await sb.from("bookings").delete().eq("user_id",uid);
+    await sb.from("profiles").delete().eq("id",uid);
+    onToast("Mitglied gelöscht."); load();
+  };
+
+  return (
+    <div style={K.page}>
+      <h1 style={S.pageTitle}>Mitgliederverwaltung</h1>
+      <p style={S.pageSub}>Rollen zuweisen und Mitglieder verwalten</p>
+
+      <div style={{display:"flex",flexDirection:"column",gap:8,marginTop:20}}>
+        {members.map(m=>(
+          <div key={m.id} style={{...S.card,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+            <Av name={m.name}/>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontWeight:700,fontSize:14}}>{m.name}</div>
+              <div style={{fontSize:11,color:"#6B7280",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.email||""}</div>
+            </div>
+            <select value={m.role||"member"} disabled={saving===m.id} onChange={e=>changeRole(m.id,e.target.value)}
+              style={{border:"1.5px solid #E5E7EB",borderRadius:7,padding:"5px 8px",fontSize:13,fontWeight:600,cursor:"pointer",background:"#fff",color:"#374151"}}>
+              <option value="member">Mitglied</option>
+              <option value="member2">Mitglied Plus</option>
+              <option value="admin">Administrator</option>
+            </select>
+            <button style={{...S.cancelBtn,padding:"5px 9px",fontSize:13}} onClick={()=>deleteMember(m.id,m.name)}>✕</button>
+          </div>
+        ))}
       </div>
     </div>
   );
