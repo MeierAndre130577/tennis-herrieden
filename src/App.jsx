@@ -1033,6 +1033,20 @@ function SettingsMembersTab({onToast}) {
 }
 
 // ── HEIMSPIEL: MANUELLE EINGABE ──────────────────────────────────────────
+function SpinningBall({size=16}) {
+  return (
+    <>
+      <style>{`@keyframes hs-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
+      <svg width={size} height={size} viewBox="0 0 32 32" fill="none"
+        style={{display:"inline-block",animation:"hs-spin 1s linear infinite",flexShrink:0}}>
+        <circle cx="16" cy="16" r="14" stroke="currentColor" strokeWidth="2.5"/>
+        <ellipse cx="16" cy="16" rx="5" ry="13" stroke="currentColor" strokeWidth="1.8"/>
+        <line x1="2" y1="16" x2="30" y2="16" stroke="currentColor" strokeWidth="1.8"/>
+      </svg>
+    </>
+  );
+}
+
 const RUBBER_RESULT_OPTS = [
   {v:"open",  label:"Offen",        color:"#9CA3AF"},
   {v:"live",  label:"● Läuft",      color:"#F59E0B"},
@@ -1087,22 +1101,22 @@ function HeimspieleManualEntry({onToast}) {
   };
 
   const doReload = async () => {
-    setLoading(true);
     setConfirmReload(false);
     try {
       const {data, error} = await sb.from("settings")
         .select("value").eq("key","btv_match_cache").single();
-      if(error && error.code !== "PGRST116") throw error; // PGRST116 = not found
+      if(error && error.code !== "PGRST116") throw error;
       if(data?.value) {
-        const m = typeof data.value==="string" ? JSON.parse(data.value) : data.value;
+        let m = data.value;
+        if(typeof m === "string") m = JSON.parse(m);
         applyMatch(m);
+        onToast("Cache geladen ✓");
       } else {
-        // Kein Cache: leeres Formular
         setHomeTeam(""); setAwayTeam(""); setLeague("");
         setStatus("upcoming"); setHomeScore(0); setAwayScore(0);
         setRubbers(DEFAULT_RUBBERS());
-        setSavedAt(null); setSource(null);
-        setDirty(false);
+        setSavedAt(null); setSource(null); setDirty(false);
+        onToast("Kein Cache vorhanden – leeres Formular");
       }
     } catch(err) {
       onToast(`Fehler beim Laden: ${err.message}`,"error");
@@ -1256,15 +1270,18 @@ function HeimspieleManualEntry({onToast}) {
               <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:6}}>STATUS</div>
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                 {[["upcoming","Noch nicht begonnen","#6B7280"],
-                  ["live","● Läuft","#F59E0B"],
+                  ["live",null,"#F59E0B"],
                   ["done","✓ Abgeschlossen","#16A34A"]].map(([v,lbl,col])=>(
                   <button key={v} onClick={()=>mark(setStatus)(v)}
                     style={{padding:"6px 14px",borderRadius:20,
                       border:`2px solid ${status===v?col:"#E5E7EB"}`,
                       background:status===v?col+"22":"#fff",
                       color:status===v?col:"#6B7280",
-                      fontWeight:status===v?700:400,fontSize:12,cursor:"pointer"}}>
-                    {lbl}
+                      fontWeight:status===v?700:400,fontSize:12,cursor:"pointer",
+                      display:"flex",alignItems:"center",gap:5}}>
+                    {v==="live"
+                      ? <><SpinningBall size={14}/> Läuft</>
+                      : lbl}
                   </button>
                 ))}
               </div>
