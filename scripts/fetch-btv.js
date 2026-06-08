@@ -217,95 +217,92 @@ async function tryWidget(page, groupId, heim, gast) {
 
 // ── Rubbers aus der Seite parsen (ZK hat inline per AJAX geladen) ────────────
 async function parseRubbersFromPage(page) {
-  // Debugging: was steht jetzt auf der Seite?
-  const debug = await page.evaluate(() => {
-    const contents = Array.from(
-      document.querySelectorAll('[class*="groupbox-content"], [class*="groupbox-cnt"]')
-    ).filter(el => !el.style.display || el.style.display !== "none");
-
-    const firstContent = contents[0];
-    if (!firstContent) return { contentCount: 0 };
-
-    const html = firstContent.outerHTML;
-    return {
-      contentCount: contents.length,
-      // innerText zeigt die realen Textwerte – viel lesbarer als HTML
-      innerText: firstContent.innerText.slice(0, 3000),
-      // HTML in 3 Abschnitten um die Rubber-Zeilen zu finden
-      html0: html.slice(0, 3000),
-      html3: html.slice(3000, 6000),
-      html6: html.slice(6000, 9000),
-    };
+  const contentText = await page.evaluate(() => {
+    const el = document.querySelector('[class*="groupbox-content"]:not([style*="display:none"])');
+    return el ? el.innerText : null;
   });
 
-  console.log(`Sichtbare groupbox-contents: ${debug.contentCount}`);
-  if (debug.innerText) {
-    console.log("=== innerText des Contents ===\n" + debug.innerText);
-    console.log("=== HTML 3000-6000 ===\n" + (debug.html3 || "–"));
-    console.log("=== HTML 6000-9000 ===\n" + (debug.html6 || "–"));
+  if (!contentText) {
+    console.log("Kein sichtbarer Content nach Klick");
+    return [];
   }
 
-  return await page.evaluate(() => {
-    function scoreResult(score) {
-      const sets = score.match(/(\d):(\d)/g) || [];
-      if (!sets.length) return "open";
-      let hw = 0, aw = 0;
-      sets.forEach(s => { const [a, b] = s.split(":").map(Number); a > b ? hw++ : aw++; });
-      return hw + aw >= 2 ? (hw > aw ? "win" : "loss") : "live";
-    }
+  const rubbers = parseRubbersFromText(contentText);
+  return rubbers;
+}
 
-    const rubbers = [];
+// ── innerText-Parser für BTV Spielbericht ─────────────────────────────────
+// Format:  Einzelspiele | Doppelspiele
+//          [Spielername GER (Nr)]  [P] [S1] [S2] [S3?] [MP] [SÄ] [SP] [P]  [Spielername GER (Nr)]
+function parseRubbersFromText(text) {
+  const lines = text.split("\n").map(l => l.trim()).filter(l => l.length > 0);
 
-    // ── Variante A: Tabellen-Rows (tr/td) ──────────────────────────────────
-    for (const row of document.querySelectorAll("tr")) {
-      const cells = [...row.querySelectorAll("td")].map(td => td.textContent.trim());
-      if (cells.length < 3) continue;
-      const flat = cells.join(" ");
-      const idM = flat.match(/\b(E[1-6]|D[1-3])\b/i);
-      if (!idM) continue;
-      const id = idM[1].toUpperCase();
-      const scoreIdx = cells.findIndex(c => /\d:\d/.test(c));
-      const score = scoreIdx >= 0 ? cells[scoreIdx] : "–";
-      const home = cells[1] || "–";
-      const away = cells[2] || "–";
-      rubbers.push({ id, home, away, score, result: scoreResult(score) });
-    }
-    if (rubbers.length) {
-      const seen = new Set();
-      return rubbers.filter(r => { const k=r.id+r.score; return seen.has(k)?false:!!seen.add(k); });
-    }
+  // Spielername:  enthält "GER ("
+  const isPlayer = l => /GER\s*\(/.test(l);
+  // Score-Zeile:  Format N:N (beliebige Zahlen)
+  const isScore  = l => /^\d+:\d+$/.test(l);
+  // MP-Zeile:     0:1 oder 1:0 (Matchpunkt)
+  const isMp     = l => /^[01]:[01]$/.test(l) && l[0] !== l[2];
 
-    // ── Variante B: ZK inline-Content – Labels sequenziell lesen ─────────
-    // Nur aus den sichtbaren groupbox-content-Divs
-    const containers = Array.from(
-      document.querySelectorAll('[class*="groupbox-content"], [class*="groupbox-cnt"]')
-    ).filter(el => !el.style.display || el.style.display !== "none");
+  const cleanName = l => l.replace(/\s+GER\s*\(.*$/, "").trim();
 
-    const searchIn = containers.length ? containers : [document.body];
+  let inSingles = false, inDoubles = false;
+  const singles = [], doubles = [];
+  let curr = null;
 
-    for (const container of searchIn) {
-      const labels = Array.from(container.querySelectorAll(".z-label, span"))
-        .map(el => ({ text: el.textContent.trim(), el }))
-        .filter(({ text }) => text.length > 0);
+  const neededHome = () => inDoubles ? 2 : 1;
+  const neededAway = () => inDoubles ? 2 : 1;
 
-      for (let i = 0; i < labels.length; i++) {
-        if (!/^(E[1-6]|D[1-3])$/i.test(labels[i].text)) continue;
-        const id = labels[i].text.toUpperCase();
-        const chunk = labels.slice(i + 1, i + 20).map(l => l.text);
-        const scoreIdx = chunk.findIndex(t => /^\d:\d/.test(t));
-        if (scoreIdx < 0) continue;
-        const score = chunk[scoreIdx];
-        const home = chunk[0] || "–";
-        // Spieler vor dem Score
-        const away = scoreIdx >= 2 ? chunk[scoreIdx - 1] : (chunk[1] || "–");
-        rubbers.push({ id, home, away, score, result: scoreResult(score) });
+  const finish = () => {
+    if (!curr) return;
+    if      (inSingles) singles.push(curr);
+    else if (inDoubles) doubles.push(curr);
+    curr = null;
+  };
+
+  for (const line of lines) {
+    if (line === "Einzelspiele") { finish(); inSingles = true;  inDoubles = false; continue; }
+    if (line === "Doppelspiele") { finish(); inSingles = false; inDoubles = true;  continue; }
+    if (line === "ZUSAMMEN:")    { finish(); inSingles = false; inDoubles = false; continue; }
+    if (!inSingles && !inDoubles) continue;
+
+    if (isPlayer(line)) {
+      const name = cleanName(line);
+      if (!curr) {
+        curr = { home: [name], away: [], scores: [], mp: null, foundMp: false };
+      } else if (curr.home.length < neededHome() && !curr.foundMp) {
+        curr.home.push(name);            // 2. Heimspieler beim Doppel
+      } else {
+        curr.away.push(name);
+        if (curr.away.length >= neededAway()) finish();
       }
-      if (rubbers.length) break;
+    } else if (isScore(line) && curr && curr.home.length >= neededHome()) {
+      if (!curr.foundMp) {
+        if (isMp(line)) {
+          curr.mp = +line[0];            // 1 = Heim gewonnen, 0 = verloren
+          curr.foundMp = true;
+        } else {
+          curr.scores.push(line);        // S1, S2, S3 (vor MP)
+        }
+      }
+      // Nach MP: SÄ + SP überspringen
     }
+    // Alles andere (Zahlen, Spaltenköpfe, Teamnamen) → überspringen
+  }
+  finish();
 
-    const seen = new Set();
-    return rubbers.filter(r => { const k=r.id+r.score; return seen.has(k)?false:!!seen.add(k); });
+  const toRubber = (r, id) => ({
+    id,
+    home:   r.home.join(" / "),
+    away:   r.away.join(" / "),
+    score:  r.scores.join(" ") || "–",
+    result: r.mp === 1 ? "win" : r.mp === 0 ? "loss" : "open",
   });
+
+  return [
+    ...singles.map((r, i) => toRubber(r, `E${i + 1}`)),
+    ...doubles.map((r, i) => toRubber(r, `D${i + 1}`)),
+  ];
 }
 
 // (parseRubbersFromHtml entfernt – Rubber-Parsing erfolgt jetzt direkt im DOM via page.evaluate)
