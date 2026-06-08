@@ -177,30 +177,17 @@ async function tryWidget(page, groupId, heim, gast) {
   console.log(`Match gefunden! Status: ${header.status}  Score: ${header.homeScore}:${header.awayScore}`);
   console.log(`anzeigenId: ${header.anzeigenId}`);
 
-  // ── Schritt 2: "anzeigen" klicken → Spielbericht-Seite laden ─────────────
+  // ── Schritt 2: "anzeigen" klicken → ZK lädt Rubbers inline per AJAX ────────
   let rubbers = [];
   if (header.status !== "upcoming" && header.anzeigenId) {
     try {
-      const currentUrl = page.url();
-
-      // Auf Navigation ODER Seitenänderung warten
-      const navPromise = page.waitForURL(u => u !== currentUrl, { timeout: 12_000 })
-        .catch(() => null);
-
       await page.locator(`#${header.anzeigenId}`).click({ timeout: 5000 });
-      await navPromise;
-      await page.waitForTimeout(3000);
 
-      const reportUrl = page.url();
-      console.log("Nach Klick URL:", reportUrl);
+      // ZK AJAX abwarten: erst kurze Pause, dann auf "Verarbeitung" warten
+      await page.waitForTimeout(800);
+      await waitForZk(page, 3000);
 
-      if (reportUrl !== currentUrl) {
-        // Navigierte zu Spielbericht-Seite → Rubbers dort parsen
-        rubbers = await parseRubbersFromPage(page);
-      } else {
-        // Seite nicht gewechselt → ZK hat Inhalt inline geladen
-        rubbers = await parseRubbersFromPage(page);
-      }
+      rubbers = await parseRubbersFromPage(page);
 
       console.log(`Rubbers: ${rubbers.length}`);
       rubbers.forEach(r =>
@@ -228,64 +215,102 @@ async function tryWidget(page, groupId, heim, gast) {
   };
 }
 
-// ── Rubbers von der aktuellen Seite parsen (nach Klick auf "anzeigen") ──────
+// ── Rubbers aus der Seite parsen (ZK hat inline per AJAX geladen) ────────────
 async function parseRubbersFromPage(page) {
+  // Debugging: was steht jetzt auf der Seite?
+  const debug = await page.evaluate(() => {
+    // Alle sichtbaren groupbox-content Divs (nicht display:none)
+    const contents = Array.from(
+      document.querySelectorAll('[class*="groupbox-content"], [class*="groupbox-cnt"]')
+    ).filter(el => !el.style.display || el.style.display !== "none");
+
+    // Gesamter Seitentext nach dem Klick
+    const pageText = document.body.innerText.slice(0, 1500);
+
+    // HTML der ersten sichtbaren groupbox-content
+    const firstContent = contents[0];
+    const contentHtml = firstContent ? firstContent.outerHTML.slice(0, 5000) : null;
+
+    // Alle Labels/Spans die E1-E6 oder D1-D3 enthalten
+    const rubberLabels = Array.from(document.querySelectorAll(".z-label, span, td"))
+      .map(el => el.textContent.trim())
+      .filter(t => /^(E[1-6]|D[1-3])$/i.test(t));
+
+    return {
+      contentCount: contents.length,
+      contentHtml,
+      pageText,
+      rubberLabelCount: rubberLabels.length,
+    };
+  });
+
+  console.log(`Sichtbare groupbox-contents: ${debug.contentCount}`);
+  console.log(`Rubber-Labels gefunden: ${debug.rubberLabelCount}`);
+  if (!debug.rubberLabelCount) {
+    console.log("Seitentext nach Klick:\n", debug.pageText);
+    if (debug.contentHtml) console.log("Content-HTML:\n", debug.contentHtml);
+  }
+
   return await page.evaluate(() => {
+    function scoreResult(score) {
+      const sets = score.match(/(\d):(\d)/g) || [];
+      if (!sets.length) return "open";
+      let hw = 0, aw = 0;
+      sets.forEach(s => { const [a, b] = s.split(":").map(Number); a > b ? hw++ : aw++; });
+      return hw + aw >= 2 ? (hw > aw ? "win" : "loss") : "live";
+    }
+
     const rubbers = [];
 
-    // Variante A: Tabelle auf Spielbericht-Seite
+    // ── Variante A: Tabellen-Rows (tr/td) ──────────────────────────────────
     for (const row of document.querySelectorAll("tr")) {
       const cells = [...row.querySelectorAll("td")].map(td => td.textContent.trim());
       if (cells.length < 3) continue;
-      const idM = cells.join(" ").match(/\b(E[1-6]|D[1-3])\b/i);
+      const flat = cells.join(" ");
+      const idM = flat.match(/\b(E[1-6]|D[1-3])\b/i);
       if (!idM) continue;
       const id = idM[1].toUpperCase();
-      const score = cells.find(c => /\d:\d/.test(c)) || "–";
       const scoreIdx = cells.findIndex(c => /\d:\d/.test(c));
-      const home = scoreIdx > 0 ? cells[scoreIdx - 2] || cells[1] : cells[1];
-      const away = scoreIdx > 0 ? cells[scoreIdx - 1] || cells[2] : cells[2];
-      const sets = score.match(/(\d):(\d)/g) || [];
-      let result = "open";
-      if (sets.length) {
-        let hw = 0, aw = 0;
-        sets.forEach(s => { const [a, b] = s.split(":").map(Number); a > b ? hw++ : aw++; });
-        result = hw + aw >= 2 ? (hw > aw ? "win" : "loss") : "live";
-      }
-      rubbers.push({ id, home, away, score, result });
+      const score = scoreIdx >= 0 ? cells[scoreIdx] : "–";
+      const home = cells[1] || "–";
+      const away = cells[2] || "–";
+      rubbers.push({ id, home, away, score, result: scoreResult(score) });
+    }
+    if (rubbers.length) {
+      const seen = new Set();
+      return rubbers.filter(r => { const k=r.id+r.score; return seen.has(k)?false:!!seen.add(k); });
     }
 
-    if (rubbers.length) return rubbers;
+    // ── Variante B: ZK inline-Content – Labels sequenziell lesen ─────────
+    // Nur aus den sichtbaren groupbox-content-Divs
+    const containers = Array.from(
+      document.querySelectorAll('[class*="groupbox-content"], [class*="groupbox-cnt"]')
+    ).filter(el => !el.style.display || el.style.display !== "none");
 
-    // Variante B: ZK-Labels auf Gruppen-Seite nach Inline-Expand
-    const labels = Array.from(document.querySelectorAll(".z-label, span"))
-      .map(el => el.textContent.trim())
-      .filter(t => t.length > 0);
-    for (let i = 0; i < labels.length; i++) {
-      if (!/^(E[1-6]|D[1-3])$/i.test(labels[i])) continue;
-      const id = labels[i].toUpperCase();
-      const chunk = labels.slice(i + 1, i + 15);
-      const scoreIdx = chunk.findIndex(l => /^\d:\d/.test(l));
-      if (scoreIdx < 0) continue;
-      const score = chunk[scoreIdx];
-      const home = chunk[0] || "–";
-      const away = chunk[scoreIdx - 1] || chunk[1] || "–";
-      const sets = score.match(/(\d):(\d)/g) || [];
-      let result = "open";
-      if (sets.length) {
-        let hw = 0, aw = 0;
-        sets.forEach(s => { const [a, b] = s.split(":").map(Number); a > b ? hw++ : aw++; });
-        result = hw + aw >= 2 ? (hw > aw ? "win" : "loss") : "live";
+    const searchIn = containers.length ? containers : [document.body];
+
+    for (const container of searchIn) {
+      const labels = Array.from(container.querySelectorAll(".z-label, span"))
+        .map(el => ({ text: el.textContent.trim(), el }))
+        .filter(({ text }) => text.length > 0);
+
+      for (let i = 0; i < labels.length; i++) {
+        if (!/^(E[1-6]|D[1-3])$/i.test(labels[i].text)) continue;
+        const id = labels[i].text.toUpperCase();
+        const chunk = labels.slice(i + 1, i + 20).map(l => l.text);
+        const scoreIdx = chunk.findIndex(t => /^\d:\d/.test(t));
+        if (scoreIdx < 0) continue;
+        const score = chunk[scoreIdx];
+        const home = chunk[0] || "–";
+        // Spieler vor dem Score
+        const away = scoreIdx >= 2 ? chunk[scoreIdx - 1] : (chunk[1] || "–");
+        rubbers.push({ id, home, away, score, result: scoreResult(score) });
       }
-      rubbers.push({ id, home, away, score, result });
+      if (rubbers.length) break;
     }
 
-    // Deduplizieren
     const seen = new Set();
-    return rubbers.filter(r => {
-      const k = r.id + r.score;
-      if (seen.has(k)) return false;
-      seen.add(k); return true;
-    });
+    return rubbers.filter(r => { const k=r.id+r.score; return seen.has(k)?false:!!seen.add(k); });
   });
 }
 
