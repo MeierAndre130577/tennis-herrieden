@@ -30,14 +30,38 @@ async function fetchTeams(page, clubnr) {
     `https://btv-prod.burdadigitalsystems.de/btvteams/?clubnr=${clubnr}`,
     { waitUntil: "networkidle", timeout: 30_000 }
   );
-  await page.waitForTimeout(3000);
+
+  // Warten bis "Processing..." verschwindet (SPA-Ladezeit)
+  try {
+    await page.waitForFunction(
+      () => !document.body.textContent.includes("Processing"),
+      { timeout: 20_000 }
+    );
+    console.log("Seite geladen (Processing verschwunden)");
+  } catch (_) {
+    console.log("Warnung: Seite zeigt noch 'Processing' nach 20s");
+  }
+  await page.waitForTimeout(2000);
+
+  // Debug: ersten 800 Zeichen der Seite ausgeben
+  const pageSnippet = await page.evaluate(() => document.body.innerText.slice(0, 800));
+  console.log("Seiten-Inhalt (Auszug):", pageSnippet);
+
+  // Alle Text-Elemente ausgeben die Mannschaftsnamen enthalten könnten
+  const allTexts = await page.evaluate(() =>
+    Array.from(document.querySelectorAll("a, span, td, label, li, div, p, h1, h2, h3, h4"))
+      .map(el => el.textContent.trim())
+      .filter(t => t.length > 3 && t.length < 80)
+      .slice(0, 50)
+  );
+  console.log("Alle Text-Elemente:", allTexts.join(" | "));
 
   return await page.evaluate(() => {
-    const candidates = Array.from(document.querySelectorAll("a, span, td, label"))
+    const candidates = Array.from(document.querySelectorAll("a, span, td, label, li, div"))
       .map(el => el.textContent.trim())
       .filter(t =>
-        t.length > 3 && t.length < 60 &&
-        /^(Herren|Damen|Mixed|Knaben|Mädchen|Junioren|Juniorinnen|Senioren|Seniorinnen)/i.test(t)
+        t.length > 3 && t.length < 80 &&
+        /^(Herren|Damen|Mixed|Knaben|Mädchen|Junioren|Juniorinnen|Senioren|Seniorinnen|Aktive)/i.test(t)
       );
     return [...new Set(candidates)];
   });
