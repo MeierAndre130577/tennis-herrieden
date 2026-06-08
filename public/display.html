@@ -745,6 +745,10 @@ function startSettingsPolling(mode, theme, vereinsnr, saison, mannschaft, gegner
 
 // ── HEIMSPIEL ─────────────────────────────────────────────────────────────
 const RESULT_LABEL = { win:"W", loss:"N", open:"?" };
+// Nur Nachname(n) anzeigen: "Schumann, Torsten / Bschorer, Leon" → "Schumann / Bschorer"
+function shortName(full) {
+  return (full||"–").split(" / ").map(n => n.split(",")[0].trim()).join(" / ");
+}
 const LIVE_BALL_SVG = `<svg class="hs-spin-ball" viewBox="0 0 32 32" fill="none" style="width:65%;height:65%"><circle cx="16" cy="16" r="13" stroke="currentColor" stroke-width="2.5"/><ellipse cx="16" cy="16" rx="5" ry="12" stroke="currentColor" stroke-width="2"/><line x1="3" y1="16" x2="29" y2="16" stroke="currentColor" stroke-width="2"/></svg>`;
 let _cachedMatchJson = null; // Anti-Flicker: kein Re-Render wenn unverändert
 
@@ -839,8 +843,8 @@ function renderHsMatch(match) {
       <div class="hs-rubber${isDouble ? " hs-rubber--double" : ""}">
         <span class="hs-rubber-num">${r.id}</span>
         <div class="hs-rubber-players">
-          <div class="hs-rubber-home">${r.home}</div>
-          <div class="hs-rubber-away">${r.away}</div>
+          <div class="hs-rubber-home">${shortName(r.home)}</div>
+          <div class="hs-rubber-away">${shortName(r.away)}</div>
         </div>
         <span class="hs-rubber-score${r.result==="live"?" live":""}">${r.score}</span>
         <span class="hs-rubber-result hs-result-${r.result}">${r.result==="live"?LIVE_BALL_SVG:(RESULT_LABEL[r.result]||"?")}</span>
