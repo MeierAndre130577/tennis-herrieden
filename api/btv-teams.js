@@ -1,52 +1,25 @@
 // api/btv-teams.js
-// Gibt alle Mannschaften eines Vereins zurück
-// GET /api/btv-teams?clubnr=06085
+// Liest gecachte Teams aus Supabase (befüllt von GitHub Actions)
+const { createClient } = require("@supabase/supabase-js");
 
-const chromium  = require("@sparticuz/chromium");
-const puppeteer = require("puppeteer-core");
-
-module.exports.config = { maxDuration: 45 };
+const sb = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY
+);
 
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Cache-Control", "s-maxage=3600, stale-while-revalidate=600");
 
-  const clubnr = String(req.query.clubnr || "06085").padStart(5, "0");
+  const { data } = await sb.from("settings")
+    .select("value").eq("key", "btv_teams_cache").single();
 
-  let browser;
-  try {
-    browser = await puppeteer.launch({
-      args:            chromium.args,
-      defaultViewport: { width: 1280, height: 900 },
-      executablePath:  await chromium.executablePath(),
-      headless:        true,
-    });
-
-    const page = await browser.newPage();
-    await page.goto(
-      `https://btv-prod.burdadigitalsystems.de/btvteams/?clubnr=${clubnr}`,
-      { waitUntil: "networkidle0", timeout: 25_000 }
-    );
-    await page.waitForTimeout(2500);
-
-    const teams = await page.evaluate(() => {
-      const candidates = Array.from(
-        document.querySelectorAll("a, span, td, label")
-      )
-        .map(el => el.textContent.trim())
-        .filter(t =>
-          t.length > 3 &&
-          t.length < 60 &&
-          /^(Herren|Damen|Mixed|Knaben|Mädchen|Junioren|Juniorinnen|Senioren|Seniorinnen)/i.test(t)
-        );
-      return [...new Set(candidates)];
-    });
-
-    await browser.close();
-    res.json({ teams, clubnr });
-  } catch (err) {
-    if (browser) await browser.close().catch(() => {});
-    console.error("btv-teams error:", err.message);
-    res.status(500).json({ error: err.message, teams: [] });
+  if (!data?.value) {
+    return res.json({ teams: [], message: "Noch keine Daten – GitHub Action noch nicht gelaufen" });
   }
+
+  let teams;
+  try { teams = JSON.parse(data.value); }
+  catch (_) { teams = []; }
+
+  res.json({ teams });
 };

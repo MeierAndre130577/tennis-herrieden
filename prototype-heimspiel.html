@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Heimspielmodus – Prototyp</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── THEMES ── */
+    :root {
+      --bg:          #0F172A;
+      --bg2:         #1E293B;
+      --bg3:         #334155;
+      --fg:          #F8FAFC;
+      --fg2:         #94A3B8;
+      --fg3:         #475569;
+      --border:      #334155;
+      --win-bg:      #14532D;
+      --win-fg:      #4ADE80;
+      --loss-bg:     #450A0A;
+      --loss-fg:     #FCA5A5;
+      --live-bg:     #78350F;
+      --live-fg:     #FCD34D;
+      --accent:      #22C55E;
+    }
+
+    body.theme-light {
+      --bg:          #F1F5F9;
+      --bg2:         #FFFFFF;
+      --bg3:         #E2E8F0;
+      --fg:          #0F172A;
+      --fg2:         #475569;
+      --fg3:         #94A3B8;
+      --border:      #CBD5E1;
+      --win-bg:      #DCFCE7;
+      --win-fg:      #166534;
+      --loss-bg:     #FEE2E2;
+      --loss-fg:     #991B1B;
+      --live-bg:     #FEF3C7;
+      --live-fg:     #92400E;
+      --accent:      #16A34A;
+    }
+
+    body.theme-contrast {
+      --bg:          #000000;
+      --bg2:         #0A0A0A;
+      --bg3:         #1A1A1A;
+      --fg:          #FFFFFF;
+      --fg2:         #E5E5E5;
+      --fg3:         #A3A3A3;
+      --border:      #404040;
+      --win-bg:      #052E16;
+      --win-fg:      #86EFAC;
+      --loss-bg:     #450A0A;
+      --loss-fg:     #FCA5A5;
+      --live-bg:     #451A03;
+      --live-fg:     #FDE68A;
+      --accent:      #86EFAC;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: 'DM Sans', system-ui, sans-serif;
+      overflow: hidden;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    #app {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      height: 100vh;
+      padding: 2vh 2.5vw 1.5vh;
+      gap: 1.5vh;
+    }
+
+    /* ── HEADER ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header-left { display: flex; flex-direction: column; gap: 2px; }
+
+    .league-name {
+      font-size: clamp(11px, 1.1vw, 16px);
+      font-weight: 700;
+      color: var(--fg3);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+    .match-label {
+      font-size: clamp(18px, 2vw, 30px);
+      font-weight: 800;
+      color: var(--fg);
+      letter-spacing: -0.3px;
+    }
+
+    .header-right { text-align: right; }
+    #date-display {
+      font-size: clamp(11px, 1.1vw, 16px);
+      font-weight: 700;
+      color: var(--fg3);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    #time-display {
+      font-size: clamp(28px, 3.5vw, 52px);
+      font-weight: 800;
+      color: var(--fg);
+      letter-spacing: -1px;
+      line-height: 1;
+    }
+
+    /* ── MAIN ── */
+    main {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      gap: 1.5vh;
+      min-height: 0;
+    }
+
+    /* ── SCOREBOARD ── */
+    .scoreboard {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 2vw;
+      flex-shrink: 0;
+    }
+
+    .team { display: flex; flex-direction: column; gap: 4px; }
+    .team-home { text-align: right; }
+    .team-away { text-align: left; }
+
+    .team-label {
+      font-size: clamp(10px, 0.9vw, 14px);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--fg3);
+    }
+    .team-name {
+      font-size: clamp(20px, 3vw, 46px);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -0.5px;
+      color: var(--fg);
+    }
+    .team-away .team-name { color: var(--fg2); }
+
+    .score-center {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      min-width: 12vw;
+    }
+
+    .score-big {
+      font-size: clamp(60px, 10vw, 130px);
+      font-weight: 800;
+      letter-spacing: -4px;
+      line-height: 1;
+    }
+    .score-done     { color: var(--win-fg); }
+    .score-live     { color: var(--live-fg); }
+    .score-upcoming { color: var(--fg3); }
+
+    .status-badge {
+      font-size: clamp(10px, 0.9vw, 13px);
+      font-weight: 800;
+      padding: 4px 14px;
+      border-radius: 20px;
+      letter-spacing: 0.7px;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .badge-done     { background: var(--win-bg);  color: var(--win-fg); }
+    .badge-live     { background: var(--live-bg); color: var(--live-fg); animation: livepulse 1.5s ease-in-out infinite; }
+    .badge-upcoming { background: var(--bg2);     color: var(--fg3); border: 1px solid var(--border); }
+
+    @keyframes livepulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+    /* ── RUBBERS ── */
+    .rubbers-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.8vh;
+      min-height: 0;
+    }
+
+    .rubbers-label {
+      font-size: clamp(10px, 0.9vw, 13px);
+      font-weight: 700;
+      color: var(--fg3);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      text-align: center;
+      border-top: 1px solid var(--border);
+      padding-top: 0.8vh;
+    }
+
+    /* 3×3 grid: columns = left/mid/right, rows auto-fill */
+    .rubbers-grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: clamp(4px, 0.6vw, 10px);
+      min-height: 0;
+    }
+
+    .rubber {
+      background: var(--bg2);
+      border-radius: clamp(6px, 0.6vw, 12px);
+      padding: clamp(8px, 0.8vh, 14px) clamp(10px, 1vw, 18px);
+      display: flex;
+      align-items: center;
+      gap: clamp(6px, 0.7vw, 12px);
+    }
+
+    .rubber-num {
+      font-size: clamp(22px, 2.2vw, 34px);
+      font-weight: 800;
+      color: var(--fg3);
+      min-width: clamp(36px, 3.5vw, 56px);
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+
+    .rubber-players { flex: 1; min-width: 0; }
+    .rubber-player-name {
+      font-size: clamp(22px, 2.2vw, 36px);
+      font-weight: 700;
+      color: var(--fg2);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .rubber-player-opp {
+      font-size: clamp(16px, 1.6vw, 26px);
+      color: var(--fg3);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 2px;
+    }
+
+    .rubber-score {
+      font-size: clamp(22px, 2.2vw, 36px);
+      font-weight: 800;
+      white-space: nowrap;
+      color: var(--fg);
+      flex-shrink: 0;
+    }
+    .rubber-score.live { color: var(--live-fg); }
+
+    .rubber-result {
+      width: clamp(36px, 3.2vw, 52px);
+      height: clamp(36px, 3.2vw, 52px);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(16px, 1.6vw, 26px);
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+    .result-win  { background: var(--win-bg);  color: var(--win-fg); }
+    .result-loss { background: var(--loss-bg); color: var(--loss-fg); }
+    .result-live { background: var(--live-bg); color: var(--live-fg); }
+    .result-open { background: var(--bg2);     color: var(--border); border: 1px solid var(--border); }
+
+    /* ── UPCOMING ── */
+    .upcoming-box {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1.5vh;
+      background: var(--bg2);
+      border-radius: clamp(8px, 1vw, 16px);
+      text-align: center;
+    }
+    .upcoming-time-big {
+      font-size: clamp(48px, 8vw, 110px);
+      font-weight: 800;
+      color: var(--fg3);
+      letter-spacing: -2px;
+      line-height: 1;
+    }
+    .upcoming-hint {
+      font-size: clamp(13px, 1.3vw, 20px);
+      color: var(--fg3);
+      font-weight: 600;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: clamp(10px, 0.9vw, 13px);
+      color: var(--fg3);
+    }
+    .footer-left { display: flex; align-items: center; gap: 6px; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.2} }
+
+    /* ── DEMO SWITCHER (nur Prototyp) ── */
+    .demo-bar {
+      position: fixed;
+      bottom: 12px;
+      right: 16px;
+      display: flex;
+      gap: 5px;
+      z-index: 100;
+    }
+    .demo-btn {
+      background: var(--bg2);
+      color: var(--fg2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .demo-btn:hover  { background: var(--bg3); color: var(--fg); }
+    .demo-btn.active { background: var(--bg3); color: var(--fg); border-color: var(--fg3); }
+    .demo-sep { width: 1px; background: var(--border); margin: 4px 2px; }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <div class="header-left">
+      <div class="league-name" id="h-league">Bezirksklasse 1 · Gruppe Nord</div>
+      <div class="match-label" id="h-team">Herren I · SG TSV/DJK Herrieden</div>
+    </div>
+    <div class="header-right">
+      <div id="date-display">–</div>
+      <div id="time-display">–:–</div>
+    </div>
+  </header>
+
+  <main id="main-content"></main>
+
+  <footer>
+    <div class="footer-left">
+      <div class="dot"></div>
+      <span>Prototyp · Daten werden live von btv.de geladen (noch nicht implementiert)</span>
+    </div>
+    <span>SG TSV/DJK Herrieden · Heimspiel 2026</span>
+  </footer>
+
+</div>
+
+<div class="demo-bar">
+  <button class="demo-btn" onclick="showState('upcoming',this)">Noch nicht begonnen</button>
+  <button class="demo-btn active" onclick="showState('live',this)">Läuft</button>
+  <button class="demo-btn" onclick="showState('done',this)">Abgeschlossen</button>
+  <div class="demo-sep"></div>
+  <button class="demo-btn active" onclick="setTheme('dark',this)">Dunkel</button>
+  <button class="demo-btn" onclick="setTheme('light',this)">Hell</button>
+  <button class="demo-btn" onclick="setTheme('contrast',this)">Kontrast</button>
+</div>
+
+<script>
+const DE_DAYS  = ["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"];
+const DE_MONTH = ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
+
+function updateClock() {
+  const now = new Date();
+  document.getElementById("date-display").textContent =
+    `${DE_DAYS[now.getDay()]}, ${now.getDate()}. ${DE_MONTH[now.getMonth()]} ${now.getFullYear()}`;
+  document.getElementById("time-display").textContent =
+    `${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
+}
+updateClock();
+setInterval(updateClock, 30_000);
+
+const BASE = {
+  homeTeam: "SG TSV/DJK Herrieden",
+  awayTeam: "TC Ansbach 1920 e.V.",
+  league:   "Bezirksklasse 1 · Gruppe Nord",
+  teamName: "Herren I",
+  time:     "10:00 Uhr",
+  court:    "Platz 1–3",
+};
+
+/* Reihenfolge für Grid: Spalte 1 = E1/E2/D1, Spalte 2 = E3/E4/D2, Spalte 3 = E5/E6/D3
+   Im CSS-Grid (3 Spalten, row-flow) → Zeile 1: [E1, E3, E5], Zeile 2: [E2, E4, E6], Zeile 3: [D1, D2, D3] */
+const RUBBERS_DONE = [
+  // Zeile 1
+  { id:"E1", home:"Müller",        away:"Schulz",      score:"6:2 6:3",     result:"win"  },
+  { id:"E3", home:"Bauer",         away:"Hoffmann",    score:"6:4 7:5",     result:"win"  },
+  { id:"E5", home:"Klein",         away:"Wolf",        score:"4:6 6:7",     result:"loss" },
+  // Zeile 2
+  { id:"E2", home:"Wagner",        away:"Fischer",     score:"3:6 5:7",     result:"loss" },
+  { id:"E4", home:"Richter",       away:"Koch",        score:"6:1 6:2",     result:"win"  },
+  { id:"E6", home:"Braun",         away:"Schwarz",     score:"6:3 6:4",     result:"win"  },
+  // Zeile 3
+  { id:"D1", home:"Müller/Wagner", away:"Schulz/Fi.",  score:"6:4 6:3",     result:"win"  },
+  { id:"D2", home:"Bauer/Richter", away:"Hoff./Koch",  score:"3:6 4:6",     result:"loss" },
+  { id:"D3", home:"Klein/Braun",   away:"Wolf/Schw.",  score:"7:5 6:4",     result:"win"  },
+];
+
+const RUBBERS_LIVE = [
+  { id:"E1", home:"Müller",        away:"Schulz",      score:"6:3 6:2",     result:"win"  },
+  { id:"E3", home:"Bauer",         away:"Hoffmann",    score:"2:6 6:3 4:4", result:"live" },
+  { id:"E5", home:"Klein",         away:"Wolf",        score:"1:6 2:6",     result:"loss" },
+  { id:"E2", home:"Wagner",        away:"Fischer",     score:"4:6 6:4 5:3", result:"live" },
+  { id:"E4", home:"Richter",       away:"Koch",        score:"6:4 3:6 6:2", result:"win"  },
+  { id:"E6", home:"Braun",         away:"Schwarz",     score:"–",           result:"open" },
+  { id:"D1", home:"Müller/Wagner", away:"Schulz/Fi.",  score:"–",           result:"open" },
+  { id:"D2", home:"Bauer/Richter", away:"Hoff./Koch",  score:"–",           result:"open" },
+  { id:"D3", home:"Klein/Braun",   away:"Wolf/Schw.",  score:"–",           result:"open" },
+];
+
+function calcScore(rubbers) {
+  return {
+    w: rubbers.filter(r => r.result === "win").length,
+    l: rubbers.filter(r => r.result === "loss").length,
+  };
+}
+
+function renderRubbers(rubbers) {
+  const LABEL = { win:"W", loss:"N", live:"●", open:"?" };
+  return rubbers.map(r => `
+    <div class="rubber">
+      <span class="rubber-num">${r.id}</span>
+      <div class="rubber-players">
+        <div class="rubber-player-name">${r.home}</div>
+        <div class="rubber-player-opp">${r.away}</div>
+      </div>
+      <span class="rubber-score${r.result==="live"?" live":""}">${r.score}</span>
+      <span class="rubber-result result-${r.result}">${LABEL[r.result]||"?"}</span>
+    </div>`).join("");
+}
+
+let currentState = "live";
+
+function showState(state, btn) {
+  [...document.querySelectorAll(".demo-btn")].slice(0,3).forEach(b => b.classList.remove("active"));
+  if (btn) btn.classList.add("active");
+  currentState = state;
+
+  const main = document.getElementById("main-content");
+  document.getElementById("h-league").textContent = BASE.league;
+  document.getElementById("h-team").textContent   = BASE.teamName + " · SG TSV/DJK Herrieden";
+
+  if (state === "upcoming") {
+    main.innerHTML = `
+      <div class="scoreboard">
+        <div class="team team-home">
+          <div class="team-label">Heim</div>
+          <div class="team-name">${BASE.homeTeam}</div>
+        </div>
+        <div class="score-center">
+          <div class="score-big score-upcoming">–:–</div>
+          <span class="status-badge badge-upcoming">Noch nicht begonnen</span>
+        </div>
+        <div class="team team-away">
+          <div class="team-label">Gast</div>
+          <div class="team-name">${BASE.awayTeam}</div>
+        </div>
+      </div>
+      <div class="upcoming-box">
+        <div class="upcoming-time-big">${BASE.time}</div>
+        <div class="upcoming-hint">${BASE.court} · Aufstellung noch nicht eingetragen</div>
+      </div>`;
+    return;
+  }
+
+  const rubbers    = state === "live" ? RUBBERS_LIVE : RUBBERS_DONE;
+  const score      = calcScore(rubbers);
+  const scoreClass = state === "live" ? "score-live" : "score-done";
+  const badgeClass = state === "live" ? "badge-live"  : "badge-done";
+  const badgeLabel = state === "live" ? "● Läuft"    : "✓ Abgeschlossen";
+
+  main.innerHTML = `
+    <div class="scoreboard">
+      <div class="team team-home">
+        <div class="team-label">Heim</div>
+        <div class="team-name">${BASE.homeTeam}</div>
+      </div>
+      <div class="score-center">
+        <div class="score-big ${scoreClass}">${score.w}:${score.l}</div>
+        <span class="status-badge ${badgeClass}">${badgeLabel}</span>
+      </div>
+      <div class="team team-away">
+        <div class="team-label">Gast</div>
+        <div class="team-name">${BASE.awayTeam}</div>
+      </div>
+    </div>
+    <div class="rubbers-section">
+      <div class="rubbers-label">Einzel &amp; Doppel</div>
+      <div class="rubbers-grid">${renderRubbers(rubbers)}</div>
+    </div>`;
+}
+
+function setTheme(theme, btn) {
+  document.querySelectorAll(".demo-btn").forEach((b, i) => { if (i >= 4) b.classList.remove("active"); });
+  if (btn) btn.classList.add("active");
+  document.body.classList.remove("theme-light","theme-contrast");
+  if (theme === "light")    document.body.classList.add("theme-light");
+  if (theme === "contrast") document.body.classList.add("theme-contrast");
+}
+
+// initial render
+showState("live", document.querySelectorAll(".demo-btn")[1]);
+</script>
+</body>
+</html>
