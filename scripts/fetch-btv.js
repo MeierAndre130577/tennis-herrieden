@@ -51,20 +51,24 @@ async function acceptCookies(page) {
 
 // ── Seite laden + auf Inhalt warten ────────────────────────────────────────
 async function loadPage(page, url) {
-  // domcontentloaded statt networkidle – btv.de macht endlos Tracker-Requests
-  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
+  // "commit" = erste Antwort empfangen, nie Timeout durch Tracker
+  await page.goto(url, { waitUntil: "commit", timeout: 60_000 });
+  await page.waitForLoadState("domcontentloaded", { timeout: 60_000 });
   // Cookie-Banner wegklicken (erscheint kurz nach dem Laden)
+  await page.waitForTimeout(2000);
+  await acceptCookies(page);
+  // Cookie-Banner wegklicken
   await page.waitForTimeout(2000);
   await acceptCookies(page);
   // Warten bis "Processing..." weg ist (SPA lädt Daten nach)
   try {
     await page.waitForFunction(
       () => !document.body.textContent.includes("Processing"),
-      { timeout: 25_000 }
+      { timeout: 30_000 }
     );
-    console.log("Inhalt geladen (Processing verschwunden)");
+    console.log("Inhalt geladen");
   } catch (_) {
-    console.log("Warnung: Seite zeigt noch 'Processing' nach 25s");
+    console.log("Warnung: 'Processing' nach 30s noch sichtbar");
   }
   await page.waitForTimeout(2000);
 }
@@ -247,6 +251,14 @@ async function parseMatchReport(page, reportUrl, heimTeam, gastTeam) {
 
   const browser = await chromium.launch({ headless: true });
   const page    = await browser.newPage();
+  // Realistischen Browser vortäuschen
+  await page.setExtraHTTPHeaders({
+    "Accept-Language": "de-DE,de;q=0.9",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+  });
+  await page.setViewportSize({ width: 1280, height: 800 });
+  // Längere Timeouts setzen
+  page.setDefaultTimeout(60_000);
 
   try {
     // Schritt 1: Spielbericht-Link auf der Staffelseite finden
