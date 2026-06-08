@@ -215,6 +215,8 @@
     .hs-rubber-score { font-size:clamp(14px,1.5vw,24px); font-weight:800; white-space:nowrap; color:var(--fg); flex-shrink:0; }
     .hs-rubber-score.live { color:var(--live-fg); }
     .hs-rubber-result { width:clamp(26px,2.6vw,42px); height:clamp(26px,2.6vw,42px); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:clamp(12px,1.3vw,20px); font-weight:800; flex-shrink:0; }
+    @keyframes hs-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+    .hs-spin-ball { animation:hs-spin 1s linear infinite; display:block; }
     .hs-result-win  { background:var(--win-bg);  color:var(--win-fg); }
     .hs-result-loss { background:var(--loss-bg); color:var(--loss-fg); }
     .hs-result-live { background:var(--live-bg); color:var(--live-fg); }
@@ -742,7 +744,8 @@ function startSettingsPolling(mode, theme, vereinsnr, saison, mannschaft, gegner
 }
 
 // ── HEIMSPIEL ─────────────────────────────────────────────────────────────
-const RESULT_LABEL = { win:"W", loss:"N", live:"●", open:"?" };
+const RESULT_LABEL = { win:"W", loss:"N", open:"?" };
+const LIVE_BALL_SVG = `<svg class="hs-spin-ball" viewBox="0 0 32 32" fill="none" style="width:65%;height:65%"><circle cx="16" cy="16" r="13" stroke="currentColor" stroke-width="2.5"/><ellipse cx="16" cy="16" rx="5" ry="12" stroke="currentColor" stroke-width="2"/><line x1="3" y1="16" x2="29" y2="16" stroke="currentColor" stroke-width="2"/></svg>`;
 let _cachedMatchJson = null; // Anti-Flicker: kein Re-Render wenn unverändert
 
 function applyHsTheme() {
@@ -840,7 +843,7 @@ function renderHsMatch(match) {
           <div class="hs-rubber-away">${r.away}</div>
         </div>
         <span class="hs-rubber-score${r.result==="live"?" live":""}">${r.score}</span>
-        <span class="hs-rubber-result hs-result-${r.result}">${RESULT_LABEL[r.result]||"?"}</span>
+        <span class="hs-rubber-result hs-result-${r.result}">${r.result==="live"?LIVE_BALL_SVG:(RESULT_LABEL[r.result]||"?")}</span>
       </div>`;
     }).join("");
 
