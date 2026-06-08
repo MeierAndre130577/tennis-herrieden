@@ -3,30 +3,113 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Tennis Herrieden – Belegungsplan</title>
+  <title>Tennis Herrieden – Display</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800&display=swap" rel="stylesheet"/>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --navy:   #0F172A;
-      --navy2:  #1E293B;
+      --bg:     #0F172A;
+      --bg2:    #1E293B;
+      --fg:     #F8FAFC;
       --green:  #22C55E;
-      --green2: #16A34A;
       --blue:   #3B82F6;
       --red:    #EF4444;
       --amber:  #F59E0B;
       --slate:  #94A3B8;
-      --light:  #F8FAFC;
+      --border: #1E293B;
+      --slot-free-bg:   #161F2E;
+      --slot-free-fg:   #334155;
+      --slot-free-bd:   #1E293B;
+      --slot-reg-bg:    #22C55E22;
+      --slot-reg-bd:    #22C55E66;
+      --slot-reg-fg:    #4ADE80;
+      --slot-guest-bg:  #16A34A22;
+      --slot-guest-bd:  #16A34A66;
+      --slot-guest-fg:  #4ADE80;
+      --slot-train-bg:  #3B82F622;
+      --slot-train-bd:  #3B82F666;
+      --slot-train-fg:  #93C5FD;
+      --slot-match-bg:  #EF444422;
+      --slot-match-bd:  #EF444466;
+      --slot-match-fg:  #FCA5A5;
+      --slot-past-bg:   #0F172A;
+      --slot-past-fg:   #1E293B;
+    }
+
+    /* ── HELL-THEME ── */
+    body.theme-light {
+      --bg:     #F8FAFC;
+      --bg2:    #E2E8F0;
+      --fg:     #0F172A;
+      --green:  #16A34A;
+      --blue:   #2563EB;
+      --red:    #DC2626;
+      --slate:  #475569;
+      --border: #CBD5E1;
+      --slot-free-bg:   #F1F5F9;
+      --slot-free-fg:   #94A3B8;
+      --slot-free-bd:   #CBD5E1;
+      --slot-reg-bg:    #DCFCE7;
+      --slot-reg-bd:    #86EFAC;
+      --slot-reg-fg:    #166534;
+      --slot-guest-bg:  #D1FAE5;
+      --slot-guest-bd:  #6EE7B7;
+      --slot-guest-fg:  #065F46;
+      --slot-train-bg:  #DBEAFE;
+      --slot-train-bd:  #93C5FD;
+      --slot-train-fg:  #1E40AF;
+      --slot-match-bg:  #FEE2E2;
+      --slot-match-bd:  #FCA5A5;
+      --slot-match-fg:  #991B1B;
+      --slot-past-bg:   #F8FAFC;
+      --slot-past-fg:   #CBD5E1;
+    }
+
+    /* ── HOHER-KONTRAST-THEME ── */
+    body.theme-contrast {
+      --bg:     #FFFFFF;
+      --bg2:    #E5E7EB;
+      --fg:     #000000;
+      --green:  #15803D;
+      --blue:   #1D4ED8;
+      --red:    #B91C1C;
+      --slate:  #374151;
+      --border: #9CA3AF;
+      --slot-free-bg:   #F3F4F6;
+      --slot-free-fg:   #6B7280;
+      --slot-free-bd:   #9CA3AF;
+      --slot-reg-bg:    #BBF7D0;
+      --slot-reg-bd:    #16A34A;
+      --slot-reg-fg:    #14532D;
+      --slot-guest-bg:  #A7F3D0;
+      --slot-guest-bd:  #059669;
+      --slot-guest-fg:  #064E3B;
+      --slot-train-bg:  #BFDBFE;
+      --slot-train-bd:  #2563EB;
+      --slot-train-fg:  #1E3A8A;
+      --slot-match-bg:  #FECACA;
+      --slot-match-bd:  #DC2626;
+      --slot-match-fg:  #7F1D1D;
+      --slot-past-bg:   #F9FAFB;
+      --slot-past-fg:   #D1D5DB;
     }
 
     html, body {
       height: 100%;
-      background: var(--navy);
-      color: var(--light);
+      background: var(--bg);
+      color: var(--fg);
       font-family: 'DM Sans', system-ui, sans-serif;
       overflow: hidden;
+    }
+
+    /* ── WHITE SCREEN MODE ── */
+    #white-screen {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: #fff;
     }
 
     /* ── LAYOUT ── */
@@ -58,7 +141,7 @@
       font-size: 26px;
       font-weight: 800;
       letter-spacing: -0.5px;
-      color: #fff;
+      color: var(--fg);
     }
 
     .logo-sub {
@@ -81,7 +164,7 @@
     #time-display {
       font-size: 42px;
       font-weight: 800;
-      color: #fff;
+      color: var(--fg);
       letter-spacing: -1px;
       line-height: 1;
       margin-top: 2px;
@@ -127,11 +210,11 @@
     }
 
     .cal-table th {
-      background: var(--navy2);
+      background: var(--bg2);
       padding: 10px 8px;
       text-align: center;
       font-weight: 800;
-      border-bottom: 2px solid var(--navy);
+      border-bottom: 2px solid var(--bg);
       position: sticky;
       top: 0;
       z-index: 2;
@@ -145,7 +228,7 @@
 
     .th-court {
       font-size: 15px;
-      color: #fff;
+      color: var(--fg);
       border-left: 3px solid transparent;
     }
 
@@ -157,7 +240,7 @@
     }
 
     .cal-table td {
-      border-top: 1px solid #1E293B;
+      border-top: 1px solid var(--border);
       padding: 0;
       vertical-align: middle;
     }
@@ -173,7 +256,7 @@
 
     .td-slot {
       padding: 3px 4px;
-      border-left: 1px solid #1E293B;
+      border-left: 1px solid var(--border);
     }
 
     .slot-btn {
@@ -182,7 +265,7 @@
       min-height: 36px;
       border-radius: 6px;
       border: 1.5px solid transparent;
-      background: #1E293B;
+      background: var(--bg2);
       color: var(--slate);
       font-family: inherit;
       font-size: 13px;
@@ -199,32 +282,27 @@
     }
 
     .slot-free {
-      background: #161F2E;
-      color: #334155;
-      border-color: #1E293B;
+      background: var(--slot-free-bg);
+      color: var(--slot-free-fg);
+      border-color: var(--slot-free-bd);
       font-size: 11px;
     }
 
     .slot-past {
-      background: #0F172A;
-      color: #1E293B;
+      background: var(--slot-past-bg);
+      color: var(--slot-past-fg);
       border-color: transparent;
     }
 
-    .slot-regular  { background: #22C55E22; border-color: #22C55E66; color: #4ADE80; }
-    .slot-guest    { background: #16A34A22; border-color: #16A34A66; color: #4ADE80; }
-    .slot-training { background: #3B82F622; border-color: #3B82F666; color: #93C5FD; }
-    .slot-match    { background: #EF444422; border-color: #EF444466; color: #FCA5A5; }
+    .slot-regular  { background: var(--slot-reg-bg);   border-color: var(--slot-reg-bd);   color: var(--slot-reg-fg);   }
+    .slot-guest    { background: var(--slot-guest-bg);  border-color: var(--slot-guest-bd);  color: var(--slot-guest-fg);  }
+    .slot-training { background: var(--slot-train-bg);  border-color: var(--slot-train-bd);  color: var(--slot-train-fg);  }
+    .slot-match    { background: var(--slot-match-bg);  border-color: var(--slot-match-bd);  color: var(--slot-match-fg);  }
 
     /* current-time row highlight */
     .row-current .td-time {
       color: var(--green);
       font-weight: 800;
-    }
-
-    .row-current .slot-free {
-      background: #0F2318;
-      border-color: #14532D44;
     }
 
     /* ── LEGEND ── */
@@ -251,11 +329,11 @@
       flex-shrink: 0;
     }
 
-    /* ── LOADING / ERROR ── */
+    /* ── LOADING ── */
     #loading {
       position: fixed;
       inset: 0;
-      background: var(--navy);
+      background: var(--bg);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -269,7 +347,7 @@
     .spinner {
       width: 36px;
       height: 36px;
-      border: 3px solid #1E293B;
+      border: 3px solid var(--bg2);
       border-top-color: var(--green);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
@@ -282,8 +360,11 @@
 
 <div id="loading">
   <div class="spinner"></div>
-  <div>Lade Buchungen…</div>
+  <div>Lade…</div>
 </div>
+
+<div id="white-screen"></div>
+<div id="debug" style="position:fixed;bottom:8px;right:8px;background:rgba(0,0,0,.75);color:#fff;font-size:11px;padding:6px 10px;border-radius:6px;z-index:9999;font-family:monospace;line-height:1.6"></div>
 
 <div id="app" style="display:none">
   <header>
@@ -295,7 +376,7 @@
       </svg>
       <div>
         <div class="logo-title">Tennis Herrieden</div>
-        <div class="logo-sub">Belegungsplan</div>
+        <div class="logo-sub">Tagesbelegungsplan</div>
       </div>
     </div>
     <div class="header-right">
@@ -317,11 +398,11 @@
   </div>
 
   <div id="legend">
-    <div class="legend-item"><div class="legend-dot" style="background:#22C55E"></div>Gebucht</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#16A34A"></div>Mit Gastspieler</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#3B82F6"></div>Training</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#EF4444"></div>Spieltag</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#1E293B; border:1px solid #334155"></div>Frei</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--slot-reg-fg)"></div>Gebucht</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--slot-guest-fg)"></div>Mit Gastspieler</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--slot-train-fg)"></div>Training</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--slot-match-fg)"></div>Spieltag</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--slot-free-bg);border:1px solid var(--slot-free-bd)"></div>Frei</div>
   </div>
 </div>
 
@@ -361,8 +442,7 @@ function isPast(slot) {
 // ── CLOCK ─────────────────────────────────────────────────────────────────
 function updateClock() {
   const now = new Date();
-  const d = now.getDay();
-  const day = DE_DAYS[d];
+  const day = DE_DAYS[now.getDay()];
   const date = now.getDate();
   const month = DE_MONTH[now.getMonth()];
   const year = now.getFullYear();
@@ -377,7 +457,6 @@ function render() {
   const today = todayStr();
   const cur   = currentSlot();
 
-  // HEAD
   const head = document.getElementById("cal-head");
   let headHtml = `<tr><th class="th-time"></th>`;
   courts.forEach((c, i) => {
@@ -390,7 +469,6 @@ function render() {
   headHtml += `</tr>`;
   head.innerHTML = headHtml;
 
-  // BODY
   const body = document.getElementById("cal-body");
   let bodyHtml = "";
 
@@ -415,15 +493,9 @@ function render() {
         let icon = "";
         let label = booking.user_name?.split(" ")[0] || "–";
 
-        if (type === "training") {
-          cls = "slot-training"; icon = "🏋️";
-          label = booking.label || "Training";
-        } else if (type === "match") {
-          cls = "slot-match"; icon = "🏆";
-          label = booking.label || "Spieltag";
-        } else if (withGuest) {
-          cls = "slot-guest"; icon = "👥";
-        }
+        if (type === "training") { cls = "slot-training"; icon = "🏋️"; label = booking.label || "Training"; }
+        else if (type === "match") { cls = "slot-match"; icon = "🏆"; label = booking.label || "Spieltag"; }
+        else if (withGuest)       { cls = "slot-guest";  icon = "👥"; }
 
         cellHtml = `<div class="slot-btn ${cls}">${icon ? `<span>${icon}</span>` : ""}<span>${label}</span></div>`;
       } else if (past) {
@@ -440,7 +512,6 @@ function render() {
 
   body.innerHTML = bodyHtml;
 
-  // Scroll current slot into view
   if (cur) {
     const rows = body.querySelectorAll("tr");
     const idx  = SLOTS.indexOf(cur);
@@ -477,29 +548,65 @@ function subscribeRealtime() {
     .subscribe();
 }
 
+// ── DEBUG ─────────────────────────────────────────────────────────────────
+function dbg(mode, theme, rows) {
+  const el = document.getElementById("debug");
+  if (el) el.innerHTML = `mode: <b>${mode}</b> | theme: <b>${theme}</b> | rows: ${rows} | ${new Date().toLocaleTimeString("de-DE")}`;
+}
+
+// ── SETTINGS POLLING ──────────────────────────────────────────────────────
+function startSettingsPolling(mode, theme) {
+  setInterval(async () => {
+    const { data, error } = await sb.from("settings").select("*").in("key", ["display_mode", "display_theme"]);
+    const rows = data ? data.length : `ERR:${error?.message}`;
+    const s = Object.fromEntries((data || []).map(r => [r.key, r.value]));
+    const newMode  = s.display_mode  || "schedule";
+    const newTheme = s.display_theme || "dark";
+    dbg(newMode, newTheme, rows);
+    if (newMode !== mode || newTheme !== theme) {
+      location.reload();
+    }
+  }, 10_000);
+}
+
 // ── MIDNIGHT RELOAD ───────────────────────────────────────────────────────
-// At midnight, reload so the date automatically flips to the new day
 function scheduleMidnightReload() {
   const now  = new Date();
   const next = new Date(now);
-  next.setHours(24, 0, 5, 0); // 00:00:05 next day
+  next.setHours(24, 0, 5, 0);
   const msUntil = next - now;
   setTimeout(() => location.reload(), msUntil);
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────
 (async function init() {
-  updateClock();
-  setInterval(updateClock, 30_000); // update clock every 30s
-
-  await loadData();
-  setInterval(loadData, 60_000);    // full reload every 60s as fallback
-
-  subscribeRealtime();
-  scheduleMidnightReload();
+  const { data: settingsData } = await sb.from("settings").select("*").in("key", ["display_mode", "display_theme"]);
+  const settings = Object.fromEntries((settingsData || []).map(r => [r.key, r.value]));
+  const displayMode  = settings.display_mode  || "schedule";
+  const displayTheme = settings.display_theme || "dark";
 
   document.getElementById("loading").style.display = "none";
-  document.getElementById("app").style.display     = "flex";
+
+  if (displayMode === "white") {
+    document.getElementById("white-screen").style.display = "block";
+    startSettingsPolling(displayMode, displayTheme);
+    return;
+  }
+
+  if (displayTheme === "light")    document.body.classList.add("theme-light");
+  if (displayTheme === "contrast") document.body.classList.add("theme-contrast");
+
+  updateClock();
+  setInterval(updateClock, 30_000);
+
+  await loadData();
+  setInterval(loadData, 60_000);
+
+  subscribeRealtime();
+  startSettingsPolling(displayMode, displayTheme);
+  scheduleMidnightReload();
+
+  document.getElementById("app").style.display = "flex";
 })();
 </script>
 </body>
