@@ -27,9 +27,34 @@ async function saveResult(key, value) {
   );
 }
 
+// ── Cookie-Banner wegklicken ───────────────────────────────────────────────
+async function acceptCookies(page) {
+  const selectors = [
+    "button#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll",
+    "button[id*='AllowAll']",
+    "button[id*='accept']",
+    "a[id*='accept']",
+    "button:has-text('Zustimmung')",
+    "button:has-text('Alle akzeptieren')",
+    "button:has-text('Akzeptieren')",
+    "button:has-text('OK')",
+  ];
+  for (const sel of selectors) {
+    try {
+      await page.locator(sel).first().click({ timeout: 3000 });
+      console.log(`Cookie-Banner akzeptiert (${sel})`);
+      await page.waitForTimeout(1500);
+      return;
+    } catch (_) {}
+  }
+}
+
 // ── Seite laden + auf Inhalt warten ────────────────────────────────────────
 async function loadPage(page, url) {
   await page.goto(url, { waitUntil: "networkidle", timeout: 30_000 });
+  // Cookie-Banner wegklicken
+  await acceptCookies(page);
+  // Warten bis "Processing..." weg ist
   try {
     await page.waitForFunction(
       () => !document.body.textContent.includes("Processing"),
@@ -41,63 +66,75 @@ async function loadPage(page, url) {
   await page.waitForTimeout(2000);
 }
 
-// ── Auf Staffelseite den Link zum heutigen Spielbericht suchen ─────────────
-async function findMatchReportUrl(page, groupUrl, heimTeam, gastTeam) {
-  await loadPage(page, groupUrl);
-
+// ── In einem Frame (Hauptseite oder iframe) nach Spielbericht suchen ──────
+async function searchForMatch(frame, heimTeam, gastTeam) {
   // "Spielplan"-Tab klicken falls vorhanden
-  for (const label of ["Spielplan", "Spiele", "Begegnungen", "Matches"]) {
+  for (const label of ["Spielplan", "Spiele", "Begegnungen", "Spielergebnisse"]) {
     try {
-      await page.locator(`text=${label}`).first().click({ timeout: 3000 });
-      await page.waitForTimeout(1500);
+      await frame.locator(`text=${label}`).first().click({ timeout: 2000 });
+      await frame.waitForTimeout(1500);
       break;
     } catch (_) {}
   }
 
-  const snippet = await page.evaluate(() => document.body.innerText.slice(0, 1000));
-  console.log("Staffelseite-Inhalt (Auszug):\n" + snippet);
+  const snippet = await frame.evaluate(() => document.body.innerText.slice(0, 800));
+  console.log("Frame-Inhalt (Auszug):\n" + snippet);
 
-  // Alle Links auf der Seite loggen
-  const allLinks = await page.evaluate(() =>
-    Array.from(document.querySelectorAll("a[href]"))
-      .map(a => `${a.textContent.trim().slice(0,50)} → ${a.href}`)
-      .filter(s => s.length > 5)
-      .slice(0, 30)
-  );
-  console.log("Alle Links:", allLinks.join("\n  "));
-
-  // Alle Zeilen mit Text loggen (um Teamnamen zu sehen)
-  const allRows = await page.evaluate(() =>
-    Array.from(document.querySelectorAll("tr, [class*='row'], [class*='match'], [class*='begegnung']"))
-      .map(r => r.textContent.trim().replace(/\s+/g, " ").slice(0, 120))
+  const allRows = await frame.evaluate(() =>
+    Array.from(document.querySelectorAll("tr, [class*='row'], [class*='match'], [class*='begegnung'], [class*='meeting']"))
+      .map(r => r.textContent.trim().replace(/\s+/g, " ").slice(0, 150))
       .filter(t => t.length > 10)
-      .slice(0, 20)
+      .slice(0, 25)
   );
-  console.log("Gefundene Zeilen:", allRows.join("\n  "));
+  console.log("Zeilen im Frame:\n  " + allRows.join("\n  "));
 
-  // Zeile finden, die beide Teams enthält, und Link extrahieren
-  const href = await page.evaluate(({ heim, gast }) => {
+  return await frame.evaluate(({ heim, gast }) => {
     const rows = Array.from(
       document.querySelectorAll("tr, [class*='row'], [class*='match'], [class*='begegnung'], [class*='meeting']")
     );
     for (const row of rows) {
       const text = row.textContent || "";
       if (text.includes(heim) && text.includes(gast)) {
-        // Bevorzugt: Link mit "matchReport", "begegnung", "spielbericht", "begid"
         const prio = row.querySelector(
           "a[href*='matchReport'], a[href*='spielbericht'], a[href*='begegnung'], a[href*='begid']"
         );
         if (prio) return prio.href;
-        // Fallback: irgendein Link in der Zeile
         const any = row.querySelector("a[href]");
         if (any) return any.href;
       }
     }
     return null;
   }, { heim: heimTeam, gast: gastTeam });
+}
 
-  console.log(`Gefundener Spielbericht-Link: ${href || "keiner"}`);
-  return href;
+// ── Auf Staffelseite den Link zum heutigen Spielbericht suchen ─────────────
+async function findMatchReportUrl(page, groupUrl, heimTeam, gastTeam) {
+  await loadPage(page, groupUrl);
+
+  // 1. Hauptseite durchsuchen
+  console.log("Suche in Hauptseite...");
+  let href = await searchForMatch(page, heimTeam, gastTeam);
+  if (href) { console.log(`Spielbericht in Hauptseite gefunden: ${href}`); return href; }
+
+  // 2. Alle iframes durchsuchen (btv.de bettet das Widget als iframe ein)
+  const frames = page.frames();
+  console.log(`Anzahl Frames: ${frames.length}`);
+  for (const frame of frames) {
+    const frameUrl = frame.url();
+    if (frameUrl === "about:blank" || frameUrl === "") continue;
+    console.log(`Suche in Frame: ${frameUrl}`);
+    try {
+      // Warten bis Frame geladen
+      await frame.waitForLoadState("domcontentloaded", { timeout: 5000 });
+      href = await searchForMatch(frame, heimTeam, gastTeam);
+      if (href) { console.log(`Spielbericht in Frame gefunden: ${href}`); return href; }
+    } catch (e) {
+      console.log(`Frame übersprungen: ${e.message}`);
+    }
+  }
+
+  console.log("Kein Spielbericht-Link gefunden.");
+  return null;
 }
 
 // ── Spielbericht parsen ────────────────────────────────────────────────────
