@@ -12,8 +12,7 @@ const sb = createClient(
 async function getSettings() {
   const { data } = await sb.from("settings").select("*")
     .in("key", ["display_mannschaft", "display_gegner",
-                "display_match_url", "display_vereinsnummer",
-                "display_match_date", "display_match_time"]);
+                "display_match_url", "display_vereinsnummer"]);
   if (!data) return {};
   return Object.fromEntries(data.map(r => [r.key, r.value]));
 }
@@ -155,9 +154,18 @@ async function tryWidget(page, groupId, heim, gast) {
         status = h + a >= 9 ? "done" : "live";
       }
 
-      // ── Zeit ────────────────────────────────────────────────────────────
+      // ── Uhrzeit ─────────────────────────────────────────────────────────
       const timeM = mText.match(/(\d{1,2}:\d{2})\s*Uhr/i);
       const time = timeM ? timeM[1] + " Uhr" : "–";
+
+      // ── Datum: DD.MM.YYYY oder DD.MM.YY ─────────────────────────────────
+      const dateM = mText.match(/(\d{1,2})\.(\d{1,2})\.(\d{2,4})/);
+      let matchDate = null;
+      if (dateM) {
+        const [, d, mo, y] = dateM;
+        const year = y.length === 2 ? "20" + y : y;
+        matchDate = `${year}-${mo.padStart(2,"0")}-${d.padStart(2,"0")}`;
+      }
 
       // ── Gesamtergebnis: nur einstellige X:Y Spans ─────────────────────
       const singleScores = Array.from(m.querySelectorAll(".z-label, span"))
@@ -175,7 +183,7 @@ async function tryWidget(page, groupId, heim, gast) {
         }
       }
 
-      return { found: true, status, time, homeScore, awayScore, anzeigenId, allTexts };
+      return { found: true, status, time, matchDate, homeScore, awayScore, anzeigenId, allTexts };
     }
     return { found: false, allTexts };
   }, { heim, gast });
@@ -186,8 +194,34 @@ async function tryWidget(page, groupId, heim, gast) {
     return null;
   }
 
-  console.log(`Match gefunden! Status: ${header.status}  Score: ${header.homeScore}:${header.awayScore}`);
+  console.log(`Match gefunden! Status: ${header.status}  Score: ${header.homeScore}:${header.awayScore}  Datum: ${header.matchDate}  Zeit: ${header.time}`);
   console.log(`anzeigenId: ${header.anzeigenId}`);
+
+  // ── Zeitfenster prüfen (anhand BTV-Datum + Uhrzeit) ──────────────────────
+  if (header.matchDate && header.time && header.time !== "–") {
+    const timeStr = header.time.replace(/\s*Uhr/i,"").trim();
+    if (!isInMatchWindow(header.matchDate, timeStr)) {
+      const [h, min] = timeStr.split(":").map(Number);
+      const matchMs  = new Date(`${header.matchDate}T${String(h).padStart(2,"0")}:${String(min).padStart(2,"0")}:00`).getTime();
+      const diffMin  = Math.round((matchMs - Date.now()) / 60_000);
+      const diffStr  = diffMin > 0
+        ? `noch ${diffMin} Min bis Fenster-Start (1h vor ${header.time})`
+        : `${Math.abs(diffMin)} Min nach Fenster-Ende`;
+      console.log(`⏸ Außerhalb Zeitfenster – nur Basisdaten speichern. (${diffStr})`);
+      // Basisdaten (ohne Rubbers) speichern damit Display Datum/Zeit anzeigen kann
+      return {
+        status: header.status, homeTeam: heim, awayTeam: gast,
+        league: "HERREN LANDESLIGA 2 GR. 127 NO",
+        time: header.time, matchDate: header.matchDate,
+        homeScore: header.homeScore, awayScore: header.awayScore, rubbers: [],
+      };
+    }
+    const [h, min] = timeStr.split(":").map(Number);
+    const matchMs  = new Date(`${header.matchDate}T${String(h).padStart(2,"0")}:${String(min).padStart(2,"0")}:00`).getTime();
+    const diffMin  = Math.round((matchMs - Date.now()) / 60_000);
+    if (diffMin > 0) console.log(`⏱ Im Fenster: Anpfiff ${header.time}, noch ${diffMin} Min`);
+    else             console.log(`⏱ Im Fenster: Spiel läuft/beendet`);
+  }
 
   // ── Schritt 2: "anzeigen" klicken → ZK lädt Rubbers inline per AJAX ────────
   let rubbers = [];
@@ -223,6 +257,7 @@ async function tryWidget(page, groupId, heim, gast) {
     homeTeam: heim, awayTeam: gast,
     league: "HERREN LANDESLIGA 2 GR. 127 NO",
     time: header.time,
+    matchDate: header.matchDate,
     homeScore, awayScore, rubbers,
   };
 }
@@ -521,38 +556,8 @@ async function parseReport(page, url, heim, gast) {
   const groupUrl = cfg.display_match_url   || "";
   const clubnr   = String(cfg.display_vereinsnummer || "6085").padStart(5, "0");
 
-  const matchDate = cfg.display_match_date || "";
-  const matchTime = cfg.display_match_time || ""; // "HH:MM"
-  const today     = new Date().toISOString().slice(0, 10);
-  console.log(`Heim: "${heim}"  Gast: "${gast}"  Spieltag: "${matchDate} ${matchTime}"  Heute: "${today}"`);
+  console.log(`Heim: "${heim}"  Gast: "${gast}"`);
   if (!heim || !gast) { console.log("Nicht konfiguriert."); return; }
-
-  // ── Schritt 1: Falscher Tag → sofortiger Exit (kein Playwright-Start) ──────
-  if (matchDate && matchDate !== today) {
-    console.log(`⏸ Kein Spieltag – kein Fetch. (Spiel: ${matchDate})`);
-    return;
-  }
-
-  // ── Schritt 2: Richtiger Tag → Zeitfenster prüfen ─────────────────────────
-  if (matchDate && matchTime) {
-    if (!isInMatchWindow(matchDate, matchTime)) {
-      const [h, min] = matchTime.split(":").map(Number);
-      const matchMs  = new Date(`${matchDate}T${String(h).padStart(2,"0")}:${String(min).padStart(2,"0")}:00`).getTime();
-      const diffMin  = Math.round((matchMs - Date.now()) / 60_000);
-      const diffStr  = diffMin > 0
-        ? `noch ${diffMin} Min bis Fenster-Start (1h vor ${matchTime} Uhr)`
-        : `${Math.abs(diffMin)} Min nach Fenster-Ende`;
-      console.log(`⏸ Außerhalb des Zeitfensters – kein Fetch. (${diffStr})`);
-      return;
-    }
-    const [h, min] = matchTime.split(":").map(Number);
-    const matchMs  = new Date(`${matchDate}T${String(h).padStart(2,"0")}:${String(min).padStart(2,"0")}:00`).getTime();
-    const diffMin  = Math.round((matchMs - Date.now()) / 60_000);
-    if (diffMin > 0) console.log(`⏱ Im Fenster: Anpfiff ${matchTime} Uhr, noch ${diffMin} Min`);
-    else             console.log(`⏱ Im Fenster: Spiel läuft/beendet (${Math.abs(diffMin)} Min nach ${matchTime} Uhr)`);
-  } else if (matchDate) {
-    console.log(`⏱ Spieltag ohne Uhrzeitangabe – läuft den ganzen Tag`);
-  }
 
   const groupIdM = groupUrl.match(/groupid=(\d+)/);
   const groupId  = groupIdM?.[1];
