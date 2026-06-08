@@ -805,9 +805,15 @@ function renderHsMatch(match) {
 
   let middleHtml = "";
   if (status === "upcoming") {
+    const dateStr = match._matchDate
+      ? new Date(match._matchDate + "T12:00:00").toLocaleDateString("de-DE",
+          {weekday:"long", day:"numeric", month:"long"})
+      : "";
+    const timeStr = match.time || "";
     middleHtml = `
       <div class="hs-upcoming">
-        <div class="hs-upcoming-time">${match.time || "–"}</div>
+        ${dateStr ? `<div class="hs-upcoming-hint" style="font-size:clamp(15px,1.5vw,22px)">${dateStr}</div>` : ""}
+        ${timeStr ? `<div class="hs-upcoming-time">${timeStr}</div>` : ""}
         <div class="hs-upcoming-hint">Aufstellung noch nicht eingetragen</div>
       </div>`;
   } else {
@@ -881,16 +887,23 @@ function renderHsMatch(match) {
 
 async function loadHsMatch() {
   try {
-    const { data, error } = await sb
-      .from("settings")
-      .select("value")
-      .eq("key", "btv_match_cache")
-      .single();
-    if (error) throw error;
+    const [cacheRes, settingsRes] = await Promise.all([
+      sb.from("settings").select("value").eq("key","btv_match_cache").single(),
+      sb.from("settings").select("value").in("key",["display_match_date","display_match_time"]),
+    ]);
     let match = null;
-    if (data?.value) {
-      match = typeof data.value === "string" ? JSON.parse(data.value) : data.value;
+    if (cacheRes.data?.value) {
+      match = typeof cacheRes.data.value === "string"
+        ? JSON.parse(cacheRes.data.value) : cacheRes.data.value;
     }
+    // Datum + Uhrzeit aus Settings in Match injizieren (für Upcoming-View)
+    const smap = Object.fromEntries((settingsRes.data||[]).map(r=>[r.key,r.value]));
+    if (!match) match = {};
+    if (!match.time && smap.display_match_time)
+      match.time = smap.display_match_time + " Uhr";
+    if (smap.display_match_date)
+      match._matchDate = smap.display_match_date;
+
     const newJson = JSON.stringify(match);
     if (newJson !== _cachedMatchJson) {
       _cachedMatchJson = newJson;

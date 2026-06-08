@@ -1401,6 +1401,7 @@ function SettingsDisplayTab({onToast}) {
   const [gegner,        setGegner]       = useState("");
   const [matchUrl,      setMatchUrl]     = useState("");
   const [matchDate,     setMatchDate]    = useState("");
+  const [matchTime,     setMatchTime]    = useState("");
   const [bildUrl,       setBildUrl]      = useState("");
   const [uploading,     setUploading]    = useState(false);
   const [saving,        setSaving]       = useState(false);
@@ -1409,7 +1410,7 @@ function SettingsDisplayTab({onToast}) {
     sb.from("settings").select("*")
       .in("key",["display_mode","display_theme","display_vereinsnummer","display_saison",
                  "display_mannschaft","display_gegner","display_match_url",
-                 "display_match_date","display_bild_url"])
+                 "display_match_date","display_match_time","display_bild_url"])
       .then(({data})=>{
         if(!data) return;
         const map=Object.fromEntries(data.map(r=>[r.key,r.value]));
@@ -1421,6 +1422,7 @@ function SettingsDisplayTab({onToast}) {
         if(map.display_gegner)        setGegner(map.display_gegner);
         if(map.display_match_url)     setMatchUrl(map.display_match_url);
         if(map.display_match_date)    setMatchDate(map.display_match_date);
+        if(map.display_match_time)    setMatchTime(map.display_match_time);
         if(map.display_bild_url)      setBildUrl(map.display_bild_url);
       });
   },[]);
@@ -1457,6 +1459,7 @@ function SettingsDisplayTab({onToast}) {
       {key:"display_gegner",        value:gegner},
       {key:"display_match_url",     value:matchUrl},
       {key:"display_match_date",    value:matchDate},
+      {key:"display_match_time",    value:matchTime},
     ],{onConflict:"key"});
     setSaving(false);
     if(error){ onToast(`Fehler: ${error.message}`,"error"); return; }
@@ -1536,11 +1539,16 @@ function SettingsDisplayTab({onToast}) {
               <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>
                 SPIELBEGINN <span style={{fontWeight:400,color:"#EF4444"}}>↺ vor jedem Spiel aktualisieren</span>
               </div>
-              <input type="date" value={matchDate}
-                onChange={e=>setMatchDate(e.target.value)}
-                style={{...S.input,width:"100%"}}/>
+              <div style={{display:"flex",gap:8}}>
+                <input type="date" value={matchDate}
+                  onChange={e=>setMatchDate(e.target.value)}
+                  style={{...S.input,flex:2}}/>
+                <input type="time" value={matchTime}
+                  onChange={e=>setMatchTime(e.target.value)}
+                  style={{...S.input,flex:1}}/>
+              </div>
               <div style={{fontSize:11,color:"#9CA3AF",marginTop:4}}>
-                Uhrzeit wird automatisch aus BTV ausgelesen · Daten werden 1h vorher bis 10h nachher abgerufen
+                BTV-Daten werden 1h vorher bis 10h nachher abgerufen
               </div>
             </div>
 
