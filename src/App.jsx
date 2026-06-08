@@ -1034,82 +1034,145 @@ function SettingsMembersTab({onToast}) {
 
 // ── HEIMSPIEL: MANUELLE EINGABE ──────────────────────────────────────────
 const RUBBER_RESULT_OPTS = [
-  {v:"open",  label:"Offen",      color:"#9CA3AF"},
-  {v:"live",  label:"● Läuft",    color:"#F59E0B"},
-  {v:"win",   label:"✓ Heimsieg", color:"#16A34A"},
-  {v:"loss",  label:"✗ Niederlage",color:"#DC2626"},
+  {v:"open",  label:"Offen",        color:"#9CA3AF"},
+  {v:"live",  label:"● Läuft",      color:"#F59E0B"},
+  {v:"win",   label:"✓ Heimsieg",   color:"#16A34A"},
+  {v:"loss",  label:"✗ Niederlage", color:"#DC2626"},
 ];
+const DEFAULT_RUBBERS = () =>
+  ["E1","E2","E3","E4","E5","E6","D1","D2","D3"].map(id=>({id,home:"",away:"",score:"",result:"open"}));
+
+function fmtTs(iso) {
+  if(!iso) return null;
+  const d = new Date(iso);
+  return d.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit"})
+    + " " + d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}) + " Uhr";
+}
 
 function HeimspieleManualEntry({onToast}) {
-  const [cache,   setCache]   = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [saving,  setSaving]  = useState(false);
-  const [open,    setOpen]    = useState(false);
+  const [loading,        setLoading]        = useState(true);
+  const [saving,         setSaving]         = useState(false);
+  const [open,           setOpen]           = useState(false);
+  const [dirty,          setDirty]          = useState(false);
+  const [confirmReload,  setConfirmReload]  = useState(false);
+
+  // Cache-Metadaten (nur zur Anzeige)
+  const [savedAt,  setSavedAt]  = useState(null);
+  const [source,   setSource]   = useState(null); // "auto" | "manual"
 
   // Editierbare Felder
+  const [homeTeam,   setHomeTeam]   = useState("");
+  const [awayTeam,   setAwayTeam]   = useState("");
+  const [league,     setLeague]     = useState("");
   const [status,     setStatus]     = useState("upcoming");
   const [homeScore,  setHomeScore]  = useState(0);
   const [awayScore,  setAwayScore]  = useState(0);
-  const [rubbers,    setRubbers]    = useState([]);
+  const [rubbers,    setRubbers]    = useState(DEFAULT_RUBBERS());
 
-  const reload = () => {
+  const applyMatch = (m) => {
+    setHomeTeam(m.homeTeam  || "");
+    setAwayTeam(m.awayTeam  || "");
+    setLeague(  m.league    || "");
+    setStatus(  m.status    || "upcoming");
+    setHomeScore(m.homeScore ?? 0);
+    setAwayScore(m.awayScore ?? 0);
+    const rubs = m.rubbers && m.rubbers.length > 0
+      ? m.rubbers.map(r=>({...r}))
+      : DEFAULT_RUBBERS();
+    setRubbers(rubs);
+    setSavedAt(m._savedAt || null);
+    setSource( m._source  || "auto");
+    setDirty(false);
+    setConfirmReload(false);
+  };
+
+  const doReload = async () => {
     setLoading(true);
-    sb.from("settings").select("value").eq("key","btv_match_cache").single()
-      .then(({data})=>{
-        if(data?.value){
-          const m = typeof data.value==="string" ? JSON.parse(data.value) : data.value;
-          setCache(m);
-          setStatus(m.status||"upcoming");
-          setHomeScore(m.homeScore??0);
-          setAwayScore(m.awayScore??0);
-          setRubbers((m.rubbers||[]).map(r=>({...r})));
-        }
-        setLoading(false);
-      });
+    setConfirmReload(false);
+    try {
+      const {data, error} = await sb.from("settings")
+        .select("value").eq("key","btv_match_cache").single();
+      if(error && error.code !== "PGRST116") throw error; // PGRST116 = not found
+      if(data?.value) {
+        const m = typeof data.value==="string" ? JSON.parse(data.value) : data.value;
+        applyMatch(m);
+      } else {
+        // Kein Cache: leeres Formular
+        setHomeTeam(""); setAwayTeam(""); setLeague("");
+        setStatus("upcoming"); setHomeScore(0); setAwayScore(0);
+        setRubbers(DEFAULT_RUBBERS());
+        setSavedAt(null); setSource(null);
+        setDirty(false);
+      }
+    } catch(err) {
+      onToast(`Fehler beim Laden: ${err.message}`,"error");
+    } finally {
+      setLoading(false);
+    }
   };
-  useEffect(reload,[]);
 
-  const updRubber=(id,field,val)=>
+  useEffect(()=>{ doReload(); },[]);
+
+  const requestReload = () => {
+    if(dirty) { setConfirmReload(true); return; }
+    doReload();
+  };
+
+  const mark = (setter) => (val) => { setter(val); setDirty(true); };
+  const updRubber = (id,field,val) => {
     setRubbers(prev=>prev.map(r=>r.id===id?{...r,[field]:val}:r));
-
-  // Scores aus rubber-Ergebnissen neu berechnen wenn nötig
-  const recalcScore=()=>{
-    const w=rubbers.filter(r=>r.result==="win").length;
-    const l=rubbers.filter(r=>r.result==="loss").length;
-    setHomeScore(w); setAwayScore(l);
+    setDirty(true);
   };
 
-  const save=async()=>{
+  const recalcScore = () => {
+    const w = rubbers.filter(r=>r.result==="win").length;
+    const l = rubbers.filter(r=>r.result==="loss").length;
+    setHomeScore(w); setAwayScore(l); setDirty(true);
+  };
+
+  const save = async () => {
     setSaving(true);
-    const updated={
-      ...(cache||{}),
-      status,
-      homeScore:Number(homeScore),
-      awayScore:Number(awayScore),
+    const now = new Date().toISOString();
+    const payload = {
+      homeTeam, awayTeam, league, status,
+      homeScore: Number(homeScore),
+      awayScore: Number(awayScore),
       rubbers,
+      _source: "manual",
+      _savedAt: now,
     };
-    const {error}=await sb.from("settings")
-      .upsert([{key:"btv_match_cache",value:JSON.stringify(updated)}],{onConflict:"key"});
+    const {error} = await sb.from("settings")
+      .upsert([{key:"btv_match_cache", value:JSON.stringify(payload)}],{onConflict:"key"});
     setSaving(false);
-    if(error){onToast(`Fehler: ${error.message}`,"error");return;}
-    setCache(updated);
-    onToast("Spielstand manuell gespeichert ✓");
+    if(error){ onToast(`Fehler: ${error.message}`,"error"); return; }
+    setSavedAt(now); setSource("manual"); setDirty(false);
+    onToast("📲 Spielstand auf Display übertragen ✓");
   };
 
-  const singleRubbers = rubbers.filter(r=>r.id.startsWith("E"));
-  const doubleRubbers = rubbers.filter(r=>r.id.startsWith("D"));
+  const singles = rubbers.filter(r=>r.id.startsWith("E"));
+  const doubles = rubbers.filter(r=>r.id.startsWith("D"));
+
+  // Zeitstempel-Info für den Header
+  const tsInfo = savedAt
+    ? `${source==="manual"?"✏️ Manuell":"🤖 Auto"} · ${fmtTs(savedAt)}`
+    : null;
 
   return (
-    <div style={{marginBottom:24,border:"1.5px solid #FCD34D",borderRadius:12,overflow:"hidden"}}>
-      {/* Header – immer sichtbar */}
+    <div style={{marginBottom:24,border:`1.5px solid ${dirty?"#F59E0B":"#FCD34D"}`,borderRadius:12,overflow:"hidden"}}>
+      {/* Header */}
       <button onClick={()=>setOpen(o=>!o)}
         style={{width:"100%",background:"#FFFBEB",padding:"12px 16px",border:"none",
           cursor:"pointer",display:"flex",alignItems:"center",gap:10,textAlign:"left"}}>
         <span style={{fontSize:18}}>✏️</span>
         <div style={{flex:1}}>
-          <div style={{fontWeight:700,fontSize:13,color:"#92400E"}}>Spielstand manuell einpflegen</div>
+          <div style={{fontWeight:700,fontSize:13,color:"#92400E"}}>
+            Spielstand manuell einpflegen
+            {dirty&&<span style={{marginLeft:8,fontSize:11,color:"#D97706",fontWeight:400}}>● ungespeichert</span>}
+          </div>
           <div style={{fontSize:11,color:"#B45309",marginTop:1}}>
-            Fallback wenn BTV nicht erreichbar · Änderungen werden sofort angezeigt
+            {tsInfo
+              ? <span>{tsInfo}{source==="auto"?" · Live-Daten überschreibbar":""}</span>
+              : "Fallback wenn BTV nicht erreichbar · Änderungen werden sofort angezeigt"}
           </div>
         </div>
         <span style={{color:"#B45309",fontSize:14}}>{open?"▲":"▼"}</span>
@@ -1117,27 +1180,73 @@ function HeimspieleManualEntry({onToast}) {
 
       {open&&(
         <div style={{padding:16,background:"#fff",borderTop:"1px solid #FDE68A"}}>
-          {loading&&<div style={{fontSize:13,color:"#9CA3AF"}}>Lade Cache…</div>}
+          {loading&&<div style={{fontSize:13,color:"#9CA3AF",padding:"8px 0"}}>Lade Cache…</div>}
 
-          {!loading&&!cache&&(
-            <div style={{fontSize:13,color:"#DC2626",background:"#FEF2F2",border:"1px solid #FECACA",
-              borderRadius:8,padding:"10px 12px"}}>
-              ⚠ Noch kein Cache vorhanden. BTV-Daten müssen mindestens einmal automatisch
-              abgerufen worden sein, bevor du hier editieren kannst.
+          {!loading&&(<>
+            {/* Timestamp-Banner */}
+            {savedAt&&(
+              <div style={{marginBottom:12,padding:"8px 12px",borderRadius:8,fontSize:12,
+                background:source==="manual"?"#FFFBEB":"#EFF6FF",
+                border:`1px solid ${source==="manual"?"#FDE68A":"#BFDBFE"}`,
+                color:source==="manual"?"#92400E":"#1E40AF"}}>
+                {source==="manual"
+                  ? `✏️ Letzter Stand: manuell gespeichert am ${fmtTs(savedAt)}`
+                  : `🤖 Letzter Stand: automatisch abgerufen am ${fmtTs(savedAt)}`}
+                {source==="auto"&&
+                  <div style={{marginTop:4,fontSize:11,opacity:0.8}}>
+                    Wenn du jetzt speicherst, überschreibst du die Live-Daten.
+                    Der nächste automatische Abruf stellt sie wieder her.
+                  </div>
+                }
+              </div>
+            )}
+            {!savedAt&&(
+              <div style={{marginBottom:12,padding:"8px 12px",borderRadius:8,fontSize:12,
+                background:"#F9FAFB",border:"1px solid #E5E7EB",color:"#6B7280"}}>
+                Kein Cache vorhanden – du kannst alle Felder von Hand befüllen.
+              </div>
+            )}
+
+            {/* Reload-Bestätigung */}
+            {confirmReload&&(
+              <div style={{marginBottom:12,padding:"10px 12px",borderRadius:8,
+                background:"#FEF3C7",border:"1px solid #FCD34D",fontSize:13}}>
+                <strong>Ungespeicherte Änderungen verwerfen?</strong>
+                <div style={{display:"flex",gap:8,marginTop:8}}>
+                  <button onClick={doReload}
+                    style={{padding:"5px 14px",borderRadius:6,border:"none",
+                      background:"#DC2626",color:"#fff",fontSize:12,cursor:"pointer",fontWeight:700}}>
+                    Ja, verwerfen
+                  </button>
+                  <button onClick={()=>setConfirmReload(false)}
+                    style={{padding:"5px 14px",borderRadius:6,border:"1px solid #E5E7EB",
+                      background:"#fff",fontSize:12,cursor:"pointer"}}>
+                    Abbrechen
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Teams + Reload */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr auto 1fr",gap:8,marginBottom:14,alignItems:"end"}}>
+              <div>
+                <div style={{fontSize:10,fontWeight:700,color:"#6B7280",marginBottom:3}}>HEIM</div>
+                <input value={homeTeam} onChange={e=>mark(setHomeTeam)(e.target.value)}
+                  placeholder="z.B. SG Herrieden"
+                  style={{...S.input,width:"100%",fontSize:13,fontWeight:700}}/>
+              </div>
+              <div style={{textAlign:"center",paddingBottom:8,color:"#9CA3AF",fontSize:12,fontWeight:700}}>vs.</div>
+              <div>
+                <div style={{fontSize:10,fontWeight:700,color:"#6B7280",marginBottom:3}}>GAST</div>
+                <input value={awayTeam} onChange={e=>mark(setAwayTeam)(e.target.value)}
+                  placeholder="z.B. TC Rothenburg"
+                  style={{...S.input,width:"100%",fontSize:13,fontWeight:700}}/>
+              </div>
             </div>
-          )}
-
-          {!loading&&cache&&(<>
-            {/* Teams-Info */}
-            <div style={{background:"#F9FAFB",border:"1px solid #E5E7EB",borderRadius:8,
-              padding:"10px 12px",fontSize:13,marginBottom:16,display:"flex",
-              alignItems:"center",justifyContent:"space-between",gap:8}}>
-              <span style={{fontWeight:700}}>{cache.homeTeam||"?"}</span>
-              <span style={{color:"#9CA3AF",fontSize:11}}>vs.</span>
-              <span style={{fontWeight:700}}>{cache.awayTeam||"?"}</span>
-              <button onClick={reload}
-                style={{marginLeft:"auto",background:"none",border:"1px solid #E5E7EB",
-                  borderRadius:6,padding:"3px 8px",fontSize:11,cursor:"pointer",color:"#6B7280"}}>
+            <div style={{textAlign:"right",marginBottom:14}}>
+              <button onClick={requestReload}
+                style={{background:"none",border:"1px solid #E5E7EB",borderRadius:6,
+                  padding:"4px 10px",fontSize:11,cursor:"pointer",color:"#6B7280"}}>
                 ↻ Cache neu laden
               </button>
             </div>
@@ -1146,10 +1255,14 @@ function HeimspieleManualEntry({onToast}) {
             <div style={{marginBottom:14}}>
               <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:6}}>STATUS</div>
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                {[["upcoming","Noch nicht begonnen","#6B7280"],["live","● Läuft","#F59E0B"],["done","✓ Abgeschlossen","#16A34A"]].map(([v,lbl,col])=>(
-                  <button key={v} onClick={()=>setStatus(v)}
-                    style={{padding:"6px 14px",borderRadius:20,border:`2px solid ${status===v?col:"#E5E7EB"}`,
-                      background:status===v?col+"22":"#fff",color:status===v?col:"#6B7280",
+                {[["upcoming","Noch nicht begonnen","#6B7280"],
+                  ["live","● Läuft","#F59E0B"],
+                  ["done","✓ Abgeschlossen","#16A34A"]].map(([v,lbl,col])=>(
+                  <button key={v} onClick={()=>mark(setStatus)(v)}
+                    style={{padding:"6px 14px",borderRadius:20,
+                      border:`2px solid ${status===v?col:"#E5E7EB"}`,
+                      background:status===v?col+"22":"#fff",
+                      color:status===v?col:"#6B7280",
                       fontWeight:status===v?700:400,fontSize:12,cursor:"pointer"}}>
                     {lbl}
                   </button>
@@ -1164,62 +1277,81 @@ function HeimspieleManualEntry({onToast}) {
                 <button onClick={recalcScore}
                   style={{marginLeft:8,background:"none",border:"1px solid #E5E7EB",borderRadius:4,
                     padding:"1px 6px",fontSize:10,cursor:"pointer",color:"#6B7280",fontWeight:400}}>
-                  ↻ aus Rubbers berechnen
+                  ↻ aus Rubbers
                 </button>
               </div>
               <div style={{display:"flex",alignItems:"center",gap:8}}>
                 <div style={{textAlign:"center"}}>
-                  <div style={{fontSize:10,color:"#9CA3AF",marginBottom:3}}>{cache.homeTeam?.split(" ").pop()||"Heim"}</div>
-                  <input type="number" min={0} max={9} value={homeScore} onChange={e=>setHomeScore(e.target.value)}
+                  <div style={{fontSize:10,color:"#9CA3AF",marginBottom:3}}>Heim</div>
+                  <input type="number" min={0} max={9} value={homeScore}
+                    onChange={e=>{setHomeScore(e.target.value);setDirty(true);}}
                     style={{width:56,textAlign:"center",fontSize:22,fontWeight:800,
                       border:"2px solid #E5E7EB",borderRadius:8,padding:"4px 0"}}/>
                 </div>
-                <span style={{fontSize:22,color:"#9CA3AF",fontWeight:700,marginTop:14}}>:</span>
+                <span style={{fontSize:22,color:"#9CA3AF",fontWeight:700,paddingTop:14}}>:</span>
                 <div style={{textAlign:"center"}}>
-                  <div style={{fontSize:10,color:"#9CA3AF",marginBottom:3}}>{cache.awayTeam?.split(" ").pop()||"Gast"}</div>
-                  <input type="number" min={0} max={9} value={awayScore} onChange={e=>setAwayScore(e.target.value)}
+                  <div style={{fontSize:10,color:"#9CA3AF",marginBottom:3}}>Gast</div>
+                  <input type="number" min={0} max={9} value={awayScore}
+                    onChange={e=>{setAwayScore(e.target.value);setDirty(true);}}
                     style={{width:56,textAlign:"center",fontSize:22,fontWeight:800,
                       border:"2px solid #E5E7EB",borderRadius:8,padding:"4px 0"}}/>
                 </div>
               </div>
             </div>
 
-            {/* Rubber-Liste */}
-            {rubbers.length>0&&(
-              <div style={{marginBottom:16}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:8}}>RUBBERS</div>
-                <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                  {[...singleRubbers,...doubleRubbers].map(r=>(
-                    <div key={r.id} style={{border:"1px solid #E5E7EB",borderRadius:8,padding:"8px 10px",
-                      background:r.id.startsWith("D")?"#EFF6FF":"#fff"}}>
-                      <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-                        <span style={{fontWeight:800,fontSize:13,minWidth:28,color:"#374151"}}>{r.id}</span>
-                        <span style={{fontSize:12,color:"#374151",flex:1,minWidth:100,
-                          overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                          {r.home} <span style={{color:"#9CA3AF"}}>vs</span> {r.away}
-                        </span>
-                        <input value={r.score} onChange={e=>updRubber(r.id,"score",e.target.value)}
-                          placeholder="z.B. 6:3 4:6 10:8"
-                          style={{width:130,fontSize:12,border:"1px solid #E5E7EB",borderRadius:6,
-                            padding:"3px 7px",background:"#F9FAFB"}}/>
-                        <select value={r.result} onChange={e=>updRubber(r.id,"result",e.target.value)}
-                          style={{fontSize:12,border:"1px solid #E5E7EB",borderRadius:6,
-                            padding:"3px 6px",background:"#fff",color:
-                              RUBBER_RESULT_OPTS.find(o=>o.v===r.result)?.color||"#374151",
-                            fontWeight:600}}>
-                          {RUBBER_RESULT_OPTS.map(o=>(
-                            <option key={o.v} value={o.v} style={{color:o.color}}>{o.label}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+            {/* Rubbers */}
+            <div style={{marginBottom:16}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:8}}>
+                RUBBERS
+                <span style={{fontWeight:400,marginLeft:6,color:"#9CA3AF"}}>alle Felder editierbar</span>
               </div>
-            )}
+              {[["Einzel",singles],["Doppel",doubles]].map(([label,list])=>(
+                <div key={label} style={{marginBottom:10}}>
+                  <div style={{fontSize:10,fontWeight:700,color:"#9CA3AF",marginBottom:4,
+                    textTransform:"uppercase",letterSpacing:"0.5px"}}>{label}</div>
+                  <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                    {list.map(r=>(
+                      <div key={r.id} style={{border:"1px solid #E5E7EB",borderRadius:8,
+                        padding:"8px 10px",background:r.id.startsWith("D")?"#EFF6FF":"#fff"}}>
+                        {/* Zeile 1: ID + Namen */}
+                        <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:5}}>
+                          <span style={{fontWeight:800,fontSize:13,color:"#374151",minWidth:26}}>{r.id}</span>
+                          <input value={r.home} onChange={e=>updRubber(r.id,"home",e.target.value)}
+                            placeholder="Heimspieler"
+                            style={{flex:1,fontSize:12,border:"1px solid #D1D5DB",borderRadius:5,
+                              padding:"3px 6px",minWidth:0}}/>
+                          <span style={{color:"#9CA3AF",fontSize:11}}>vs</span>
+                          <input value={r.away} onChange={e=>updRubber(r.id,"away",e.target.value)}
+                            placeholder="Gastspieler"
+                            style={{flex:1,fontSize:12,border:"1px solid #D1D5DB",borderRadius:5,
+                              padding:"3px 6px",minWidth:0}}/>
+                        </div>
+                        {/* Zeile 2: Score + Ergebnis */}
+                        <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                          <span style={{minWidth:26}}/>
+                          <input value={r.score} onChange={e=>updRubber(r.id,"score",e.target.value)}
+                            placeholder="6:3 4:6 10:8"
+                            style={{flex:1,fontSize:12,border:"1px solid #D1D5DB",borderRadius:5,
+                              padding:"3px 6px",minWidth:0}}/>
+                          <select value={r.result} onChange={e=>updRubber(r.id,"result",e.target.value)}
+                            style={{fontSize:12,border:"1px solid #D1D5DB",borderRadius:5,padding:"3px 6px",
+                              background:"#fff",fontWeight:600,
+                              color:RUBBER_RESULT_OPTS.find(o=>o.v===r.result)?.color||"#374151"}}>
+                            {RUBBER_RESULT_OPTS.map(o=>(
+                              <option key={o.v} value={o.v}>{o.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
 
             <button onClick={save} disabled={saving}
-              style={{...S.primaryBtn,background:"#D97706",width:"100%",opacity:saving?0.6:1}}>
+              style={{...S.primaryBtn,background:dirty?"#D97706":"#9CA3AF",
+                width:"100%",opacity:saving?0.6:1,transition:"background .2s"}}>
               {saving?"Speichern…":"📲 Spielstand auf Display übertragen"}
             </button>
           </>)}
