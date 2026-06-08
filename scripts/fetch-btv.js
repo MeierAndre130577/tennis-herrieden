@@ -115,129 +115,178 @@ async function tryWidget(page, groupId, heim, gast) {
   }
   await page.waitForTimeout(2000);
 
-  // Inhalt analysieren + Rubber direkt im DOM parsen
-  const result = await page.evaluate(({ heim, gast }) => {
+  // ── Schritt 1: Header-Daten aus gbmeeting lesen ──────────────────────────
+  const header = await page.evaluate(({ heim, gast }) => {
     const heimL = heim.toLowerCase();
     const gastL = gast.toLowerCase();
-
     const meetings = Array.from(document.querySelectorAll('[class*="gbmeet"]'));
     const allTexts = meetings.map(m =>
       m.textContent.trim().replace(/\s+/g, " ").slice(0, 120)
     );
 
     for (const m of meetings) {
-      const t = m.textContent.toLowerCase();
-      if (!t.includes(heimL) || !t.includes(gastL)) continue;
-
-      const mText = m.textContent.trim().replace(/\s+/g, " ");
+      if (!m.textContent.toLowerCase().includes(heimL)) continue;
+      if (!m.textContent.toLowerCase().includes(gastL)) continue;
 
       // ── Status ──────────────────────────────────────────────────────────
-      // "anzeigen" = Spielbericht existiert = Spiel abgeschlossen (oder läuft)
-      // "blanko"   = Spielbericht noch leer = Spiel noch nicht gestartet
+      const mText = m.textContent;
       let status = "upcoming";
       if (/blanko/i.test(mText)) {
         status = "upcoming";
       } else if (/anzeigen/i.test(mText)) {
-        // Abgeschlossen wenn Gesamtergebnis eine runde Zahl (z.B. 9:0, 0:9, 5:4)
-        const scM = mText.match(/(\d+):(\d+)/);
-        const total = scM ? (+scM[1] + +scM[2]) : 0;
-        status = total >= 9 ? "done" : "live";
+        // Match-Score = alle Spans die genau "X:Y" (1 Ziffer je Seite) zeigen
+        const singleScores = Array.from(m.querySelectorAll(".z-label, span"))
+          .map(el => el.textContent.trim())
+          .filter(t => /^\d:\d$/.test(t));   // nur einstellig: 0:9, 5:4 etc.
+        const first = singleScores[0] || "0:0";
+        const [h, a] = first.split(":").map(Number);
+        status = h + a >= 9 ? "done" : "live";
       }
 
       // ── Zeit ────────────────────────────────────────────────────────────
       const timeM = mText.match(/(\d{1,2}:\d{2})\s*Uhr/i);
       const time = timeM ? timeM[1] + " Uhr" : "–";
 
-      // ── Gesamtergebnis (erstes X:Y-Paar nach dem Heimteam-Namen) ────────
-      // Rohtext-Format: "SG Herrieden0:93:1851:1031. FC Nürnberg III anzeigen"
-      // Wir extrahieren alle Zahlen-Paare und nehmen das erste
-      const allScores = [...mText.matchAll(/(\d+):(\d+)/g)];
-      const matchScore = allScores[0];
-      const homeScore = matchScore ? +matchScore[1] : 0;
-      const awayScore = matchScore ? +matchScore[2] : 0;
-
-      // ── HTML des Groupbox-Bodies für Rubber-Parsing ──────────────────────
-      const bodyEl = m.querySelector('.z-groupbox-cnt, [class*="groupbox-cnt"], [class*="groupbox-body"]');
-      const bodyHtml = bodyEl ? bodyEl.outerHTML : m.outerHTML.slice(2000);
-
-      // ── Rubber direkt im DOM parsen ──────────────────────────────────────
-      const rubbers = [];
-
-      // Alle z-label-Spans im Container holen, dann nach E1..E6, D1..D3 suchen
-      const labels = Array.from(m.querySelectorAll('.z-label, span, td'))
+      // ── Gesamtergebnis: nur einstellige X:Y Spans ─────────────────────
+      const singleScores = Array.from(m.querySelectorAll(".z-label, span"))
         .map(el => el.textContent.trim())
-        .filter(t => t.length > 0);
+        .filter(t => /^\d:\d$/.test(t));
+      const first = singleScores[0] || "0:0";
+      const [homeScore, awayScore] = first.split(":").map(Number);
 
-      // Suche nach Rubber-IDs und hole umgebende Werte
-      for (let i = 0; i < labels.length; i++) {
-        if (!/^(E[1-6]|D[1-3])$/i.test(labels[i])) continue;
-        const id = labels[i].toUpperCase();
-        // Nächste 10 Labels: Heimspieler, Gastspieler, Ergebnis
-        const chunk = labels.slice(i + 1, i + 15);
-        // Ergebnis = erstes Label das wie "6:2 6:1" oder "6:2" aussieht
-        const scoreIdx = chunk.findIndex(l => /^\d:\d/.test(l));
-        const score = scoreIdx >= 0 ? chunk[scoreIdx] : "–";
-        const home = chunk[0] || "–";
-        const away = scoreIdx > 1 ? chunk[scoreIdx - 1] : (chunk[1] || "–");
-        // Ergebnis bewerten
-        const sets = score.match(/(\d):(\d)/g) || [];
-        let rubResult = "open";
-        if (sets.length) {
-          let hw = 0, aw = 0;
-          sets.forEach(s => { const [a, b] = s.split(":").map(Number); a > b ? hw++ : aw++; });
-          rubResult = hw + aw >= 2 ? (hw > aw ? "win" : "loss") : "live";
+      // ── "anzeigen"-Element-ID finden ─────────────────────────────────
+      let anzeigenId = null;
+      for (const el of m.querySelectorAll(".z-label, span, a, button")) {
+        if (/anzeigen/i.test(el.textContent.trim())) {
+          anzeigenId = el.id || null;
+          break;
         }
-        rubbers.push({ id, home, away, score, result: rubResult });
       }
 
-      // Gruppen-Deduplizierung (manchmal kommen Labels doppelt vor)
-      const seen = new Set();
-      const uniqueRubbers = rubbers.filter(r => {
-        const key = r.id + r.score;
-        if (seen.has(key)) return false;
-        seen.add(key); return true;
-      });
-
-      return {
-        found: true, status, time,
-        homeScore, awayScore,
-        rubbers: uniqueRubbers,
-        rawText: mText.slice(0, 300),
-        bodyHtml: bodyHtml.slice(0, 4000),
-        labelSample: labels.slice(0, 60).join(" | "),
-        allTexts,
-      };
+      return { found: true, status, time, homeScore, awayScore, anzeigenId, allTexts };
     }
-
     return { found: false, allTexts };
   }, { heim, gast });
 
-  if (!result.found) {
+  if (!header.found) {
     console.log("Kein Treffer. Alle gbmeetings:\n" +
-      result.allTexts.map((t, i) => `  [${i}] ${t}`).join("\n"));
+      header.allTexts.map((t, i) => `  [${i}] ${t}`).join("\n"));
     return null;
   }
 
-  console.log("Match gefunden! Status:", result.status,
-    " Score:", result.homeScore, ":", result.awayScore);
-  console.log("Labels (Sample):", result.labelSample);
-  console.log("Rubbers gefunden:", result.rubbers.length);
-  result.rubbers.forEach(r =>
-    console.log(`  ${r.id}: ${r.home} vs ${r.away} → ${r.score} (${r.result})`)
-  );
-  if (!result.rubbers.length) {
-    console.log("Body-HTML:\n", result.bodyHtml);
+  console.log(`Match gefunden! Status: ${header.status}  Score: ${header.homeScore}:${header.awayScore}`);
+  console.log(`anzeigenId: ${header.anzeigenId}`);
+
+  // ── Schritt 2: "anzeigen" klicken → Spielbericht-Seite laden ─────────────
+  let rubbers = [];
+  if (header.status !== "upcoming" && header.anzeigenId) {
+    try {
+      const currentUrl = page.url();
+
+      // Auf Navigation ODER Seitenänderung warten
+      const navPromise = page.waitForURL(u => u !== currentUrl, { timeout: 12_000 })
+        .catch(() => null);
+
+      await page.locator(`#${header.anzeigenId}`).click({ timeout: 5000 });
+      await navPromise;
+      await page.waitForTimeout(3000);
+
+      const reportUrl = page.url();
+      console.log("Nach Klick URL:", reportUrl);
+
+      if (reportUrl !== currentUrl) {
+        // Navigierte zu Spielbericht-Seite → Rubbers dort parsen
+        rubbers = await parseRubbersFromPage(page);
+      } else {
+        // Seite nicht gewechselt → ZK hat Inhalt inline geladen
+        rubbers = await parseRubbersFromPage(page);
+      }
+
+      console.log(`Rubbers: ${rubbers.length}`);
+      rubbers.forEach(r =>
+        console.log(`  ${r.id}: ${r.home} vs ${r.away} → ${r.score} (${r.result})`)
+      );
+    } catch (e) {
+      console.log("anzeigen-Klick fehlgeschlagen:", e.message);
+    }
+  }
+
+  // Gesamtergebnis aus Rubbers nachberechnen (falls Rubbers vorhanden)
+  let homeScore = header.homeScore;
+  let awayScore = header.awayScore;
+  if (rubbers.length) {
+    homeScore = rubbers.filter(r => r.result === "win").length;
+    awayScore = rubbers.filter(r => r.result === "loss").length;
   }
 
   return {
-    status: result.status,
+    status: header.status,
     homeTeam: heim, awayTeam: gast,
     league: "HERREN LANDESLIGA 2 GR. 127 NO",
-    time: result.time,
-    homeScore: result.homeScore,
-    awayScore: result.awayScore,
-    rubbers: result.rubbers,
+    time: header.time,
+    homeScore, awayScore, rubbers,
   };
+}
+
+// ── Rubbers von der aktuellen Seite parsen (nach Klick auf "anzeigen") ──────
+async function parseRubbersFromPage(page) {
+  return await page.evaluate(() => {
+    const rubbers = [];
+
+    // Variante A: Tabelle auf Spielbericht-Seite
+    for (const row of document.querySelectorAll("tr")) {
+      const cells = [...row.querySelectorAll("td")].map(td => td.textContent.trim());
+      if (cells.length < 3) continue;
+      const idM = cells.join(" ").match(/\b(E[1-6]|D[1-3])\b/i);
+      if (!idM) continue;
+      const id = idM[1].toUpperCase();
+      const score = cells.find(c => /\d:\d/.test(c)) || "–";
+      const scoreIdx = cells.findIndex(c => /\d:\d/.test(c));
+      const home = scoreIdx > 0 ? cells[scoreIdx - 2] || cells[1] : cells[1];
+      const away = scoreIdx > 0 ? cells[scoreIdx - 1] || cells[2] : cells[2];
+      const sets = score.match(/(\d):(\d)/g) || [];
+      let result = "open";
+      if (sets.length) {
+        let hw = 0, aw = 0;
+        sets.forEach(s => { const [a, b] = s.split(":").map(Number); a > b ? hw++ : aw++; });
+        result = hw + aw >= 2 ? (hw > aw ? "win" : "loss") : "live";
+      }
+      rubbers.push({ id, home, away, score, result });
+    }
+
+    if (rubbers.length) return rubbers;
+
+    // Variante B: ZK-Labels auf Gruppen-Seite nach Inline-Expand
+    const labels = Array.from(document.querySelectorAll(".z-label, span"))
+      .map(el => el.textContent.trim())
+      .filter(t => t.length > 0);
+    for (let i = 0; i < labels.length; i++) {
+      if (!/^(E[1-6]|D[1-3])$/i.test(labels[i])) continue;
+      const id = labels[i].toUpperCase();
+      const chunk = labels.slice(i + 1, i + 15);
+      const scoreIdx = chunk.findIndex(l => /^\d:\d/.test(l));
+      if (scoreIdx < 0) continue;
+      const score = chunk[scoreIdx];
+      const home = chunk[0] || "–";
+      const away = chunk[scoreIdx - 1] || chunk[1] || "–";
+      const sets = score.match(/(\d):(\d)/g) || [];
+      let result = "open";
+      if (sets.length) {
+        let hw = 0, aw = 0;
+        sets.forEach(s => { const [a, b] = s.split(":").map(Number); a > b ? hw++ : aw++; });
+        result = hw + aw >= 2 ? (hw > aw ? "win" : "loss") : "live";
+      }
+      rubbers.push({ id, home, away, score, result });
+    }
+
+    // Deduplizieren
+    const seen = new Set();
+    return rubbers.filter(r => {
+      const k = r.id + r.score;
+      if (seen.has(k)) return false;
+      seen.add(k); return true;
+    });
+  });
 }
 
 // (parseRubbersFromHtml entfernt – Rubber-Parsing erfolgt jetzt direkt im DOM via page.evaluate)
