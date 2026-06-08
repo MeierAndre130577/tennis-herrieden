@@ -70,81 +70,93 @@ async function loadPage(page, url) {
 }
 
 
-// ── groupid aus btv.de URL extrahieren → widget.btv.de direkt öffnen ─────
-function toWidgetUrl(url) {
-  // https://www.btv.de/de/spielbetrieb/tabelle-spielplan.html?groupid=2165685
-  // → https://widget.btv.de/btvgroup/?groupid=2165685
-  const m = url.match(/groupid=(\d+)/);
-  if (m) return `https://widget.btv.de/btvgroup/?groupid=${m[1]}`;
-  // Falls schon eine widget.btv.de URL: direkt zurückgeben
-  if (url.includes("widget.btv.de")) return url;
-  return null;
-}
-
-// ── Auf dem Widget den Spielbericht-Link finden ───────────────────────────
+// ── btv.de laden → Widget-iframe finden → Spielbericht-Link holen ─────────
 async function findMatchReportUrl(page, groupUrl, heimTeam, gastTeam) {
-  const widgetUrl = toWidgetUrl(groupUrl);
-  if (!widgetUrl) {
-    console.log(`Kann keine Widget-URL ableiten von: ${groupUrl}`);
+  console.log(`Lade btv.de: ${groupUrl}`);
+  await loadPage(page, groupUrl);
+
+  // Widget-iframe suchen
+  let widgetFrame = null;
+  for (const frame of page.frames()) {
+    if (frame.url().includes("widget.btv.de")) {
+      widgetFrame = frame;
+      break;
+    }
+  }
+  if (!widgetFrame) {
+    console.log("Widget-iframe nicht gefunden. Frames:", page.frames().map(f => f.url()).join(", "));
     return null;
   }
-  console.log(`Lade Widget direkt: ${widgetUrl}`);
-  await loadPage(page, widgetUrl);
+  console.log(`Widget-iframe: ${widgetFrame.url()}`);
 
-  const snippet = await page.evaluate(() => document.body.innerText.slice(0, 600));
-  console.log("Widget-Inhalt (Auszug):\n" + snippet);
+  // Warten bis Widget-Inhalt geladen ist
+  try {
+    await widgetFrame.waitForFunction(
+      () => document.querySelectorAll("tr").length > 3,
+      { timeout: 15_000 }
+    );
+  } catch (_) { console.log("Warnung: Widget-iframe lädt langsam"); }
 
-  // Alle Zeilen für Diagnose
-  const allRows = await page.evaluate(() =>
-    Array.from(document.querySelectorAll("tr"))
-      .map(r => r.textContent.trim().replace(/\s+/g, " ").slice(0, 150))
-      .filter(t => t.length > 10).slice(0, 30)
-  );
-  console.log("Zeilen:\n  " + allRows.join("\n  "));
-
-  // Matching-Zeile finden + alle möglichen Link-Varianten prüfen
-  const result = await page.evaluate(({ heim, gast }) => {
+  // Matching-Zeile finden + Link extrahieren
+  const result = await widgetFrame.evaluate(({ heim, gast }) => {
     const rows = Array.from(document.querySelectorAll("tr"));
     for (const row of rows) {
       const text = row.textContent || "";
       if (!text.includes(heim) || !text.includes(gast)) continue;
 
-      // 1) Alle <a> mit echtem href
-      for (const a of row.querySelectorAll("a[href]")) {
-        const h = a.href;
-        if (h && h !== location.href && !h.endsWith("#") && !h.startsWith("javascript")) {
-          return { url: h, method: "a-href" };
+      // HTML der Zeile für Diagnose
+      const html = row.outerHTML;
+
+      // 1) <a> mit echtem href
+      for (const a of row.querySelectorAll("a")) {
+        const h = a.getAttribute("href") || "";
+        if (h && h !== "#" && !h.startsWith("javascript")) {
+          return { url: h.startsWith("http") ? h : `https://btv-prod.burdadigitalsystems.de${h}`, method: "a-href", html };
         }
       }
-      // 2) onclick-Attribute auslesen (z.B. onclick="openMatch(12345)")
+      // 2) onclick
       for (const el of row.querySelectorAll("[onclick]")) {
         const oc = el.getAttribute("onclick") || "";
-        const m = oc.match(/['"]?(https?:\/\/[^'"]+)['"]?/);
-        if (m) return { url: m[1], method: "onclick-url" };
-        const idm = oc.match(/\d{4,}/);
-        if (idm) return { url: `https://btv-prod.burdadigitalsystems.de/btvmatches/?begid=${idm[0]}`, method: "onclick-id" };
+        const mu = oc.match(/['"]?(https?:\/\/[^'")\s]+)['"]?/);
+        if (mu) return { url: mu[1], method: "onclick-url", html };
+        const mi = oc.match(/\b(\d{5,})\b/);
+        if (mi) return { url: `https://btv-prod.burdadigitalsystems.de/btvmatches/?begid=${mi[1]}`, method: "onclick-id", html };
       }
       // 3) data-* Attribute
-      for (const el of row.querySelectorAll("[data-href],[data-url],[data-link],[data-begid]")) {
-        const val = el.dataset.href || el.dataset.url || el.dataset.link || el.dataset.begid;
-        if (val) return { url: val.startsWith("http") ? val : `https://btv-prod.burdadigitalsystems.de${val}`, method: "data-attr" };
+      for (const el of [...row.querySelectorAll("*")]) {
+        for (const attr of el.attributes) {
+          if ((attr.name.startsWith("data-") || attr.name === "href") && attr.value.length > 5) {
+            if (attr.value.includes("btv") || attr.value.includes("beg") || attr.value.includes("match")) {
+              return { url: attr.value.startsWith("http") ? attr.value : `https://btv-prod.burdadigitalsystems.de${attr.value}`, method: `attr-${attr.name}`, html };
+            }
+          }
+        }
       }
-      // 4) HTML der Zeile für Diagnose zurückgeben
-      return { url: null, rowHtml: row.outerHTML.slice(0, 600) };
+      // Kein Link – HTML zurückgeben
+      return { url: null, html };
     }
     return null;
   }, { heim: heimTeam, gast: gastTeam });
 
   if (!result) {
     console.log("Keine Zeile mit beiden Teams gefunden.");
+    // Alle Zeilen ausgeben zur Diagnose
+    const rows = await widgetFrame.evaluate(() =>
+      Array.from(document.querySelectorAll("tr"))
+        .map(r => r.textContent.trim().replace(/\s+/g, " ").slice(0, 120))
+        .filter(t => t.length > 5).slice(0, 30)
+    );
+    console.log("Alle Zeilen:\n  " + rows.join("\n  "));
     return null;
   }
+
+  console.log("Row-HTML der Zeile:\n" + result.html);
+
   if (result.url) {
     console.log(`Spielbericht gefunden (${result.method}): ${result.url}`);
     return result.url;
   }
-  // Kein Link gefunden – HTML ausgeben für weiteres Debugging
-  console.log("Zeile gefunden, aber kein Link. Row-HTML:\n" + result.rowHtml);
+  console.log("Zeile gefunden, aber kein Link in HTML.");
   return null;
 }
 
