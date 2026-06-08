@@ -846,8 +846,8 @@ function renderHsMatch(match) {
       <div class="hs-rubber${isDouble ? " hs-rubber--double" : ""}">
         <span class="hs-rubber-num">${r.id}</span>
         <div class="hs-rubber-players">
-          <div class="hs-rubber-home">${shortName(r.home)}</div>
-          <div class="hs-rubber-away">${shortName(r.away)}</div>
+          <div class="hs-rubber-home">${isDouble ? shortName(r.home) : (r.home||"–")}</div>
+          <div class="hs-rubber-away">${isDouble ? shortName(r.away) : (r.away||"–")}</div>
         </div>
         <span class="hs-rubber-score${r.result==="live"?" live":""}">${r.score}</span>
         <span class="hs-rubber-result hs-result-${r.result}">${r.result==="live"?LIVE_BALL_SVG:(RESULT_LABEL[r.result]||"?")}</span>
