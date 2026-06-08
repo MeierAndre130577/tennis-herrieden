@@ -364,6 +364,7 @@
 </div>
 
 <div id="white-screen"></div>
+<div id="debug" style="position:fixed;bottom:8px;right:8px;background:rgba(0,0,0,.75);color:#fff;font-size:11px;padding:6px 10px;border-radius:6px;z-index:9999;font-family:monospace;line-height:1.6"></div>
 
 <div id="app" style="display:none">
   <header>
@@ -547,14 +548,21 @@ function subscribeRealtime() {
     .subscribe();
 }
 
+// ── DEBUG ─────────────────────────────────────────────────────────────────
+function dbg(mode, theme, rows) {
+  const el = document.getElementById("debug");
+  if (el) el.innerHTML = `mode: <b>${mode}</b> | theme: <b>${theme}</b> | rows: ${rows} | ${new Date().toLocaleTimeString("de-DE")}`;
+}
+
 // ── SETTINGS POLLING ──────────────────────────────────────────────────────
-// Polls every 30s and reloads if display_mode or display_theme changed
 function startSettingsPolling(mode, theme) {
   setInterval(async () => {
-    const { data } = await sb.from("settings").select("*").in("key", ["display_mode", "display_theme"]);
+    const { data, error } = await sb.from("settings").select("*").in("key", ["display_mode", "display_theme"]);
+    const rows = data ? data.length : `ERR:${error?.message}`;
     const s = Object.fromEntries((data || []).map(r => [r.key, r.value]));
     const newMode  = s.display_mode  || "schedule";
     const newTheme = s.display_theme || "dark";
+    dbg(newMode, newTheme, rows);
     if (newMode !== mode || newTheme !== theme) {
       location.reload();
     }
