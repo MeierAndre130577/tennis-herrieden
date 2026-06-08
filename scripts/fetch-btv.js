@@ -94,7 +94,7 @@ async function tryWidget(page, groupId, heim, gast) {
   try {
     await page.goto(url, {
       waitUntil: "domcontentloaded",
-      timeout: 40_000,
+      timeout: 25_000,
       referer: "https://www.btv.de/",
     });
   } catch (e) {
@@ -323,7 +323,7 @@ function parseRubbersFromHtml(_html) {
 async function tryBtvProd(page, prodUrl, heim, gast) {
   console.log(`\n=== btv-prod ===`);
   try {
-    await page.goto(prodUrl, { waitUntil: "domcontentloaded", timeout: 35_000 });
+    await page.goto(prodUrl, { waitUntil: "domcontentloaded", timeout: 20_000 });
   } catch (e) {
     console.log("Ladefehler:", e.message); return null;
   }
@@ -500,14 +500,20 @@ async function parseReport(page, url, heim, gast) {
     }
 
     if (!matchData) {
-      console.log("\nKein Spielbericht gefunden → upcoming.");
-      matchData = {
-        status: "upcoming", homeTeam: heim, awayTeam: gast,
-        league: "–", time: "–", homeScore: 0, awayScore: 0, rubbers: [],
-      };
+      // Alle Quellen ausgefallen (Timeout/Block) → Cache NICHT überschreiben
+      // Stattdessen nur einen Fehler-Timestamp setzen damit die App weiß es gab Verbindungsprobleme
+      console.log("\n⚠ Alle Quellen ausgefallen – letzter Cache bleibt erhalten.");
+      await saveResult("btv_fetch_error", {
+        ts: new Date().toISOString(),
+        heim, gast,
+        msg: "Alle Quellen ausgefallen (Timeout/Block)",
+      });
+      return;
     }
 
     await saveResult("btv_match_cache", matchData);
+    // Fehler-Flag löschen wenn erfolgreich
+    await saveResult("btv_fetch_error", null);
     console.log(`\n✓ Gespeichert: ${matchData.status}  ${matchData.homeScore}:${matchData.awayScore}  ${matchData.rubbers.length} Rubbers`);
 
   } finally {
