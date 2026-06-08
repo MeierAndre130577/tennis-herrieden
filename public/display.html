@@ -152,22 +152,25 @@
 
     /* Zusätzliche CSS-Vars für Heimspiel-Farben */
     :root {
-      --win-bg:   #14532D; --win-fg:  #4ADE80;
-      --loss-bg:  #450A0A; --loss-fg: #FCA5A5;
-      --live-bg:  #78350F; --live-fg: #FCD34D;
-      --bg3:      #334155;
+      --win-bg:        #14532D; --win-fg:  #4ADE80;
+      --loss-bg:       #450A0A; --loss-fg: #FCA5A5;
+      --live-bg:       #78350F; --live-fg: #FCD34D;
+      --bg3:           #334155;
+      --bg-double:     #243044;
     }
     body.theme-light {
-      --win-bg:   #DCFCE7; --win-fg:  #166534;
-      --loss-bg:  #FEE2E2; --loss-fg: #991B1B;
-      --live-bg:  #FEF3C7; --live-fg: #92400E;
-      --bg3:      #E2E8F0;
+      --win-bg:        #DCFCE7; --win-fg:  #166534;
+      --loss-bg:       #FEE2E2; --loss-fg: #991B1B;
+      --live-bg:       #FEF3C7; --live-fg: #92400E;
+      --bg3:           #E2E8F0;
+      --bg-double:     #D1DCF0;
     }
     body.theme-contrast {
-      --win-bg:   #052E16; --win-fg:  #86EFAC;
-      --loss-bg:  #450A0A; --loss-fg: #FCA5A5;
-      --live-bg:  #451A03; --live-fg: #FDE68A;
-      --bg3:      #1A1A1A;
+      --win-bg:        #052E16; --win-fg:  #86EFAC;
+      --loss-bg:       #450A0A; --loss-fg: #FCA5A5;
+      --live-bg:       #451A03; --live-fg: #FDE68A;
+      --bg3:           #1A1A1A;
+      --bg-double:     #1A2535;
     }
 
     /* Header */
@@ -201,6 +204,7 @@
     /* Grid: Spaltenanzahl wird per JS gesetzt (2 für ≤6 Rubbers, 3 für 9) */
     .hs-rubbers-grid { flex:1; display:grid; gap:clamp(4px,.5vw,8px); min-height:0; overflow:hidden; }
     .hs-rubber { background:var(--bg2); border-radius:clamp(4px,.5vw,10px); padding:clamp(6px,.7vh,12px) clamp(8px,.8vw,14px); display:flex; align-items:center; gap:clamp(4px,.5vw,9px); min-width:0; overflow:hidden; }
+    .hs-rubber--double { background:var(--bg-double); }
     .hs-rubber-num { font-size:clamp(13px,1.4vw,22px); font-weight:800; color:var(--slate); min-width:clamp(26px,2.6vw,42px); text-transform:uppercase; flex-shrink:0; line-height:1; }
     .hs-rubber-players { flex:1; min-width:0; }
     .hs-rubber-home { font-size:clamp(14px,1.5vw,24px); font-weight:700; color:var(--fg); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.2; }
@@ -736,6 +740,7 @@ function startSettingsPolling(mode, theme, vereinsnr, saison, mannschaft, gegner
 
 // ── HEIMSPIEL ─────────────────────────────────────────────────────────────
 const RESULT_LABEL = { win:"W", loss:"N", live:"●", open:"?" };
+let _cachedMatchJson = null; // Anti-Flicker: kein Re-Render wenn unverändert
 
 function applyHsTheme() {
   // Theme wurde schon auf body gesetzt – Uhr teilen
@@ -793,30 +798,18 @@ function renderHsMatch(match) {
         <div class="hs-upcoming-hint">Aufstellung noch nicht eingetragen</div>
       </div>`;
   } else {
-    // Rubbers nach Typ sortieren: E1–E6, dann D1–D3
+    // Rubbers sequenziell sortieren: E1,E2,E3... dann D1,D2,D3
     const singles = rubbers.filter(r => r.id.startsWith("E")).sort((a,b) => a.id.localeCompare(b.id));
     const doubles = rubbers.filter(r => r.id.startsWith("D")).sort((a,b) => a.id.localeCompare(b.id));
     const allSorted = [...singles, ...doubles];
 
     // Dynamisch: ≤6 Rubbers → 2 Spalten (4er-Mannschaft), >6 → 3 Spalten (6er-Mannschaft)
     const cols = allSorted.length > 6 ? 3 : 2;
-    const rows = Math.ceil(allSorted.length / cols);
 
-    // Spalten-Major-Anordnung für CSS Grid (row-major Placement):
-    // Bei 3×3: Zeile0=[E1,E3,E5], Zeile1=[E2,E4,E6], Zeile2=[D1,D2,D3]
-    // → row-major Reihenfolge: E1,E3,E5, E2,E4,E6, D1,D2,D3
-    const ordered = [];
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const idx = c * rows + r;
-        ordered.push(allSorted[idx] || null);
-      }
-    }
-
-    const rubberHtml = ordered.map(r => {
-      if (!r) return `<div class="hs-rubber" style="opacity:0;pointer-events:none"></div>`;
+    const rubberHtml = allSorted.map(r => {
+      const isDouble = r.id.startsWith("D");
       return `
-      <div class="hs-rubber">
+      <div class="hs-rubber${isDouble ? " hs-rubber--double" : ""}">
         <span class="hs-rubber-num">${r.id}</span>
         <div class="hs-rubber-players">
           <div class="hs-rubber-home">${r.home}</div>
@@ -864,7 +857,11 @@ async function loadHsMatch() {
     if (data?.value) {
       match = typeof data.value === "string" ? JSON.parse(data.value) : data.value;
     }
-    renderHsMatch(match);
+    const newJson = JSON.stringify(match);
+    if (newJson !== _cachedMatchJson) {
+      _cachedMatchJson = newJson;
+      renderHsMatch(match);
+    }
     document.getElementById("hs-status").textContent =
       `Zuletzt aktualisiert: ${new Date().toLocaleTimeString("de-DE")}`;
   } catch (err) {
