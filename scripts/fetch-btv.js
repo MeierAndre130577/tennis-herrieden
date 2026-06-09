@@ -180,19 +180,25 @@ async function tryWidget(page, groupId, heim, gast) {
         status = h + a >= 9 ? "done" : "live";
       }
 
-      // ── Uhrzeit ─────────────────────────────────────────────────────────
-      const timeM = mText.match(/(\d{1,2}:\d{2})\s*Uhr/i);
+      // ── Datum + Uhrzeit: NACH den Teamnamen suchen ──────────────────────
+      // Textposition hinter den letzten Teamnamen → dort stehen Spieltermin-Infos
+      const heimIdx = mText.toLowerCase().indexOf(heim.toLowerCase().split(" ")[0]);
+      const gastIdx = mText.toLowerCase().indexOf(gast.toLowerCase().split(" ")[0]);
+      const afterTeams = mText.slice(Math.max(0, Math.max(heimIdx, gastIdx)));
+
+      const timeM = afterTeams.match(/(\d{1,2}:\d{2})\s*Uhr/i)
+                 || mText.match(/(\d{1,2}:\d{2})\s*Uhr/i);
       const time = timeM ? timeM[1] + " Uhr" : "–";
 
-      // ── Datum: DD.MM.YYYY, DD.MM.YY oder DD.MM. (ohne Jahr) ─────────────
       const curYear = new Date().getFullYear();
       let matchDate = null;
-      const dateWithYear = mText.match(/(\d{1,2})\.(\d{1,2})\.(\d{2,4})/);
-      const dateNoYear   = mText.match(/(\d{1,2})\.(\d{1,2})\./);
+      const dateWithYear = afterTeams.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/)
+                        || mText.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+      const dateNoYear   = afterTeams.match(/(\d{1,2})\.(\d{1,2})\./)
+                        || mText.match(/(\d{1,2})\.(\d{1,2})\./);
       if (dateWithYear) {
         const [, d, mo, y] = dateWithYear;
-        const year = y.length === 2 ? "20" + y : y;
-        matchDate = `${year}-${mo.padStart(2,"0")}-${d.padStart(2,"0")}`;
+        matchDate = `${y}-${mo.padStart(2,"0")}-${d.padStart(2,"0")}`;
       } else if (dateNoYear) {
         const [, d, mo] = dateNoYear;
         matchDate = `${curYear}-${mo.padStart(2,"0")}-${d.padStart(2,"0")}`;
