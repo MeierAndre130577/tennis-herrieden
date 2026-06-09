@@ -201,11 +201,15 @@ async function tryWidget(page, groupId, heim, gast) {
         }
       }
 
-      // ── Debug: Text + Bilder ─────────────────────────────────────────────
-      const debugText = mText.trim().replace(/\s+/g," ").slice(0, 300);
-      const debugImgs = Array.from(m.querySelectorAll("img")).map(img => img.src).filter(Boolean);
+      // ── Logos: erste zwei img-Tags im gbmeeting-Container ───────────────
+      const logoImgs = Array.from(m.querySelectorAll("img")).map(img => img.src).filter(Boolean);
+      const homeLogo = logoImgs[0] || null;
+      const awayLogo = logoImgs[1] || null;
 
-      return { found: true, status, time, matchDate, league, homeScore, awayScore, anzeigenId, allTexts, debugText, debugImgs };
+      // ── Debug: Text ──────────────────────────────────────────────────────
+      const debugText = mText.trim().replace(/\s+/g," ").slice(0, 300);
+
+      return { found: true, status, time, matchDate, league, homeLogo, awayLogo, homeScore, awayScore, anzeigenId, allTexts, debugText };
     }
     return { found: false, allTexts };
   }, { heim, gast });
@@ -218,8 +222,8 @@ async function tryWidget(page, groupId, heim, gast) {
 
   console.log(`Match gefunden! Status: ${header.status}  Score: ${header.homeScore}:${header.awayScore}  Datum: ${header.matchDate}  Zeit: ${header.time}`);
   console.log(`Liga: "${header.league}"  anzeigenId: ${header.anzeigenId}`);
+  console.log(`Logos: ${header.homeLogo || "(keins)"} | ${header.awayLogo || "(keins)"}`);
   console.log(`gbmeeting-Text: ${header.debugText}`);
-  console.log(`gbmeeting-Bilder: ${(header.debugImgs||[]).join(" | ") || "(keine)"}`);
 
   // ── Zeitfenster prüfen (anhand BTV-Datum + Uhrzeit) ──────────────────────
   if (header.matchDate && header.time && header.time !== "–") {
@@ -237,6 +241,7 @@ async function tryWidget(page, groupId, heim, gast) {
         status: header.status, homeTeam: heim, awayTeam: gast,
         league: header.league || "",
         time: header.time, matchDate: header.matchDate,
+        homeLogo: header.homeLogo, awayLogo: header.awayLogo,
         homeScore: header.homeScore, awayScore: header.awayScore, rubbers: [],
       };
     }
@@ -282,6 +287,7 @@ async function tryWidget(page, groupId, heim, gast) {
     league: header.league || "",
     time: header.time,
     matchDate: header.matchDate,
+    homeLogo: header.homeLogo, awayLogo: header.awayLogo,
     homeScore, awayScore, rubbers,
   };
 }
