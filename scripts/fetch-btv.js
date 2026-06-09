@@ -297,16 +297,20 @@ async function tryWidget(page, groupId, heim, gast) {
 
   // ── Logo-Fallback: nach anzeigen-Klick gesamte Seite nach BTV-Logos durchsuchen ──
   let { homeLogo, awayLogo } = header;
+  // Alle img-Tags der ganzen Seite sammeln (Diagnose + Fallback)
+  const allPageImgs = await page.evaluate(() =>
+    Array.from(document.querySelectorAll("img"))
+      .map(img => img.src || img.getAttribute("src") || "")
+      .filter(Boolean)
+  );
+  const btvImgs = allPageImgs.filter(s =>
+    s.includes("btv.de") && (s.includes("vereine") || s.includes("logoImage") || s.includes("logo"))
+  );
+  const logoDebugFinal = `Seite gesamt: ${allPageImgs.length} imgs, davon BTV-Logo-URLs: ${btvImgs.length} → ${btvImgs.slice(0,4).join(" | ")}`;
+  console.log(`Logo-Diagnose: ${logoDebugFinal}`);
   if (!homeLogo || !awayLogo) {
-    const pageLogos = await page.evaluate(() =>
-      Array.from(document.querySelectorAll("img"))
-        .map(img => img.src || img.getAttribute("src") || "")
-        .filter(s => s.startsWith("http") && s.includes("btv.de") &&
-          (s.includes("vereine") || s.includes("logoImage") || s.includes("logo")))
-    );
-    console.log(`Logo-Fallback: ${pageLogos.length} BTV-Bilder auf Seite: ${pageLogos.slice(0,4).join(" | ")}`);
-    homeLogo = homeLogo || pageLogos[0] || null;
-    awayLogo = awayLogo || pageLogos[1] || null;
+    homeLogo = homeLogo || btvImgs[0] || null;
+    awayLogo = awayLogo || btvImgs[1] || null;
   }
   console.log(`Logos final: ${homeLogo || "(keins)"} | ${awayLogo || "(keins)"}`);
 
@@ -326,6 +330,7 @@ async function tryWidget(page, groupId, heim, gast) {
     matchDate: header.matchDate,
     homeLogo, awayLogo,
     homeScore, awayScore, rubbers,
+    _logoDebug: logoDebugFinal,
   };
 }
 
@@ -626,6 +631,10 @@ async function parseReport(page, url, heim, gast) {
   console.log(`Heim: "${heim}"  Gast: "${gast}"`);
   if (!heim || !gast) { console.log("Nicht konfiguriert."); return; }
 
+  // Manuell getriggert (workflow_dispatch) → Pre-Check überspringen
+  const isManual = process.env.GITHUB_EVENT_NAME === "workflow_dispatch";
+  if (isManual) console.log("▶ Manueller Trigger – Pre-Check wird übersprungen");
+
   // ── Billiger Pre-Check: Cache lesen bevor Playwright startet ────────────────
   const today = new Date().toISOString().slice(0, 10);
   try {
@@ -640,15 +649,15 @@ async function parseReport(page, url, heim, gast) {
 
       if (cGegner === gast.toLowerCase()) {
         // Gleicher Gegner – Datum prüfen
-        if (cDate && cDate > today) {
+        if (!isManual && cDate && cDate > today) {
           console.log(`⏸ Spiel gegen ${gast} am ${cDate} liegt in der Zukunft – kein Fetch.`);
           return;
         }
-        if (cDate && cDate < today) {
+        if (!isManual && cDate && cDate < today) {
           console.log(`⏸ Spiel gegen ${gast} am ${cDate} ist bereits vorbei – warte auf neuen Gegner.`);
           return;
         }
-        if (cDate === today && cTime) {
+        if (!isManual && cDate === today && cTime) {
           if (!isInMatchWindow(today, cTime)) {
             const [h, m] = cTime.split(":").map(Number);
             const matchMs = new Date(`${today}T${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:00`).getTime();

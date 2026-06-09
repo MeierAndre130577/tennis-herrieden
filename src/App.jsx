@@ -1809,6 +1809,7 @@ function SettingsDisplayTab({onToast}) {
                 {label:"Liga",      value:c.league||null, bdg:badge("league")},
                 {label:"Heim-Logo", value:c.homeLogo?"✓ vorhanden":"– nicht gefunden", ok:!!c.homeLogo, bdg:badge("homeLogo")},
                 {label:"Gast-Logo", value:c.awayLogo?"✓ vorhanden":"– nicht gefunden", ok:!!c.awayLogo, bdg:badge("awayLogo")},
+                ...(c._logoDebug ? [{label:"Logo-Info", value:c._logoDebug, bdg:{bg:"#F3F4F6",color:"#6B7280",label:"ℹ️"}}] : []),
                 {label:"Spieler",   value:total>0?`${players} / ${total} eingetragen`:null, bdg:rubbersBadge},
                 {label:"Stand",     value:total>0?`${c.homeScore}:${c.awayScore}`:null, bdg:rubbersBadge},
               ];
