@@ -1778,12 +1778,13 @@ function SettingsDisplayTab({onToast}) {
                 fenster = { text:"kein Fetch geplant", color:"#6B7280", bg:"#F3F4F6" };
               } else if (md && mt) {
                 const [h,m] = mt.split(":").map(Number);
-                const start = new Date(`${md}T${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:00`);
-                const end   = new Date(start.getTime() + 11*60*60*1000);
+                const match = new Date(`${md}T${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:00`);
+                const winStart = new Date(match.getTime() - 1*60*60*1000);
+                const winEnd   = new Date(match.getTime() + 10*60*60*1000);
                 const fmt = d => d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
                 const fmtD = d => d.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit",year:"numeric"});
-                const endStr = end.getDate()!==start.getDate() ? `${fmt(end)} Uhr (${fmtD(end)})` : `${fmt(end)} Uhr`;
-                fenster = { text:`${fmtD(start)} · ${fmt(start)} – ${endStr}`, color:"#1D4ED8", bg:"#EFF6FF" };
+                const endStr = winEnd.getDate()!==match.getDate() ? `${fmt(winEnd)} Uhr (${fmtD(winEnd)})` : `${fmt(winEnd)} Uhr`;
+                fenster = { text:`${fmtD(match)} · ${fmt(winStart)} – ${endStr}`, color:"#1D4ED8", bg:"#EFF6FF" };
               } else if (md && !mt) {
                 fenster = { text:`${new Date(md+"T12:00:00").toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit",year:"numeric"})} · kein Fetch (keine Uhrzeit)`, color:"#92400E", bg:"#FFFBEB" };
               } else {
