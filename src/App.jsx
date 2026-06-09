@@ -1174,9 +1174,10 @@ function HeimspieleManualEntry({onToast}) {
     setSaving(true);
     const now = new Date().toISOString();
     // Status automatisch aus Rubbers ableiten
+    const hasPlayers   = rubbers.some(r => (r.home || "").trim() || (r.away || "").trim());
     const openCount    = rubbers.filter(r => r.result === "open").length;
     const nonOpenCount = rubbers.filter(r => r.result !== "open").length;
-    const autoStatus   = nonOpenCount === 0 ? "upcoming" : openCount === 0 ? "done" : "live";
+    const autoStatus   = !hasPlayers && nonOpenCount === 0 ? "upcoming" : openCount === 0 ? "done" : "live";
     const payload = {
       homeTeam, awayTeam, league, status: autoStatus,
       matchDate: matchDate || null,

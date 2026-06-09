@@ -126,6 +126,17 @@ async function tryWidget(page, groupId, heim, gast) {
   }
   await page.waitForTimeout(2000);
 
+  // Auf Logo-Bilder warten (ZK lädt sie per JS nach)
+  try {
+    await page.waitForFunction(
+      () => document.querySelector('[class*="gbmeet"] img[src]') !== null,
+      { timeout: 6000 }
+    );
+    console.log("Logo-Bilder im DOM gefunden");
+  } catch (_) {
+    console.log("Hinweis: Keine img[src] in gbmeet nach 6s – fahre ohne Logos fort");
+  }
+
   // ── Schritt 1: Header-Daten aus gbmeeting lesen ──────────────────────────
   const header = await page.evaluate(({ heim, gast }) => {
     const heimL = heim.toLowerCase();
@@ -202,7 +213,9 @@ async function tryWidget(page, groupId, heim, gast) {
       }
 
       // ── Logos: erste zwei img-Tags im gbmeeting-Container ───────────────
-      const logoImgs = Array.from(m.querySelectorAll("img")).map(img => img.src).filter(Boolean);
+      const logoImgs = Array.from(m.querySelectorAll("img"))
+        .map(img => img.src || img.getAttribute("src"))
+        .filter(s => s && s.startsWith("http"));
       const homeLogo = logoImgs[0] || null;
       const awayLogo = logoImgs[1] || null;
 
