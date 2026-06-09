@@ -1078,6 +1078,10 @@ function HeimspieleManualEntry({onToast}) {
   const [savedAt,  setSavedAt]  = useState(null);
   const [source,   setSource]   = useState(null); // "auto" | "manual"
 
+  // Logos – nur aus Cache übernommen, nicht editierbar
+  const [homeLogo,   setHomeLogo]   = useState(null);
+  const [awayLogo,   setAwayLogo]   = useState(null);
+
   // Editierbare Felder
   const [format,     setFormat]     = useState("6er"); // "4er" | "6er"
   const [homeTeam,   setHomeTeam]   = useState("");
@@ -1091,6 +1095,8 @@ function HeimspieleManualEntry({onToast}) {
   const [rubbers,    setRubbers]    = useState(DEFAULT_RUBBERS("6er"));
 
   const applyMatch = (m) => {
+    setHomeLogo(m.homeLogo  || null);
+    setAwayLogo(m.awayLogo  || null);
     setHomeTeam(m.homeTeam  || "");
     setAwayTeam(m.awayTeam  || "");
     setLeague(  m.league    || "");
@@ -1130,6 +1136,7 @@ function HeimspieleManualEntry({onToast}) {
         applyMatch(m);
         onToast("Cache geladen ✓");
       } else {
+        setHomeLogo(null); setAwayLogo(null);
         setHomeTeam(""); setAwayTeam(""); setLeague("");
         setMatchDate(""); setMatchTime("");
         setStatus("upcoming"); setHomeScore(0); setAwayScore(0);
@@ -1174,6 +1181,8 @@ function HeimspieleManualEntry({onToast}) {
       homeTeam, awayTeam, league, status: autoStatus,
       matchDate: matchDate || null,
       time: matchTime ? matchTime + " Uhr" : null,
+      homeLogo: homeLogo || null,
+      awayLogo: awayLogo || null,
       homeScore: Number(homeScore),
       awayScore: Number(awayScore),
       rubbers,
@@ -1419,14 +1428,16 @@ function SettingsDisplayTab({onToast}) {
   const [gegner,        setGegner]       = useState("");
   const [matchUrl,      setMatchUrl]     = useState("");
   const [bildUrl,       setBildUrl]      = useState("");
+  const [githubPat,     setGithubPat]    = useState("");
   const [uploading,     setUploading]    = useState(false);
   const [saving,        setSaving]       = useState(false);
+  const [fetchStatus,   setFetchStatus]  = useState(null); // null | "running" | "ok" | "error"
 
   useEffect(()=>{
     sb.from("settings").select("*")
       .in("key",["display_mode","display_theme","display_vereinsnummer","display_saison",
                  "display_mannschaft","display_gegner","display_match_url",
-                 "display_bild_url"])
+                 "display_bild_url","github_pat"])
       .then(({data})=>{
         if(!data) return;
         const map=Object.fromEntries(data.map(r=>[r.key,r.value]));
@@ -1438,6 +1449,7 @@ function SettingsDisplayTab({onToast}) {
         if(map.display_gegner)        setGegner(map.display_gegner);
         if(map.display_match_url)     setMatchUrl(map.display_match_url);
         if(map.display_bild_url)      setBildUrl(map.display_bild_url);
+        if(map.github_pat)            setGithubPat(map.github_pat);
       });
   },[]);
 
@@ -1472,10 +1484,38 @@ function SettingsDisplayTab({onToast}) {
       {key:"display_mannschaft",    value:mannschaft},
       {key:"display_gegner",        value:gegner},
       {key:"display_match_url",     value:matchUrl},
+      {key:"github_pat",            value:githubPat},
     ],{onConflict:"key"});
     setSaving(false);
     if(error){ onToast(`Fehler: ${error.message}`,"error"); return; }
     onToast("Display-Einstellungen gespeichert ✓");
+  };
+
+  const triggerFetch = async () => {
+    if(!githubPat) { onToast("Kein GitHub PAT hinterlegt – bitte zuerst speichern","error"); return; }
+    setFetchStatus("running");
+    try {
+      const res = await fetch(
+        "https://api.github.com/repos/MeierAndre130577/tennis-herrieden/actions/workflows/btv-fetch.yml/dispatches",
+        { method:"POST",
+          headers:{ Authorization:`Bearer ${githubPat}`, Accept:"application/vnd.github+json", "Content-Type":"application/json" },
+          body: JSON.stringify({ref:"main"}) }
+      );
+      if(res.status === 204) {
+        setFetchStatus("ok");
+        onToast("✅ Fetch gestartet – läuft in ~30 Sek.");
+        setTimeout(()=>setFetchStatus(null), 5000);
+      } else {
+        const txt = await res.text();
+        setFetchStatus("error");
+        onToast(`Fehler ${res.status}: ${txt}`,"error");
+        setTimeout(()=>setFetchStatus(null), 6000);
+      }
+    } catch(e) {
+      setFetchStatus("error");
+      onToast(`Netzwerkfehler: ${e.message}`,"error");
+      setTimeout(()=>setFetchStatus(null), 6000);
+    }
   };
 
   const modes=[
@@ -1515,6 +1555,22 @@ function SettingsDisplayTab({onToast}) {
         {mode==="heimspiel"&&(
           <div style={{marginBottom:24,background:"#F9FAFB",border:"1.5px solid #E5E7EB",borderRadius:12,padding:16}}>
             <div style={{fontWeight:700,fontSize:13,color:"#374151",marginBottom:14}}>🏆 Heimspiel konfigurieren</div>
+
+            {/* GitHub PAT – einmalig */}
+            <div style={{marginBottom:14,padding:"10px 12px",background:"#FFFBEB",borderRadius:8,border:"1px solid #FDE68A"}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#92400E",marginBottom:5}}>
+                GITHUB TOKEN (PAT) 🔑 <span style={{fontWeight:400,color:"#B45309"}}>einmalig hinterlegen</span>
+              </div>
+              <input
+                type="password"
+                value={githubPat}
+                onChange={e=>setGithubPat(e.target.value)}
+                placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                style={{...S.input,width:"100%",fontSize:12,fontFamily:"monospace"}}/>
+              <div style={{fontSize:10,color:"#B45309",marginTop:4}}>
+                GitHub → Settings → Developer settings → Personal access tokens → Classic → Scope: <strong>workflow</strong>
+              </div>
+            </div>
 
             {/* Staffel-URL – einmal pro Saison */}
             <div style={{marginBottom:14}}>
@@ -1556,15 +1612,15 @@ function SettingsDisplayTab({onToast}) {
                   🔗 {matchUrl.slice(0,70)}{matchUrl.length>70?"…":""}
                 </div>}
                 <div style={{marginTop:10,paddingTop:10,borderTop:"1px solid #BFDBFE"}}>
-                  <a href="https://github.com/MeierAndre130577/tennis-herrieden/actions/workflows/btv-fetch.yml"
-                    target="_blank" rel="noopener noreferrer"
+                  <button onClick={triggerFetch} disabled={fetchStatus==="running"}
                     style={{display:"inline-flex",alignItems:"center",gap:6,
-                      background:"#1E40AF",color:"#fff",borderRadius:6,
-                      padding:"6px 12px",fontSize:11,fontWeight:700,textDecoration:"none"}}>
-                    ▶ Erstfetch jetzt starten
-                  </a>
+                      background: fetchStatus==="ok" ? "#059669" : fetchStatus==="error" ? "#DC2626" : "#1E40AF",
+                      color:"#fff",borderRadius:6,padding:"6px 12px",fontSize:11,fontWeight:700,
+                      border:"none",cursor:fetchStatus==="running"?"wait":"pointer",opacity:fetchStatus==="running"?0.7:1}}>
+                    {fetchStatus==="running" ? "⏳ Startet…" : fetchStatus==="ok" ? "✅ Gestartet!" : fetchStatus==="error" ? "❌ Fehler" : "▶ Fetch jetzt starten"}
+                  </button>
                   <div style={{marginTop:5,fontSize:10,color:"#6B7280"}}>
-                    Nach Gegner-Änderung einmal klicken → GitHub öffnet sich → „Run workflow"
+                    Nach Gegner-Änderung einmal klicken → Daten kommen in ~30 Sek.
                   </div>
                 </div>
               </div>
