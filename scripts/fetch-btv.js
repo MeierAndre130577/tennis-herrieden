@@ -654,6 +654,100 @@ async function parseReport(page, url, heim, gast) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+// PROTOTYP: Club-Teams + Gegner scrapen
+// Läuft nur bei manuellem Trigger, speichert btv_club_teams in Supabase
+// ══════════════════════════════════════════════════════════════════════════════
+async function scrapeClubTeams(page, vereinsnr) {
+  console.log("\n=== Club-Teams scrapen (Prototyp) ===");
+  const url = `https://btv-prod.burdadigitalsystems.de/btvmeetings/?clubnr=${vereinsnr}`;
+  try {
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 20_000 });
+  } catch (e) {
+    console.log("Club-Seite nicht erreichbar:", e.message);
+    return null;
+  }
+  await waitForZk(page, 3000);
+
+  const raw = await page.evaluate(() => {
+    const bodyText = document.body.innerText.replace(/\s+/g, " ");
+
+    // gbmeeting-Container → je ein Spiel
+    const meetEls = Array.from(document.querySelectorAll('[class*="gbmeet"]'));
+    const matchTexts = meetEls
+      .map(m => m.textContent.trim().replace(/\s+/g, " ").slice(0, 250))
+      .filter(t => t.length > 10);
+
+    // Staffel-/Gruppenüberschriften (Klasse gbgroup o.ä.)
+    const groupEls = Array.from(document.querySelectorAll('[class*="gbgroup"],[class*="group-title"],[class*="caption"]'));
+    const groupTexts = groupEls
+      .map(g => ({ cls: g.className.slice(0, 60), text: g.textContent.trim().replace(/\s+/g, " ").slice(0, 100) }))
+      .filter(g => g.text.length > 3)
+      .slice(0, 15);
+
+    // Alle Links die auf btvgroup oder btvmatch zeigen
+    const links = Array.from(document.querySelectorAll("a[href]"))
+      .map(a => a.href)
+      .filter(h => h.includes("btv") || h.includes("groupid") || h.includes("meetid"))
+      .slice(0, 20);
+
+    return { bodyText: bodyText.slice(0, 4000), matchTexts, groupTexts, links };
+  });
+
+  console.log(`Seite geladen. ${raw.matchTexts.length} Match-Elemente, ${raw.groupTexts.length} Gruppen-Elemente`);
+  if (raw.matchTexts.length) {
+    console.log("Beispiel Match-Texte:");
+    raw.matchTexts.slice(0, 5).forEach((t, i) => console.log(`  [${i}] ${t}`));
+  }
+  if (raw.groupTexts.length) {
+    console.log("Gruppen-Elemente:");
+    raw.groupTexts.forEach(g => console.log(`  cls="${g.cls}" → "${g.text}"`));
+  }
+  if (raw.links.length) {
+    console.log("BTV-Links:", raw.links.slice(0, 5).join(" | "));
+  }
+  if (!raw.matchTexts.length) {
+    console.log("Body (erste 1000):", raw.bodyText.slice(0, 1000));
+  }
+
+  // ── Versuch: Mannschaften + Gegner aus Match-Texten extrahieren ──────────
+  // Heuristik: jedes Match-Element enthält "<Heim> vs <Gast>" oder ähnlich
+  // Wir suchen Paare: beide Teams, mind. 3 Zeichen, kein Score-Muster
+  const teams = {}; // { mannschaft: Set<gegner> }
+  for (const t of raw.matchTexts) {
+    // Versuche zwei Teamnamen zu extrahieren (durch Score getrennt: "0:0", "offen", etc.)
+    const parts = t.split(/\d:\d|\boffen\b|\bBlanko\b|\banzeigen\b/i)
+                   .map(s => s.trim())
+                   .filter(s => s.length > 3 && !/^\d/.test(s));
+    if (parts.length >= 2) {
+      const [heim, gast] = parts;
+      if (heim && gast && heim !== gast) {
+        if (!teams[heim]) teams[heim] = new Set();
+        teams[heim].add(gast);
+      }
+    }
+  }
+
+  const structured = Object.entries(teams).map(([mannschaft, gegnerSet]) => ({
+    mannschaft,
+    gegner: [...gegnerSet],
+  }));
+
+  console.log(`Extrahierte Teams: ${structured.length}`);
+  structured.forEach(t => console.log(`  ${t.mannschaft} → [${t.gegner.join(", ")}]`));
+
+  const result = {
+    vereinsnr,
+    scrapedAt: new Date().toISOString(),
+    teams: structured,
+    _raw: { matchCount: raw.matchTexts.length, sample: raw.matchTexts.slice(0, 3) },
+  };
+
+  await saveResult("btv_club_teams", result);
+  console.log("✓ btv_club_teams gespeichert");
+  return result;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // MAIN
 // ══════════════════════════════════════════════════════════════════════════════
 (async () => {
@@ -774,6 +868,11 @@ async function parseReport(page, url, heim, gast) {
     // Fehler-Flag löschen wenn erfolgreich
     await saveResult("btv_fetch_error", null);
     console.log(`\n✓ Gespeichert: ${matchData.status}  ${matchData.homeScore}:${matchData.awayScore}  ${matchData.rubbers.length} Rubbers  [auto ${matchData._savedAt}]`);
+
+    // ── Prototyp: bei manuellem Trigger auch Club-Teams scrapen ─────────────
+    if (isManual) {
+      await scrapeClubTeams(page, clubnr);
+    }
 
   } finally {
     await browser.close();
