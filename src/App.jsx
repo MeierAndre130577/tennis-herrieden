@@ -1961,9 +1961,8 @@ function SettingsDisplayTab({onToast}) {
             <div style={{marginBottom:14,padding:"10px 12px",background:"#F8FAFC",
               border:"1px solid #E2E8F0",borderRadius:8,fontSize:11,color:"#6B7280",lineHeight:1.6}}>
               <div style={{fontWeight:700,color:"#374151",marginBottom:4}}>📐 Ideales Format für KI-generierte Bilder</div>
-              <div><strong>1920 × 1080 px, Querformat (16:9)</strong></div>
-              <div style={{marginTop:4}}>Das Bild erscheint unterhalb einer Kopfzeile (~85 px) — wichtige Inhalte nicht ganz oben platzieren.</div>
-              <div style={{marginTop:4}}>Exakt 16:9 verwenden — bei abweichendem Format erscheinen <strong>weiße Letterbox-Balken</strong>.</div>
+              <div><strong>1920 × 995 px, Querformat</strong></div>
+              <div style={{marginTop:4}}>Exakt diese Größe verwenden — sonst erscheinen weiße Ränder links/rechts oder oben/unten.</div>
               <div style={{marginTop:4}}>Farbschema beachten: bei <strong>dunklem Theme</strong> dunklen Bildhintergrund wählen (<code style={{background:"#E5E7EB",padding:"0 3px",borderRadius:3}}>#0F172A</code>), bei <strong>hellem Theme</strong> hellen (<code style={{background:"#E5E7EB",padding:"0 3px",borderRadius:3}}>#F8FAFC</code>).</div>
             </div>
 
