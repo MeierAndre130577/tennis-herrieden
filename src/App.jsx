@@ -1778,8 +1778,13 @@ function SettingsDisplayTab({onToast}) {
                       opacity:fetchStatus==="running"?0.7:1}}>
                     {fetchStatus==="running"?"⏳ Startet…":fetchStatus==="ok"?"✅ Gestartet!":fetchStatus==="error"?"❌ Fehler":"▶ Fetch jetzt starten"}
                   </button>
-                  <div style={{marginTop:5,fontSize:10,color:"#6B7280"}}>
-                    Nach Gegner-Änderung einmal klicken → Daten kommen in ~30 Sek.
+                  <div style={{marginTop:5,fontSize:10,color:"#6B7280",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <span>Nach Gegner-Änderung einmal klicken → Daten kommen in ~30 Sek.</span>
+                    {matchCache?._savedAt&&(
+                      <span style={{fontSize:10,color:"#6B7280",fontStyle:"italic"}}>
+                        Letzter Fetch: {new Date(matchCache._savedAt).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})} Uhr
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
