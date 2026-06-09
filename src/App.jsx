@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Fragment } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL  = "https://irszeiamvwyrntyauury.supabase.co";
@@ -1809,7 +1809,7 @@ function SettingsDisplayTab({onToast}) {
                   </div>
                   <div style={{display:"grid",gridTemplateColumns:"auto 1fr auto",gap:"4px 12px",alignItems:"center"}}>
                     {rows.map(r=>(
-                      <React.Fragment key={r.label}>
+                      <Fragment key={r.label}>
                         <span style={{fontSize:10,color:"#9CA3AF",fontWeight:700,whiteSpace:"nowrap"}}>{r.label}</span>
                         <span style={{color: r.value? (r.ok===false?"#EF4444":"#111827") : "#D1D5DB",
                           fontStyle:r.value?"normal":"italic"}}>
@@ -1820,7 +1820,7 @@ function SettingsDisplayTab({onToast}) {
                           color:r.fix?"#1D4ED8":"#92400E"}}>
                           {r.fix?"fix":"variabel"}
                         </span>
-                      </React.Fragment>
+                      </Fragment>
                     ))}
                   </div>
                 </div>
