@@ -1798,25 +1798,30 @@ function SettingsDisplayTab({onToast}) {
               const dateStr = c.matchDate ? new Date(c.matchDate+"T12:00:00").toLocaleDateString("de-DE",{weekday:"short",day:"numeric",month:"numeric",year:"numeric"}) : null;
               const players = (c.rubbers||[]).filter(r=>(r.home||r.away)).length;
               const total   = (c.rubbers||[]).length;
-              // Quelle pro Feld: BTV-Snapshot vergleichen
-              const isBtv = (field) => btv[field] != null && btv[field] === c[field];
-              const badge = (field) => isBtv(field)
-                ? {bg:"#DBEAFE",color:"#1D4ED8",label:"🤖 BTV"}
-                : c._source==="auto"
-                  ? {bg:"#DBEAFE",color:"#1D4ED8",label:"🤖 BTV"}
-                  : {bg:"#FEF3C7",color:"#92400E",label:"✏️ Manuell"};
-              const rubbersBadge = c._source==="auto"
-                ? {bg:"#DBEAFE",color:"#1D4ED8",label:"🤖 BTV"}
-                : {bg:"#FEF3C7",color:"#92400E",label:"✏️ Manuell"};
+              // Badges: "BTV" wenn vom Fetch, "BTV + Manuell" wenn manuell überschrieben, "Manuell" wenn kein BTV-Wert
+              const hasBtv = Object.keys(btv).length > 0;
+              const btvBadge    = {bg:"#DBEAFE",color:"#1D4ED8",label:"🤖 BTV"};
+              const manBadge    = {bg:"#FEF3C7",color:"#92400E",label:"✏️ Manuell"};
+              // Für BTV-Snapshot-Felder: zeige ob aktueller Wert noch dem BTV-Wert entspricht
+              const fieldBadges = (field) => {
+                const fromBtv = btv[field] != null;
+                const unchanged = fromBtv && btv[field] === c[field];
+                if (c._source === "auto" || unchanged) return [btvBadge];
+                if (fromBtv && !unchanged) return [btvBadge, manBadge]; // BTV-Wert wurde manuell überschrieben
+                return [manBadge];
+              };
+              // Für Rubbers/Stand: BTV wenn auto, BTV+Manuell wenn manuell überschrieben und BTV-Daten vorhanden
+              const rubberBadges = c._source === "auto" ? [btvBadge]
+                : hasBtv ? [btvBadge, manBadge]
+                : [manBadge];
               const rows = [
-                {label:"Spieltag",  value:dateStr,  bdg:badge("matchDate")},
-                {label:"Uhrzeit",   value:c.time,   bdg:badge("time")},
-                {label:"Liga",      value:c.league||null, bdg:badge("league")},
-                {label:"Heim-Logo", value:c.homeLogo?"✓ vorhanden":"– nicht gefunden", ok:!!c.homeLogo, bdg:badge("homeLogo")},
-                {label:"Gast-Logo", value:c.awayLogo?"✓ vorhanden":"– nicht gefunden", ok:!!c.awayLogo, bdg:badge("awayLogo")},
-                ...(c._logoDebug ? [{label:"Logo-Info", value:c._logoDebug, bdg:{bg:"#F3F4F6",color:"#6B7280",label:"ℹ️"}}] : []),
-                {label:"Spieler",   value:total>0?`${players} / ${total} eingetragen`:null, bdg:rubbersBadge},
-                {label:"Stand",     value:total>0?`${c.homeScore}:${c.awayScore}`:null, bdg:rubbersBadge},
+                {label:"Spieltag",  value:dateStr,  badges:fieldBadges("matchDate")},
+                {label:"Uhrzeit",   value:c.time,   badges:fieldBadges("time")},
+                {label:"Liga",      value:c.league||null, badges:fieldBadges("league")},
+                {label:"Heim-Logo", value:c.homeLogo?"✓ vorhanden":"– nicht gefunden", ok:!!c.homeLogo, badges:fieldBadges("homeLogo")},
+                {label:"Gast-Logo", value:c.awayLogo?"✓ vorhanden":"– nicht gefunden", ok:!!c.awayLogo, badges:fieldBadges("awayLogo")},
+                {label:"Spieler",   value:total>0?`${players} / ${total} eingetragen`:null, badges:rubberBadges},
+                {label:"Stand",     value:total>0?`${c.homeScore}:${c.awayScore}`:null, badges:rubberBadges},
               ];
               return (
                 <div style={{marginTop:12,padding:"12px 14px",background:"#F8FAFC",
@@ -1834,9 +1839,13 @@ function SettingsDisplayTab({onToast}) {
                           fontStyle:r.value?"normal":"italic"}}>
                           {r.value||"–"}
                         </span>
-                        <span style={{fontSize:10,padding:"1px 6px",borderRadius:8,fontWeight:700,
-                          background:r.bdg.bg,color:r.bdg.color,whiteSpace:"nowrap"}}>
-                          {r.bdg.label}
+                        <span style={{display:"flex",gap:3}}>
+                          {r.badges.map(b=>(
+                            <span key={b.label} style={{fontSize:10,padding:"1px 6px",borderRadius:8,
+                              fontWeight:700,background:b.bg,color:b.color,whiteSpace:"nowrap"}}>
+                              {b.label}
+                            </span>
+                          ))}
                         </span>
                       </Fragment>
                     ))}
