@@ -180,55 +180,56 @@ async function tryWidget(page, groupId, heim, gast) {
         status = h + a >= 9 ? "done" : "live";
       }
 
-      // ── Datum + Uhrzeit: Geschwister-Elemente durchsuchen ──────────────────
-      // gbmeet enthält nur Teams+Score. Datum/Zeit stehen in benachbarten Zellen
-      // derselben Zeile. Strategie: Geschwister von m und seinen Eltern prüfen,
-      // aber NUR kurze Texte (<80 Zeichen) – so werden Tabellen-Container ignoriert.
-      const rowText = (() => {
+      // ── Datum + Uhrzeit: rückwärts vom Match suchen ─────────────────────────
+      // BTV-Liste: Datum steht VOR den Teamnamen, z.B. "Fr. 12.06.26, 15:00 SG Herrieden ... SV Arberg"
+      // Strategie: Parent-Text holen, Position finden wo BEIDE Teams nahe beieinander stehen,
+      // dann letztes Datum/Zeit VOR dieser Position nehmen.
+      const fullRowText = (() => {
         let el = m;
-        const parts = [];
-        for (let i = 0; i < 6; i++) {
+        for (let i = 0; i < 8; i++) {
           if (!el.parentElement) break;
           el = el.parentElement;
-          // Geschwister-Texte sammeln (kurze Elemente = Datums-/Zeit-Zellen)
-          for (const sib of el.children) {
-            if (sib === (i === 0 ? m : null)) continue; // aktuelles el ausschließen
-            const t = sib.textContent.trim().replace(/\s+/g, " ");
-            if (t.length > 0 && t.length < 80) parts.push(t);
-          }
-          const combined = parts.join(" ");
-          if (/\d{1,2}:\d{2}\s*Uhr/i.test(combined) || /\d{1,2}\.\d{1,2}\.20\d{2}/.test(combined)) {
-            return combined;
-          }
+          const t = el.textContent.replace(/\s+/g, " ");
+          if (/\d{1,2}\.\d{1,2}\.\d{2}/.test(t)) return t;
         }
-        return parts.join(" ") || mText;
+        return mText;
       })();
 
-      // Alle kurzen Seiten-Elemente mit Datumsmuster (für Debugging)
-      const allDateTexts = Array.from(document.querySelectorAll("*"))
-        .filter(el => el.children.length <= 2)
-        .map(el => el.textContent.trim().replace(/\s+/g," "))
-        .filter(t => t.length < 60 && /\d{1,2}\.\d{1,2}\.20\d{2}/.test(t))
-        .slice(0, 8);
+      // Position finden, wo heim+gast gemeinsam auftauchen (= unser Match)
+      const textL  = fullRowText.toLowerCase();
+      const h1     = heim.toLowerCase().split(" ")[0];
+      const g1     = gast.toLowerCase().split(" ")[0];
+      let matchStart = -1;
+      let pos = 0;
+      while (pos < textL.length) {
+        const hp = textL.indexOf(h1, pos);
+        if (hp < 0) break;
+        if (textL.slice(hp, hp + 200).includes(g1)) { matchStart = hp; break; }
+        pos = hp + 1;
+      }
 
-      const timeM = rowText.match(/(\d{1,2}:\d{2})\s*Uhr/i)
-                 || mText.match(/(\d{1,2}:\d{2})\s*Uhr/i);
-      const time = timeM ? timeM[1] + " Uhr" : "–";
+      const lookBack = matchStart > 0 ? fullRowText.slice(0, matchStart) : fullRowText;
+
+      // Letztes Datum vor unserem Match (Format DD.MM.YY oder DD.MM.YYYY)
+      const allDateMs = [...lookBack.matchAll(/(\d{1,2})\.(\d{1,2})\.(\d{2,4})/g)];
+      const lastDate  = allDateMs.length > 0 ? allDateMs[allDateMs.length - 1] : null;
+      // Letzte Uhrzeit vor unserem Match (HH:MM)
+      const allTimeMs = [...lookBack.matchAll(/(\d{1,2}:\d{2})/g)];
+      const lastTime  = allTimeMs.length > 0 ? allTimeMs[allTimeMs.length - 1] : null;
+
+      const time = lastTime ? lastTime[1] + " Uhr" : "–";
 
       const curYear = new Date().getFullYear();
       let matchDate = null;
-      const dateWithYear = rowText.match(/(\d{1,2})\.(\d{1,2})\.(20\d{2})/)
-                        || mText.match(/(\d{1,2})\.(\d{1,2})\.(20\d{2})/);
-      const dateNoYear   = rowText.match(/(\d{1,2})\.(\d{1,2})\./)
-                        || mText.match(/(\d{1,2})\.(\d{1,2})\./);
-      if (dateWithYear) {
-        const [, d, mo, y] = dateWithYear;
-        matchDate = `${y}-${mo.padStart(2,"0")}-${d.padStart(2,"0")}`;
-      } else if (dateNoYear) {
-        const [, d, mo] = dateNoYear;
-        matchDate = `${curYear}-${mo.padStart(2,"0")}-${d.padStart(2,"0")}`;
+      if (lastDate) {
+        const [, d, mo, y] = lastDate;
+        const year = y.length === 2 ? "20" + y : y;
+        matchDate = `${year}-${mo.padStart(2,"0")}-${d.padStart(2,"0")}`;
       }
-      const debugRowText = rowText.slice(0, 200);
+
+      // Debug
+      const allDateTexts = [];
+      const debugRowText = lookBack.slice(-150); // letzten 150 Zeichen vor unserem Match
 
       // ── Gesamtergebnis ───────────────────────────────────────────────────
       const singleScores = Array.from(m.querySelectorAll(".z-label, span"))
