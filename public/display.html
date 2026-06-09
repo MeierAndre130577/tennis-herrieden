@@ -731,10 +731,16 @@ function startSettingsPolling(mode, theme, vereinsnr, saison, mannschaft, gegner
   setInterval(async () => {
     const { data } = await sb.from("settings").select("*")
       .in("key", ["display_mode","display_theme","display_vereinsnummer","display_saison",
-                  "display_mannschaft","display_gegner"]);
+                  "display_mannschaft","display_gegner",
+                  "display_sched_schedule","display_sched_heimspiel","display_sched_bild"]);
     const s = Object.fromEntries((data || []).map(r => [r.key, r.value]));
+    const nowP = new Date();
+    const ps = (key) => { try { return JSON.parse(s[key]||"{}"); } catch(_){ return {}; } };
+    const sm = { schedule: ps("display_sched_schedule"), heimspiel: ps("display_sched_heimspiel"), bild: ps("display_sched_bild") };
+    const sa = Object.entries(sm).find(([,sc]) => sc.from && sc.to && nowP >= new Date(sc.from) && nowP <= new Date(sc.to));
+    const resolvedMode = sa ? sa[0] : (s.display_mode || "schedule");
     if (
-      (s.display_mode          || "schedule") !== mode     ||
+      resolvedMode !== mode     ||
       (s.display_theme         || "dark")     !== theme    ||
       (s.display_vereinsnummer || "")         !== vereinsnr||
       (s.display_saison        || "")         !== saison   ||
@@ -943,9 +949,22 @@ function scheduleMidnightReload() {
 (async function init() {
   const { data: settingsData } = await sb.from("settings").select("*")
     .in("key", ["display_mode","display_theme","display_vereinsnummer","display_saison",
-                "display_bild_url","display_mannschaft","display_gegner"]);
+                "display_bild_url","display_mannschaft","display_gegner",
+                "display_sched_schedule","display_sched_heimspiel","display_sched_bild"]);
   const settings    = Object.fromEntries((settingsData || []).map(r => [r.key, r.value]));
-  const displayMode  = settings.display_mode          || "schedule";
+
+  // Zeitschaltung: prüfen ob ein Modus gerade aktiv ist
+  const now = new Date();
+  const parseSchedule = (key) => { try { return JSON.parse(settings[key]||"{}"); } catch(_){ return {}; } };
+  const schedMap = {
+    schedule:  parseSchedule("display_sched_schedule"),
+    heimspiel: parseSchedule("display_sched_heimspiel"),
+    bild:      parseSchedule("display_sched_bild"),
+  };
+  const schedActive = Object.entries(schedMap).find(([,s]) =>
+    s.from && s.to && now >= new Date(s.from) && now <= new Date(s.to)
+  );
+  const displayMode  = schedActive ? schedActive[0] : (settings.display_mode || "schedule");
   const displayTheme = settings.display_theme         || "dark";
   const vereinsnr    = settings.display_vereinsnummer || "06085";
   const saison       = settings.display_saison        || "2026";

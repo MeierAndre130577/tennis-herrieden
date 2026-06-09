@@ -1419,40 +1419,119 @@ function HeimspieleManualEntry({onToast}) {
   );
 }
 
+// ── SETTINGS: DISPLAY – Hilfskomponenten ─────────────────────────────────
+function ToggleSwitch({on, onToggle}) {
+  return (
+    <div onClick={onToggle}
+      style={{width:44,height:24,background:on?"#8B5CF6":"#D1D5DB",borderRadius:12,
+        position:"relative",transition:"background .2s",cursor:"pointer",flexShrink:0}}>
+      <div style={{width:20,height:20,background:"#fff",borderRadius:"50%",
+        position:"absolute",top:2,left:on?22:2,transition:"left .2s",
+        boxShadow:"0 1px 4px rgba(0,0,0,.25)"}}/>
+    </div>
+  );
+}
+
+function ZeitSchaltung({sched, setSched}) {
+  const set = (field) => (e) => setSched(s => ({...s, [field]: e.target.value}));
+  const hasAny = sched.from || sched.to;
+  const now = new Date();
+  const isActive = sched.from && sched.to &&
+    now >= new Date(sched.from) && now <= new Date(sched.to);
+  return (
+    <div style={{marginTop:16,padding:"12px 14px",background:"#F9FAFB",
+      borderRadius:8,border:`1px solid ${isActive?"#86EFAC":"#E5E7EB"}`}}>
+      <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:8,
+        display:"flex",alignItems:"center",gap:8}}>
+        ⏰ ZEITSCHALTUNG <span style={{fontWeight:400}}>(optional)</span>
+        {isActive&&<span style={{fontSize:10,background:"#DCFCE7",color:"#16A34A",
+          padding:"1px 7px",borderRadius:10,fontWeight:700}}>AKTIV JETZT</span>}
+      </div>
+      <div style={{display:"flex",gap:8,alignItems:"flex-end",flexWrap:"wrap"}}>
+        <div>
+          <div style={{fontSize:10,color:"#9CA3AF",marginBottom:3}}>VON</div>
+          <input type="datetime-local" value={sched.from} onChange={set("from")}
+            style={{fontSize:12,padding:"5px 8px",border:"1px solid #D1D5DB",
+              borderRadius:6,color:"#374151"}}/>
+        </div>
+        <div>
+          <div style={{fontSize:10,color:"#9CA3AF",marginBottom:3}}>BIS</div>
+          <input type="datetime-local" value={sched.to} onChange={set("to")}
+            style={{fontSize:12,padding:"5px 8px",border:"1px solid #D1D5DB",
+              borderRadius:6,color:"#374151"}}/>
+        </div>
+        {hasAny&&(
+          <button onClick={()=>setSched({from:"",to:""})}
+            style={{padding:"5px 10px",fontSize:11,color:"#EF4444",background:"none",
+              border:"1px solid #FECACA",borderRadius:6,cursor:"pointer"}}>
+            ✕ löschen
+          </button>
+        )}
+      </div>
+      <div style={{fontSize:10,color:"#9CA3AF",marginTop:6}}>
+        Innerhalb dieser Zeit wird dieser Modus automatisch aktiviert – unabhängig vom Toggle
+      </div>
+    </div>
+  );
+}
+
 // ── SETTINGS: DISPLAY ────────────────────────────────────────────────────
 function SettingsDisplayTab({onToast}) {
-  const [mode,          setMode]         = useState("schedule");
-  const [theme,         setTheme]        = useState("dark");
-  const [vereinsnr,     setVernr]        = useState("6085");
-  const [saison,        setSaison]       = useState("2026");
-  const [mannschaft,    setMannschaft]   = useState("");
-  const [gegner,        setGegner]       = useState("");
-  const [matchUrl,      setMatchUrl]     = useState("");
-  const [bildUrl,       setBildUrl]      = useState("");
-  const [githubPat,     setGithubPat]    = useState("");
-  const [uploading,     setUploading]    = useState(false);
-  const [saving,        setSaving]       = useState(false);
-  const [fetchStatus,   setFetchStatus]  = useState(null); // null | "running" | "ok" | "error"
+  const [activeTab,      setActiveTab]      = useState("schedule");
+  const [mode,           setMode]           = useState("schedule"); // toggle-aktiver Modus
+  const [theme,          setTheme]          = useState("dark");
+  const [vereinsnr,      setVernr]          = useState("6085");
+  const [saison,         setSaison]         = useState("2026");
+  const [mannschaft,     setMannschaft]     = useState("");
+  const [gegner,         setGegner]         = useState("");
+  const [matchUrl,       setMatchUrl]       = useState("");
+  const [bildUrl,        setBildUrl]        = useState("");
+  const [githubPat,      setGithubPat]      = useState("");
+  const [schedSchedule,  setSchedSchedule]  = useState({from:"",to:""});
+  const [schedHeim,      setSchedHeim]      = useState({from:"",to:""});
+  const [schedBild,      setSchedBild]      = useState({from:"",to:""});
+  const [uploading,      setUploading]      = useState(false);
+  const [saving,         setSaving]         = useState(false);
+  const [fetchStatus,    setFetchStatus]    = useState(null);
+  const [schedError,     setSchedError]     = useState(null);
 
   useEffect(()=>{
     sb.from("settings").select("*")
       .in("key",["display_mode","display_theme","display_vereinsnummer","display_saison",
                  "display_mannschaft","display_gegner","display_match_url",
-                 "display_bild_url","github_pat"])
+                 "display_bild_url","github_pat",
+                 "display_sched_schedule","display_sched_heimspiel","display_sched_bild"])
       .then(({data})=>{
         if(!data) return;
         const map=Object.fromEntries(data.map(r=>[r.key,r.value]));
-        if(map.display_mode)          setMode(map.display_mode);
-        if(map.display_theme)         setTheme(map.display_theme);
-        if(map.display_vereinsnummer) setVernr(map.display_vereinsnummer);
-        if(map.display_saison)        setSaison(map.display_saison);
-        if(map.display_mannschaft)    setMannschaft(map.display_mannschaft);
-        if(map.display_gegner)        setGegner(map.display_gegner);
-        if(map.display_match_url)     setMatchUrl(map.display_match_url);
-        if(map.display_bild_url)      setBildUrl(map.display_bild_url);
-        if(map.github_pat)            setGithubPat(map.github_pat);
+        if(map.display_mode)           setMode(map.display_mode);
+        if(map.display_theme)          setTheme(map.display_theme);
+        if(map.display_vereinsnummer)  setVernr(map.display_vereinsnummer);
+        if(map.display_saison)         setSaison(map.display_saison);
+        if(map.display_mannschaft)     setMannschaft(map.display_mannschaft);
+        if(map.display_gegner)         setGegner(map.display_gegner);
+        if(map.display_match_url)      setMatchUrl(map.display_match_url);
+        if(map.display_bild_url)       setBildUrl(map.display_bild_url);
+        if(map.github_pat)             setGithubPat(map.github_pat);
+        try { if(map.display_sched_schedule)  setSchedSchedule(JSON.parse(map.display_sched_schedule)); } catch(_){}
+        try { if(map.display_sched_heimspiel) setSchedHeim(JSON.parse(map.display_sched_heimspiel)); } catch(_){}
+        try { if(map.display_sched_bild)      setSchedBild(JSON.parse(map.display_sched_bild)); } catch(_){}
       });
   },[]);
+
+  const checkOverlap = () => {
+    const list = [
+      {label:"Tagesbelegungsplan", ...schedSchedule},
+      {label:"Heimspielmodus",     ...schedHeim},
+      {label:"Bildanzeige",        ...schedBild},
+    ].filter(s => s.from && s.to);
+    for(let i=0;i<list.length;i++) for(let j=i+1;j<list.length;j++) {
+      const a=list[i], b=list[j];
+      if(new Date(a.from)<new Date(b.to) && new Date(b.from)<new Date(a.to))
+        return `Zeitüberschneidung: „${a.label}" und „${b.label}" überlappen sich`;
+    }
+    return null;
+  };
 
   const uploadBild=async(file)=>{
     setUploading(true);
@@ -1476,16 +1555,22 @@ function SettingsDisplayTab({onToast}) {
   };
 
   const save=async()=>{
+    const overlap = checkOverlap();
+    if(overlap){ setSchedError(overlap); return; }
+    setSchedError(null);
     setSaving(true);
     const {error}=await sb.from("settings").upsert([
-      {key:"display_mode",          value:mode},
-      {key:"display_theme",         value:theme},
-      {key:"display_vereinsnummer", value:vereinsnr},
-      {key:"display_saison",        value:saison},
-      {key:"display_mannschaft",    value:mannschaft},
-      {key:"display_gegner",        value:gegner},
-      {key:"display_match_url",     value:matchUrl},
-      {key:"github_pat",            value:githubPat},
+      {key:"display_mode",            value:mode},
+      {key:"display_theme",           value:theme},
+      {key:"display_vereinsnummer",   value:vereinsnr},
+      {key:"display_saison",          value:saison},
+      {key:"display_mannschaft",      value:mannschaft},
+      {key:"display_gegner",          value:gegner},
+      {key:"display_match_url",       value:matchUrl},
+      {key:"github_pat",              value:githubPat},
+      {key:"display_sched_schedule",  value:JSON.stringify(schedSchedule)},
+      {key:"display_sched_heimspiel", value:JSON.stringify(schedHeim)},
+      {key:"display_sched_bild",      value:JSON.stringify(schedBild)},
     ],{onConflict:"key"});
     setSaving(false);
     if(error){ onToast(`Fehler: ${error.message}`,"error"); return; }
@@ -1519,53 +1604,118 @@ function SettingsDisplayTab({onToast}) {
     }
   };
 
-  const modes=[
-    {id:"schedule",  icon:"📅", label:"Tagesbelegungsplan", desc:"Zeigt die heutigen Buchungen aller Plätze"},
-    {id:"heimspiel", icon:"🏆", label:"Heimspielmodus",     desc:"Zeigt live den aktuellen Spielstand eines Heimspiels (BTV)"},
-    {id:"bild",      icon:"🖼️", label:"Bildanzeige",        desc:"Zeigt ein Bild mit Kopfleiste (Datum & Uhrzeit)"},
-  ];
   const themes=[
     {id:"dark",     label:"Dunkel",        desc:"Navy-Blau Hintergrund (Standard)",       bg:"#0F172A",fg:"#F8FAFC"},
     {id:"light",    label:"Hell",          desc:"Weißer Hintergrund, dunkle Schrift",      bg:"#F8FAFC",fg:"#0F172A"},
     {id:"contrast", label:"Hoher Kontrast",desc:"Schwarz-Weiß für sehr helle Umgebungen", bg:"#FFFFFF",fg:"#000000"},
   ];
 
+  const TABS = [
+    {id:"farbschema", icon:"🎨", label:"Farbschema"},
+    {id:"schedule",   icon:"📅", label:"Tagesbelegung"},
+    {id:"heimspiel",  icon:"🏆", label:"Heimspiel"},
+    {id:"bild",       icon:"🖼️", label:"Bildanzeige"},
+  ];
+
+  const ModeRow = ({modeId}) => (
+    <div onClick={()=>setMode(modeId)}
+      style={{display:"flex",alignItems:"center",justifyContent:"space-between",
+        padding:"12px 14px",borderRadius:10,marginBottom:20,cursor:"pointer",
+        background:mode===modeId?"#F5F3FF":"#F9FAFB",
+        border:`1.5px solid ${mode===modeId?"#8B5CF6":"#E5E7EB"}`}}>
+      <div>
+        <div style={{fontWeight:700,fontSize:13,color:mode===modeId?"#7C3AED":"#374151"}}>
+          Auf Display anzeigen
+        </div>
+        <div style={{fontSize:11,color:"#6B7280",marginTop:2}}>
+          {mode===modeId ? "✓ Aktuell aktiver Modus" : "Klicken zum Aktivieren"}
+        </div>
+      </div>
+      <ToggleSwitch on={mode===modeId} onToggle={()=>setMode(modeId)}/>
+    </div>
+  );
+
   return (
     <div style={K.page}>
       <h1 style={S.pageTitle}>Display-Einstellungen</h1>
       <p style={S.pageSub}>Steuert, was auf dem Kiosk-Display angezeigt wird</p>
 
-      <div style={{marginTop:20}}>
-        <SectTitle>Anzeigemodus</SectTitle>
-        <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:24}}>
-          {modes.map(m=>(
-            <button key={m.id} onClick={()=>setMode(m.id)}
-              style={{...S.card,border:`2px solid ${mode===m.id?"#8B5CF6":"#E5E7EB"}`,
-                background:mode===m.id?"#F5F3FF":"#fff",display:"flex",alignItems:"center",
-                gap:14,padding:"14px 16px",marginBottom:0,cursor:"pointer",textAlign:"left"}}>
-              <span style={{fontSize:28}}>{m.icon}</span>
-              <div style={{flex:1}}>
-                <div style={{fontWeight:700,fontSize:14}}>{m.label}</div>
-                <div style={{fontSize:12,color:"#6B7280",marginTop:2}}>{m.desc}</div>
-              </div>
-              {mode===m.id&&<span style={{color:"#8B5CF6",fontWeight:800,fontSize:18}}>✓</span>}
-            </button>
-          ))}
-        </div>
+      {/* Tab-Navigation */}
+      <div style={{display:"flex",marginTop:20,borderBottom:"2px solid #E5E7EB",overflowX:"auto"}}>
+        {TABS.map(t=>(
+          <button key={t.id} onClick={()=>setActiveTab(t.id)}
+            style={{padding:"10px 14px",border:"none",background:"none",cursor:"pointer",
+              borderBottom:activeTab===t.id?"2px solid #8B5CF6":"2px solid transparent",
+              marginBottom:-2,fontSize:12,fontWeight:activeTab===t.id?700:400,
+              color:activeTab===t.id?"#7C3AED":"#6B7280",
+              display:"flex",alignItems:"center",gap:5,whiteSpace:"nowrap"}}>
+            <span>{t.icon}</span>{t.label}
+            {t.id!=="farbschema"&&mode===t.id&&(
+              <span style={{width:6,height:6,borderRadius:"50%",
+                background:"#8B5CF6",display:"inline-block"}}/>
+            )}
+          </button>
+        ))}
+      </div>
 
-        {mode==="heimspiel"&&(
-          <div style={{marginBottom:24,background:"#F9FAFB",border:"1.5px solid #E5E7EB",borderRadius:12,padding:16}}>
-            <div style={{fontWeight:700,fontSize:13,color:"#374151",marginBottom:14}}>🏆 Heimspiel konfigurieren</div>
+      {/* Tab-Inhalt */}
+      <div style={{paddingTop:20,paddingBottom:8}}>
 
-            {/* GitHub PAT – einmalig */}
+        {/* ── FARBSCHEMA ── */}
+        {activeTab==="farbschema"&&(
+          <div>
+            <p style={{fontSize:12,color:"#6B7280",marginBottom:16}}>
+              Gilt übergreifend für alle Anzeigemodi.
+            </p>
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {themes.map(t=>(
+                <button key={t.id} onClick={()=>setTheme(t.id)}
+                  style={{...S.card,border:`2px solid ${theme===t.id?"#8B5CF6":"#E5E7EB"}`,
+                    background:theme===t.id?"#F5F3FF":"#fff",display:"flex",alignItems:"center",
+                    gap:14,padding:"14px 16px",marginBottom:0,cursor:"pointer",textAlign:"left"}}>
+                  <div style={{width:36,height:36,borderRadius:8,background:t.bg,
+                    border:"1.5px solid #D1D5DB",display:"flex",alignItems:"center",
+                    justifyContent:"center",flexShrink:0}}>
+                    <span style={{color:t.fg,fontWeight:800,fontSize:13}}>Aa</span>
+                  </div>
+                  <div style={{flex:1}}>
+                    <div style={{fontWeight:700,fontSize:14}}>{t.label}</div>
+                    <div style={{fontSize:12,color:"#6B7280",marginTop:2}}>{t.desc}</div>
+                  </div>
+                  {theme===t.id&&<span style={{color:"#8B5CF6",fontWeight:800,fontSize:18}}>✓</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── TAGESBELEGUNGSPLAN ── */}
+        {activeTab==="schedule"&&(
+          <div>
+            <ModeRow modeId="schedule"/>
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>VEREINSNUMMER (BTV)</div>
+              <input value={vereinsnr} onChange={e=>setVernr(e.target.value)} style={{...S.input,width:"100%"}}/>
+            </div>
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>SAISON</div>
+              <input value={saison} onChange={e=>setSaison(e.target.value)} style={{...S.input,width:"100%"}}/>
+            </div>
+            <ZeitSchaltung sched={schedSchedule} setSched={setSchedSchedule}/>
+          </div>
+        )}
+
+        {/* ── HEIMSPIELMODUS ── */}
+        {activeTab==="heimspiel"&&(
+          <div>
+            <ModeRow modeId="heimspiel"/>
+
+            {/* GitHub PAT */}
             <div style={{marginBottom:14,padding:"10px 12px",background:"#FFFBEB",borderRadius:8,border:"1px solid #FDE68A"}}>
               <div style={{fontSize:11,fontWeight:700,color:"#92400E",marginBottom:5}}>
                 GITHUB TOKEN (PAT) 🔑 <span style={{fontWeight:400,color:"#B45309"}}>einmalig hinterlegen</span>
               </div>
-              <input
-                type="password"
-                value={githubPat}
-                onChange={e=>setGithubPat(e.target.value)}
+              <input type="password" value={githubPat} onChange={e=>setGithubPat(e.target.value)}
                 placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
                 style={{...S.input,width:"100%",fontSize:12,fontFamily:"monospace"}}/>
               <div style={{fontSize:10,color:"#B45309",marginTop:4}}>
@@ -1573,28 +1723,24 @@ function SettingsDisplayTab({onToast}) {
               </div>
             </div>
 
-            {/* Staffel-URL – einmal pro Saison */}
+            {/* Staffel-URL */}
             <div style={{marginBottom:14}}>
               <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>STAFFEL-URL (BTV)</div>
               <input value={matchUrl} onChange={e=>setMatchUrl(e.target.value)}
                 placeholder="https://www.btv.de/de/spielbetrieb/tabelle-spielplan.html?groupid=…"
                 style={{...S.input,width:"100%",fontSize:12}}/>
-              <div style={{fontSize:11,color:"#9CA3AF",marginTop:4}}>
-                Einmal pro Mannschaft eintragen – bleibt dauerhaft gleich
-              </div>
+              <div style={{fontSize:11,color:"#9CA3AF",marginTop:4}}>Einmal pro Mannschaft – bleibt dauerhaft gleich</div>
             </div>
 
-            {/* Heimmannschaft – einmal pro Saison */}
+            {/* Heimmannschaft */}
             <div style={{marginBottom:14}}>
               <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>HEIMMANNSCHAFT</div>
               <input value={mannschaft} onChange={e=>setMannschaft(e.target.value)}
                 placeholder="z.B. SG TSV/DJK Herrieden" style={{...S.input,width:"100%"}}/>
-              <div style={{fontSize:11,color:"#9CA3AF",marginTop:4}}>
-                Genau so wie auf btv.de angegeben – einmal eintragen
-              </div>
+              <div style={{fontSize:11,color:"#9CA3AF",marginTop:4}}>Genau so wie auf btv.de angegeben</div>
             </div>
 
-            {/* Gastmannschaft – vor jedem Spiel */}
+            {/* Gastmannschaft */}
             <div style={{marginBottom:14}}>
               <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>
                 GASTMANNSCHAFT <span style={{fontWeight:400,color:"#EF4444"}}>↺ vor jedem Spiel aktualisieren</span>
@@ -1603,22 +1749,22 @@ function SettingsDisplayTab({onToast}) {
                 placeholder="z.B. TC Rothenburg" style={{...S.input,width:"100%"}}/>
             </div>
 
-
-            {/* Zusammenfassung + Erstfetch */}
+            {/* Fetch-Button */}
             {mannschaft&&gegner&&(
-              <div style={{marginTop:4,background:"#EFF6FF",border:"1px solid #BFDBFE",borderRadius:8,
-                padding:"10px 12px",fontSize:12,color:"#1E40AF"}}>
-                ✅ Display zeigt: <strong>{mannschaft}</strong> vs. <strong>{gegner}</strong>
-                {matchUrl&&<div style={{marginTop:6,wordBreak:"break-all",opacity:0.7,fontSize:11}}>
+              <div style={{background:"#EFF6FF",border:"1px solid #BFDBFE",borderRadius:8,
+                padding:"10px 12px",fontSize:12,color:"#1E40AF",marginBottom:4}}>
+                ✅ <strong>{mannschaft}</strong> vs. <strong>{gegner}</strong>
+                {matchUrl&&<div style={{marginTop:4,wordBreak:"break-all",opacity:0.7,fontSize:11}}>
                   🔗 {matchUrl.slice(0,70)}{matchUrl.length>70?"…":""}
                 </div>}
                 <div style={{marginTop:10,paddingTop:10,borderTop:"1px solid #BFDBFE"}}>
                   <button onClick={triggerFetch} disabled={fetchStatus==="running"}
                     style={{display:"inline-flex",alignItems:"center",gap:6,
-                      background: fetchStatus==="ok" ? "#059669" : fetchStatus==="error" ? "#DC2626" : "#1E40AF",
+                      background:fetchStatus==="ok"?"#059669":fetchStatus==="error"?"#DC2626":"#1E40AF",
                       color:"#fff",borderRadius:6,padding:"6px 12px",fontSize:11,fontWeight:700,
-                      border:"none",cursor:fetchStatus==="running"?"wait":"pointer",opacity:fetchStatus==="running"?0.7:1}}>
-                    {fetchStatus==="running" ? "⏳ Startet…" : fetchStatus==="ok" ? "✅ Gestartet!" : fetchStatus==="error" ? "❌ Fehler" : "▶ Fetch jetzt starten"}
+                      border:"none",cursor:fetchStatus==="running"?"wait":"pointer",
+                      opacity:fetchStatus==="running"?0.7:1}}>
+                    {fetchStatus==="running"?"⏳ Startet…":fetchStatus==="ok"?"✅ Gestartet!":fetchStatus==="error"?"❌ Fehler":"▶ Fetch jetzt starten"}
                   </button>
                   <div style={{marginTop:5,fontSize:10,color:"#6B7280"}}>
                     Nach Gegner-Änderung einmal klicken → Daten kommen in ~30 Sek.
@@ -1626,17 +1772,19 @@ function SettingsDisplayTab({onToast}) {
                 </div>
               </div>
             )}
+
+            <ZeitSchaltung sched={schedHeim} setSched={setSchedHeim}/>
+
+            <div style={{marginTop:20}}>
+              <HeimspieleManualEntry onToast={onToast}/>
+            </div>
           </div>
         )}
 
-        {/* Manuelle Score-Eingabe – Fallback wenn BTV nicht erreichbar */}
-        {mode==="heimspiel"&&(
-          <HeimspieleManualEntry onToast={onToast}/>
-        )}
-
-        {mode==="bild"&&(
-          <div style={{marginBottom:24,background:"#F9FAFB",border:"1.5px solid #E5E7EB",borderRadius:12,padding:16}}>
-            <div style={{fontWeight:700,fontSize:13,color:"#374151",marginBottom:14}}>🖼️ Bild auswählen</div>
+        {/* ── BILDANZEIGE ── */}
+        {activeTab==="bild"&&(
+          <div>
+            <ModeRow modeId="bild"/>
             <input type="file" accept="image/*" id="bild-file-input" style={{display:"none"}}
               onChange={e=>e.target.files[0]&&uploadBild(e.target.files[0])}/>
             <label htmlFor="bild-file-input"
@@ -1646,50 +1794,34 @@ function SettingsDisplayTab({onToast}) {
             {bildUrl&&(
               <div style={{marginTop:14}}>
                 <img src={bildUrl} alt="" style={{width:"100%",maxHeight:180,objectFit:"contain",borderRadius:8,background:"#E5E7EB"}}/>
-                <div style={{fontSize:11,color:"#9CA3AF",marginTop:6}}>Aktuell hinterlegtes Bild · wird sofort auf dem Display angezeigt</div>
+                <div style={{fontSize:11,color:"#9CA3AF",marginTop:6}}>Aktuell hinterlegtes Bild</div>
               </div>
             )}
-            {!bildUrl&&(
-              <div style={{marginTop:10,fontSize:12,color:"#9CA3AF"}}>
-                Noch kein Bild — weißer Hintergrund mit Kopfleiste wird angezeigt.
-              </div>
-            )}
+            {!bildUrl&&<div style={{marginTop:10,fontSize:12,color:"#9CA3AF"}}>Noch kein Bild hochgeladen.</div>}
+            <ZeitSchaltung sched={schedBild} setSched={setSchedBild}/>
           </div>
         )}
+      </div>
 
-        <SectTitle>Farbschema</SectTitle>
-        <div style={{fontSize:12,color:"#6B7280",marginBottom:12}}>
-          Gilt übergreifend für alle Anzeigemodi.
+      {/* Fehler Zeitschaltung */}
+      {schedError&&(
+        <div style={{padding:"10px 14px",background:"#FEF2F2",border:"1px solid #FECACA",
+          borderRadius:8,fontSize:12,color:"#DC2626",marginBottom:16}}>
+          ⚠️ {schedError}
         </div>
-        <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:24}}>
-          {themes.map(t=>(
-            <button key={t.id} onClick={()=>setTheme(t.id)}
-              style={{...S.card,border:`2px solid ${theme===t.id?"#8B5CF6":"#E5E7EB"}`,
-                background:theme===t.id?"#F5F3FF":"#fff",display:"flex",alignItems:"center",
-                gap:14,padding:"14px 16px",marginBottom:0,cursor:"pointer",textAlign:"left"}}>
-              <div style={{width:36,height:36,borderRadius:8,background:t.bg,border:"1.5px solid #D1D5DB",
-                display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                <span style={{color:t.fg,fontWeight:800,fontSize:13}}>Aa</span>
-              </div>
-              <div style={{flex:1}}>
-                <div style={{fontWeight:700,fontSize:14}}>{t.label}</div>
-                <div style={{fontSize:12,color:"#6B7280",marginTop:2}}>{t.desc}</div>
-              </div>
-              {theme===t.id&&<span style={{color:"#8B5CF6",fontWeight:800,fontSize:18}}>✓</span>}
-            </button>
-          ))}
-        </div>
+      )}
 
-        <div style={{display:"flex",alignItems:"center",gap:16}}>
-          <button style={{...S.primaryBtn,background:"#8B5CF6",opacity:saving?0.6:1}}
-            onClick={save} disabled={saving}>
-            {saving?"Speichern…":"Einstellungen speichern"}
-          </button>
-          <a href="/display.html" target="_blank" rel="noopener noreferrer"
-            style={{color:"#8B5CF6",fontSize:13,fontWeight:600,textDecoration:"none"}}>
-            Display öffnen ↗
-          </a>
-        </div>
+      {/* Footer – immer sichtbar */}
+      <div style={{display:"flex",alignItems:"center",gap:16,paddingTop:16,
+        borderTop:"1px solid #E5E7EB",marginTop:8}}>
+        <button style={{...S.primaryBtn,background:"#8B5CF6",opacity:saving?0.6:1}}
+          onClick={save} disabled={saving}>
+          {saving?"Speichern…":"Einstellungen speichern"}
+        </button>
+        <a href="/display.html" target="_blank" rel="noopener noreferrer"
+          style={{color:"#8B5CF6",fontSize:13,fontWeight:600,textDecoration:"none"}}>
+          Display öffnen ↗
+        </a>
       </div>
     </div>
   );
