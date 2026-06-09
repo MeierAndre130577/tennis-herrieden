@@ -295,6 +295,21 @@ async function tryWidget(page, groupId, heim, gast) {
     }
   }
 
+  // ── Logo-Fallback: nach anzeigen-Klick gesamte Seite nach BTV-Logos durchsuchen ──
+  let { homeLogo, awayLogo } = header;
+  if (!homeLogo || !awayLogo) {
+    const pageLogos = await page.evaluate(() =>
+      Array.from(document.querySelectorAll("img"))
+        .map(img => img.src || img.getAttribute("src") || "")
+        .filter(s => s.startsWith("http") && s.includes("btv.de") &&
+          (s.includes("vereine") || s.includes("logoImage") || s.includes("logo")))
+    );
+    console.log(`Logo-Fallback: ${pageLogos.length} BTV-Bilder auf Seite: ${pageLogos.slice(0,4).join(" | ")}`);
+    homeLogo = homeLogo || pageLogos[0] || null;
+    awayLogo = awayLogo || pageLogos[1] || null;
+  }
+  console.log(`Logos final: ${homeLogo || "(keins)"} | ${awayLogo || "(keins)"}`);
+
   // Gesamtergebnis aus Rubbers nachberechnen (falls Rubbers vorhanden)
   let homeScore = header.homeScore;
   let awayScore = header.awayScore;
@@ -309,7 +324,7 @@ async function tryWidget(page, groupId, heim, gast) {
     league: header.league || "",
     time: header.time,
     matchDate: header.matchDate,
-    homeLogo: header.homeLogo, awayLogo: header.awayLogo,
+    homeLogo, awayLogo,
     homeScore, awayScore, rubbers,
   };
 }
@@ -703,6 +718,14 @@ async function parseReport(page, url, heim, gast) {
 
     matchData._source  = "auto";
     matchData._savedAt = new Date().toISOString();
+    // BTV-Snapshot: welche Felder kamen von BTV (bleibt erhalten auch nach manuellem Speichern)
+    matchData._btv = {
+      matchDate: matchData.matchDate,
+      time:      matchData.time,
+      league:    matchData.league,
+      homeLogo:  matchData.homeLogo,
+      awayLogo:  matchData.awayLogo,
+    };
     await saveResult("btv_match_cache", matchData);
     // Fehler-Flag löschen wenn erfolgreich
     await saveResult("btv_fetch_error", null);

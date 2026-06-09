@@ -1178,12 +1178,16 @@ function HeimspieleManualEntry({onToast}) {
     const openCount    = rubbers.filter(r => r.result === "open").length;
     const nonOpenCount = rubbers.filter(r => r.result !== "open").length;
     const autoStatus   = !hasPlayers && nonOpenCount === 0 ? "upcoming" : openCount === 0 ? "done" : "live";
+    // _btv-Snapshot aus Cache laden und erhalten
+    const { data: cacheRaw } = await sb.from("settings").select("value").eq("key","btv_match_cache").single();
+    const existingCache = cacheRaw?.value ? (typeof cacheRaw.value === "string" ? JSON.parse(cacheRaw.value) : cacheRaw.value) : {};
     const payload = {
       homeTeam, awayTeam, league, status: autoStatus,
       matchDate: matchDate || null,
       time: matchTime ? matchTime + " Uhr" : null,
       homeLogo: homeLogo || null,
       awayLogo: awayLogo || null,
+      _btv: existingCache._btv || null,  // BTV-Snapshot erhalten
       homeScore: Number(homeScore),
       awayScore: Number(awayScore),
       rubbers,
@@ -1784,42 +1788,49 @@ function SettingsDisplayTab({onToast}) {
             {/* Cache-Status */}
             {matchCache&&(()=>{
               const c = matchCache;
-              const isAuto = c._source === "auto";
+              const btv = c._btv || {};
               const savedAt = c._savedAt ? new Date(c._savedAt).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}) : null;
               const dateStr = c.matchDate ? new Date(c.matchDate+"T12:00:00").toLocaleDateString("de-DE",{weekday:"short",day:"numeric",month:"numeric",year:"numeric"}) : null;
               const players = (c.rubbers||[]).filter(r=>(r.home||r.away)).length;
               const total   = (c.rubbers||[]).length;
-              // Quelle pro Feldtyp: bei "auto" alles BTV; bei "manual" alles manuell
-              const src = isAuto
-                ? {bg:"#DBEAFE", color:"#1D4ED8", label:"🤖 BTV"}
-                : {bg:"#FEF3C7", color:"#92400E", label:"✏️ Manuell"};
+              // Quelle pro Feld: BTV-Snapshot vergleichen
+              const isBtv = (field) => btv[field] != null && btv[field] === c[field];
+              const badge = (field) => isBtv(field)
+                ? {bg:"#DBEAFE",color:"#1D4ED8",label:"🤖 BTV"}
+                : c._source==="auto"
+                  ? {bg:"#DBEAFE",color:"#1D4ED8",label:"🤖 BTV"}
+                  : {bg:"#FEF3C7",color:"#92400E",label:"✏️ Manuell"};
+              const rubbersBadge = c._source==="auto"
+                ? {bg:"#DBEAFE",color:"#1D4ED8",label:"🤖 BTV"}
+                : {bg:"#FEF3C7",color:"#92400E",label:"✏️ Manuell"};
               const rows = [
-                {label:"Spieltag",  value:dateStr},
-                {label:"Uhrzeit",   value:c.time},
-                {label:"Liga",      value:c.league||null},
-                {label:"Heim-Logo", value:c.homeLogo?"✓ vorhanden":"– nicht gefunden", ok:!!c.homeLogo},
-                {label:"Gast-Logo", value:c.awayLogo?"✓ vorhanden":"– nicht gefunden", ok:!!c.awayLogo},
-                {label:"Spieler",   value:total>0?`${players} / ${total} eingetragen`:null},
-                {label:"Stand",     value:total>0?`${c.homeScore}:${c.awayScore}`:null},
+                {label:"Spieltag",  value:dateStr,  bdg:badge("matchDate")},
+                {label:"Uhrzeit",   value:c.time,   bdg:badge("time")},
+                {label:"Liga",      value:c.league||null, bdg:badge("league")},
+                {label:"Heim-Logo", value:c.homeLogo?"✓ vorhanden":"– nicht gefunden", ok:!!c.homeLogo, bdg:badge("homeLogo")},
+                {label:"Gast-Logo", value:c.awayLogo?"✓ vorhanden":"– nicht gefunden", ok:!!c.awayLogo, bdg:badge("awayLogo")},
+                {label:"Spieler",   value:total>0?`${players} / ${total} eingetragen`:null, bdg:rubbersBadge},
+                {label:"Stand",     value:total>0?`${c.homeScore}:${c.awayScore}`:null, bdg:rubbersBadge},
               ];
               return (
                 <div style={{marginTop:12,padding:"12px 14px",background:"#F8FAFC",
-                  border:`1px solid ${isAuto?"#BFDBFE":"#FDE68A"}`,borderRadius:8,fontSize:12}}>
+                  border:"1px solid #E2E8F0",borderRadius:8,fontSize:12}}>
                   <div style={{fontWeight:700,color:"#374151",marginBottom:8,
                     display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <span>📋 Cache-Stand</span>
-                    <span style={{fontSize:11,padding:"2px 8px",borderRadius:10,fontWeight:700,
-                      background:src.bg,color:src.color}}>
-                      {src.label}{savedAt?" · "+savedAt:""}
-                    </span>
+                    <span style={{fontSize:10,color:"#9CA3AF",fontWeight:400}}>{savedAt||""}</span>
                   </div>
-                  <div style={{display:"grid",gridTemplateColumns:"auto 1fr",gap:"4px 12px",alignItems:"center"}}>
+                  <div style={{display:"grid",gridTemplateColumns:"auto 1fr auto",gap:"4px 10px",alignItems:"center"}}>
                     {rows.map(r=>(
                       <Fragment key={r.label}>
                         <span style={{fontSize:10,color:"#9CA3AF",fontWeight:700,whiteSpace:"nowrap"}}>{r.label}</span>
-                        <span style={{color: r.value ? (r.ok===false?"#EF4444":"#111827") : "#D1D5DB",
+                        <span style={{color:r.value?(r.ok===false?"#EF4444":"#111827"):"#D1D5DB",
                           fontStyle:r.value?"normal":"italic"}}>
                           {r.value||"–"}
+                        </span>
+                        <span style={{fontSize:10,padding:"1px 6px",borderRadius:8,fontWeight:700,
+                          background:r.bdg.bg,color:r.bdg.color,whiteSpace:"nowrap"}}>
+                          {r.bdg.label}
                         </span>
                       </Fragment>
                     ))}
