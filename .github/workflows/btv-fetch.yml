@@ -5,8 +5,14 @@ on:
   # (1h vor bis 10h nach Spielbeginn). Außerhalb: sofortiger Exit, ~0 Rechenzeit.
   schedule:
     - cron: '*/10 * * * *'
-  # Manuell auslösbar (z.B. für Tests)
+  # Manuell auslösbar – optional nur Mannschaften laden
   workflow_dispatch:
+    inputs:
+      teams_only:
+        description: 'Nur Mannschaften laden (kein Match-Fetch)'
+        required: false
+        default: 'false'
+        type: string
 
 jobs:
   fetch:
@@ -35,3 +41,4 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           TZ: Europe/Berlin
+          TEAMS_ONLY: ${{ inputs.teams_only }}

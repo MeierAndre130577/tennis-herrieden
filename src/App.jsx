@@ -1632,6 +1632,33 @@ function SettingsDisplayTab({onToast}) {
     onToast(next ? "✅ Automatischer Fetch aktiviert" : "⏸ Automatischer Fetch deaktiviert");
   };
 
+  const [teamsStatus, setTeamsStatus] = useState(null);
+  const triggerTeamsLoad = async () => {
+    if(!githubPat) { onToast("Kein GitHub PAT hinterlegt – bitte zuerst speichern","error"); return; }
+    setTeamsStatus("running");
+    try {
+      const res = await fetch(
+        "https://api.github.com/repos/MeierAndre130577/tennis-herrieden/actions/workflows/btv-fetch.yml/dispatches",
+        { method:"POST",
+          headers:{ Authorization:`Bearer ${githubPat}`, Accept:"application/vnd.github+json", "Content-Type":"application/json" },
+          body: JSON.stringify({ ref:"main", inputs:{ teams_only:"true" } }) }
+      );
+      if(res.status === 204) {
+        setTeamsStatus("ok");
+        onToast("✅ Mannschaften-Laden gestartet – dauert ~30 Sek.");
+        setTimeout(()=>setTeamsStatus(null), 10000);
+      } else {
+        setTeamsStatus("error");
+        onToast(`Fehler ${res.status}`,"error");
+        setTimeout(()=>setTeamsStatus(null), 6000);
+      }
+    } catch(e) {
+      setTeamsStatus("error");
+      onToast(`Netzwerkfehler: ${e.message}`,"error");
+      setTimeout(()=>setTeamsStatus(null), 6000);
+    }
+  };
+
   const revertToBtv = async () => {
     if (!matchCache?._btv) return;
     const btv = matchCache._btv;
@@ -1868,6 +1895,17 @@ function SettingsDisplayTab({onToast}) {
                         Letzter Fetch: {new Date(matchCache._savedAt).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})} Uhr
                       </span>
                     )}
+                  </div>
+                  {/* Mannschaften laden */}
+                  <div style={{marginTop:8,paddingTop:8,borderTop:"1px solid #E5E7EB"}}>
+                    <button onClick={triggerTeamsLoad} disabled={teamsStatus==="running"}
+                      style={{background:"none",border:"1px solid #D1D5DB",borderRadius:6,
+                        padding:"5px 12px",fontSize:11,cursor:teamsStatus==="running"?"wait":"pointer",
+                        color:teamsStatus==="ok"?"#059669":teamsStatus==="error"?"#DC2626":"#6B7280",
+                        opacity:teamsStatus==="running"?0.7:1}}>
+                      {teamsStatus==="running"?"⏳ Lädt…":teamsStatus==="ok"?"✅ Geladen!":teamsStatus==="error"?"❌ Fehler":"🏓 Mannschaften laden"}
+                    </button>
+                    <span style={{marginLeft:8,fontSize:10,color:"#9CA3AF"}}>Einmal pro Saison klicken</span>
                   </div>
                 </div>
               </div>

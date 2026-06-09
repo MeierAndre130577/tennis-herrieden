@@ -664,76 +664,65 @@ async function scrapeClubTeams(page, vereinsnr) {
   console.log("\n=== Club-Teams scrapen (Prototyp) ===");
   const url = `https://btv-prod.burdadigitalsystems.de/btvmeetings/?clubnr=${vereinsnr}`;
   try {
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 10_000 });
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 15_000 });
   } catch (e) {
     console.log("Club-Seite nicht erreichbar – übersprungen:", e.message.slice(0, 80));
     return null;
   }
-  // ZK-Wait: auf Matches warten (max 8s)
-  try {
-    await page.waitForFunction(
-      () => document.querySelectorAll('[class*="gbmeet"]').length > 0,
-      { timeout: 8000 }
-    );
-  } catch(_) {}
-  await page.waitForTimeout(1500);
+  // ZK warten – erst auf Text-Inhalt, dann kurze Pause
+  await waitForZk(page, 3000);
 
   const raw = await page.evaluate(() => {
-    const bodyText = document.body.innerText.replace(/\s+/g, " ");
+    const bodyText = document.body.innerText.replace(/\s+/g, " ").trim();
 
-    // gbmeeting-Container → je ein Spiel
+    // Alle Elemente mit CSS-Klassen loggen (für Debugging)
+    const allClasses = [...new Set(
+      Array.from(document.querySelectorAll("*"))
+        .map(el => el.className)
+        .filter(c => typeof c === "string" && c.includes("gb"))
+    )].slice(0, 20);
+
+    // gbmeeting-Container
     const meetEls = Array.from(document.querySelectorAll('[class*="gbmeet"]'));
     const matchTexts = meetEls
-      .map(m => m.textContent.trim().replace(/\s+/g, " ").slice(0, 250))
+      .map(m => m.textContent.trim().replace(/\s+/g, " ").slice(0, 300))
       .filter(t => t.length > 10);
 
-    // Staffel-/Gruppenüberschriften (Klasse gbgroup o.ä.)
-    const groupEls = Array.from(document.querySelectorAll('[class*="gbgroup"],[class*="group-title"],[class*="caption"]'));
-    const groupTexts = groupEls
-      .map(g => ({ cls: g.className.slice(0, 60), text: g.textContent.trim().replace(/\s+/g, " ").slice(0, 100) }))
-      .filter(g => g.text.length > 3)
-      .slice(0, 15);
-
-    // Alle Links die auf btvgroup oder btvmatch zeigen
+    // Alle Links
     const links = Array.from(document.querySelectorAll("a[href]"))
       .map(a => a.href)
-      .filter(h => h.includes("btv") || h.includes("groupid") || h.includes("meetid"))
+      .filter(h => h.includes("btv") || h.includes("groupid") || h.includes("clubnr") || h.includes("meetid"))
       .slice(0, 20);
 
-    return { bodyText: bodyText.slice(0, 4000), matchTexts, groupTexts, links };
+    // Z-Tree oder Z-List Elemente (ZK Framework Navigation)
+    const treeItems = Array.from(document.querySelectorAll('[class*="z-tree"],[class*="z-list"],[class*="z-nav"]'))
+      .map(el => el.textContent.trim().replace(/\s+/g, " ").slice(0, 100))
+      .filter(t => t.length > 3)
+      .slice(0, 10);
+
+    return { bodyText: bodyText.slice(0, 5000), matchTexts, links, allClasses, treeItems };
   });
 
-  console.log(`Seite geladen. ${raw.matchTexts.length} Match-Elemente, ${raw.groupTexts.length} Gruppen-Elemente`);
+  console.log(`Body-Länge: ${raw.bodyText.length} Zeichen`);
+  console.log(`gbmeet-Elemente: ${raw.matchTexts.length}`);
+  console.log(`Body (erste 2000):\n${raw.bodyText.slice(0, 2000)}`);
+  if (raw.allClasses.length) console.log(`GB-Klassen auf Seite: ${raw.allClasses.join(", ")}`);
+  if (raw.links.length)     console.log(`BTV-Links: ${raw.links.join(" | ")}`);
+  if (raw.treeItems.length) console.log(`Tree/Nav-Elemente: ${raw.treeItems.join(" | ")}`);
   if (raw.matchTexts.length) {
-    console.log("Beispiel Match-Texte:");
-    raw.matchTexts.slice(0, 5).forEach((t, i) => console.log(`  [${i}] ${t}`));
-  }
-  if (raw.groupTexts.length) {
-    console.log("Gruppen-Elemente:");
-    raw.groupTexts.forEach(g => console.log(`  cls="${g.cls}" → "${g.text}"`));
-  }
-  if (raw.links.length) {
-    console.log("BTV-Links:", raw.links.slice(0, 5).join(" | "));
-  }
-  if (!raw.matchTexts.length) {
-    console.log("Body (erste 1000):", raw.bodyText.slice(0, 1000));
+    console.log("Match-Texte:");
+    raw.matchTexts.slice(0, 8).forEach((t, i) => console.log(`  [${i}] ${t}`));
   }
 
-  // ── Versuch: Mannschaften + Gegner aus Match-Texten extrahieren ──────────
-  // Heuristik: jedes Match-Element enthält "<Heim> vs <Gast>" oder ähnlich
-  // Wir suchen Paare: beide Teams, mind. 3 Zeichen, kein Score-Muster
-  const teams = {}; // { mannschaft: Set<gegner> }
-  for (const t of raw.matchTexts) {
-    // Versuche zwei Teamnamen zu extrahieren (durch Score getrennt: "0:0", "offen", etc.)
-    const parts = t.split(/\d:\d|\boffen\b|\bBlanko\b|\banzeigen\b/i)
-                   .map(s => s.trim())
-                   .filter(s => s.length > 3 && !/^\d/.test(s));
-    if (parts.length >= 2) {
-      const [heim, gast] = parts;
-      if (heim && gast && heim !== gast) {
-        if (!teams[heim]) teams[heim] = new Set();
-        teams[heim].add(gast);
-      }
+  // ── Versuch: Teams aus Body-Text extrahieren ─────────────────────────────
+  // BTV zeigt Matches als "Heim - Gast" oder "Heim vs Gast" im Text
+  const teams = {};
+  const teamPattern = /([A-ZÄÖÜ][^\n\d:]{3,30})\s*[-–]\s*([A-ZÄÖÜ][^\n\d:]{3,30})/g;
+  for (const m of raw.bodyText.matchAll(teamPattern)) {
+    const heim = m[1].trim(); const gast = m[2].trim();
+    if (heim && gast && heim !== gast && heim.length < 40 && gast.length < 40) {
+      if (!teams[heim]) teams[heim] = new Set();
+      teams[heim].add(gast);
     }
   }
 
@@ -771,8 +760,21 @@ async function scrapeClubTeams(page, vereinsnr) {
   if (!heim || !gast) { console.log("Nicht konfiguriert."); return; }
 
   // Manuell getriggert (workflow_dispatch) → Pre-Check überspringen
-  const isManual = process.env.GITHUB_EVENT_NAME === "workflow_dispatch";
-  if (isManual) console.log("▶ Manueller Trigger – Pre-Check wird übersprungen");
+  const isManual   = process.env.GITHUB_EVENT_NAME === "workflow_dispatch";
+  const teamsOnly  = process.env.TEAMS_ONLY === "true";
+  if (isManual)   console.log("▶ Manueller Trigger – Pre-Check wird übersprungen");
+  if (teamsOnly)  console.log("▶ teams_only – nur Mannschaften scrapen, kein Match-Fetch");
+
+  // teams_only: direkt Mannschaften scrapen und beenden
+  if (teamsOnly) {
+    const { browser, page } = await makeBrowser();
+    try {
+      await scrapeClubTeams(page, clubnr);
+    } finally {
+      await browser.close();
+    }
+    return;
+  }
 
   // Fetch deaktiviert? → Cron-Jobs sofort beenden (manueller Trigger läuft trotzdem)
   if (!isManual) {
