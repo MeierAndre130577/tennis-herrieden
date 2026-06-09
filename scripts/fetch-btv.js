@@ -204,7 +204,12 @@ async function tryWidget(page, groupId, heim, gast) {
       while (pos < textL.length) {
         const hp = textL.indexOf(h1, pos);
         if (hp < 0) break;
-        if (textL.slice(hp, hp + 200).includes(g1)) { matchStart = hp; break; }
+        const window80 = textL.slice(hp, hp + 80);
+        // Beide Teams müssen innerhalb 80 Zeichen sein UND kein "anzeigen" dazwischen
+        // (sonst sind es zwei verschiedene Matchzeilen)
+        if (window80.includes(g1) && !window80.includes("anzeigen")) {
+          matchStart = hp; break;
+        }
         pos = hp + 1;
       }
 
@@ -666,8 +671,14 @@ async function scrapeClubTeams(page, vereinsnr) {
     console.log("Club-Seite nicht erreichbar – übersprungen:", e.message.slice(0, 80));
     return null;
   }
-  // Kurz warten, aber kein langer ZK-Wait
-  await page.waitForTimeout(2000);
+  // ZK-Wait: auf Matches warten (max 8s)
+  try {
+    await page.waitForFunction(
+      () => document.querySelectorAll('[class*="gbmeet"]').length > 0,
+      { timeout: 8000 }
+    );
+  } catch(_) {}
+  await page.waitForTimeout(1500);
 
   const raw = await page.evaluate(() => {
     const bodyText = document.body.innerText.replace(/\s+/g, " ");
