@@ -215,19 +215,17 @@ async function tryWidget(page, groupId, heim, gast) {
 
       const lookBack = matchStart > 0 ? fullRowText.slice(0, matchStart) : fullRowText;
 
-      // Letztes Datum vor unserem Match (Format DD.MM.YY oder DD.MM.YYYY)
-      const allDateMs = [...lookBack.matchAll(/(\d{1,2})\.(\d{1,2})\.(\d{2,4})/g)];
-      const lastDate  = allDateMs.length > 0 ? allDateMs[allDateMs.length - 1] : null;
-      // Letzte Uhrzeit vor unserem Match (HH:MM)
-      const allTimeMs = [...lookBack.matchAll(/(\d{1,2}:\d{2})/g)];
-      const lastTime  = allTimeMs.length > 0 ? allTimeMs[allTimeMs.length - 1] : null;
+      // Datum+Zeit als BTV-Paar suchen: "DD.MM.YY, HH:MM" oder "DD.MM.YYYY, HH:MM"
+      // Nur echte Terminangaben matchen, keine Score-Fragmente wie "0:01"
+      const allPairs = [...lookBack.matchAll(/(\d{1,2})\.(\d{1,2})\.(\d{2,4}),\s*(\d{1,2}:\d{2})/g)];
+      const lastPair = allPairs.length > 0 ? allPairs[allPairs.length - 1] : null;
 
-      const time = lastTime ? lastTime[1] + " Uhr" : "–";
+      const time = lastPair ? lastPair[4] + " Uhr" : "–";
 
       const curYear = new Date().getFullYear();
       let matchDate = null;
-      if (lastDate) {
-        const [, d, mo, y] = lastDate;
+      if (lastPair) {
+        const [, d, mo, y] = lastPair;
         const year = y.length === 2 ? "20" + y : y;
         matchDate = `${year}-${mo.padStart(2,"0")}-${d.padStart(2,"0")}`;
       }
