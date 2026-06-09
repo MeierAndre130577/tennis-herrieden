@@ -765,6 +765,16 @@ async function scrapeClubTeams(page, vereinsnr) {
   const isManual = process.env.GITHUB_EVENT_NAME === "workflow_dispatch";
   if (isManual) console.log("▶ Manueller Trigger – Pre-Check wird übersprungen");
 
+  // Fetch deaktiviert? → Cron-Jobs sofort beenden (manueller Trigger läuft trotzdem)
+  if (!isManual) {
+    const { data: fetchFlag } = await sb.from("settings")
+      .select("value").eq("key","btv_fetch_enabled").single();
+    if (fetchFlag?.value === "false") {
+      console.log("⏸ Automatischer Fetch ist deaktiviert – Exit.");
+      return;
+    }
+  }
+
   // ── Billiger Pre-Check: Cache lesen bevor Playwright startet ────────────────
   const today = new Date().toISOString().slice(0, 10);
   try {

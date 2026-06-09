@@ -1498,6 +1498,7 @@ function SettingsDisplayTab({onToast}) {
   const [schedBild,      setSchedBild]      = useState({from:"",to:""});
   const [matchCache,     setMatchCache]     = useState(null); // btv_match_cache
   const [revertKey,      setRevertKey]      = useState(0);
+  const [fetchEnabled,   setFetchEnabled]   = useState(true); // btv_fetch_enabled
   const [uploading,      setUploading]      = useState(false);
   const [saving,         setSaving]         = useState(false);
   const [fetchStatus,    setFetchStatus]    = useState(null);
@@ -1509,7 +1510,7 @@ function SettingsDisplayTab({onToast}) {
                  "display_mannschaft","display_gegner","display_match_url",
                  "display_bild_url","github_pat",
                  "display_sched_schedule","display_sched_heimspiel","display_sched_bild",
-                 "btv_match_cache"])
+                 "btv_match_cache","btv_fetch_enabled"])
       .then(({data})=>{
         if(!data) return;
         const map=Object.fromEntries(data.map(r=>[r.key,r.value]));
@@ -1526,6 +1527,7 @@ function SettingsDisplayTab({onToast}) {
         try { if(map.display_sched_heimspiel) setSchedHeim(JSON.parse(map.display_sched_heimspiel)); } catch(_){}
         try { if(map.display_sched_bild)      setSchedBild(JSON.parse(map.display_sched_bild)); } catch(_){}
         try { if(map.btv_match_cache)         setMatchCache(JSON.parse(map.btv_match_cache)); } catch(_){}
+        if(map.btv_fetch_enabled !== undefined) setFetchEnabled(map.btv_fetch_enabled !== "false");
       });
   },[]);
 
@@ -1617,6 +1619,13 @@ function SettingsDisplayTab({onToast}) {
       onToast(`Netzwerkfehler: ${e.message}`,"error");
       setTimeout(()=>setFetchStatus(null), 6000);
     }
+  };
+
+  const toggleFetchEnabled = async () => {
+    const next = !fetchEnabled;
+    setFetchEnabled(next);
+    await sb.from("settings").upsert({key:"btv_fetch_enabled", value: String(next)},{onConflict:"key"});
+    onToast(next ? "✅ Automatischer Fetch aktiviert" : "⏸ Automatischer Fetch deaktiviert");
   };
 
   const revertToBtv = async () => {
@@ -1741,6 +1750,25 @@ function SettingsDisplayTab({onToast}) {
         {/* ── HEIMSPIELMODUS ── */}
         {activeTab==="heimspiel"&&(
           <div>
+            {/* ── Master-Schalter: Auto-Fetch ── */}
+            <div onClick={toggleFetchEnabled}
+              style={{display:"flex",alignItems:"center",justifyContent:"space-between",
+                cursor:"pointer",marginBottom:16,padding:"10px 14px",borderRadius:8,
+                background:fetchEnabled?"#F0FDF4":"#FEF2F2",
+                border:`1px solid ${fetchEnabled?"#BBF7D0":"#FECACA"}`}}>
+              <div>
+                <div style={{fontSize:12,fontWeight:700,color:fetchEnabled?"#166534":"#991B1B"}}>
+                  {fetchEnabled?"🟢 Automatischer BTV-Fetch aktiv":"🔴 Automatischer BTV-Fetch deaktiviert"}
+                </div>
+                <div style={{fontSize:10,color:fetchEnabled?"#15803D":"#B91C1C",marginTop:2}}>
+                  {fetchEnabled
+                    ? "GitHub Actions holt alle 10 Min. Daten vom BTV-Widget"
+                    : "Kein automatischer Fetch – nur manuell über den Button unten"}
+                </div>
+              </div>
+              <ToggleSwitch on={fetchEnabled} onToggle={toggleFetchEnabled}/>
+            </div>
+
             <ModeRow modeId="heimspiel"/>
 
             {/* GitHub PAT */}
