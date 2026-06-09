@@ -1616,6 +1616,23 @@ function SettingsDisplayTab({onToast}) {
     }
   };
 
+  const revertToBtv = async () => {
+    if (!matchCache?._btv) return;
+    const btv = matchCache._btv;
+    const newCache = {
+      ...matchCache,
+      matchDate: btv.matchDate ?? matchCache.matchDate,
+      time:      btv.time      ?? matchCache.time,
+      league:    btv.league    ?? matchCache.league,
+      homeLogo:  btv.homeLogo  ?? matchCache.homeLogo,
+      awayLogo:  btv.awayLogo  ?? matchCache.awayLogo,
+      _source: "auto",
+    };
+    await sb.from("settings").upsert({key:"btv_match_cache", value: JSON.stringify(newCache)});
+    setMatchCache(newCache);
+    onToast("✅ BTV-Stand wiederhergestellt");
+  };
+
   const themes=[
     {id:"dark",     label:"Dunkel",        desc:"Navy-Blau Hintergrund (Standard)",       bg:"#0F172A",fg:"#F8FAFC"},
     {id:"light",    label:"Hell",          desc:"Weißer Hintergrund, dunkle Schrift",      bg:"#F8FAFC",fg:"#0F172A"},
@@ -1850,6 +1867,14 @@ function SettingsDisplayTab({onToast}) {
                       </Fragment>
                     ))}
                   </div>
+                  {hasBtv && c._source !== "auto" && (
+                    <button onClick={revertToBtv}
+                      style={{marginTop:10,width:"100%",background:"none",border:"1px solid #BFDBFE",
+                        borderRadius:6,padding:"5px 0",fontSize:11,cursor:"pointer",
+                        color:"#1D4ED8",fontWeight:600}}>
+                      ↩ Auf letzten BTV-Stand zurücksetzen
+                    </button>
+                  )}
                 </div>
               );
             })()}

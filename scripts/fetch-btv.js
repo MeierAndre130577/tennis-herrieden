@@ -180,21 +180,36 @@ async function tryWidget(page, groupId, heim, gast) {
         status = h + a >= 9 ? "done" : "live";
       }
 
-      // ── Datum + Uhrzeit: in Parent-/Geschwisterelementen suchen ────────────
-      // Der gbmeet-Container enthält nur Teams+Score, Datum/Zeit stehen im
-      // umgebenden Zeilen-Element (z.B. gbrow, tr, oder Parent-div).
+      // ── Datum + Uhrzeit: Geschwister-Elemente durchsuchen ──────────────────
+      // gbmeet enthält nur Teams+Score. Datum/Zeit stehen in benachbarten Zellen
+      // derselben Zeile. Strategie: Geschwister von m und seinen Eltern prüfen,
+      // aber NUR kurze Texte (<80 Zeichen) – so werden Tabellen-Container ignoriert.
       const rowText = (() => {
         let el = m;
-        for (let i = 0; i < 5; i++) {
+        const parts = [];
+        for (let i = 0; i < 6; i++) {
           if (!el.parentElement) break;
           el = el.parentElement;
-          const t = el.textContent.trim().replace(/\s+/g, " ");
-          if (/\d{1,2}:\d{2}\s*Uhr/i.test(t) || /\d{1,2}\.\d{1,2}\.\d{4}/.test(t)) {
-            return t;
+          // Geschwister-Texte sammeln (kurze Elemente = Datums-/Zeit-Zellen)
+          for (const sib of el.children) {
+            if (sib === (i === 0 ? m : null)) continue; // aktuelles el ausschließen
+            const t = sib.textContent.trim().replace(/\s+/g, " ");
+            if (t.length > 0 && t.length < 80) parts.push(t);
+          }
+          const combined = parts.join(" ");
+          if (/\d{1,2}:\d{2}\s*Uhr/i.test(combined) || /\d{1,2}\.\d{1,2}\.20\d{2}/.test(combined)) {
+            return combined;
           }
         }
-        return mText; // Fallback auf gbmeet-Text
+        return parts.join(" ") || mText;
       })();
+
+      // Alle kurzen Seiten-Elemente mit Datumsmuster (für Debugging)
+      const allDateTexts = Array.from(document.querySelectorAll("*"))
+        .filter(el => el.children.length <= 2)
+        .map(el => el.textContent.trim().replace(/\s+/g," "))
+        .filter(t => t.length < 60 && /\d{1,2}\.\d{1,2}\.20\d{2}/.test(t))
+        .slice(0, 8);
 
       const timeM = rowText.match(/(\d{1,2}:\d{2})\s*Uhr/i)
                  || mText.match(/(\d{1,2}:\d{2})\s*Uhr/i);
@@ -202,8 +217,8 @@ async function tryWidget(page, groupId, heim, gast) {
 
       const curYear = new Date().getFullYear();
       let matchDate = null;
-      const dateWithYear = rowText.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/)
-                        || mText.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+      const dateWithYear = rowText.match(/(\d{1,2})\.(\d{1,2})\.(20\d{2})/)
+                        || mText.match(/(\d{1,2})\.(\d{1,2})\.(20\d{2})/);
       const dateNoYear   = rowText.match(/(\d{1,2})\.(\d{1,2})\./)
                         || mText.match(/(\d{1,2})\.(\d{1,2})\./);
       if (dateWithYear) {
@@ -247,7 +262,7 @@ async function tryWidget(page, groupId, heim, gast) {
       // ── Debug: Text ──────────────────────────────────────────────────────
       const debugText = mText.trim().replace(/\s+/g," ").slice(0, 300);
 
-      return { found: true, status, time, matchDate, league, homeLogo, awayLogo, homeScore, awayScore, anzeigenId, allTexts, debugText, debugRowText, logoDebug };
+      return { found: true, status, time, matchDate, league, homeLogo, awayLogo, homeScore, awayScore, anzeigenId, allTexts, debugText, debugRowText, allDateTexts, logoDebug };
     }
     return { found: false, allTexts };
   }, { heim, gast });
@@ -264,6 +279,7 @@ async function tryWidget(page, groupId, heim, gast) {
   console.log(`Logo-Debug: ${header.logoDebug}`);
   console.log(`gbmeeting-Text: ${header.debugText}`);
   console.log(`Zeilen-Text (für Datum/Zeit): ${header.debugRowText || "(kein rowText)"}`);
+  console.log(`Datumsfelder auf Seite: ${(header.allDateTexts||[]).join(" | ") || "(keine)"}`);
 
   // ── Zeitfenster prüfen (anhand BTV-Datum + Uhrzeit) ──────────────────────
   if (header.matchDate && header.time && header.time !== "–") {
