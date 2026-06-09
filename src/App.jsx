@@ -1784,41 +1784,42 @@ function SettingsDisplayTab({onToast}) {
             {/* Cache-Status */}
             {matchCache&&(()=>{
               const c = matchCache;
+              const isAuto = c._source === "auto";
               const savedAt = c._savedAt ? new Date(c._savedAt).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}) : null;
               const dateStr = c.matchDate ? new Date(c.matchDate+"T12:00:00").toLocaleDateString("de-DE",{weekday:"short",day:"numeric",month:"numeric",year:"numeric"}) : null;
               const players = (c.rubbers||[]).filter(r=>(r.home||r.away)).length;
               const total   = (c.rubbers||[]).length;
+              // Quelle pro Feldtyp: bei "auto" alles BTV; bei "manual" alles manuell
+              const src = isAuto
+                ? {bg:"#DBEAFE", color:"#1D4ED8", label:"🤖 BTV"}
+                : {bg:"#FEF3C7", color:"#92400E", label:"✏️ Manuell"};
               const rows = [
-                {label:"Spieltag", value:dateStr, fix:true},
-                {label:"Uhrzeit",  value:c.time,  fix:true},
-                {label:"Liga",     value:c.league||null, fix:true},
-                {label:"Heim-Logo",value:c.homeLogo?"✓ vorhanden":"– nicht gefunden", ok:!!c.homeLogo, fix:true},
-                {label:"Gast-Logo",value:c.awayLogo?"✓ vorhanden":"– nicht gefunden", ok:!!c.awayLogo, fix:true},
-                {label:"Spieler",  value:total>0?`${players} / ${total} eingetragen`:null, fix:false},
-                {label:"Stand",    value:total>0?`${c.homeScore}:${c.awayScore}`:null, fix:false},
+                {label:"Spieltag",  value:dateStr},
+                {label:"Uhrzeit",   value:c.time},
+                {label:"Liga",      value:c.league||null},
+                {label:"Heim-Logo", value:c.homeLogo?"✓ vorhanden":"– nicht gefunden", ok:!!c.homeLogo},
+                {label:"Gast-Logo", value:c.awayLogo?"✓ vorhanden":"– nicht gefunden", ok:!!c.awayLogo},
+                {label:"Spieler",   value:total>0?`${players} / ${total} eingetragen`:null},
+                {label:"Stand",     value:total>0?`${c.homeScore}:${c.awayScore}`:null},
               ];
               return (
                 <div style={{marginTop:12,padding:"12px 14px",background:"#F8FAFC",
-                  border:"1px solid #E2E8F0",borderRadius:8,fontSize:12}}>
+                  border:`1px solid ${isAuto?"#BFDBFE":"#FDE68A"}`,borderRadius:8,fontSize:12}}>
                   <div style={{fontWeight:700,color:"#374151",marginBottom:8,
                     display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                    <span>📋 Zuletzt abgerufen</span>
-                    <span style={{fontSize:10,color:"#9CA3AF",fontWeight:400}}>
-                      {c._source==="auto"?"🤖 Auto":"✏️ Manuell"}{savedAt?" · "+savedAt:""}
+                    <span>📋 Cache-Stand</span>
+                    <span style={{fontSize:11,padding:"2px 8px",borderRadius:10,fontWeight:700,
+                      background:src.bg,color:src.color}}>
+                      {src.label}{savedAt?" · "+savedAt:""}
                     </span>
                   </div>
-                  <div style={{display:"grid",gridTemplateColumns:"auto 1fr auto",gap:"4px 12px",alignItems:"center"}}>
+                  <div style={{display:"grid",gridTemplateColumns:"auto 1fr",gap:"4px 12px",alignItems:"center"}}>
                     {rows.map(r=>(
                       <Fragment key={r.label}>
                         <span style={{fontSize:10,color:"#9CA3AF",fontWeight:700,whiteSpace:"nowrap"}}>{r.label}</span>
-                        <span style={{color: r.value? (r.ok===false?"#EF4444":"#111827") : "#D1D5DB",
+                        <span style={{color: r.value ? (r.ok===false?"#EF4444":"#111827") : "#D1D5DB",
                           fontStyle:r.value?"normal":"italic"}}>
                           {r.value||"–"}
-                        </span>
-                        <span style={{fontSize:10,padding:"1px 6px",borderRadius:8,fontWeight:700,
-                          background:r.fix?"#DBEAFE":"#FEF3C7",
-                          color:r.fix?"#1D4ED8":"#92400E"}}>
-                          {r.fix?"fix":"variabel"}
                         </span>
                       </Fragment>
                     ))}
