@@ -1083,6 +1083,8 @@ function HeimspieleManualEntry({onToast}) {
   const [homeTeam,   setHomeTeam]   = useState("");
   const [awayTeam,   setAwayTeam]   = useState("");
   const [league,     setLeague]     = useState("");
+  const [matchDate,  setMatchDate]  = useState(""); // YYYY-MM-DD
+  const [matchTime,  setMatchTime]  = useState(""); // HH:MM
   const [status,     setStatus]     = useState("upcoming");
   const [homeScore,  setHomeScore]  = useState(0);
   const [awayScore,  setAwayScore]  = useState(0);
@@ -1092,6 +1094,8 @@ function HeimspieleManualEntry({onToast}) {
     setHomeTeam(m.homeTeam  || "");
     setAwayTeam(m.awayTeam  || "");
     setLeague(  m.league    || "");
+    setMatchDate(m.matchDate || "");
+    setMatchTime((m.time || "").replace(/\s*Uhr$/i, "").trim());
     setStatus(  m.status    || "upcoming");
     setHomeScore(m.homeScore ?? 0);
     setAwayScore(m.awayScore ?? 0);
@@ -1127,6 +1131,7 @@ function HeimspieleManualEntry({onToast}) {
         onToast("Cache geladen ✓");
       } else {
         setHomeTeam(""); setAwayTeam(""); setLeague("");
+        setMatchDate(""); setMatchTime("");
         setStatus("upcoming"); setHomeScore(0); setAwayScore(0);
         setFormat("6er"); setRubbers(DEFAULT_RUBBERS("6er"));
         setSavedAt(null); setSource(null); setDirty(false);
@@ -1167,6 +1172,8 @@ function HeimspieleManualEntry({onToast}) {
     const autoStatus   = nonOpenCount === 0 ? "upcoming" : openCount === 0 ? "done" : "live";
     const payload = {
       homeTeam, awayTeam, league, status: autoStatus,
+      matchDate: matchDate || null,
+      time: matchTime ? matchTime + " Uhr" : null,
       homeScore: Number(homeScore),
       awayScore: Number(awayScore),
       rubbers,
@@ -1291,14 +1298,25 @@ function HeimspieleManualEntry({onToast}) {
                   style={{...S.input,width:"100%",fontSize:13,fontWeight:700}}/>
               </div>
             </div>
-            <div style={{textAlign:"right",marginBottom:14}}>
-              <button onClick={requestReload}
-                style={{background:"none",border:"1px solid #E5E7EB",borderRadius:6,
-                  padding:"4px 10px",fontSize:11,cursor:"pointer",color:"#6B7280"}}>
-                ↻ Cache neu laden
-              </button>
+            <div style={{display:"flex",gap:8,alignItems:"flex-end",marginBottom:14}}>
+              <div style={{flex:"0 0 auto"}}>
+                <div style={{fontSize:10,fontWeight:700,color:"#6B7280",marginBottom:3}}>SPIELTAG</div>
+                <input type="date" value={matchDate} onChange={e=>mark(setMatchDate)(e.target.value)}
+                  style={{...S.input,fontSize:13,color:"#374151"}}/>
+              </div>
+              <div style={{flex:"0 0 auto"}}>
+                <div style={{fontSize:10,fontWeight:700,color:"#6B7280",marginBottom:3}}>UHRZEIT</div>
+                <input type="time" value={matchTime} onChange={e=>mark(setMatchTime)(e.target.value)}
+                  style={{...S.input,fontSize:13,color:"#374151"}}/>
+              </div>
+              <div style={{flex:1,textAlign:"right",paddingBottom:1}}>
+                <button onClick={requestReload}
+                  style={{background:"none",border:"1px solid #E5E7EB",borderRadius:6,
+                    padding:"4px 10px",fontSize:11,cursor:"pointer",color:"#6B7280"}}>
+                  ↻ Cache neu laden
+                </button>
+              </div>
             </div>
-
 
             {/* Gesamtstand */}
             <div style={{marginBottom:14}}>
