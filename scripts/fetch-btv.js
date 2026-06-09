@@ -661,12 +661,13 @@ async function scrapeClubTeams(page, vereinsnr) {
   console.log("\n=== Club-Teams scrapen (Prototyp) ===");
   const url = `https://btv-prod.burdadigitalsystems.de/btvmeetings/?clubnr=${vereinsnr}`;
   try {
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 20_000 });
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 10_000 });
   } catch (e) {
-    console.log("Club-Seite nicht erreichbar:", e.message);
+    console.log("Club-Seite nicht erreichbar – übersprungen:", e.message.slice(0, 80));
     return null;
   }
-  await waitForZk(page, 3000);
+  // Kurz warten, aber kein langer ZK-Wait
+  await page.waitForTimeout(2000);
 
   const raw = await page.evaluate(() => {
     const bodyText = document.body.innerText.replace(/\s+/g, " ");
