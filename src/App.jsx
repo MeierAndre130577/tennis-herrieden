@@ -1067,7 +1067,7 @@ function fmtTs(iso) {
     + " " + d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}) + " Uhr";
 }
 
-function HeimspieleManualEntry({onToast}) {
+function HeimspieleManualEntry({onToast, onSaved}) {
   const [loading,        setLoading]        = useState(true);
   const [saving,         setSaving]         = useState(false);
   const [open,           setOpen]           = useState(false);
@@ -1200,6 +1200,7 @@ function HeimspieleManualEntry({onToast}) {
     if(error){ onToast(`Fehler: ${error.message}`,"error"); return; }
     setSavedAt(now); setSource("manual"); setDirty(false);
     onToast("📲 Spielstand auf Display übertragen ✓");
+    onSaved?.(payload);
   };
 
   const singles = rubbers.filter(r=>r.id.startsWith("E"));
@@ -1882,7 +1883,7 @@ function SettingsDisplayTab({onToast}) {
             <ZeitSchaltung sched={schedHeim} setSched={setSchedHeim}/>
 
             <div style={{marginTop:20}}>
-              <HeimspieleManualEntry onToast={onToast}/>
+              <HeimspieleManualEntry onToast={onToast} onSaved={setMatchCache}/>
             </div>
           </div>
         )}
