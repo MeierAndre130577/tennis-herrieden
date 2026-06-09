@@ -180,21 +180,31 @@ async function tryWidget(page, groupId, heim, gast) {
         status = h + a >= 9 ? "done" : "live";
       }
 
-      // ── Datum + Uhrzeit: NACH den Teamnamen suchen ──────────────────────
-      // Textposition hinter den letzten Teamnamen → dort stehen Spieltermin-Infos
-      const heimIdx = mText.toLowerCase().indexOf(heim.toLowerCase().split(" ")[0]);
-      const gastIdx = mText.toLowerCase().indexOf(gast.toLowerCase().split(" ")[0]);
-      const afterTeams = mText.slice(Math.max(0, Math.max(heimIdx, gastIdx)));
+      // ── Datum + Uhrzeit: in Parent-/Geschwisterelementen suchen ────────────
+      // Der gbmeet-Container enthält nur Teams+Score, Datum/Zeit stehen im
+      // umgebenden Zeilen-Element (z.B. gbrow, tr, oder Parent-div).
+      const rowText = (() => {
+        let el = m;
+        for (let i = 0; i < 5; i++) {
+          if (!el.parentElement) break;
+          el = el.parentElement;
+          const t = el.textContent.trim().replace(/\s+/g, " ");
+          if (/\d{1,2}:\d{2}\s*Uhr/i.test(t) || /\d{1,2}\.\d{1,2}\.\d{4}/.test(t)) {
+            return t;
+          }
+        }
+        return mText; // Fallback auf gbmeet-Text
+      })();
 
-      const timeM = afterTeams.match(/(\d{1,2}:\d{2})\s*Uhr/i)
+      const timeM = rowText.match(/(\d{1,2}:\d{2})\s*Uhr/i)
                  || mText.match(/(\d{1,2}:\d{2})\s*Uhr/i);
       const time = timeM ? timeM[1] + " Uhr" : "–";
 
       const curYear = new Date().getFullYear();
       let matchDate = null;
-      const dateWithYear = afterTeams.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/)
+      const dateWithYear = rowText.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/)
                         || mText.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
-      const dateNoYear   = afterTeams.match(/(\d{1,2})\.(\d{1,2})\./)
+      const dateNoYear   = rowText.match(/(\d{1,2})\.(\d{1,2})\./)
                         || mText.match(/(\d{1,2})\.(\d{1,2})\./);
       if (dateWithYear) {
         const [, d, mo, y] = dateWithYear;
@@ -203,6 +213,7 @@ async function tryWidget(page, groupId, heim, gast) {
         const [, d, mo] = dateNoYear;
         matchDate = `${curYear}-${mo.padStart(2,"0")}-${d.padStart(2,"0")}`;
       }
+      const debugRowText = rowText.slice(0, 200);
 
       // ── Gesamtergebnis ───────────────────────────────────────────────────
       const singleScores = Array.from(m.querySelectorAll(".z-label, span"))
@@ -236,7 +247,7 @@ async function tryWidget(page, groupId, heim, gast) {
       // ── Debug: Text ──────────────────────────────────────────────────────
       const debugText = mText.trim().replace(/\s+/g," ").slice(0, 300);
 
-      return { found: true, status, time, matchDate, league, homeLogo, awayLogo, homeScore, awayScore, anzeigenId, allTexts, debugText, logoDebug };
+      return { found: true, status, time, matchDate, league, homeLogo, awayLogo, homeScore, awayScore, anzeigenId, allTexts, debugText, debugRowText, logoDebug };
     }
     return { found: false, allTexts };
   }, { heim, gast });
@@ -252,6 +263,7 @@ async function tryWidget(page, groupId, heim, gast) {
   console.log(`Logos: ${header.homeLogo || "(keins)"} | ${header.awayLogo || "(keins)"}`);
   console.log(`Logo-Debug: ${header.logoDebug}`);
   console.log(`gbmeeting-Text: ${header.debugText}`);
+  console.log(`Zeilen-Text (für Datum/Zeit): ${header.debugRowText || "(kein rowText)"}`);
 
   // ── Zeitfenster prüfen (anhand BTV-Datum + Uhrzeit) ──────────────────────
   if (header.matchDate && header.time && header.time !== "–") {
