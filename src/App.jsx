@@ -1490,6 +1490,7 @@ function SettingsDisplayTab({onToast}) {
   const [schedSchedule,  setSchedSchedule]  = useState({from:"",to:""});
   const [schedHeim,      setSchedHeim]      = useState({from:"",to:""});
   const [schedBild,      setSchedBild]      = useState({from:"",to:""});
+  const [matchCache,     setMatchCache]     = useState(null); // btv_match_cache
   const [uploading,      setUploading]      = useState(false);
   const [saving,         setSaving]         = useState(false);
   const [fetchStatus,    setFetchStatus]    = useState(null);
@@ -1500,7 +1501,8 @@ function SettingsDisplayTab({onToast}) {
       .in("key",["display_mode","display_theme","display_vereinsnummer","display_saison",
                  "display_mannschaft","display_gegner","display_match_url",
                  "display_bild_url","github_pat",
-                 "display_sched_schedule","display_sched_heimspiel","display_sched_bild"])
+                 "display_sched_schedule","display_sched_heimspiel","display_sched_bild",
+                 "btv_match_cache"])
       .then(({data})=>{
         if(!data) return;
         const map=Object.fromEntries(data.map(r=>[r.key,r.value]));
@@ -1516,6 +1518,7 @@ function SettingsDisplayTab({onToast}) {
         try { if(map.display_sched_schedule)  setSchedSchedule(JSON.parse(map.display_sched_schedule)); } catch(_){}
         try { if(map.display_sched_heimspiel) setSchedHeim(JSON.parse(map.display_sched_heimspiel)); } catch(_){}
         try { if(map.display_sched_bild)      setSchedBild(JSON.parse(map.display_sched_bild)); } catch(_){}
+        try { if(map.btv_match_cache)         setMatchCache(JSON.parse(map.btv_match_cache)); } catch(_){}
       });
   },[]);
 
@@ -1590,7 +1593,12 @@ function SettingsDisplayTab({onToast}) {
       if(res.status === 204) {
         setFetchStatus("ok");
         onToast("✅ Fetch gestartet – läuft in ~30 Sek.");
-        setTimeout(()=>setFetchStatus(null), 5000);
+        // Cache nach ~35 Sek. neu laden
+        setTimeout(async ()=>{
+          const {data} = await sb.from("settings").select("value").eq("key","btv_match_cache").single();
+          if(data?.value) try { setMatchCache(JSON.parse(data.value)); } catch(_){}
+          setFetchStatus(null);
+        }, 35000);
       } else {
         const txt = await res.text();
         setFetchStatus("error");
@@ -1772,6 +1780,52 @@ function SettingsDisplayTab({onToast}) {
                 </div>
               </div>
             )}
+
+            {/* Cache-Status */}
+            {matchCache&&(()=>{
+              const c = matchCache;
+              const savedAt = c._savedAt ? new Date(c._savedAt).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}) : null;
+              const dateStr = c.matchDate ? new Date(c.matchDate+"T12:00:00").toLocaleDateString("de-DE",{weekday:"short",day:"numeric",month:"numeric",year:"numeric"}) : null;
+              const players = (c.rubbers||[]).filter(r=>(r.home||r.away)).length;
+              const total   = (c.rubbers||[]).length;
+              const rows = [
+                {label:"Spieltag", value:dateStr, fix:true},
+                {label:"Uhrzeit",  value:c.time,  fix:true},
+                {label:"Liga",     value:c.league||null, fix:true},
+                {label:"Heim-Logo",value:c.homeLogo?"✓ vorhanden":"– nicht gefunden", ok:!!c.homeLogo, fix:true},
+                {label:"Gast-Logo",value:c.awayLogo?"✓ vorhanden":"– nicht gefunden", ok:!!c.awayLogo, fix:true},
+                {label:"Spieler",  value:total>0?`${players} / ${total} eingetragen`:null, fix:false},
+                {label:"Stand",    value:total>0?`${c.homeScore}:${c.awayScore}`:null, fix:false},
+              ];
+              return (
+                <div style={{marginTop:12,padding:"12px 14px",background:"#F8FAFC",
+                  border:"1px solid #E2E8F0",borderRadius:8,fontSize:12}}>
+                  <div style={{fontWeight:700,color:"#374151",marginBottom:8,
+                    display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <span>📋 Zuletzt abgerufen</span>
+                    <span style={{fontSize:10,color:"#9CA3AF",fontWeight:400}}>
+                      {c._source==="auto"?"🤖 Auto":"✏️ Manuell"}{savedAt?" · "+savedAt:""}
+                    </span>
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"auto 1fr auto",gap:"4px 12px",alignItems:"center"}}>
+                    {rows.map(r=>(
+                      <React.Fragment key={r.label}>
+                        <span style={{fontSize:10,color:"#9CA3AF",fontWeight:700,whiteSpace:"nowrap"}}>{r.label}</span>
+                        <span style={{color: r.value? (r.ok===false?"#EF4444":"#111827") : "#D1D5DB",
+                          fontStyle:r.value?"normal":"italic"}}>
+                          {r.value||"–"}
+                        </span>
+                        <span style={{fontSize:10,padding:"1px 6px",borderRadius:8,fontWeight:700,
+                          background:r.fix?"#DBEAFE":"#FEF3C7",
+                          color:r.fix?"#1D4ED8":"#92400E"}}>
+                          {r.fix?"fix":"variabel"}
+                        </span>
+                      </React.Fragment>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
 
             <ZeitSchaltung sched={schedHeim} setSched={setSchedHeim}/>
 

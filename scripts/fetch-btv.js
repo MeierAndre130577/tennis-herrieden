@@ -213,16 +213,24 @@ async function tryWidget(page, groupId, heim, gast) {
       }
 
       // ── Logos: erste zwei img-Tags im gbmeeting-Container ───────────────
-      const logoImgs = Array.from(m.querySelectorAll("img"))
-        .map(img => img.src || img.getAttribute("src"))
+      const allImgs = Array.from(m.querySelectorAll("img")).map(img => ({
+        src: img.src || "",
+        attr: img.getAttribute("src") || "",
+        cls: img.className || "",
+      }));
+      const logoImgs = allImgs
+        .map(i => i.src || i.attr)
         .filter(s => s && s.startsWith("http"));
       const homeLogo = logoImgs[0] || null;
       const awayLogo = logoImgs[1] || null;
+      const logoDebug = allImgs.length > 0
+        ? allImgs.map(i=>`src="${i.src.slice(0,60)}" attr="${i.attr.slice(0,40)}" cls="${i.cls}"`).join(" | ")
+        : "(keine img-Tags im Container)";
 
       // ── Debug: Text ──────────────────────────────────────────────────────
       const debugText = mText.trim().replace(/\s+/g," ").slice(0, 300);
 
-      return { found: true, status, time, matchDate, league, homeLogo, awayLogo, homeScore, awayScore, anzeigenId, allTexts, debugText };
+      return { found: true, status, time, matchDate, league, homeLogo, awayLogo, homeScore, awayScore, anzeigenId, allTexts, debugText, logoDebug };
     }
     return { found: false, allTexts };
   }, { heim, gast });
@@ -236,6 +244,7 @@ async function tryWidget(page, groupId, heim, gast) {
   console.log(`Match gefunden! Status: ${header.status}  Score: ${header.homeScore}:${header.awayScore}  Datum: ${header.matchDate}  Zeit: ${header.time}`);
   console.log(`Liga: "${header.league}"  anzeigenId: ${header.anzeigenId}`);
   console.log(`Logos: ${header.homeLogo || "(keins)"} | ${header.awayLogo || "(keins)"}`);
+  console.log(`Logo-Debug: ${header.logoDebug}`);
   console.log(`gbmeeting-Text: ${header.debugText}`);
 
   // ── Zeitfenster prüfen (anhand BTV-Datum + Uhrzeit) ──────────────────────
