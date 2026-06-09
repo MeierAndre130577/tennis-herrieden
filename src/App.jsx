@@ -1532,6 +1532,7 @@ function SettingsDisplayTab({onToast}) {
   },[]);
 
   const checkOverlap = () => {
+    const fmt = s => new Date(s).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
     const list = [
       {label:"Tagesbelegungsplan", ...schedSchedule},
       {label:"Heimspielmodus",     ...schedHeim},
@@ -1539,8 +1540,11 @@ function SettingsDisplayTab({onToast}) {
     ].filter(s => s.from && s.to);
     for(let i=0;i<list.length;i++) for(let j=i+1;j<list.length;j++) {
       const a=list[i], b=list[j];
-      if(new Date(a.from)<new Date(b.to) && new Date(b.from)<new Date(a.to))
-        return `Zeitüberschneidung: „${a.label}" und „${b.label}" überlappen sich`;
+      if(new Date(a.from)<new Date(b.to) && new Date(b.from)<new Date(a.to)) {
+        const overlapStart = new Date(a.from) > new Date(b.from) ? a.from : b.from;
+        const overlapEnd   = new Date(a.to)   < new Date(b.to)   ? a.to   : b.to;
+        return `Zeitüberschneidung: „${a.label}" (${fmt(a.from)}–${fmt(a.to)}) und „${b.label}" (${fmt(b.from)}–${fmt(b.to)}) überlappen sich von ${fmt(overlapStart)} bis ${fmt(overlapEnd)}`;
+      }
     }
     return null;
   };
