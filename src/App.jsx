@@ -1769,6 +1769,35 @@ function SettingsDisplayTab({onToast}) {
               <ToggleSwitch on={fetchEnabled} onToggle={toggleFetchEnabled}/>
             </div>
 
+            {/* ── Fetch-Fenster Anzeige ── */}
+            {(()=>{
+              const md = matchCache?.matchDate;
+              const mt = (matchCache?.time||"").replace(/\s*Uhr/i,"").trim();
+              let fenster;
+              if (!md && !mt) {
+                fenster = { text:"kein Fetch geplant", color:"#6B7280", bg:"#F3F4F6" };
+              } else if (md && mt) {
+                const [h,m] = mt.split(":").map(Number);
+                const start = new Date(`${md}T${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:00`);
+                const end   = new Date(start.getTime() + 11*60*60*1000);
+                const fmt = d => d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
+                const fmtD = d => d.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit",year:"numeric"});
+                const endStr = end.getDate()!==start.getDate() ? `${fmt(end)} Uhr (${fmtD(end)})` : `${fmt(end)} Uhr`;
+                fenster = { text:`${fmtD(start)} · ${fmt(start)} – ${endStr}`, color:"#1D4ED8", bg:"#EFF6FF" };
+              } else if (md && !mt) {
+                fenster = { text:`${new Date(md+"T12:00:00").toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit",year:"numeric"})} · kein Fetch (keine Uhrzeit)`, color:"#92400E", bg:"#FFFBEB" };
+              } else {
+                fenster = { text:"kein Datum bekannt", color:"#6B7280", bg:"#F3F4F6" };
+              }
+              return (
+                <div style={{marginBottom:14,padding:"7px 12px",borderRadius:6,
+                  background:fenster.bg,display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{fontSize:10,fontWeight:700,color:"#9CA3AF",whiteSpace:"nowrap"}}>FETCH-FENSTER</span>
+                  <span style={{fontSize:11,fontWeight:600,color:fenster.color}}>{fenster.text}</span>
+                </div>
+              );
+            })()}
+
             <ModeRow modeId="heimspiel"/>
 
             {/* GitHub PAT */}

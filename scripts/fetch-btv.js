@@ -788,6 +788,11 @@ async function scrapeClubTeams(page, vereinsnr) {
       const cGegner  = (cached?.awayTeam || "").toLowerCase();
 
       if (cGegner === gast.toLowerCase()) {
+        // Kein Datum UND keine Uhrzeit → kein Fetch möglich
+        if (!isManual && !cDate && !cTime) {
+          console.log("⏸ Kein Spieltermin bekannt (kein Datum, keine Uhrzeit) – kein Fetch.");
+          return;
+        }
         // Gleicher Gegner – Datum prüfen
         if (!isManual && cDate && cDate > today) {
           console.log(`⏸ Spiel gegen ${gast} am ${cDate} liegt in der Zukunft – kein Fetch.`);
