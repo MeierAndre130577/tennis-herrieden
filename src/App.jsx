@@ -1067,7 +1067,7 @@ function fmtTs(iso) {
     + " " + d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}) + " Uhr";
 }
 
-function HeimspieleManualEntry({onToast, onSaved}) {
+function HeimspieleManualEntry({onToast, onSaved, reloadKey}) {
   const [loading,        setLoading]        = useState(true);
   const [saving,         setSaving]         = useState(false);
   const [open,           setOpen]           = useState(false);
@@ -1152,6 +1152,7 @@ function HeimspieleManualEntry({onToast, onSaved}) {
   };
 
   useEffect(()=>{ doReload(); },[]);
+  useEffect(()=>{ if(reloadKey) doReload(); },[reloadKey]);
 
   const requestReload = () => {
     if(dirty) { setConfirmReload(true); return; }
@@ -1496,6 +1497,7 @@ function SettingsDisplayTab({onToast}) {
   const [schedHeim,      setSchedHeim]      = useState({from:"",to:""});
   const [schedBild,      setSchedBild]      = useState({from:"",to:""});
   const [matchCache,     setMatchCache]     = useState(null); // btv_match_cache
+  const [revertKey,      setRevertKey]      = useState(0);
   const [uploading,      setUploading]      = useState(false);
   const [saving,         setSaving]         = useState(false);
   const [fetchStatus,    setFetchStatus]    = useState(null);
@@ -1631,6 +1633,7 @@ function SettingsDisplayTab({onToast}) {
     };
     await sb.from("settings").upsert({key:"btv_match_cache", value: JSON.stringify(newCache)});
     setMatchCache(newCache);
+    setRevertKey(k => k + 1);
     onToast("✅ BTV-Stand wiederhergestellt");
   };
 
@@ -1883,7 +1886,7 @@ function SettingsDisplayTab({onToast}) {
             <ZeitSchaltung sched={schedHeim} setSched={setSchedHeim}/>
 
             <div style={{marginTop:20}}>
-              <HeimspieleManualEntry onToast={onToast} onSaved={setMatchCache}/>
+              <HeimspieleManualEntry onToast={onToast} onSaved={setMatchCache} reloadKey={revertKey}/>
             </div>
           </div>
         )}
