@@ -32,7 +32,7 @@ function daysUntil(s){ const diff=Math.round((new Date(s+"T12:00:00")-new Date()
 export default function App() {
   const [session,setSession]   = useState(undefined);
   const [profile,setProfile]   = useState(null);
-  const [screen,setScreen]     = useState("home"); // "home" | "booking" | "kasse" | "settings" | "kassenbuch"
+  const [screen,setScreen]     = useState("home"); // "home" | "booking" | "kasse" | "settings" | "kassenbuch" | "clubstream"
 
   useEffect(()=>{
     sb.auth.getSession().then(({data:{session}})=>setSession(session));
@@ -63,13 +63,14 @@ export default function App() {
   if(screen==="kasse")       return <KasseApp       profile={profile} onBack={()=>setScreen("home")}/>;
   if(screen==="settings")    return <SettingsApp    profile={profile} onBack={()=>setScreen("home")}/>;
   if(screen==="kassenbuch")  return <KassenbuchApp  profile={profile} onBack={()=>setScreen("home")}/>;
-  return <HomeScreen profile={profile} onGoBooking={()=>setScreen("booking")} onGoKasse={()=>setScreen("kasse")} onGoSettings={()=>setScreen("settings")} onGoKassenbuch={()=>setScreen("kassenbuch")}/>;
+  if(screen==="clubstream")  return <ClubstreamApp  profile={profile} onBack={()=>setScreen("home")}/>;
+  return <HomeScreen profile={profile} onGoBooking={()=>setScreen("booking")} onGoKasse={()=>setScreen("kasse")} onGoSettings={()=>setScreen("settings")} onGoKassenbuch={()=>setScreen("kassenbuch")} onGoClubstream={()=>setScreen("clubstream")}/>;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HOME SCREEN
 // ═══════════════════════════════════════════════════════════════════════════
-function HomeScreen({profile,onGoBooking,onGoKasse,onGoSettings,onGoKassenbuch}) {
+function HomeScreen({profile,onGoBooking,onGoKasse,onGoSettings,onGoKassenbuch,onGoClubstream}) {
   const [nextBookings,setNextBookings] = useState([]);
   const [openLog,setOpenLog]           = useState([]);
   const [openTotal,setOpenTotal]       = useState(0);
@@ -157,6 +158,13 @@ function HomeScreen({profile,onGoBooking,onGoKasse,onGoSettings,onGoKassenbuch})
               <span style={H.navTileSub}>Systemkonfiguration</span>
             </button>
           )}
+          {profile.role==="admin"&&(
+            <button style={{...H.navTile,borderColor:"#3B82F633",gridColumn:"1 / -1"}} onClick={onGoClubstream}>
+              <span style={{fontSize:28}}>📰</span>
+              <span style={H.navTileLabel}>Clubstream</span>
+              <span style={H.navTileSub}>News & Vereinsmeldungen</span>
+            </button>
+          )}
         </div>
 
         {/* Logout */}
@@ -190,6 +198,179 @@ const H={
   navTileSub:   {fontSize:11,color:"#475569"},
   logoutBtn:    {background:"none",border:"1px solid #1E293B",borderRadius:6,color:"#334155",cursor:"pointer",fontSize:12,padding:"6px 16px"},
 };
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CLUBSTREAM APP  (admin-only, reads from news_items in same Supabase project)
+// ═══════════════════════════════════════════════════════════════════════════
+const CS_ICONS  = {club_news:"📢",important_notice:"⚠️",social_post:"📱",event:"📅",match_result:"🎾",court_notice:"🏟️",discussion:"💬",document:"📄",training_notice:"🏃",team_news:"👥",external_article:"🔗"};
+const CS_LABELS = {club_news:"Vereinsnews",important_notice:"Wichtig",social_post:"Social",event:"Termin",match_result:"Ergebnis",court_notice:"Platz",discussion:"Diskussion",document:"Dokument",training_notice:"Training",team_news:"Mannschaft",external_article:"Artikel"};
+const CS_COLORS = {club_news:"#3B82F6",important_notice:"#EF4444",social_post:"#6B7280",event:"#8B5CF6",match_result:"#22C55E",court_notice:"#F97316",discussion:"#6366F1",document:"#64748B",training_notice:"#06B6D4",team_news:"#EAB308",external_article:"#94A3B8"};
+
+function csTimeAgo(s) {
+  if(!s) return "";
+  const diff = Math.floor((Date.now()-new Date(s))/1000);
+  if(diff<60) return "gerade eben";
+  if(diff<3600) return `vor ${Math.floor(diff/60)} Min.`;
+  if(diff<86400) return `vor ${Math.floor(diff/3600)} Std.`;
+  const d = new Date(s);
+  return `${d.getDate()}.${d.getMonth()+1}.${d.getFullYear()}`;
+}
+
+function ClubstreamDetail({item,onBack}) {
+  const color = CS_COLORS[item.type]||"#94A3B8";
+  const icon  = CS_ICONS[item.type]||"📰";
+  const label = CS_LABELS[item.type]||item.type;
+  return (
+    <div style={H.wrap}>
+      <div style={H.inner}>
+        <button style={{...H.logoutBtn,alignSelf:"flex-start"}} onClick={onBack}>← Zurück</button>
+        <div style={{background:"#1E293B",border:`1.5px solid ${color}44`,borderRadius:14,padding:"16px 14px"}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+            <span style={{fontSize:22}}>{icon}</span>
+            <span style={{fontSize:11,fontWeight:700,color,textTransform:"uppercase",letterSpacing:.8}}>{label}</span>
+            {item.is_pinned&&<span style={{fontSize:11,color:"#EAB308"}}>📌 Angeheftet</span>}
+          </div>
+          <h2 style={{fontSize:18,fontWeight:800,color:"#F1F5F9",margin:"0 0 8px"}}>{item.title}</h2>
+          {item.event_start&&(
+            <p style={{fontSize:12,color:"#8B5CF6",marginBottom:6}}>
+              📅 {new Date(item.event_start).toLocaleString("de-DE",{weekday:"long",day:"numeric",month:"long",year:"numeric",hour:"2-digit",minute:"2-digit"})} Uhr
+            </p>
+          )}
+          {item.event_location&&<p style={{fontSize:12,color:"#64748B",marginBottom:6}}>📍 {item.event_location}</p>}
+          {item.result_home!=null&&item.result_away!=null&&(
+            <div style={{textAlign:"center",margin:"12px 0",padding:"10px",background:"#0F172A",borderRadius:10}}>
+              <span style={{fontSize:28,fontWeight:900,color:item.result_home>item.result_away?"#22C55E":"#EF4444"}}>
+                {item.result_home} : {item.result_away}
+              </span>
+              {(item.team_name||item.opponent)&&(
+                <p style={{fontSize:11,color:"#64748B",margin:"4px 0 0"}}>{item.team_name||"SG Herrieden"} vs. {item.opponent||"?"}</p>
+              )}
+            </div>
+          )}
+          {item.image_url&&<img src={item.image_url} alt="" style={{width:"100%",borderRadius:10,marginBottom:8,maxHeight:240,objectFit:"cover"}}/>}
+          {item.summary&&<p style={{fontSize:14,color:"#94A3B8",lineHeight:1.6,margin:"0 0 8px"}}>{item.summary}</p>}
+          <p style={{fontSize:11,color:"#475569",marginTop:8}}>{csTimeAgo(item.published_at)}</p>
+        </div>
+        <button style={H.logoutBtn} onClick={onBack}>← Zurück zum Feed</button>
+      </div>
+    </div>
+  );
+}
+
+function ClubstreamApp({profile,onBack}) {
+  const [items,setItems]     = useState([]);
+  const [pending,setPending] = useState(0);
+  const [loading,setLoading] = useState(true);
+  const [detail,setDetail]   = useState(null);
+
+  useEffect(()=>{
+    setLoading(true);
+    Promise.all([
+      sb.from("news_items")
+        .select("id,title,type,summary,published_at,is_pinned,priority,event_start,event_location,result_home,result_away,team_name,opponent,league,age_group,valid_until,valid_from,image_url")
+        .eq("status","published")
+        .order("is_pinned",{ascending:false})
+        .order("published_at",{ascending:false})
+        .limit(40),
+      sb.from("news_items").select("id",{count:"exact",head:true}).eq("status","pending_review"),
+    ]).then(([{data:news,error},{count}])=>{
+      if(!error) setItems(news||[]);
+      setPending(count||0);
+      setLoading(false);
+    });
+  },[]);
+
+  if(detail) return <ClubstreamDetail item={detail} onBack={()=>setDetail(null)}/>;
+
+  return (
+    <div style={H.wrap}>
+      <div style={H.inner}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <button style={H.logoutBtn} onClick={onBack}>← Startseite</button>
+          <div style={{flex:1}}/>
+          {pending>0&&(
+            <span style={{fontSize:11,fontWeight:700,color:"#F59E0B",background:"#F59E0B18",border:"1px solid #F59E0B44",borderRadius:20,padding:"3px 10px"}}>
+              ⏳ {pending} ausstehend
+            </span>
+          )}
+        </div>
+
+        <div style={{...H.header,paddingTop:8}}>
+          <h1 style={{...H.title,fontSize:22}}>📰 Clubstream</h1>
+          <p style={H.greeting}>SG Herrieden · News & Vereinsmeldungen</p>
+        </div>
+
+        {loading?(
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {[1,2,3].map(i=>(
+              <div key={i} style={{background:"#1E293B",border:"1.5px solid #334155",borderRadius:14,height:72,opacity:.4}}/>
+            ))}
+          </div>
+        ):items.length===0?(
+          <div style={{background:"#1E293B",border:"1.5px solid #334155",borderRadius:14,padding:"32px 14px",textAlign:"center"}}>
+            <span style={{fontSize:32}}>📭</span>
+            <p style={{color:"#475569",fontSize:13,marginTop:8}}>Noch keine veröffentlichten News</p>
+          </div>
+        ):(
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {items.map(item=>{
+              const color = CS_COLORS[item.type]||"#94A3B8";
+              const icon  = CS_ICONS[item.type]||"📰";
+              const label = CS_LABELS[item.type]||item.type;
+              return (
+                <div key={item.id}
+                  style={{background:"#1E293B",border:`1.5px solid ${color}33`,borderRadius:14,padding:"12px 14px",cursor:"pointer"}}
+                  onClick={()=>setDetail(item)}
+                >
+                  <div style={{display:"flex",alignItems:"flex-start",gap:10}}>
+                    <span style={{fontSize:20,lineHeight:1.2,flexShrink:0}}>{icon}</span>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
+                        <span style={{fontSize:10,fontWeight:700,color,textTransform:"uppercase",letterSpacing:.7}}>{label}</span>
+                        {item.is_pinned&&<span style={{fontSize:10,color:"#EAB308"}}>📌</span>}
+                        {item.priority==="urgent"&&<span style={{fontSize:10,color:"#EF4444",fontWeight:700}}>DRINGEND</span>}
+                      </div>
+                      <div style={{fontWeight:700,fontSize:14,color:"#F1F5F9",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.title}</div>
+                      {item.summary&&<div style={{fontSize:12,color:"#64748B",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.summary}</div>}
+                    </div>
+                    <div style={{fontSize:11,color:"#475569",flexShrink:0,marginTop:2}}>{csTimeAgo(item.published_at)}</div>
+                  </div>
+                  {item.type==="match_result"&&item.result_home!=null&&(
+                    <div style={{marginTop:8,padding:"6px 10px",background:"#0F172A",borderRadius:8,textAlign:"center"}}>
+                      <span style={{fontSize:18,fontWeight:900,color:item.result_home>item.result_away?"#22C55E":"#EF4444"}}>
+                        {item.result_home} : {item.result_away}
+                      </span>
+                      {item.opponent&&<span style={{fontSize:11,color:"#64748B",marginLeft:8}}>vs. {item.opponent}</span>}
+                    </div>
+                  )}
+                  {item.type==="event"&&item.event_start&&(
+                    <div style={{marginTop:6,fontSize:12,color:"#8B5CF6",fontWeight:600}}>
+                      📅 {new Date(item.event_start).toLocaleDateString("de-DE",{weekday:"short",day:"numeric",month:"short"})}
+                      {item.event_location&&<span style={{color:"#64748B",fontWeight:400}}> · 📍 {item.event_location}</span>}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {pending>0&&(
+          <div style={{background:"#1C1810",border:"1.5px solid #F59E0B44",borderRadius:12,padding:"12px 16px",textAlign:"center"}}>
+            <p style={{fontSize:13,color:"#F59E0B",margin:0}}>
+              ⚠️ <strong>{pending}</strong> {pending===1?"Beitrag wartet":"Beiträge warten"} auf Freigabe
+            </p>
+            <p style={{fontSize:11,color:"#92400E",margin:"4px 0 0"}}>Im Clubstream Hub unter /admin/approval freigeben</p>
+          </div>
+        )}
+
+        <div style={{textAlign:"center",paddingBottom:8}}>
+          <button style={H.logoutBtn} onClick={onBack}>← Zurück zur Startseite</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // BOOKING APP  (existing logic, wrapped with a back button)
