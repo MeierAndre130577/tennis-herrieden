@@ -1633,14 +1633,64 @@ function SettingsDisplayTab({onToast}) {
   };
 
   const [showTeamsModal,  setShowTeamsModal]  = useState(false);
-  const [teamsConfig,     setTeamsConfig]     = useState([]); // [{name, url}]
+  const [teamsConfig,     setTeamsConfig]     = useState([]); // [{name, teamName, url}]
   const [teamsSaving,     setTeamsSaving]     = useState(false);
   const [teamsStatus,     setTeamsStatus]     = useState(null);
+  const [clubTeams,       setClubTeams]       = useState(null); // btv_club_teams
+  const [selStaffel,      setSelStaffel]      = useState("");   // ausgewählte Staffel (name)
+  const [selGegner,       setSelGegner]       = useState("");   // ausgewählter Gegner
 
   useEffect(()=>{
     sb.from("settings").select("value").eq("key","btv_teams_config").single()
       .then(({data})=>{ if(data?.value) try { setTeamsConfig(JSON.parse(data.value)); } catch(_){} });
+    sb.from("settings").select("value").eq("key","btv_club_teams").single()
+      .then(({data})=>{ if(data?.value) try { setClubTeams(JSON.parse(data.value)); } catch(_){} });
   },[]);
+
+  const quickFetch = async () => {
+    if(!selStaffel || !selGegner) return;
+    const staffelCfg = teamsConfig.find(t => t.name === selStaffel);
+    if(!staffelCfg) return;
+    // Felder setzen und speichern
+    const newMannschaft = staffelCfg.teamName || mannschaft;
+    const newMatchUrl   = staffelCfg.url      || matchUrl;
+    setMannschaft(newMannschaft);
+    setGegner(selGegner);
+    setMatchUrl(newMatchUrl);
+    await sb.from("settings").upsert([
+      {key:"display_mannschaft", value:newMannschaft},
+      {key:"display_gegner",     value:selGegner},
+      {key:"display_match_url",  value:newMatchUrl},
+    ],{onConflict:"key"});
+    // Fetch auslösen
+    if(!githubPat){ onToast("Kein GitHub PAT hinterlegt","error"); return; }
+    setFetchStatus("running");
+    try {
+      const res = await fetch(
+        "https://api.github.com/repos/MeierAndre130577/tennis-herrieden/actions/workflows/btv-fetch.yml/dispatches",
+        { method:"POST",
+          headers:{Authorization:`Bearer ${githubPat}`,Accept:"application/vnd.github+json","Content-Type":"application/json"},
+          body: JSON.stringify({ref:"main"}) }
+      );
+      if(res.status===204){
+        setFetchStatus("ok");
+        onToast(`✅ Fetch gestartet: ${newMannschaft} vs. ${selGegner}`);
+        setTimeout(async()=>{
+          const {data}=await sb.from("settings").select("value").eq("key","btv_match_cache").single();
+          if(data?.value) try { setMatchCache(JSON.parse(data.value)); } catch(_){}
+          setFetchStatus(null);
+        },35000);
+      } else {
+        setFetchStatus("error");
+        onToast(`Fehler ${res.status}`,"error");
+        setTimeout(()=>setFetchStatus(null),6000);
+      }
+    } catch(e){
+      setFetchStatus("error");
+      onToast(`Netzwerkfehler: ${e.message}`,"error");
+      setTimeout(()=>setFetchStatus(null),6000);
+    }
+  };
 
   const saveTeamsConfig = async () => {
     setTeamsSaving(true);
@@ -1861,6 +1911,55 @@ function SettingsDisplayTab({onToast}) {
               </div>
             </div>
 
+            {/* ── Schnellauswahl via Dropdowns ── */}
+            {teamsConfig.length>0&&clubTeams?.groups?.length>0&&(
+              <div style={{marginBottom:16,padding:"12px 14px",background:"#F0FDF4",
+                border:"1px solid #BBF7D0",borderRadius:8}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#166534",marginBottom:10}}>
+                  ⚡ SCHNELLAUSWAHL
+                </div>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"flex-end"}}>
+                  <div style={{flex:"1 1 160px"}}>
+                    <div style={{fontSize:10,color:"#166534",fontWeight:600,marginBottom:3}}>Mannschaft</div>
+                    <select value={selStaffel} onChange={e=>{setSelStaffel(e.target.value);setSelGegner("");}}
+                      style={{width:"100%",padding:"7px 8px",border:"1px solid #BBF7D0",
+                        borderRadius:6,fontSize:12,background:"#fff"}}>
+                      <option value="">— auswählen —</option>
+                      {teamsConfig.map(t=>(
+                        <option key={t.name} value={t.name}>{t.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div style={{flex:"1 1 180px"}}>
+                    <div style={{fontSize:10,color:"#166534",fontWeight:600,marginBottom:3}}>Gegner (Heimspiele)</div>
+                    <select value={selGegner} onChange={e=>setSelGegner(e.target.value)}
+                      disabled={!selStaffel}
+                      style={{width:"100%",padding:"7px 8px",border:"1px solid #BBF7D0",
+                        borderRadius:6,fontSize:12,background:"#fff",
+                        opacity:selStaffel?1:0.5}}>
+                      <option value="">— auswählen —</option>
+                      {(()=>{
+                        const grp = clubTeams.groups.find(g=>g.name===selStaffel);
+                        return (grp?.homeGames||[]).map((g,i)=>(
+                          <option key={i} value={g.opponent}>
+                            {g.opponent}{g.date?" ("+new Date(g.date+"T12:00:00").toLocaleDateString("de-DE",{day:"numeric",month:"numeric"})+")" :""}
+                          </option>
+                        ));
+                      })()}
+                    </select>
+                  </div>
+                  <button onClick={quickFetch}
+                    disabled={!selStaffel||!selGegner||fetchStatus==="running"}
+                    style={{padding:"7px 14px",fontSize:12,fontWeight:700,borderRadius:6,border:"none",
+                      cursor:(!selStaffel||!selGegner||fetchStatus==="running")?"not-allowed":"pointer",
+                      background:fetchStatus==="ok"?"#059669":fetchStatus==="error"?"#DC2626":"#15803D",
+                      color:"#fff",opacity:(!selStaffel||!selGegner)?0.5:1,whiteSpace:"nowrap"}}>
+                    {fetchStatus==="running"?"⏳ Startet…":fetchStatus==="ok"?"✅ Gestartet!":fetchStatus==="error"?"❌ Fehler":"▶ Fetch starten"}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Staffel-URL */}
             <div style={{marginBottom:14}}>
               <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>STAFFEL-URL (BTV)</div>
@@ -2076,31 +2175,42 @@ function SettingsDisplayTab({onToast}) {
             {/* Erklärung */}
             <div style={{fontSize:12,color:"#6B7280",marginBottom:16,lineHeight:1.6,
               background:"#F8FAFC",borderRadius:8,padding:"10px 12px",border:"1px solid #E5E7EB"}}>
-              Staffel-URLs aus der BTV-Website — eine pro Mannschaft.<br/>
-              Format: <code style={{background:"#E5E7EB",padding:"0 3px",borderRadius:3,fontSize:11}}>
+              Eine Zeile pro Mannschaft. Der BTV-Teamname muss exakt so stehen wie auf der Staffelseite (z.B. "SG Herrieden II").<br/>
+              Format URL: <code style={{background:"#E5E7EB",padding:"0 3px",borderRadius:3,fontSize:11}}>
                 https://www.btv.de/…?groupid=XXXXXXX
               </code>
             </div>
 
+            {/* Spaltenköpfe */}
+            <div style={{display:"grid",gridTemplateColumns:"130px 140px 1fr 28px",gap:6,
+              marginBottom:4,paddingLeft:2}}>
+              {["Bezeichnung","BTV-Teamname","Staffel-URL",""].map(h=>(
+                <span key={h} style={{fontSize:10,fontWeight:700,color:"#9CA3AF",textTransform:"uppercase"}}>{h}</span>
+              ))}
+            </div>
+
             {/* Zeilen */}
-            <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:12}}>
+            <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:12}}>
               {teamsConfig.map((row,i)=>(
-                <div key={i} style={{display:"flex",gap:8,alignItems:"center"}}>
+                <div key={i} style={{display:"grid",gridTemplateColumns:"130px 140px 1fr 28px",gap:6,alignItems:"center"}}>
                   <input
-                    placeholder="Mannschaftsname"
-                    value={row.name}
+                    placeholder="z.B. Herren 1"
+                    value={row.name||""}
                     onChange={e=>{const c=[...teamsConfig];c[i]={...c[i],name:e.target.value};setTeamsConfig(c);}}
-                    style={{flex:"0 0 140px",padding:"7px 10px",border:"1px solid #D1D5DB",
-                      borderRadius:6,fontSize:12}}/>
+                    style={{padding:"6px 8px",border:"1px solid #D1D5DB",borderRadius:6,fontSize:12}}/>
+                  <input
+                    placeholder="z.B. SG Herrieden"
+                    value={row.teamName||""}
+                    onChange={e=>{const c=[...teamsConfig];c[i]={...c[i],teamName:e.target.value};setTeamsConfig(c);}}
+                    style={{padding:"6px 8px",border:"1px solid #D1D5DB",borderRadius:6,fontSize:12}}/>
                   <input
                     placeholder="https://www.btv.de/…?groupid=…"
-                    value={row.url}
+                    value={row.url||""}
                     onChange={e=>{const c=[...teamsConfig];c[i]={...c[i],url:e.target.value};setTeamsConfig(c);}}
-                    style={{flex:1,padding:"7px 10px",border:"1px solid #D1D5DB",
-                      borderRadius:6,fontSize:12}}/>
+                    style={{padding:"6px 8px",border:"1px solid #D1D5DB",borderRadius:6,fontSize:12}}/>
                   <button onClick={()=>setTeamsConfig(teamsConfig.filter((_,j)=>j!==i))}
                     style={{background:"none",border:"1px solid #FECACA",borderRadius:6,
-                      padding:"5px 9px",cursor:"pointer",color:"#EF4444",fontSize:13,flexShrink:0}}>
+                      padding:"4px",cursor:"pointer",color:"#EF4444",fontSize:13,textAlign:"center"}}>
                     ✕
                   </button>
                 </div>
@@ -2108,7 +2218,7 @@ function SettingsDisplayTab({onToast}) {
             </div>
 
             {/* + Zeile hinzufügen */}
-            <button onClick={()=>setTeamsConfig([...teamsConfig,{name:"",url:""}])}
+            <button onClick={()=>setTeamsConfig([...teamsConfig,{name:"",teamName:"",url:""}])}
               style={{background:"none",border:"1px dashed #D1D5DB",borderRadius:6,
                 padding:"6px 14px",fontSize:12,cursor:"pointer",color:"#6B7280",
                 width:"100%",marginBottom:16}}>

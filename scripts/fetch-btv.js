@@ -709,39 +709,70 @@ async function scrapeClubTeams(browser) {
     try { await page.waitForSelector('[class*="gbmeet"]', { timeout:20_000 }); } catch(_){}
     await page.waitForTimeout(2000);
 
-    const teams = await page.evaluate(() => {
-      // Tabelle: alle Zeilen mit Vereinsnamen
-      const bodyText = document.body.innerText.replace(/\s+/g," ");
-
-      // Tabellen-Abschnitt: "Tabelle ... RANG VEREIN ..." → Vereine extrahieren
-      const tableM = bodyText.match(/Tabelle\s+RANG.*?(?=Spielplan|$)/i);
-      const tableText = tableM ? tableM[0] : bodyText;
-
-      // Alle gbmeet-Elemente → Teamnamen aus Matches
+    const teamName = entry.teamName || "";
+    const homeGames = await page.evaluate((teamNameArg) => {
+      const teamL = teamNameArg.toLowerCase();
       const meetEls = Array.from(document.querySelectorAll('[class*="gbmeet"]'));
-      const teamSet = new Set();
+      const games = [];
+
       for (const m of meetEls) {
-        const t = m.textContent.replace(/\s+/g," ").trim();
-        // Split an Score-Mustern
-        const parts = t.split(/\d:\d|\boffen\b|\bBlanko\b|\banzeigen\b/i)
-          .map(s => s.trim()).filter(s => s.length > 3 && !/^\d/.test(s));
-        parts.forEach(p => { if(p.length < 50) teamSet.add(p); });
+        const text = m.textContent.replace(/\s+/g, " ").trim();
+        const textL = text.toLowerCase();
+        if (!textL.includes(teamL)) continue;
+
+        // Heimteam steht vor dem Score/Status-Trenner
+        // Trennmuster: Score wie "6:3", "offen", "Blanko"
+        const sepMatch = text.match(/\d+:\d+|offen|Blanko/i);
+        if (!sepMatch) continue;
+        const beforeSep = text.slice(0, sepMatch.index).toLowerCase().trim();
+        if (!beforeSep.includes(teamL)) continue; // unser Team steht nicht zuerst → Auswärtsspiel
+
+        // Gegner: Text nach dem letzten Score-Fragment, bereinigt
+        const afterSep = text.slice(sepMatch.index)
+          .replace(/\d+:\d+/g, " ")
+          .replace(/offen|Blanko(-Spielbericht)?|anzeigen|zurückgezogen|ursprünglich.*$/gi, " ")
+          .replace(/\bHP\b/g, " ")
+          .replace(/\s+/g, " ").trim();
+
+        // Gegner ist der erste "saubere" Token ab einer bestimmten Länge
+        // (nach dem Bereinigen stehen manchmal noch Zahlen/Leerzeichen vorne)
+        const opponent = afterSep.replace(/^[\s\d:]+/, "").trim();
+        if (!opponent || opponent.length < 3 || opponent.length > 60) continue;
+
+        // Datum: aus Parent-Container suchen (letztes DD.MM.JJ vor unserer Position)
+        let matchDate = null;
+        try {
+          let el = m;
+          let fullText = "";
+          for (let i = 0; i < 8; i++) {
+            if (!el.parentElement) break;
+            el = el.parentElement;
+            fullText = el.textContent.replace(/\s+/g, " ");
+            if (/\d{1,2}\.\d{1,2}\.\d{2}/.test(fullText)) break;
+          }
+          const myPos = fullText.toLowerCase().indexOf(teamL);
+          const lookBack = myPos > 0 ? fullText.slice(0, myPos).slice(-400) : "";
+          const pairs = [...lookBack.matchAll(/(\d{1,2})\.(\d{1,2})\.(\d{2,4}),\s*(\d{1,2}:\d{2})/g)];
+          if (pairs.length) {
+            const [, d, mo, y] = pairs[pairs.length - 1];
+            const year = y.length === 2 ? "20" + y : y;
+            matchDate = `${year}-${mo.padStart(2,"0")}-${d.padStart(2,"0")}`;
+          }
+        } catch(_) {}
+
+        games.push({ opponent, date: matchDate });
       }
+      return games;
+    }, teamName);
 
-      return {
-        teams: [...teamSet],
-        bodySnippet: bodyText.slice(0, 500),
-      };
-    });
-
-    console.log(`  Teams gefunden: ${teams.teams.join(", ") || "(keine)"}`);
-    console.log(`  Body-Snippet: ${teams.bodySnippet.slice(0,200)}`);
+    console.log(`  Heimspiele (${teamName}): ${homeGames.map(g => `${g.opponent}${g.date ? " ("+g.date+")" : ""}`).join(", ") || "(keine)"}`);
 
     result.push({
       name,
+      teamName,
       url,
       groupId: groupId || null,
-      teams: teams.teams,
+      homeGames,
     });
 
     await page.close();
