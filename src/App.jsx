@@ -32,7 +32,7 @@ function daysUntil(s){ const diff=Math.round((new Date(s+"T12:00:00")-new Date()
 export default function App() {
   const [session,setSession]   = useState(undefined);
   const [profile,setProfile]   = useState(null);
-  const [screen,setScreen]     = useState("home"); // "home" | "booking" | "kasse" | "settings" | "kassenbuch" | "clubstream"
+  const [screen,setScreen]     = useState("home"); // "home" | "booking" | "kasse" | "settings" | "kassenbuch" | "clubstream" | "btv"
 
   useEffect(()=>{
     sb.auth.getSession().then(({data:{session}})=>setSession(session));
@@ -64,13 +64,47 @@ export default function App() {
   if(screen==="settings")    return <SettingsApp    profile={profile} onBack={()=>setScreen("home")}/>;
   if(screen==="kassenbuch")  return <KassenbuchApp  profile={profile} onBack={()=>setScreen("home")}/>;
   if(screen==="clubstream")  return <ClubstreamApp  profile={profile} onBack={()=>setScreen("home")}/>;
-  return <HomeScreen profile={profile} onGoBooking={()=>setScreen("booking")} onGoKasse={()=>setScreen("kasse")} onGoSettings={()=>setScreen("settings")} onGoKassenbuch={()=>setScreen("kassenbuch")} onGoClubstream={()=>setScreen("clubstream")}/>;
+  if(screen==="btv")         return <BtvLinksScreen onBack={()=>setScreen("home")}/>;
+  return <HomeScreen profile={profile} onGoBooking={()=>setScreen("booking")} onGoKasse={()=>setScreen("kasse")} onGoSettings={()=>setScreen("settings")} onGoKassenbuch={()=>setScreen("kassenbuch")} onGoClubstream={()=>setScreen("clubstream")} onGoBtv={()=>setScreen("btv")}/>;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BTV LINKS SCREEN
+// ═══════════════════════════════════════════════════════════════════════════
+function BtvLinksScreen({onBack}) {
+  const [teams,setTeams] = useState([]);
+  useEffect(()=>{
+    sb.from("settings").select("value").eq("key","btv_teams_config").single()
+      .then(({data})=>{ try { setTeams(JSON.parse(data?.value)||[]); } catch(_){} });
+  },[]);
+  return (
+    <div style={H.wrap}>
+      <div style={H.glow}/>
+      <div style={H.inner}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
+          <button onClick={onBack} style={{background:"none",border:"none",color:"#94A3B8",fontSize:22,cursor:"pointer",padding:"0 4px"}}>←</button>
+          <h2 style={{color:"#F8FAFC",fontSize:20,fontWeight:800,margin:0}}>BTV Links</h2>
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {teams.filter(t=>t.url).map((t,i)=>(
+            <div key={i} onClick={()=>window.open(t.url,"_blank")}
+              style={{display:"flex",alignItems:"center",justifyContent:"space-between",
+                background:"#1E293B",border:"1.5px solid #334155",borderRadius:12,
+                padding:"14px 16px",cursor:"pointer"}}>
+              <span style={{fontSize:14,fontWeight:600,color:"#E2E8F0"}}>{t.name}</span>
+              <span style={{fontSize:13,color:"#3B82F6"}}>BTV →</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HOME SCREEN
 // ═══════════════════════════════════════════════════════════════════════════
-function HomeScreen({profile,onGoBooking,onGoKasse,onGoSettings,onGoKassenbuch,onGoClubstream}) {
+function HomeScreen({profile,onGoBooking,onGoKasse,onGoSettings,onGoKassenbuch,onGoClubstream,onGoBtv}) {
   const [nextBookings,setNextBookings] = useState([]);
   const [openLog,setOpenLog]           = useState([]);
   const [openTotal,setOpenTotal]       = useState(0);
@@ -144,20 +178,16 @@ function HomeScreen({profile,onGoBooking,onGoKasse,onGoSettings,onGoKassenbuch,o
           </div>
 
           {/* BTV Links */}
-          {btvTeams.length>0&&(
-            <div style={{...H.widget, cursor:"default"}}>
-              <div style={H.widgetLabel}>🔗 BTV Links</div>
-              {btvTeams.map((t,i)=>t.url&&(
-                <div key={i}
-                  onClick={()=>window.open(t.url,"_blank")}
-                  style={{display:"flex",alignItems:"center",justifyContent:"space-between",
-                    padding:"8px 0",borderTop:i>0?"1px solid #2D3748":"none",cursor:"pointer"}}>
-                  <span style={{fontSize:13,color:"#CBD5E1"}}>{t.name}</span>
-                  <span style={{fontSize:12,color:"#4ADE80"}}>→</span>
-                </div>
-              ))}
+          <div style={{...H.widgetCompact, borderColor:"#3B82F655", background:"#0F172A"}} onClick={onGoBtv}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <span style={{fontSize:18}}>🔗</span>
+              <div style={{flex:1}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#94A3B8",textTransform:"uppercase",letterSpacing:.7}}>BTV Links</div>
+                <div style={{fontSize:13,fontWeight:600,color:"#93C5FD"}}>{btvTeams.length} Mannschaften</div>
+              </div>
+              <span style={{color:"#93C5FD",fontSize:16}}>→</span>
             </div>
-          )}
+          </div>
 
           {/* Open drinks – compact */}
           <div style={{...H.widgetCompact,...(openLog.length>0?H.widgetWarn:H.widgetOk)}} onClick={onGoKasse}>
