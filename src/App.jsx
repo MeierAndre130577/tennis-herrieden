@@ -1446,44 +1446,79 @@ function ToggleSwitch({on, onToggle}) {
 }
 
 function ZeitSchaltung({sched, setSched}) {
-  const set = (field) => (e) => setSched(s => ({...s, [field]: e.target.value}));
-  const hasAny = sched.from || sched.to;
+  const [picking, setPicking] = useState(null); // "from" | "to"
+  const [tempVal, setTempVal] = useState("");
+
   const now = new Date();
   const isActive = sched.from && sched.to &&
     now >= new Date(sched.from) && now <= new Date(sched.to);
+
+  const fmtDT = s => s ? new Date(s).toLocaleString("de-DE",{
+    day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"
+  })+" Uhr" : null;
+
+  const openPicker = field => { setTempVal(sched[field]||""); setPicking(field); };
+  const confirm = () => { setSched(s=>({...s,[picking]:tempVal})); setPicking(null); };
+
+  const btnStyle = set => ({
+    flex:1,padding:"8px 10px",background:set?"#F0FDF4":"#F9FAFB",
+    border:`1px solid ${set?"#86EFAC":"#D1D5DB"}`,borderRadius:8,cursor:"pointer",
+    textAlign:"left",minWidth:0,
+  });
+
   return (
-    <div style={{marginTop:16,padding:"12px 14px",background:"#F9FAFB",
+    <div style={{marginBottom:16,padding:"12px 14px",background:"#F9FAFB",
       borderRadius:8,border:`1px solid ${isActive?"#86EFAC":"#E5E7EB"}`}}>
-      <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:8,
+      <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:10,
         display:"flex",alignItems:"center",gap:8}}>
         ⏰ ZEITSCHALTUNG <span style={{fontWeight:400}}>(optional)</span>
         {isActive&&<span style={{fontSize:10,background:"#DCFCE7",color:"#16A34A",
           padding:"1px 7px",borderRadius:10,fontWeight:700}}>AKTIV JETZT</span>}
       </div>
-      <div style={{display:"flex",gap:8,alignItems:"flex-end",flexWrap:"wrap"}}>
-        <div>
-          <div style={{fontSize:10,color:"#9CA3AF",marginBottom:3}}>VON</div>
-          <input type="datetime-local" value={sched.from} onChange={set("from")}
-            style={{fontSize:12,padding:"5px 8px",border:"1px solid #D1D5DB",
-              borderRadius:6,color:"#374151"}}/>
-        </div>
-        <div>
-          <div style={{fontSize:10,color:"#9CA3AF",marginBottom:3}}>BIS</div>
-          <input type="datetime-local" value={sched.to} onChange={set("to")}
-            style={{fontSize:12,padding:"5px 8px",border:"1px solid #D1D5DB",
-              borderRadius:6,color:"#374151"}}/>
-        </div>
-        {hasAny&&(
+      <div style={{display:"flex",gap:8,alignItems:"stretch"}}>
+        <button style={btnStyle(!!sched.from)} onClick={()=>openPicker("from")}>
+          <div style={{fontSize:10,color:"#9CA3AF",fontWeight:700,marginBottom:2}}>VON</div>
+          <div style={{fontSize:12,fontWeight:sched.from?600:400,color:sched.from?"#374151":"#9CA3AF"}}>
+            {fmtDT(sched.from)||"nicht gesetzt"}
+          </div>
+        </button>
+        <button style={btnStyle(!!sched.to)} onClick={()=>openPicker("to")}>
+          <div style={{fontSize:10,color:"#9CA3AF",fontWeight:700,marginBottom:2}}>BIS</div>
+          <div style={{fontSize:12,fontWeight:sched.to?600:400,color:sched.to?"#374151":"#9CA3AF"}}>
+            {fmtDT(sched.to)||"nicht gesetzt"}
+          </div>
+        </button>
+        {(sched.from||sched.to)&&(
           <button onClick={()=>setSched({from:"",to:""})}
-            style={{padding:"5px 10px",fontSize:11,color:"#EF4444",background:"none",
-              border:"1px solid #FECACA",borderRadius:6,cursor:"pointer"}}>
-            ✕ löschen
+            style={{padding:"8px 10px",fontSize:13,color:"#EF4444",background:"none",
+              border:"1px solid #FECACA",borderRadius:8,cursor:"pointer",alignSelf:"stretch"}}>
+            ✕
           </button>
         )}
       </div>
       <div style={{fontSize:10,color:"#9CA3AF",marginTop:6}}>
-        Innerhalb dieser Zeit wird dieser Modus automatisch aktiviert – unabhängig vom Toggle
+        Innerhalb dieser Zeit wird dieser Modus automatisch aktiviert
       </div>
+
+      {picking&&(
+        <div style={S.overlay} onClick={()=>setPicking(null)}>
+          <div style={{...S.modal,maxWidth:320,width:"100%"}} onClick={e=>e.stopPropagation()}>
+            <div style={S.modalHeader}>
+              <div style={S.modalTitle}>{picking==="from"?"Von":"Bis"}-Zeitpunkt</div>
+              <button style={S.closeBtn} onClick={()=>setPicking(null)}>✕</button>
+            </div>
+            <input type="datetime-local" value={tempVal} onChange={e=>setTempVal(e.target.value)}
+              style={{...S.input,width:"100%",marginBottom:16,fontSize:15}}/>
+            {tempVal&&<div style={{fontSize:12,color:"#6B7280",marginBottom:16,textAlign:"center"}}>
+              {new Date(tempVal).toLocaleString("de-DE",{weekday:"long",day:"2-digit",month:"long",year:"numeric",hour:"2-digit",minute:"2-digit"})} Uhr
+            </div>}
+            <div style={{display:"flex",gap:8}}>
+              <button style={{...S.ghostBtn,flex:1}} onClick={()=>setPicking(null)}>Abbrechen</button>
+              <button style={{...S.primaryBtn,flex:1}} onClick={confirm}>Übernehmen</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1839,6 +1874,7 @@ function SettingsDisplayTab({onToast}) {
         {activeTab==="schedule"&&(
           <div>
             <ModeRow modeId="schedule"/>
+            <ZeitSchaltung sched={schedSchedule} setSched={setSchedSchedule}/>
             <div style={{marginBottom:14}}>
               <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>VEREINSNUMMER (BTV)</div>
               <input value={vereinsnr} onChange={e=>setVernr(e.target.value)} style={{...S.input,width:"100%"}}/>
@@ -1847,13 +1883,14 @@ function SettingsDisplayTab({onToast}) {
               <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>SAISON</div>
               <input value={saison} onChange={e=>setSaison(e.target.value)} style={{...S.input,width:"100%"}}/>
             </div>
-            <ZeitSchaltung sched={schedSchedule} setSched={setSchedSchedule}/>
           </div>
         )}
 
         {/* ── HEIMSPIELMODUS ── */}
         {activeTab==="heimspiel"&&(
           <div>
+            <ModeRow modeId="heimspiel"/>
+            <ZeitSchaltung sched={schedHeim} setSched={setSchedHeim}/>
             {/* ── Master-Schalter: Auto-Fetch ── */}
             <div onClick={toggleFetchEnabled}
               style={{display:"flex",alignItems:"center",justifyContent:"space-between",
@@ -1902,8 +1939,6 @@ function SettingsDisplayTab({onToast}) {
                 </div>
               );
             })()}
-
-            <ModeRow modeId="heimspiel"/>
 
             {/* GitHub PAT */}
             <div style={{marginBottom:14,padding:"10px 12px",background:"#FFFBEB",borderRadius:8,border:"1px solid #FDE68A"}}>
@@ -2103,8 +2138,6 @@ function SettingsDisplayTab({onToast}) {
               );
             })()}
 
-            <ZeitSchaltung sched={schedHeim} setSched={setSchedHeim}/>
-
             <div style={{marginTop:20}}>
               <HeimspieleManualEntry onToast={onToast} onSaved={setMatchCache} reloadKey={revertKey}/>
             </div>
@@ -2115,6 +2148,7 @@ function SettingsDisplayTab({onToast}) {
         {activeTab==="bild"&&(
           <div>
             <ModeRow modeId="bild"/>
+            <ZeitSchaltung sched={schedBild} setSched={setSchedBild}/>
             {/* Hinweis für KI-Bildgenerierung */}
             <div style={{marginBottom:14,padding:"10px 12px",background:"#F8FAFC",
               border:"1px solid #E2E8F0",borderRadius:8,fontSize:11,color:"#6B7280",lineHeight:1.6}}>
@@ -2138,7 +2172,6 @@ function SettingsDisplayTab({onToast}) {
               </div>
             )}
             {!bildUrl&&<div style={{marginTop:10,fontSize:12,color:"#9CA3AF"}}>Noch kein Bild hochgeladen.</div>}
-            <ZeitSchaltung sched={schedBild} setSched={setSchedBild}/>
           </div>
         )}
       </div>
