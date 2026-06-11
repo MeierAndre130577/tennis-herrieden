@@ -311,10 +311,11 @@ function ClubstreamApp({profile,onBack}) {
       sb.from("news_items")
         .select("id,title,type,summary,content,published_at,is_pinned,priority,event_start,event_location,result_home,result_away,team_name,opponent,league,age_group,valid_until,valid_from,image_url")
         .eq("status","published")
+        .is("deleted_at",null)
         .order("is_pinned",{ascending:false})
         .order("published_at",{ascending:false})
         .limit(60),
-      sb.from("news_items").select("*",{count:"exact",head:true}).eq("status","pending_review"),
+      sb.from("news_items").select("*",{count:"exact",head:true}).eq("status","pending_review").is("deleted_at",null),
     ]).then(([{data:news,error},{count}])=>{
       if(!error) setItems(news||[]);
       setPending(count||0);
