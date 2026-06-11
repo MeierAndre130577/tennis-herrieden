@@ -126,6 +126,19 @@ function HomeScreen({profile,onGoBooking,onGoKasse,onGoSettings,onGoKassenbuch,o
             }
           </div>
 
+          {/* Clubstream */}
+          <div style={{...H.widgetCompact, borderColor:"#22C55E55", background:"#0F1F10"}}
+               onClick={()=>window.open("https://clubstream-hub.vercel.app","_blank")}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <span style={{fontSize:18}}>📰</span>
+              <div style={{flex:1}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#94A3B8",textTransform:"uppercase",letterSpacing:.7}}>Clubstream</div>
+                <div style={{fontSize:13,fontWeight:600,color:"#4ADE80"}}>News & Termine</div>
+              </div>
+              <span style={{color:"#4ADE80",fontSize:16}}>→</span>
+            </div>
+          </div>
+
           {/* Open drinks – compact */}
           <div style={{...H.widgetCompact,...(openLog.length>0?H.widgetWarn:H.widgetOk)}} onClick={onGoKasse}>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
