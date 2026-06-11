@@ -251,12 +251,18 @@ function ClubstreamDetail({item,onBack}) {
 
           {/* Termin-Infos */}
           {item.event_start&&(()=>{
-            const d=new Date(item.event_start);
-            const hasTime=d.getHours()!==0||d.getMinutes()!==0;
+            const fmt=(iso,withTime)=>{
+              const d=new Date(iso);
+              const t=d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
+              const day=d.toLocaleDateString("de-DE",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+              return withTime&&t!=="00:00"?`${day}, ${t} Uhr`:day;
+            };
+            const sHasTime=new Date(item.event_start).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})!=="00:00";
+            const eHasTime=item.event_end&&new Date(item.event_end).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})!=="00:00";
             return(
               <p style={{fontSize:13,color:"#8B5CF6",margin:0,fontWeight:600}}>
-                📅 {d.toLocaleDateString("de-DE",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}
-                {hasTime&&<span> · {d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})} Uhr</span>}
+                📅 {fmt(item.event_start,sHasTime)}
+                {item.event_end&&<span style={{color:"#64748B",fontWeight:400}}> – {fmt(item.event_end,eHasTime)}</span>}
               </p>
             );
           })()}
@@ -314,7 +320,7 @@ function ClubstreamApp({profile,onBack}) {
     setLoading(true);
     Promise.all([
       sb.from("news_items")
-        .select("id,title,type,summary,content,published_at,is_pinned,priority,event_start,event_location,result_home,result_away,team_name,opponent,league,age_group,valid_until,valid_from,image_url")
+        .select("id,title,type,summary,content,published_at,is_pinned,priority,event_start,event_end,event_location,result_home,result_away,team_name,opponent,league,age_group,valid_until,valid_from,image_url")
         .eq("status","published")
         .is("deleted_at",null)
         .order("is_pinned",{ascending:false})
