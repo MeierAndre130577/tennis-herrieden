@@ -130,7 +130,7 @@ function HomeScreen({profile,onGoBooking,onGoKasse,onGoSettings,onGoKassenbuch})
             <div style={{display:"flex",alignItems:"center",gap:10}}>
               <span style={{fontSize:18}}>🧾</span>
               <div style={{flex:1}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#475569",textTransform:"uppercase",letterSpacing:.7}}>Offene Getränke</div>
+                <div style={{fontSize:11,fontWeight:700,color:"#94A3B8",textTransform:"uppercase",letterSpacing:.7}}>Offene Getränke</div>
                 {openLog.length===0
                   ? <span style={{fontSize:13,fontWeight:700,color:"#4ADE80"}}>✅ Alles bezahlt</span>
                   : <span style={{fontSize:18,fontWeight:800,color:"#F59E0B"}}>{eur(openTotal)} <span style={{fontSize:12,fontWeight:500,color:"#92400E"}}>({openLog.length})</span></span>
@@ -180,7 +180,7 @@ const H={
   widgetCompact:{background:"#1E293B",border:"1.5px solid #334155",borderRadius:12,padding:"12px 16px",cursor:"pointer"},
   widgetWarn:   {borderColor:"#F59E0B55",background:"#1C1810"},
   widgetOk:     {borderColor:"#22C55E33"},
-  widgetLabel:  {fontSize:11,fontWeight:700,color:"#475569",textTransform:"uppercase",letterSpacing:.8,marginBottom:6},
+  widgetLabel:  {fontSize:11,fontWeight:700,color:"#94A3B8",textTransform:"uppercase",letterSpacing:.8,marginBottom:6},
   widgetLink:   {fontSize:12,color:"#475569",marginTop:10,textAlign:"right"},
   bookingRow:   {display:"flex",alignItems:"center",gap:10,marginBottom:4},
   bookingDot:   {width:34,height:34,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0},
