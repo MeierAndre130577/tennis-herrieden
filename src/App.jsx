@@ -216,41 +216,82 @@ function csTimeAgo(s) {
   return `${d.getDate()}.${d.getMonth()+1}.${d.getFullYear()}`;
 }
 
+function csStripHtml(html) {
+  if(!html) return "";
+  return html
+    .replace(/<br\s*\/?>/gi,"\n")
+    .replace(/<\/p>/gi,"\n\n")
+    .replace(/<[^>]+>/g,"")
+    .replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">")
+    .replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&nbsp;/g," ")
+    .replace(/\n{3,}/g,"\n\n").trim();
+}
+
 function ClubstreamDetail({item,onBack}) {
-  const color = CS_COLORS[item.type]||"#94A3B8";
-  const icon  = CS_ICONS[item.type]||"📰";
-  const label = CS_LABELS[item.type]||item.type;
+  const color   = CS_COLORS[item.type]||"#94A3B8";
+  const icon    = CS_ICONS[item.type]||"📰";
+  const label   = CS_LABELS[item.type]||item.type;
+  const bodyText = csStripHtml(item.content) || item.summary || "";
   return (
     <div style={H.wrap}>
       <div style={H.inner}>
-        <button style={{...H.logoutBtn,alignSelf:"flex-start"}} onClick={onBack}>← Zurück</button>
-        <div style={{background:"#1E293B",border:`1.5px solid ${color}44`,borderRadius:14,padding:"16px 14px"}}>
-          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+        <button style={{...H.logoutBtn,alignSelf:"flex-start"}} onClick={onBack}>← Zurück zum Feed</button>
+
+        <div style={{background:"#1E293B",border:`1.5px solid ${color}44`,borderRadius:14,padding:"16px 14px",display:"flex",flexDirection:"column",gap:10}}>
+          {/* Typ-Badge */}
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
             <span style={{fontSize:22}}>{icon}</span>
             <span style={{fontSize:11,fontWeight:700,color,textTransform:"uppercase",letterSpacing:.8}}>{label}</span>
             {item.is_pinned&&<span style={{fontSize:11,color:"#EAB308"}}>📌 Angeheftet</span>}
+            {item.priority==="urgent"&&<span style={{fontSize:11,color:"#EF4444",fontWeight:800}}>DRINGEND</span>}
           </div>
-          <h2 style={{fontSize:18,fontWeight:800,color:"#F1F5F9",margin:"0 0 8px"}}>{item.title}</h2>
+
+          {/* Titel */}
+          <h2 style={{fontSize:18,fontWeight:800,color:"#F1F5F9",margin:0,lineHeight:1.3}}>{item.title}</h2>
+
+          {/* Termin-Infos */}
           {item.event_start&&(
-            <p style={{fontSize:12,color:"#8B5CF6",marginBottom:6}}>
+            <p style={{fontSize:13,color:"#8B5CF6",margin:0,fontWeight:600}}>
               📅 {new Date(item.event_start).toLocaleString("de-DE",{weekday:"long",day:"numeric",month:"long",year:"numeric",hour:"2-digit",minute:"2-digit"})} Uhr
             </p>
           )}
-          {item.event_location&&<p style={{fontSize:12,color:"#64748B",marginBottom:6}}>📍 {item.event_location}</p>}
+          {item.event_location&&<p style={{fontSize:13,color:"#64748B",margin:0}}>📍 {item.event_location}</p>}
+
+          {/* Spielergebnis */}
           {item.result_home!=null&&item.result_away!=null&&(
-            <div style={{textAlign:"center",margin:"12px 0",padding:"10px",background:"#0F172A",borderRadius:10}}>
-              <span style={{fontSize:28,fontWeight:900,color:item.result_home>item.result_away?"#22C55E":"#EF4444"}}>
+            <div style={{textAlign:"center",padding:"12px 10px",background:"#0F172A",borderRadius:10}}>
+              <span style={{fontSize:32,fontWeight:900,color:item.result_home>item.result_away?"#22C55E":"#EF4444"}}>
                 {item.result_home} : {item.result_away}
               </span>
               {(item.team_name||item.opponent)&&(
-                <p style={{fontSize:11,color:"#64748B",margin:"4px 0 0"}}>{item.team_name||"SG Herrieden"} vs. {item.opponent||"?"}</p>
+                <p style={{fontSize:12,color:"#64748B",margin:"6px 0 0"}}>{item.team_name||"SG Herrieden"} vs. {item.opponent||"?"}</p>
               )}
+              {item.league&&<p style={{fontSize:11,color:"#475569",margin:"2px 0 0"}}>{item.league}{item.age_group?` · ${item.age_group}`:""}</p>}
             </div>
           )}
-          {item.image_url&&<img src={item.image_url} alt="" style={{width:"100%",borderRadius:10,marginBottom:8,maxHeight:240,objectFit:"cover"}}/>}
-          {item.summary&&<p style={{fontSize:14,color:"#94A3B8",lineHeight:1.6,margin:"0 0 8px"}}>{item.summary}</p>}
-          <p style={{fontSize:11,color:"#475569",marginTop:8}}>{csTimeAgo(item.published_at)}</p>
+
+          {/* Bild */}
+          {item.image_url&&(
+            <img src={item.image_url} alt="" style={{width:"100%",borderRadius:10,maxHeight:260,objectFit:"cover"}}/>
+          )}
+
+          {/* Haupttext */}
+          {bodyText&&(
+            <p style={{fontSize:14,color:"#94A3B8",lineHeight:1.7,margin:0,whiteSpace:"pre-line"}}>{bodyText}</p>
+          )}
+
+          {/* Gültigkeitszeitraum */}
+          {(item.valid_from||item.valid_until)&&(
+            <div style={{display:"flex",gap:12,fontSize:12,color:"#F97316"}}>
+              {item.valid_from&&<span>Ab: {new Date(item.valid_from).toLocaleDateString("de-DE",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})} Uhr</span>}
+              {item.valid_until&&<span>Bis: {new Date(item.valid_until).toLocaleDateString("de-DE",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})} Uhr</span>}
+            </div>
+          )}
+
+          {/* Zeitstempel */}
+          <p style={{fontSize:11,color:"#475569",margin:0,borderTop:"1px solid #334155",paddingTop:8}}>{csTimeAgo(item.published_at)}</p>
         </div>
+
         <button style={H.logoutBtn} onClick={onBack}>← Zurück zum Feed</button>
       </div>
     </div>
@@ -258,21 +299,22 @@ function ClubstreamDetail({item,onBack}) {
 }
 
 function ClubstreamApp({profile,onBack}) {
-  const [items,setItems]     = useState([]);
-  const [pending,setPending] = useState(0);
-  const [loading,setLoading] = useState(true);
-  const [detail,setDetail]   = useState(null);
+  const [items,setItems]         = useState([]);
+  const [pending,setPending]     = useState(0);
+  const [loading,setLoading]     = useState(true);
+  const [detail,setDetail]       = useState(null);
+  const [typeFilter,setTypeFilter] = useState(null);
 
   useEffect(()=>{
     setLoading(true);
     Promise.all([
       sb.from("news_items")
-        .select("id,title,type,summary,published_at,is_pinned,priority,event_start,event_location,result_home,result_away,team_name,opponent,league,age_group,valid_until,valid_from,image_url")
+        .select("id,title,type,summary,content,published_at,is_pinned,priority,event_start,event_location,result_home,result_away,team_name,opponent,league,age_group,valid_until,valid_from,image_url")
         .eq("status","published")
         .order("is_pinned",{ascending:false})
         .order("published_at",{ascending:false})
-        .limit(40),
-      sb.from("news_items").select("id",{count:"exact",head:true}).eq("status","pending_review"),
+        .limit(60),
+      sb.from("news_items").select("*",{count:"exact",head:true}).eq("status","pending_review"),
     ]).then(([{data:news,error},{count}])=>{
       if(!error) setItems(news||[]);
       setPending(count||0);
@@ -282,9 +324,14 @@ function ClubstreamApp({profile,onBack}) {
 
   if(detail) return <ClubstreamDetail item={detail} onBack={()=>setDetail(null)}/>;
 
+  // Typen die tatsächlich in den Daten vorkommen, für Filter-Pills
+  const availableTypes = [...new Set(items.map(i=>i.type))];
+  const filtered = typeFilter ? items.filter(i=>i.type===typeFilter) : items;
+
   return (
     <div style={H.wrap}>
       <div style={H.inner}>
+        {/* Topbar */}
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           <button style={H.logoutBtn} onClick={onBack}>← Startseite</button>
           <div style={{flex:1}}/>
@@ -300,20 +347,43 @@ function ClubstreamApp({profile,onBack}) {
           <p style={H.greeting}>SG Herrieden · News & Vereinsmeldungen</p>
         </div>
 
+        {/* Filter-Pills */}
+        {!loading&&availableTypes.length>1&&(
+          <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:2}}>
+            <button
+              onClick={()=>setTypeFilter(null)}
+              style={{flexShrink:0,fontSize:11,fontWeight:700,padding:"4px 12px",borderRadius:20,border:"1.5px solid #334155",cursor:"pointer",background:typeFilter===null?"#334155":"transparent",color:typeFilter===null?"#F1F5F9":"#64748B"}}
+            >Alle</button>
+            {availableTypes.map(t=>{
+              const active = typeFilter===t;
+              const color  = CS_COLORS[t]||"#94A3B8";
+              return (
+                <button key={t}
+                  onClick={()=>setTypeFilter(active?null:t)}
+                  style={{flexShrink:0,fontSize:11,fontWeight:700,padding:"4px 12px",borderRadius:20,border:`1.5px solid ${color}44`,cursor:"pointer",background:active?color+"33":"transparent",color:active?color:"#64748B"}}
+                >
+                  {CS_ICONS[t]} {CS_LABELS[t]||t}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Liste */}
         {loading?(
           <div style={{display:"flex",flexDirection:"column",gap:10}}>
             {[1,2,3].map(i=>(
               <div key={i} style={{background:"#1E293B",border:"1.5px solid #334155",borderRadius:14,height:72,opacity:.4}}/>
             ))}
           </div>
-        ):items.length===0?(
+        ):filtered.length===0?(
           <div style={{background:"#1E293B",border:"1.5px solid #334155",borderRadius:14,padding:"32px 14px",textAlign:"center"}}>
             <span style={{fontSize:32}}>📭</span>
-            <p style={{color:"#475569",fontSize:13,marginTop:8}}>Noch keine veröffentlichten News</p>
+            <p style={{color:"#475569",fontSize:13,marginTop:8}}>{typeFilter?"Keine Beiträge in dieser Kategorie":"Noch keine veröffentlichten News"}</p>
           </div>
         ):(
           <div style={{display:"flex",flexDirection:"column",gap:10}}>
-            {items.map(item=>{
+            {filtered.map(item=>{
               const color = CS_COLORS[item.type]||"#94A3B8";
               const icon  = CS_ICONS[item.type]||"📰";
               const label = CS_LABELS[item.type]||item.type;
@@ -355,6 +425,7 @@ function ClubstreamApp({profile,onBack}) {
           </div>
         )}
 
+        {/* Pending-Hinweis */}
         {pending>0&&(
           <div style={{background:"#1C1810",border:"1.5px solid #F59E0B44",borderRadius:12,padding:"12px 16px",textAlign:"center"}}>
             <p style={{fontSize:13,color:"#F59E0B",margin:0}}>
