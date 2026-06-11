@@ -250,11 +250,16 @@ function ClubstreamDetail({item,onBack}) {
           <h2 style={{fontSize:18,fontWeight:800,color:"#F1F5F9",margin:0,lineHeight:1.3}}>{item.title}</h2>
 
           {/* Termin-Infos */}
-          {item.event_start&&(
-            <p style={{fontSize:13,color:"#8B5CF6",margin:0,fontWeight:600}}>
-              📅 {new Date(item.event_start).toLocaleString("de-DE",{weekday:"long",day:"numeric",month:"long",year:"numeric",hour:"2-digit",minute:"2-digit"})} Uhr
-            </p>
-          )}
+          {item.event_start&&(()=>{
+            const d=new Date(item.event_start);
+            const hasTime=d.getHours()!==0||d.getMinutes()!==0;
+            return(
+              <p style={{fontSize:13,color:"#8B5CF6",margin:0,fontWeight:600}}>
+                📅 {d.toLocaleDateString("de-DE",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}
+                {hasTime&&<span> · {d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})} Uhr</span>}
+              </p>
+            );
+          })()}
           {item.event_location&&<p style={{fontSize:13,color:"#64748B",margin:0}}>📍 {item.event_location}</p>}
 
           {/* Spielergebnis */}
