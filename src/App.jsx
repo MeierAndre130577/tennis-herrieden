@@ -75,7 +75,7 @@ function HomeScreen({profile,onGoBooking,onGoKasse,onGoSettings,onGoKassenbuch})
   const [openTotal,setOpenTotal]       = useState(0);
   useEffect(()=>{
     // next 2 bookings – nur reguläre Einzelbuchungen
-    sb.from("bookings").select("*,courts(name,surface)").eq("user_id",profile.id).eq("type","regular").gte("date",today()).order("date").order("slot").limit(2)
+    sb.from("bookings").select("*,courts(name,surface)").eq("user_id",profile.id).eq("type","regular").gte("date",today()).order("date").order("slot").limit(1)
       .then(({data})=>setNextBookings(data||[]));
     // open kasse items
     sb.from("kasse_log").select("*").eq("user_id",profile.id).eq("paid",false)
@@ -123,7 +123,6 @@ function HomeScreen({profile,onGoBooking,onGoKasse,onGoSettings,onGoKassenbuch})
                   );
                 })
             }
-            <div style={H.widgetLink}>Alle anzeigen →</div>
           </div>
 
           {/* Open drinks – compact */}
@@ -144,16 +143,6 @@ function HomeScreen({profile,onGoBooking,onGoKasse,onGoSettings,onGoKassenbuch})
 
         {/* ── Nav tiles ── */}
         <div style={H.navGrid}>
-          <button style={{...H.navTile,borderColor:"#22C55E33"}} onClick={onGoBooking}>
-            <span style={{fontSize:28}}>📅</span>
-            <span style={H.navTileLabel}>Buchungssystem</span>
-            <span style={H.navTileSub}>Plätze reservieren</span>
-          </button>
-          <button style={{...H.navTile,borderColor:"#F59E0B33"}} onClick={onGoKasse}>
-            <span style={{fontSize:28}}>🧾</span>
-            <span style={H.navTileLabel}>Kasse</span>
-            <span style={H.navTileSub}>Getränke & Abrechnung</span>
-          </button>
           {profile.role==="admin"&&(
             <button style={{...H.navTile,borderColor:"#22C55E33",gridColumn:"1 / -1"}} onClick={onGoKassenbuch}>
               <span style={{fontSize:28}}>💰</span>
@@ -187,13 +176,13 @@ const H={
   header:       {textAlign:"center",paddingTop:16},
   title:        {fontSize:26,fontWeight:800,color:"#F8FAFC",letterSpacing:-.8,margin:"12px 0 4px"},
   greeting:     {color:"#475569",fontSize:14,margin:0},
-  widget:       {background:"#1E293B",border:"1.5px solid #334155",borderRadius:14,padding:"16px 18px",cursor:"pointer",display:"flex",flexDirection:"column",gap:0},
+  widget:       {background:"#1E293B",border:"1.5px solid #334155",borderRadius:14,padding:"12px 14px",cursor:"pointer",display:"flex",flexDirection:"column",gap:0},
   widgetCompact:{background:"#1E293B",border:"1.5px solid #334155",borderRadius:12,padding:"12px 16px",cursor:"pointer"},
   widgetWarn:   {borderColor:"#F59E0B55",background:"#1C1810"},
   widgetOk:     {borderColor:"#22C55E33"},
-  widgetLabel:  {fontSize:11,fontWeight:700,color:"#475569",textTransform:"uppercase",letterSpacing:.8,marginBottom:10},
+  widgetLabel:  {fontSize:11,fontWeight:700,color:"#475569",textTransform:"uppercase",letterSpacing:.8,marginBottom:6},
   widgetLink:   {fontSize:12,color:"#475569",marginTop:10,textAlign:"right"},
-  bookingRow:   {display:"flex",alignItems:"center",gap:10,marginBottom:8},
+  bookingRow:   {display:"flex",alignItems:"center",gap:10,marginBottom:4},
   bookingDot:   {width:34,height:34,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0},
   navGrid:      {display:"grid",gridTemplateColumns:"1fr 1fr",gap:10},
   navTile:      {background:"#1E293B",border:"1.5px solid #334155",borderRadius:12,padding:"18px 12px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:6},
