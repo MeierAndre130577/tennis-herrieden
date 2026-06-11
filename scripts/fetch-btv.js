@@ -710,7 +710,15 @@ async function scrapeClubTeams(browser) {
 
     await acceptCookies(page);
     try { await page.waitForSelector('[class*="gbmeet"]', { timeout:20_000 }); } catch(_){}
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(3000);
+    // Logos per JS nachladen abwarten
+    try {
+      await page.waitForFunction(
+        () => document.querySelector('[class*="gbmeet"] img[src]') !== null,
+        { timeout: 8000 }
+      );
+    } catch(_) {}
+    await page.waitForTimeout(1000);
 
     const teamName = entry.teamName || "";
     const homeGames_raw = await page.evaluate((teamNameArg) => {
@@ -763,7 +771,7 @@ async function scrapeClubTeams(browser) {
           }
           const myPos = fullText.toLowerCase().indexOf(teamL);
           const lookBack = myPos > 0 ? fullText.slice(0, myPos).slice(-400) : "";
-          const pairs = [...lookBack.matchAll(/(\d{1,2})\.(\d{1,2})\.(\d{2,4}),\s*(\d{1,2}:\d{2})/g)];
+          const pairs = [...lookBack.matchAll(/(\d{1,2})\.(\d{1,2})\.(\d{2,4}),?\s*(\d{1,2}:\d{2})/g)];
           if (pairs.length) {
             const [, d, mo, y, t] = pairs[pairs.length - 1];
             const year = y.length === 2 ? "20" + y : y;
@@ -772,10 +780,11 @@ async function scrapeClubTeams(browser) {
           }
         } catch(_) {}
 
-        // Logos: erste zwei img-Tags im gbmeet-Element
+        // Logos: erste zwei img-Tags im gbmeet-Element (src oder data-src)
         const logoImgs = Array.from(m.querySelectorAll("img"))
-          .map(img => img.src || img.getAttribute("src") || "")
-          .filter(s => s && s.startsWith("http"));
+          .map(img => img.src || img.getAttribute("src") || img.getAttribute("data-src") || img.getAttribute("data-lazy-src") || "")
+          .filter(s => s && (s.startsWith("http") || s.startsWith("//")))
+          .map(s => s.startsWith("//") ? "https:" + s : s);
         const homeLogo    = logoImgs[0] || null;
         const opponentLogo = logoImgs[1] || null;
 
