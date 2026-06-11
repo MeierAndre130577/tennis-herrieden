@@ -343,7 +343,7 @@ function KasseApp({profile,onBack}) {
 
   const loadLog = useCallback(async()=>{
     const q = isAdmin
-      ? sb.from("kasse_log").select("*,profiles(name)").order("created_at",{ascending:false})
+      ? sb.from("kasse_log").select("*").order("created_at",{ascending:false})
       : sb.from("kasse_log").select("*").eq("user_id",profile.id).order("created_at",{ascending:false});
     const {data}=await q;
     setLog(data||[]);
