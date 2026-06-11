@@ -19,13 +19,14 @@ async function getSettings() {
 
 // ── Zeitfenster prüfen: 1h vor bis 10h nach Spielbeginn ─────────────────────
 // matchDate: "2026-06-14"  matchTime: "10:00" (HH:MM)
-function isInMatchWindow(matchDate, matchTime) {
+function isInMatchWindow(matchDate, matchTime, isDone = false) {
   if (!matchTime) return true; // keine Zeit → ganzen Spieltag laufen
   const [h, min] = matchTime.split(":").map(Number);
   if (isNaN(h) || isNaN(min)) return true;
-  const matchMs = new Date(`${matchDate}T${String(h).padStart(2,"0")}:${String(min).padStart(2,"0")}:00`).getTime();
-  const nowMs   = Date.now();
-  return nowMs >= matchMs - 60 * 60 * 1000 && nowMs <= matchMs + 10 * 60 * 60 * 1000;
+  const matchMs  = new Date(`${matchDate}T${String(h).padStart(2,"0")}:${String(min).padStart(2,"0")}:00`).getTime();
+  const nowMs    = Date.now();
+  const afterEnd = isDone ? 2 * 60 * 60 * 1000 : 10 * 60 * 60 * 1000; // done: 2h, laufend: 10h
+  return nowMs >= matchMs - 60 * 60 * 1000 && nowMs <= matchMs + afterEnd;
 }
 
 async function saveResult(key, value) {
@@ -710,15 +711,17 @@ async function scrapeClubTeams(browser) {
     await page.waitForTimeout(2000);
 
     const teamName = entry.teamName || "";
-    const homeGames = await page.evaluate((teamNameArg) => {
+    const homeGames_raw = await page.evaluate((teamNameArg) => {
       const teamL = teamNameArg.toLowerCase();
       const meetEls = Array.from(document.querySelectorAll('[class*="gbmeet"]'));
       const games = [];
+      const debug = []; // alle Matches die das Team enthalten
 
       for (const m of meetEls) {
         const text = m.textContent.replace(/\s+/g, " ").trim();
         const textL = text.toLowerCase();
         if (!textL.includes(teamL)) continue;
+        debug.push(text.slice(0, 120));
 
         // Heimteam steht vor dem Score/Status-Trenner
         // Trennmuster: Score wie "6:3", "offen", "Blanko"
@@ -734,9 +737,14 @@ async function scrapeClubTeams(browser) {
           .replace(/\bHP\b/g, " ")
           .replace(/\s+/g, " ").trim();
 
-        // Gegner ist der erste "saubere" Token ab einer bestimmten Länge
-        // (nach dem Bereinigen stehen manchmal noch Zahlen/Leerzeichen vorne)
-        const opponent = afterSep.replace(/^[\s\d:]+/, "").trim();
+        // Gegner: führende Zahlen/Leerzeichen entfernen
+        let opponent = afterSep.replace(/^[\s\d:]+/, "").trim();
+        // Sonderfall "1. FC ..." – der Strip hat die führende Ziffer entfernt und nur "." übrig gelassen
+        // → letzte Ziffer vor dem Punkt aus dem Original wiederherstellen
+        if (opponent.startsWith(".")) {
+          const fix = afterSep.match(/(\d)\s*\.\s*[A-ZÄÖÜ]/);
+          if (fix) opponent = fix[1] + opponent;
+        }
         if (!opponent || opponent.length < 3 || opponent.length > 60) continue;
 
         // Datum: aus Parent-Container suchen (letztes DD.MM.JJ vor unserer Position)
@@ -762,10 +770,17 @@ async function scrapeClubTeams(browser) {
 
         games.push({ opponent, date: matchDate });
       }
-      return games;
+      return { games, debug };
     }, teamName);
 
-    console.log(`  Heimspiele (${teamName}): ${homeGames.map(g => `${g.opponent}${g.date ? " ("+g.date+")" : ""}`).join(", ") || "(keine)"}`);
+    const homeGames = homeGames_raw.games;
+    if (homeGames_raw.debug.length) {
+      console.log(`  Matches mit "${teamName}" im Text (${homeGames_raw.debug.length}):`);
+      homeGames_raw.debug.forEach((t,i) => console.log(`    [${i}] ${t}`));
+    } else {
+      console.log(`  ⚠ Kein gbmeet-Element enthält "${teamName}" – Teamname prüfen!`);
+    }
+    console.log(`  → Heimspiele: ${homeGames.map(g => `${g.opponent}${g.date?" ("+g.date+")":""}`).join(", ") || "(keine)"}`);
 
     result.push({
       name,
@@ -854,7 +869,8 @@ async function scrapeClubTeams(browser) {
           return;
         }
         if (!isManual && cDate === today && cTime) {
-          if (!isInMatchWindow(today, cTime)) {
+          const cDone = cached?.status === "done";
+          if (!isInMatchWindow(today, cTime, cDone)) {
             const [h, m] = cTime.split(":").map(Number);
             const matchMs = new Date(`${today}T${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:00`).getTime();
             const diffMin = Math.round((matchMs - Date.now()) / 60_000);

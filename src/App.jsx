@@ -32,7 +32,7 @@ function daysUntil(s){ const diff=Math.round((new Date(s+"T12:00:00")-new Date()
 export default function App() {
   const [session,setSession]   = useState(undefined);
   const [profile,setProfile]   = useState(null);
-  const [screen,setScreen]     = useState("home"); // "home" | "booking" | "kasse" | "settings"
+  const [screen,setScreen]     = useState("home"); // "home" | "booking" | "kasse" | "settings" | "kassenbuch"
 
   useEffect(()=>{
     sb.auth.getSession().then(({data:{session}})=>setSession(session));
@@ -49,16 +49,17 @@ export default function App() {
   if(!session) return <LoginScreen/>;
   if(!profile) return <Loading msg="Lade Profil…"/>;
 
-  if(screen==="booking")  return <BookingApp  profile={profile} onBack={()=>setScreen("home")}/>;
-  if(screen==="kasse")    return <KasseApp    profile={profile} onBack={()=>setScreen("home")}/>;
-  if(screen==="settings") return <SettingsApp profile={profile} onBack={()=>setScreen("home")}/>;
-  return <HomeScreen profile={profile} onGoBooking={()=>setScreen("booking")} onGoKasse={()=>setScreen("kasse")} onGoSettings={()=>setScreen("settings")}/>;
+  if(screen==="booking")     return <BookingApp     profile={profile} onBack={()=>setScreen("home")}/>;
+  if(screen==="kasse")       return <KasseApp       profile={profile} onBack={()=>setScreen("home")}/>;
+  if(screen==="settings")    return <SettingsApp    profile={profile} onBack={()=>setScreen("home")}/>;
+  if(screen==="kassenbuch")  return <KassenbuchApp  profile={profile} onBack={()=>setScreen("home")}/>;
+  return <HomeScreen profile={profile} onGoBooking={()=>setScreen("booking")} onGoKasse={()=>setScreen("kasse")} onGoSettings={()=>setScreen("settings")} onGoKassenbuch={()=>setScreen("kassenbuch")}/>;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HOME SCREEN
 // ═══════════════════════════════════════════════════════════════════════════
-function HomeScreen({profile,onGoBooking,onGoKasse,onGoSettings}) {
+function HomeScreen({profile,onGoBooking,onGoKasse,onGoSettings,onGoKassenbuch}) {
   const [nextBookings,setNextBookings] = useState([]);
   const [openLog,setOpenLog]           = useState([]);
   const [openTotal,setOpenTotal]       = useState(0);
@@ -143,6 +144,13 @@ function HomeScreen({profile,onGoBooking,onGoKasse,onGoSettings}) {
             <span style={H.navTileLabel}>Kasse</span>
             <span style={H.navTileSub}>Getränke & Abrechnung</span>
           </button>
+          {profile.role==="admin"&&(
+            <button style={{...H.navTile,borderColor:"#22C55E33",gridColumn:"1 / -1"}} onClick={onGoKassenbuch}>
+              <span style={{fontSize:28}}>💰</span>
+              <span style={H.navTileLabel}>Kassenbuch</span>
+              <span style={H.navTileSub}>Einnahmen & Ausgaben</span>
+            </button>
+          )}
           {profile.role==="admin"&&(
             <button style={{...H.navTile,borderColor:"#8B5CF633",gridColumn:"1 / -1"}} onClick={onGoSettings}>
               <span style={{fontSize:28}}>⚙️</span>
@@ -2883,6 +2891,329 @@ const K={
   qtyVal:     {flex:1,textAlign:"center",fontWeight:800,fontSize:14,color:"#111827"},
   notierBtn:  {marginTop:4,width:"100%",padding:"8px 0",background:"#0F172A",color:"#4ADE80",border:"none",borderRadius:8,fontWeight:700,cursor:"pointer",fontSize:12},
 };
+
+// ═══════════════════════════════════════════════════════════════════════════
+// KASSENBUCH APP
+// ═══════════════════════════════════════════════════════════════════════════
+const DE_MONTHS_LONG = ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
+
+function KassenbuchApp({profile, onBack}) {
+  const [entries,     setEntries]     = useState([]);
+  const [startbetrag, setStartbetrag] = useState(0);
+  const [view,        setView]        = useState("list"); // "list" | "add" | "editstart"
+  const [viewYear,    setViewYear]    = useState(new Date().getFullYear());
+  const [viewMonth,   setViewMonth]   = useState(new Date().getMonth());
+  const [showAll,     setShowAll]     = useState(false);
+  const [pendingDel,  setPendingDel]  = useState(null);
+  const [swipedId,    setSwipedId]    = useState(null);
+  const [toast,       setToast]       = useState(null);
+  const [loading,     setLoading]     = useState(true);
+
+  // form
+  const [fType,   setFType]   = useState("in");
+  const [fAmount, setFAmount] = useState("");
+  const [fDesc,   setFDesc]   = useState("");
+  const [fDate,   setFDate]   = useState(today());
+  const [fStart,  setFStart]  = useState("");
+
+  const swipeRef = useState({})[0];
+
+  useEffect(()=>{ loadData(); },[profile.id]);
+
+  async function loadData() {
+    setLoading(true);
+    const [{data:e},{data:s}] = await Promise.all([
+      sb.from("kassenbuch").select("*").eq("user_id",profile.id).order("date",{ascending:false}).order("created_at",{ascending:false}),
+      sb.from("kassenbuch_settings").select("*").eq("user_id",profile.id).single(),
+    ]);
+    setEntries(e||[]);
+    if(s) setStartbetrag(parseFloat(s.startbetrag)||0);
+    setLoading(false);
+  }
+
+  function showToast(msg,ok=true){ setToast({msg,ok}); setTimeout(()=>setToast(null),2500); }
+
+  function filtered() {
+    if(showAll) return entries;
+    return entries.filter(e=>{ const d=new Date(e.date+"T12:00:00"); return d.getFullYear()===viewYear&&d.getMonth()===viewMonth; });
+  }
+
+  function balance() { return entries.reduce((s,e)=>e.type==="in"?s+parseFloat(e.amount):s-parseFloat(e.amount), startbetrag); }
+
+  function shiftMonth(d) {
+    setShowAll(false);
+    let m=viewMonth+d, y=viewYear;
+    if(m>11){m=0;y++;} if(m<0){m=11;y--;}
+    setViewMonth(m); setViewYear(y);
+  }
+
+  async function saveEntry() {
+    const amt = parseFloat(fAmount.replace(",","."));
+    if(!amt||amt<=0||!fDesc.trim()||!fDate){ showToast("Bitte alle Felder ausfüllen.",false); return; }
+    const {error} = await sb.from("kassenbuch").insert({
+      user_id: profile.id, type: fType, amount: amt, description: fDesc.trim(), date: fDate,
+    });
+    if(error){ showToast("Fehler beim Speichern.",false); return; }
+    showToast("Buchung gespeichert.");
+    const d=new Date(fDate+"T12:00:00");
+    setViewYear(d.getFullYear()); setViewMonth(d.getMonth()); setShowAll(false);
+    setFAmount(""); setFDesc(""); setFDate(today()); setFType("in");
+    setView("list");
+    loadData();
+  }
+
+  async function saveStart() {
+    const val = parseFloat(fStart.replace(",","."));
+    if(isNaN(val)){ showToast("Ungültiger Betrag.",false); return; }
+    await sb.from("kassenbuch_settings").upsert({user_id:profile.id,startbetrag:val,updated_at:new Date().toISOString()},{onConflict:"user_id"});
+    setStartbetrag(val);
+    showToast("Startbetrag gespeichert.");
+    setView("list");
+  }
+
+  async function deleteEntry() {
+    if(!pendingDel) return;
+    const {error} = await sb.from("kassenbuch").delete().eq("id",pendingDel.id);
+    if(error){ showToast("Fehler beim Löschen.",false); }
+    else { showToast("Buchung gelöscht."); }
+    setPendingDel(null); setSwipedId(null);
+    loadData();
+  }
+
+  // touch/mouse swipe helpers
+  function onSwipeStart(id,x){ swipeRef.id=id; swipeRef.x=x; swipeRef.active=true; }
+  function onSwipeMove(id,x){
+    if(!swipeRef.active||swipeRef.id!==id) return;
+    if(x-swipeRef.x < -20) setSwipedId(id);
+    else if(x-swipeRef.x > 10) setSwipedId(null);
+  }
+  function onSwipeEnd(id,x){
+    if(!swipeRef.active||swipeRef.id!==id) return;
+    swipeRef.active=false;
+    if(x-swipeRef.x < -50){ const e=entries.find(e=>e.id===id); if(e) setPendingDel(e); }
+    else setSwipedId(null);
+  }
+
+  const list      = filtered();
+  const sumIn     = list.filter(e=>e.type==="in").reduce((s,e)=>s+parseFloat(e.amount),0);
+  const sumOut    = list.filter(e=>e.type==="out").reduce((s,e)=>s+parseFloat(e.amount),0);
+  const bal       = balance();
+  const monthLabel= showAll ? "Alle Buchungen" : `${DE_MONTHS_LONG[viewMonth]} ${viewYear}`;
+
+  const KB = {
+    wrap:    {minHeight:"100vh",background:"#0F172A",fontFamily:"'DM Sans',system-ui,sans-serif",color:"#F1F5F9",display:"flex",flexDirection:"column",alignItems:"center"},
+    inner:   {width:"100%",maxWidth:480,padding:"52px 20px 40px",display:"flex",flexDirection:"column",gap:14},
+    header:  {display:"flex",alignItems:"center",gap:10,paddingBottom:4},
+    backBtn: {background:"none",border:"1px solid #334155",borderRadius:8,color:"#94A3B8",cursor:"pointer",fontSize:13,padding:"6px 12px",display:"flex",alignItems:"center",gap:5},
+    title:   {fontSize:20,fontWeight:800,letterSpacing:-.5,flex:1},
+    addBtn:  {background:"#22C55E",color:"#052e16",border:"none",borderRadius:8,padding:"7px 14px",fontWeight:700,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",gap:5},
+    balCard: {background:"#1E293B",border:"1.5px solid #334155",borderRadius:14,padding:"16px 18px"},
+    balLabel:{fontSize:11,fontWeight:700,color:"#475569",textTransform:"uppercase",letterSpacing:.8,marginBottom:4},
+    balAmt:  (pos)=>({fontSize:32,fontWeight:800,color:pos?"#4ADE80":"#F87171"}),
+    startRow:{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:10,paddingTop:10,borderTop:"1px solid #334155"},
+    editBtn: {background:"none",border:"1px solid #334155",borderRadius:6,color:"#94A3B8",cursor:"pointer",fontSize:12,padding:"4px 10px",display:"flex",alignItems:"center",gap:4},
+    statRow: {display:"grid",gridTemplateColumns:"1fr 1fr",gap:10},
+    stat:    {background:"#1E293B",border:"1.5px solid #334155",borderRadius:10,padding:"10px 14px"},
+    statLbl: {fontSize:11,color:"#475569",fontWeight:700,textTransform:"uppercase",letterSpacing:.6,marginBottom:3},
+    statVal: (c)=>({fontSize:18,fontWeight:800,color:c}),
+    monthRow:{display:"flex",alignItems:"center",gap:8},
+    mBtn:    {background:"none",border:"1px solid #334155",borderRadius:6,color:"#94A3B8",cursor:"pointer",fontSize:18,lineHeight:1,padding:"5px 10px"},
+    mLabel:  {flex:1,textAlign:"center",fontSize:14,fontWeight:700,color:"#CBD5E1"},
+    allBtn:  (on)=>({background:on?"#14532D":"none",border:`1px solid ${on?"#22C55E":"#334155"}`,borderRadius:6,color:on?"#4ADE80":"#475569",cursor:"pointer",fontSize:12,padding:"4px 10px"}),
+    hint:    {fontSize:11,color:"#334155",textAlign:"right",marginBottom:-4},
+    entry:   (swiped)=>({background:"#1E293B",border:"1.5px solid #334155",borderRadius:10,padding:"10px 12px",display:"flex",alignItems:"center",gap:10,transition:"transform .18s",transform:swiped?"translateX(-64px)":"translateX(0)",cursor:"pointer",userSelect:"none",touchAction:"pan-y"}),
+    entryWrap:{position:"relative",overflow:"hidden",borderRadius:10,marginBottom:6},
+    delBtn:  {position:"absolute",right:0,top:0,bottom:0,width:60,background:"#DC2626",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",borderRadius:"0 10px 10px 0",fontSize:18},
+    icon:    (t)=>({width:30,height:30,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:800,flexShrink:0,background:t==="in"?"#14532D":"#450A0A",color:t==="in"?"#4ADE80":"#F87171"}),
+    eDesc:   {fontSize:14,color:"#E2E8F0",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"},
+    eDate:   {fontSize:12,color:"#475569"},
+    eAmt:    (t)=>({fontSize:14,fontWeight:800,flexShrink:0,color:t==="in"?"#4ADE80":"#F87171"}),
+    empty:   {textAlign:"center",color:"#475569",fontSize:14,padding:"2rem 0"},
+    formCard:{background:"#1E293B",border:"1.5px solid #334155",borderRadius:14,padding:"18px",display:"flex",flexDirection:"column",gap:14},
+    typeRow: {display:"grid",gridTemplateColumns:"1fr 1fr",gap:8},
+    typeBtn: (t,sel)=>({border:`2px solid ${sel?(t==="in"?"#22C55E":"#EF4444"):"#334155"}`,borderRadius:10,padding:"12px 8px",cursor:"pointer",fontSize:22,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",background:sel?(t==="in"?"#14532D":"#450A0A"):"#0F172A",color:sel?(t==="in"?"#4ADE80":"#F87171"):"#475569",transition:"all .12s"}),
+    lbl:     {fontSize:12,color:"#475569",fontWeight:600,marginBottom:-8},
+    inp:     {background:"#0F172A",border:"1.5px solid #334155",borderRadius:8,color:"#F1F5F9",fontSize:14,padding:"9px 12px",outline:"none",width:"100%",boxSizing:"border-box"},
+    saveBtn: {background:"#22C55E",color:"#052e16",border:"none",borderRadius:8,padding:"11px",fontWeight:800,fontSize:14,cursor:"pointer"},
+    overlay: {position:"fixed",inset:0,background:"rgba(0,0,0,.6)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:999},
+    sheet:   {background:"#1E293B",borderRadius:"16px 16px 0 0",padding:"24px 20px",width:"100%",maxWidth:480,display:"flex",flexDirection:"column",gap:12},
+    shTitle: {fontSize:16,fontWeight:800,color:"#F1F5F9"},
+    shDesc:  {fontSize:14,color:"#94A3B8"},
+    shBtns:  {display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:4},
+    shCancel:{background:"none",border:"1px solid #334155",borderRadius:8,padding:10,fontSize:14,color:"#94A3B8",cursor:"pointer"},
+    shDel:   {background:"#DC2626",border:"none",borderRadius:8,padding:10,fontSize:14,fontWeight:700,color:"#fff",cursor:"pointer"},
+  };
+
+  if(loading) return <Loading msg="Lade Kassenbuch…"/>;
+
+  // ── Formular: Startbetrag ──────────────────────────────────────────────
+  if(view==="editstart") return (
+    <div style={KB.wrap}>
+      <div style={KB.inner}>
+        <div style={KB.header}>
+          <button style={KB.backBtn} onClick={()=>setView("list")}>← Zurück</button>
+          <span style={KB.title}>Startbetrag</span>
+        </div>
+        <div style={KB.formCard}>
+          <p style={{fontSize:14,color:"#64748B",margin:0}}>Der Startbetrag ist der Kassenbestand vor der ersten Buchung. Alle Buchungen werden dazu addiert bzw. subtrahiert.</p>
+          <div>
+            <div style={KB.lbl}>Startbetrag (€)</div>
+            <input style={{...KB.inp,marginTop:6}} type="number" min="0" step="0.01" placeholder="0.00"
+              value={fStart} onChange={e=>setFStart(e.target.value)}/>
+          </div>
+          <button style={KB.saveBtn} onClick={saveStart}>Speichern</button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── Formular: Buchung hinzufügen ───────────────────────────────────────
+  if(view==="add") return (
+    <div style={KB.wrap}>
+      <div style={KB.inner}>
+        <div style={KB.header}>
+          <button style={KB.backBtn} onClick={()=>setView("list")}>← Zurück</button>
+          <span style={KB.title}>Buchung eintragen</span>
+        </div>
+        <div style={KB.formCard}>
+          <div>
+            <div style={{...KB.lbl,marginBottom:6}}>Art der Buchung</div>
+            <div style={KB.typeRow}>
+              <button style={KB.typeBtn("in",fType==="in")} onClick={()=>setFType("in")} aria-label="Einnahme">+</button>
+              <button style={KB.typeBtn("out",fType==="out")} onClick={()=>setFType("out")} aria-label="Ausgabe">−</button>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:4}}>
+              <div style={{textAlign:"center",fontSize:12,color:fType==="in"?"#4ADE80":"#475569"}}>Einnahme</div>
+              <div style={{textAlign:"center",fontSize:12,color:fType==="out"?"#F87171":"#475569"}}>Ausgabe</div>
+            </div>
+          </div>
+          <div>
+            <div style={KB.lbl}>Betrag (€)</div>
+            <input style={{...KB.inp,marginTop:6}} type="number" min="0" step="0.01" placeholder="0.00"
+              value={fAmount} onChange={e=>setFAmount(e.target.value)}/>
+          </div>
+          <div>
+            <div style={KB.lbl}>Beschreibung</div>
+            <input style={{...KB.inp,marginTop:6}} type="text" placeholder="z.B. Getränkeverkauf Turnier"
+              value={fDesc} onChange={e=>setFDesc(e.target.value)}/>
+          </div>
+          <div>
+            <div style={KB.lbl}>Datum</div>
+            <input style={{...KB.inp,marginTop:6}} type="date"
+              value={fDate} onChange={e=>setFDate(e.target.value)}/>
+          </div>
+          <button style={KB.saveBtn} onClick={saveEntry}>Buchung speichern</button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── Hauptansicht ───────────────────────────────────────────────────────
+  return (
+    <div style={KB.wrap}>
+      <div style={KB.inner}>
+
+        {/* Header */}
+        <div style={KB.header}>
+          <button style={KB.backBtn} onClick={onBack}>← Zurück</button>
+          <span style={KB.title}>💰 Kassenbuch</span>
+          <button style={KB.addBtn} onClick={()=>{ setFAmount(""); setFDesc(""); setFDate(today()); setFType("in"); setView("add"); }}>
+            + Neu
+          </button>
+        </div>
+
+        {/* Saldo-Karte */}
+        <div style={KB.balCard}>
+          <div style={KB.balLabel}>Kassenbestand</div>
+          <div style={KB.balAmt(bal>=0)}>{eur(bal)}</div>
+          <div style={KB.startRow}>
+            <span style={{fontSize:13,color:"#64748B"}}>Startbetrag: <strong style={{color:"#94A3B8"}}>{eur(startbetrag)}</strong></span>
+            <button style={KB.editBtn} onClick={()=>{ setFStart(startbetrag.toFixed(2)); setView("editstart"); }}>
+              ✏️ Bearbeiten
+            </button>
+          </div>
+        </div>
+
+        {/* Einnahmen / Ausgaben Zusammenfassung */}
+        <div style={KB.statRow}>
+          <div style={KB.stat}>
+            <div style={KB.statLbl}>+ Einnahmen</div>
+            <div style={KB.statVal("#4ADE80")}>{eur(sumIn)}</div>
+          </div>
+          <div style={KB.stat}>
+            <div style={KB.statLbl}>− Ausgaben</div>
+            <div style={KB.statVal("#F87171")}>{eur(sumOut)}</div>
+          </div>
+        </div>
+
+        {/* Monatsfilter */}
+        <div style={KB.monthRow}>
+          <button style={KB.mBtn} onClick={()=>shiftMonth(-1)}>‹</button>
+          <span style={KB.mLabel}>{monthLabel}</span>
+          <button style={KB.mBtn} onClick={()=>shiftMonth(1)}>›</button>
+          <button style={KB.allBtn(showAll)} onClick={()=>setShowAll(v=>!v)}>Alle</button>
+        </div>
+
+        {/* Buchungsliste */}
+        <div>
+          {list.length===0
+            ? <div style={KB.empty}>Keine Buchungen in diesem Zeitraum</div>
+            : <>
+                <div style={KB.hint}>← wischen zum Löschen</div>
+                {list.map(e=>(
+                  <div key={e.id} style={KB.entryWrap}>
+                    <div style={KB.delBtn} onClick={()=>setPendingDel(e)}>🗑️</div>
+                    <div
+                      style={KB.entry(swipedId===e.id)}
+                      onTouchStart={ev=>onSwipeStart(e.id,ev.touches[0].clientX)}
+                      onTouchMove={ev=>onSwipeMove(e.id,ev.touches[0].clientX)}
+                      onTouchEnd={ev=>onSwipeEnd(e.id,ev.changedTouches[0].clientX)}
+                      onMouseDown={ev=>onSwipeStart(e.id,ev.clientX)}
+                      onMouseMove={ev=>onSwipeMove(e.id,ev.clientX)}
+                      onMouseUp={ev=>onSwipeEnd(e.id,ev.clientX)}
+                      onMouseLeave={ev=>onSwipeEnd(e.id,ev.clientX)}
+                    >
+                      <div style={KB.icon(e.type)}>{e.type==="in"?"+":"−"}</div>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={KB.eDesc}>{e.description}</div>
+                        <div style={KB.eDate}>{new Date(e.date+"T12:00:00").toLocaleDateString("de-DE")}</div>
+                      </div>
+                      <div style={KB.eAmt(e.type)}>{e.type==="in"?"+":"−"}{eur(parseFloat(e.amount))}</div>
+                    </div>
+                  </div>
+                ))}
+              </>
+          }
+        </div>
+
+      </div>
+
+      {/* Lösch-Bestätigung (Bottom Sheet) */}
+      {pendingDel&&(
+        <div style={KB.overlay} onClick={e=>{ if(e.target===e.currentTarget){setPendingDel(null);setSwipedId(null);} }}>
+          <div style={KB.sheet}>
+            <div style={KB.shTitle}>Buchung löschen?</div>
+            <div style={KB.shDesc}>
+              „{pendingDel.description}" – {pendingDel.type==="in"?"+":"−"}{eur(parseFloat(pendingDel.amount))}
+              {" "}({new Date(pendingDel.date+"T12:00:00").toLocaleDateString("de-DE")})
+            </div>
+            <div style={KB.shBtns}>
+              <button style={KB.shCancel} onClick={()=>{ setPendingDel(null); setSwipedId(null); }}>Abbrechen</button>
+              <button style={KB.shDel}    onClick={deleteEntry}>Löschen</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast */}
+      {toast&&(
+        <div style={{...S.toast,background:toast.ok?"#14532D":"#7F1D1D",bottom:32,right:16}}>
+          {toast.ok?"✅":"❌"} {toast.msg}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const S={
   shell:{display:"flex",height:"100vh",fontFamily:"'DM Sans',system-ui,sans-serif",background:"#F3F4F6",color:"#111827"},
