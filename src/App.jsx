@@ -19,7 +19,7 @@ function fmt(d)      { return d.toISOString().slice(0,10); }
 function today()     { return fmt(new Date()); }
 function fmtDate(d)  { return `${d.getDate()}. ${DE_MONTH[d.getMonth()]} ${d.getFullYear()}`; }
 function fmtDateShort(s) { const d=new Date(s+"T12:00:00"); return d.toLocaleDateString("de-DE",{weekday:"short",day:"numeric",month:"short"}); }
-function eur(n)      { return (n||0).toFixed(2).replace(".",",")+" €"; }
+function eur(n)      { return (n||0).toLocaleString("de-DE",{minimumFractionDigits:2,maximumFractionDigits:2})+" €"; }
 function dayOfWeek(s){ const d=new Date(s+"T12:00:00"); return d.getDay()===0?6:d.getDay()-1; }
 function getWeekDays(base){ const m=new Date(base); const dw=m.getDay(); m.setDate(m.getDate()-(dw===0?6:dw-1)); return Array.from({length:7},(_,i)=>{ const d=new Date(m); d.setDate(m.getDate()+i); return d; }); }
 function addDays(s,n){ const d=new Date(s+"T12:00:00"); d.setDate(d.getDate()+n); return fmt(d); }
@@ -2900,7 +2900,8 @@ const DE_MONTHS_LONG = ["Januar","Februar","März","April","Mai","Juni","Juli","
 function KassenbuchApp({profile, onBack}) {
   const [entries,     setEntries]     = useState([]);
   const [startbetrag, setStartbetrag] = useState(0);
-  const [view,        setView]        = useState("list"); // "list" | "add" | "editstart"
+  const [view,        setView]        = useState("list"); // "list" | "add" | "editstart" | "inventur"
+  const [showStartMenu, setShowStartMenu] = useState(false);
   const [viewYear,    setViewYear]    = useState(new Date().getFullYear());
   const [viewMonth,   setViewMonth]   = useState(new Date().getMonth());
   const [showAll,     setShowAll]     = useState(false);
@@ -2914,7 +2915,8 @@ function KassenbuchApp({profile, onBack}) {
   const [fAmount, setFAmount] = useState("");
   const [fDesc,   setFDesc]   = useState("");
   const [fDate,   setFDate]   = useState(today());
-  const [fStart,  setFStart]  = useState("");
+  const [fStart,    setFStart]    = useState("");
+  const [fInventur, setFInventur] = useState("");
 
   const swipeRef = useState({})[0];
 
@@ -2971,6 +2973,26 @@ function KassenbuchApp({profile, onBack}) {
     setView("list");
   }
 
+  async function saveInventur() {
+    const zielwert = parseFloat(fInventur.replace(",","."));
+    if(isNaN(zielwert)||zielwert<0){ showToast("Ungültiger Betrag.",false); return; }
+    const diff = zielwert - balance();
+    if(Math.abs(diff) < 0.005){ showToast("Kein Unterschied – nichts gebucht."); setView("list"); return; }
+    const type = diff > 0 ? "in" : "out";
+    const {error} = await sb.from("kassenbuch").insert({
+      user_id: profile.id,
+      type,
+      amount: Math.abs(diff),
+      description: "Inventur",
+      date: today(),
+    });
+    if(error){ showToast("Fehler beim Speichern.",false); return; }
+    showToast(`Differenz ${type==="in"?"+":"−"}${eur(Math.abs(diff))} gebucht.`);
+    setFInventur("");
+    setView("list");
+    loadData();
+  }
+
   async function deleteEntry() {
     if(!pendingDel) return;
     const {error} = await sb.from("kassenbuch").delete().eq("id",pendingDel.id);
@@ -3012,6 +3034,10 @@ function KassenbuchApp({profile, onBack}) {
     balAmt:  (pos)=>({fontSize:32,fontWeight:800,color:pos?"#4ADE80":"#F87171"}),
     startRow:{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:10,paddingTop:10,borderTop:"1px solid #334155"},
     editBtn: {background:"none",border:"1px solid #334155",borderRadius:6,color:"#94A3B8",cursor:"pointer",fontSize:12,padding:"4px 10px",display:"flex",alignItems:"center",gap:4},
+    menuWrap:{position:"relative"},
+    menuBtn: {background:"none",border:"1px solid #334155",borderRadius:6,color:"#94A3B8",cursor:"pointer",fontSize:12,padding:"4px 10px",display:"flex",alignItems:"center",gap:4},
+    menuDrop:{position:"absolute",right:0,top:"calc(100% + 4px)",background:"#1E293B",border:"1px solid #334155",borderRadius:8,overflow:"hidden",zIndex:10,minWidth:140},
+    menuItem:{display:"block",width:"100%",padding:"10px 14px",background:"none",border:"none",color:"#E2E8F0",fontSize:13,cursor:"pointer",textAlign:"left"},
     statRow: {display:"grid",gridTemplateColumns:"1fr 1fr",gap:10},
     stat:    {background:"#1E293B",border:"1.5px solid #334155",borderRadius:10,padding:"10px 14px"},
     statLbl: {fontSize:11,color:"#475569",fontWeight:700,textTransform:"uppercase",letterSpacing:.6,marginBottom:3},
@@ -3047,6 +3073,41 @@ function KassenbuchApp({profile, onBack}) {
   if(loading) return <Loading msg="Lade Kassenbuch…"/>;
 
   // ── Formular: Startbetrag ──────────────────────────────────────────────
+  if(view==="inventur") return (
+    <div style={KB.wrap}>
+      <div style={KB.inner}>
+        <div style={KB.header}>
+          <button style={KB.backBtn} onClick={()=>setView("list")}>← Zurück</button>
+          <span style={KB.title}>Inventur</span>
+        </div>
+        <div style={KB.formCard}>
+          <p style={{fontSize:14,color:"#64748B",margin:0}}>
+            Trage den tatsächlich gezählten Kassenbestand ein. Die Differenz zum aktuellen Bestand wird automatisch als Buchung eingetragen.
+          </p>
+          <div style={{background:"#0F172A",borderRadius:8,padding:"10px 14px",display:"flex",justifyContent:"space-between"}}>
+            <span style={{fontSize:13,color:"#64748B"}}>Aktueller Bestand</span>
+            <span style={{fontSize:13,fontWeight:700,color:bal>=0?"#4ADE80":"#F87171"}}>{eur(bal)}</span>
+          </div>
+          <div>
+            <div style={KB.lbl}>Gezählter Bestand (€)</div>
+            <input style={{...KB.inp,marginTop:6}} type="number" min="0" step="0.01" placeholder="0.00"
+              value={fInventur} onChange={e=>setFInventur(e.target.value)}/>
+          </div>
+          {fInventur!=""&&!isNaN(parseFloat(fInventur.replace(",",".")))&&(()=>{
+            const diff = parseFloat(fInventur.replace(",","."))-bal;
+            if(Math.abs(diff)<0.005) return null;
+            const pos = diff>0;
+            return <div style={{background:pos?"#14532D":"#450A0A",borderRadius:8,padding:"10px 14px",display:"flex",justifyContent:"space-between"}}>
+              <span style={{fontSize:13,color:pos?"#86EFAC":"#FCA5A5"}}>Differenzbuchung</span>
+              <span style={{fontSize:13,fontWeight:700,color:pos?"#4ADE80":"#F87171"}}>{pos?"+":"−"}{eur(Math.abs(diff))}</span>
+            </div>;
+          })()}
+          <button style={KB.saveBtn} onClick={saveInventur}>Inventur buchen</button>
+        </div>
+      </div>
+    </div>
+  );
+
   if(view==="editstart") return (
     <div style={KB.wrap}>
       <div style={KB.inner}>
@@ -3110,7 +3171,7 @@ function KassenbuchApp({profile, onBack}) {
 
   // ── Hauptansicht ───────────────────────────────────────────────────────
   return (
-    <div style={KB.wrap}>
+    <div style={KB.wrap} onClick={()=>setShowStartMenu(false)}>
       <div style={KB.inner}>
 
         {/* Header */}
@@ -3128,9 +3189,21 @@ function KassenbuchApp({profile, onBack}) {
           <div style={KB.balAmt(bal>=0)}>{eur(bal)}</div>
           <div style={KB.startRow}>
             <span style={{fontSize:13,color:"#64748B"}}>Startbetrag: <strong style={{color:"#94A3B8"}}>{eur(startbetrag)}</strong></span>
-            <button style={KB.editBtn} onClick={()=>{ setFStart(startbetrag.toFixed(2)); setView("editstart"); }}>
-              ✏️ Bearbeiten
-            </button>
+            <div style={KB.menuWrap}>
+              <button style={KB.menuBtn} onClick={()=>setShowStartMenu(v=>!v)}>
+                ⚙️ Optionen ▾
+              </button>
+              {showStartMenu&&(
+                <div style={KB.menuDrop}>
+                  <button style={KB.menuItem} onMouseDown={()=>{ setShowStartMenu(false); setFStart(startbetrag.toFixed(2)); setView("editstart"); }}>
+                    ✏️ Startbetrag bearbeiten
+                  </button>
+                  <button style={{...KB.menuItem,borderTop:"1px solid #334155"}} onMouseDown={()=>{ setShowStartMenu(false); setFInventur(""); setView("inventur"); }}>
+                    🔢 Inventur
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
