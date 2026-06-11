@@ -723,26 +723,26 @@ async function scrapeClubTeams(browser) {
         if (!textL.includes(teamL)) continue;
         debug.push(text.slice(0, 120));
 
-        // Heimteam steht vor dem Score/Status-Trenner
-        // Trennmuster: Score wie "6:3", "offen", "Blanko"
-        const sepMatch = text.match(/\d+:\d+|offen|Blanko/i);
-        if (!sepMatch) continue;
-        const beforeSep = text.slice(0, sepMatch.index).toLowerCase().trim();
-        if (!beforeSep.includes(teamL)) continue; // unser Team steht nicht zuerst → Auswärtsspiel
+        // Datum-Zeit-Präfix entfernen: "Sa. 13.06.26, 13:00" o.ä.
+        // Dadurch wird \d+:\d+ nicht fälschlicherweise auf die Uhrzeit getroffen
+        const stripped = text.replace(/^(?:[A-Za-zÄÖÜäöüß]{2,3}\.\s*)?\d{1,2}\.\d{2}\.\d{2,4},?\s*\d{1,2}:\d{2}\s*/, "");
+        const strippedL = stripped.toLowerCase();
 
-        // Gegner: Text nach dem letzten Score-Fragment, bereinigt
-        const afterSep = text.slice(sepMatch.index)
+        // Heimteam muss an erster Stelle stehen
+        if (!strippedL.startsWith(teamL)) continue;
+
+        // Alles nach dem Teamnamen = Scores + Gegner
+        const afterTeam = stripped.slice(teamL.length);
+        const afterTeamClean = afterTeam
           .replace(/\d+:\d+/g, " ")
           .replace(/offen|Blanko(-Spielbericht)?|anzeigen|zurückgezogen|ursprünglich.*$/gi, " ")
           .replace(/\bHP\b/g, " ")
           .replace(/\s+/g, " ").trim();
 
-        // Gegner: führende Zahlen/Leerzeichen entfernen
-        let opponent = afterSep.replace(/^[\s\d:]+/, "").trim();
-        // Sonderfall "1. FC ..." – der Strip hat die führende Ziffer entfernt und nur "." übrig gelassen
-        // → letzte Ziffer vor dem Punkt aus dem Original wiederherstellen
+        let opponent = afterTeamClean.replace(/^[\s\d:]+/, "").trim();
+        // "1. FC ..." – führende Ziffer als Score-Residue entfernt → aus Original wiederherstellen
         if (opponent.startsWith(".")) {
-          const fix = afterSep.match(/(\d)\s*\.\s*[A-ZÄÖÜ]/);
+          const fix = afterTeam.match(/(\d)\s*\.\s*[A-ZÄÖÜ]/);
           if (fix) opponent = fix[1] + opponent;
         }
         if (!opponent || opponent.length < 3 || opponent.length > 60) continue;
