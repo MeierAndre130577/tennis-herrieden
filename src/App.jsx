@@ -3215,6 +3215,12 @@ function KassenbuchApp({profile, onBack}) {
               )}
             </div>
           </div>
+          {(()=>{ const li=[...entries].find(e=>e.description==="Inventur"); if(!li) return null;
+            return <div style={{marginTop:8,paddingTop:8,borderTop:"1px solid #1E3A2F",fontSize:12,color:"#475569",display:"flex",justifyContent:"space-between"}}>
+              <span>Letzte Inventur</span>
+              <span style={{color:"#64748B"}}>{li.type==="in"?"+":"−"}{eur(parseFloat(li.amount))} · {new Date(li.date+"T12:00:00").toLocaleDateString("de-DE")}</span>
+            </div>;
+          })()}
         </div>
 
         {/* Einnahmen / Ausgaben Zusammenfassung */}
