@@ -4,5 +4,21 @@
   "env": {
     "SUPABASE_URL": "https://irszeiamvwyrntyauury.supabase.co",
     "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlyc3plaWFtdnd5cm50eWF1dXJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2Mzc1MjcsImV4cCI6MjA5NjIxMzUyN30.ryxib1E5E2cfkwfXj6i2EnmD56tyCtz_39u7Bpw7qSc"
-  }
+  },
+  "headers": [
+    {
+      "source": "/index.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
+        { "key": "Pragma",        "value": "no-cache" },
+        { "key": "Expires",       "value": "0" }
+      ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    }
+  ]
 }
