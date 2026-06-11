@@ -286,7 +286,9 @@ async function tryWidget(page, groupId, heim, gast) {
   console.log(`Datumsfelder auf Seite: ${(header.allDateTexts||[]).join(" | ") || "(keine)"}`);
 
   // ── Zeitfenster prüfen (anhand BTV-Datum + Uhrzeit) ──────────────────────
-  if (header.matchDate && header.time && header.time !== "–") {
+  // Bei bereits beendeten Spielen (status=done) Zeitfenster immer passieren –
+  // das extrahierte Datum kann bei abgeschlossenen Spielen auf einen Folgetermin zeigen.
+  if (header.status !== "done" && header.matchDate && header.time && header.time !== "–") {
     const timeStr = header.time.replace(/\s*Uhr/i,"").trim();
     if (!isInMatchWindow(header.matchDate, timeStr)) {
       const [h, min] = timeStr.split(":").map(Number);
@@ -310,6 +312,8 @@ async function tryWidget(page, groupId, heim, gast) {
     const diffMin  = Math.round((matchMs - Date.now()) / 60_000);
     if (diffMin > 0) console.log(`⏱ Im Fenster: Anpfiff ${header.time}, noch ${diffMin} Min`);
     else             console.log(`⏱ Im Fenster: Spiel läuft/beendet`);
+  } else if (header.status === "done") {
+    console.log("✓ Spiel beendet – Zeitfenster-Check übersprungen, lade Rubbers.");
   }
 
   // ── Schritt 2: "anzeigen" klicken → ZK lädt Rubbers inline per AJAX ────────
@@ -660,7 +664,7 @@ async function parseReport(page, url, heim, gast) {
 // Club-Teams scrapen – liest Staffel-URLs aus btv_teams_config in Supabase
 // Jede URL ist ein BTV-Widget (widget.btv.de/btvgroup/?groupid=XXX)
 // ══════════════════════════════════════════════════════════════════════════════
-async function scrapeClubTeams(page) {
+async function scrapeClubTeams(browser) {
   console.log("\n=== Club-Teams scrapen ===");
 
   // Konfiguration aus Supabase laden
@@ -686,9 +690,18 @@ async function scrapeClubTeams(page) {
       : url;
 
     console.log(`\nLade Staffel "${name}" → ${widgetUrl}`);
+
+    // Frische Page pro Staffel – verhindert Zustandsprobleme nach Timeouts
+    const page = await browser.newPage();
     try {
-      await page.goto(widgetUrl, { waitUntil:"domcontentloaded", timeout:25_000, referer:"https://www.btv.de/" });
-    } catch(e) { console.log("  Timeout/Fehler:", e.message.slice(0,80)); continue; }
+      await page.goto(widgetUrl, { waitUntil:"domcontentloaded", timeout:30_000, referer:"https://www.btv.de/" });
+    } catch(e) {
+      console.log("  Timeout/Fehler:", e.message.slice(0,80));
+      await page.close();
+      // Kurze Pause vor dem nächsten Versuch
+      await new Promise(r => setTimeout(r, 3000));
+      continue;
+    }
 
     await acceptCookies(page);
     try { await page.waitForSelector('[class*="gbmeet"]', { timeout:20_000 }); } catch(_){}
@@ -728,6 +741,10 @@ async function scrapeClubTeams(page) {
       groupId: groupId || null,
       teams: teams.teams,
     });
+
+    await page.close();
+    // Kurze Pause zwischen Requests – verhindert Rate-Limiting
+    await new Promise(r => setTimeout(r, 3000));
   }
 
   const out = { scrapedAt: new Date().toISOString(), groups: result };
@@ -757,9 +774,9 @@ async function scrapeClubTeams(page) {
 
   // teams_only: direkt Mannschaften scrapen und beenden
   if (teamsOnly) {
-    const { browser, page } = await makeBrowser();
+    const { browser } = await makeBrowser();
     try {
-      await scrapeClubTeams(page);
+      await scrapeClubTeams(browser);
     } finally {
       await browser.close();
     }
