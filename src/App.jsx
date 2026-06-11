@@ -32,7 +32,7 @@ function daysUntil(s){ const diff=Math.round((new Date(s+"T12:00:00")-new Date()
 export default function App() {
   const [session,setSession]   = useState(undefined);
   const [profile,setProfile]   = useState(null);
-  const [screen,setScreen]     = useState("home"); // "home" | "booking" | "kasse" | "settings" | "kassenbuch" | "clubstream" | "btv"
+  const [screen,setScreen]     = useState("home"); // "home" | "booking" | "kasse" | "settings" | "kassenbuch" | "clubstream" | "btv" | "heimspiel"
 
   useEffect(()=>{
     sb.auth.getSession().then(({data:{session}})=>setSession(session));
@@ -65,7 +65,102 @@ export default function App() {
   if(screen==="kassenbuch")  return <KassenbuchApp  profile={profile} onBack={()=>setScreen("home")}/>;
   if(screen==="clubstream")  return <ClubstreamApp  profile={profile} onBack={()=>setScreen("home")}/>;
   if(screen==="btv")         return <BtvLinksScreen onBack={()=>setScreen("home")}/>;
-  return <HomeScreen profile={profile} onGoBooking={()=>setScreen("booking")} onGoKasse={()=>setScreen("kasse")} onGoSettings={()=>setScreen("settings")} onGoKassenbuch={()=>setScreen("kassenbuch")} onGoClubstream={()=>setScreen("clubstream")} onGoBtv={()=>setScreen("btv")}/>;
+  if(screen==="heimspiel")   return <HeimspielwocheScreen onBack={()=>setScreen("home")}/>;
+  return <HomeScreen profile={profile} onGoBooking={()=>setScreen("booking")} onGoKasse={()=>setScreen("kasse")} onGoSettings={()=>setScreen("settings")} onGoKassenbuch={()=>setScreen("kassenbuch")} onGoClubstream={()=>setScreen("clubstream")} onGoBtv={()=>setScreen("btv")} onGoHeimspiele={()=>setScreen("heimspiel")}/>;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// HEIMSPIELWOCHE SCREEN
+// ═══════════════════════════════════════════════════════════════════════════
+function HeimspielwocheScreen({onBack}) {
+  const [groups,setGroups] = useState([]);
+  const [loading,setLoading] = useState(true);
+
+  useEffect(()=>{
+    sb.from("settings").select("value").eq("key","btv_club_teams").single()
+      .then(({data})=>{
+        try {
+          const ct = JSON.parse(data?.value);
+          const now = new Date(); now.setHours(0,0,0,0);
+          const end = new Date(now); end.setDate(end.getDate()+7);
+          // Sammle alle Heimspiele in den nächsten 7 Tagen
+          const byDate = {};
+          (ct?.groups||[]).forEach(g=>{
+            (g.homeGames||[]).forEach(game=>{
+              if(!game.date) return;
+              const d = new Date(game.date+"T12:00:00");
+              if(d<now || d>=end) return;
+              if(!byDate[game.date]) byDate[game.date]=[];
+              byDate[game.date].push({ team: g.name||g.teamName, ...game });
+            });
+          });
+          // Sortiert nach Datum
+          const sorted = Object.keys(byDate).sort().map(date=>({ date, games: byDate[date] }));
+          setGroups(sorted);
+        } catch(_){}
+        setLoading(false);
+      });
+  },[]);
+
+  const DE_WEEKDAY = ["So","Mo","Di","Mi","Do","Fr","Sa"];
+
+  function fmtGameDate(s) {
+    const d = new Date(s+"T12:00:00");
+    return `${DE_WEEKDAY[d.getDay()]}, ${d.getDate()}. ${DE_MONTH[d.getMonth()]}`;
+  }
+
+  return (
+    <div style={H.wrap}>
+      <div style={H.glow}/>
+      <div style={H.inner}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
+          <button onClick={onBack} style={{background:"none",border:"none",color:"#94A3B8",fontSize:22,cursor:"pointer",padding:"0 4px"}}>←</button>
+          <h2 style={{color:"#F8FAFC",fontSize:20,fontWeight:800,margin:0}}>🏠 Heimspielwoche</h2>
+        </div>
+
+        {loading && <div style={{textAlign:"center",color:"#64748B",padding:32}}>Lade…</div>}
+
+        {!loading && groups.length===0 && (
+          <div style={{textAlign:"center",color:"#64748B",padding:32,fontSize:15}}>
+            Keine Heimspiele in den nächsten 7 Tagen
+          </div>
+        )}
+
+        <div style={{display:"flex",flexDirection:"column",gap:16}}>
+          {groups.map(({date,games})=>(
+            <div key={date}>
+              <div style={{fontSize:12,fontWeight:700,color:"#FCD34D",textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>
+                {fmtGameDate(date)}
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {games.map((g,i)=>(
+                  <div key={i} style={{background:"#1E293B",border:"1.5px solid #334155",borderRadius:12,padding:"12px 14px"}}>
+                    <div style={{fontSize:11,fontWeight:700,color:"#94A3B8",textTransform:"uppercase",letterSpacing:.6,marginBottom:6}}>
+                      {g.team}
+                    </div>
+                    <div style={{display:"flex",alignItems:"center",gap:10}}>
+                      {g.homeLogo && (
+                        <img src={g.homeLogo} alt="Heim" style={{width:36,height:36,objectFit:"contain",borderRadius:4,background:"#F8FAFC22",padding:2}}
+                          onError={e=>{e.target.style.display="none"}}/>
+                      )}
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:13,fontWeight:700,color:"#E2E8F0",lineHeight:1.3}}>vs. {g.opponent}</div>
+                        {g.time && <div style={{fontSize:12,color:"#FCD34D",marginTop:2}}>⏰ {g.time} Uhr</div>}
+                      </div>
+                      {g.opponentLogo && (
+                        <img src={g.opponentLogo} alt="Gast" style={{width:36,height:36,objectFit:"contain",borderRadius:4,background:"#F8FAFC22",padding:2}}
+                          onError={e=>{e.target.style.display="none"}}/>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -104,11 +199,12 @@ function BtvLinksScreen({onBack}) {
 // ═══════════════════════════════════════════════════════════════════════════
 // HOME SCREEN
 // ═══════════════════════════════════════════════════════════════════════════
-function HomeScreen({profile,onGoBooking,onGoKasse,onGoSettings,onGoKassenbuch,onGoClubstream,onGoBtv}) {
+function HomeScreen({profile,onGoBooking,onGoKasse,onGoSettings,onGoKassenbuch,onGoClubstream,onGoBtv,onGoHeimspiele}) {
   const [nextBookings,setNextBookings] = useState([]);
   const [openLog,setOpenLog]           = useState([]);
   const [openTotal,setOpenTotal]       = useState(0);
   const [btvTeams,setBtvTeams]         = useState([]);
+  const [heimspielCount,setHeimspielCount] = useState(0);
   useEffect(()=>{
     // next 2 bookings – nur reguläre Einzelbuchungen
     sb.from("bookings").select("*,courts(name,surface)").eq("user_id",profile.id).eq("type","regular").gte("date",today()).order("date").order("slot").limit(1)
@@ -119,6 +215,22 @@ function HomeScreen({profile,onGoBooking,onGoKasse,onGoSettings,onGoKassenbuch,o
     // btv team links
     sb.from("settings").select("value").eq("key","btv_teams_config").single()
       .then(({data})=>{ try { setBtvTeams(JSON.parse(data?.value)||[]); } catch(_){} });
+    // heimspiele diese woche zählen
+    sb.from("settings").select("value").eq("key","btv_club_teams").single()
+      .then(({data})=>{
+        try {
+          const ct = JSON.parse(data?.value);
+          const now = new Date(); now.setHours(0,0,0,0);
+          const end = new Date(now); end.setDate(end.getDate()+7);
+          let count = 0;
+          (ct?.groups||[]).forEach(g=>(g.homeGames||[]).forEach(game=>{
+            if(!game.date) return;
+            const d = new Date(game.date+"T12:00:00");
+            if(d>=now && d<end) count++;
+          }));
+          setHeimspielCount(count);
+        } catch(_){}
+      });
   },[profile.id]);
 
   return (
@@ -186,6 +298,20 @@ function HomeScreen({profile,onGoBooking,onGoKasse,onGoSettings,onGoKassenbuch,o
                 <div style={{fontSize:13,fontWeight:600,color:"#93C5FD"}}>{btvTeams.length} Mannschaften</div>
               </div>
               <span style={{color:"#93C5FD",fontSize:16}}>→</span>
+            </div>
+          </div>
+
+          {/* Heimspielwoche */}
+          <div style={{...H.widgetCompact, borderColor:"#F59E0B55", background:"#1A130A"}} onClick={onGoHeimspiele}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <span style={{fontSize:18}}>🏠</span>
+              <div style={{flex:1}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#94A3B8",textTransform:"uppercase",letterSpacing:.7}}>Heimspielwoche</div>
+                <div style={{fontSize:13,fontWeight:600,color:"#FCD34D"}}>
+                  {heimspielCount>0 ? `${heimspielCount} Heimspiel${heimspielCount!==1?"e":""} in den nächsten 7 Tagen` : "Keine Heimspiele diese Woche"}
+                </div>
+              </div>
+              <span style={{color:"#FCD34D",fontSize:16}}>→</span>
             </div>
           </div>
 

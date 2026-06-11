@@ -1,10 +1,11 @@
 name: BTV Daten holen
 
 on:
-  # Alle 10 Minuten, täglich – das Skript prüft selbst ob ein Spiel im Zeitfenster liegt
-  # (1h vor bis 10h nach Spielbeginn). Außerhalb: sofortiger Exit, ~0 Rechenzeit.
+  # Alle 10 Minuten – Skript prüft selbst ob Spiel im Zeitfenster liegt
   schedule:
     - cron: '*/10 * * * *'
+    # Täglich 02:00 UTC (03:00 MEZ / 04:00 MESZ) – Heimspielplan aktualisieren
+    - cron: '0 2 * * *'
   # Manuell auslösbar – optional nur Mannschaften laden
   workflow_dispatch:
     inputs:
@@ -41,4 +42,4 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           TZ: Europe/Berlin
-          TEAMS_ONLY: ${{ inputs.teams_only }}
+          TEAMS_ONLY: ${{ inputs.teams_only || (github.event.schedule == '0 2 * * *' && 'true' || 'false') }}

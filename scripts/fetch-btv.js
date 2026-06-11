@@ -749,8 +749,9 @@ async function scrapeClubTeams(browser) {
         }
         if (!opponent || opponent.length < 3 || opponent.length > 60) continue;
 
-        // Datum: aus Parent-Container suchen (letztes DD.MM.JJ vor unserer Position)
+        // Datum + Zeit: aus Parent-Container suchen
         let matchDate = null;
+        let matchTime = null;
         try {
           let el = m;
           let fullText = "";
@@ -764,13 +765,21 @@ async function scrapeClubTeams(browser) {
           const lookBack = myPos > 0 ? fullText.slice(0, myPos).slice(-400) : "";
           const pairs = [...lookBack.matchAll(/(\d{1,2})\.(\d{1,2})\.(\d{2,4}),\s*(\d{1,2}:\d{2})/g)];
           if (pairs.length) {
-            const [, d, mo, y] = pairs[pairs.length - 1];
+            const [, d, mo, y, t] = pairs[pairs.length - 1];
             const year = y.length === 2 ? "20" + y : y;
             matchDate = `${year}-${mo.padStart(2,"0")}-${d.padStart(2,"0")}`;
+            matchTime = t || null;
           }
         } catch(_) {}
 
-        games.push({ opponent, date: matchDate });
+        // Logos: erste zwei img-Tags im gbmeet-Element
+        const logoImgs = Array.from(m.querySelectorAll("img"))
+          .map(img => img.src || img.getAttribute("src") || "")
+          .filter(s => s && s.startsWith("http"));
+        const homeLogo    = logoImgs[0] || null;
+        const opponentLogo = logoImgs[1] || null;
+
+        games.push({ opponent, date: matchDate, time: matchTime, homeLogo, opponentLogo });
       }
       return { games, debug };
     }, teamName);
