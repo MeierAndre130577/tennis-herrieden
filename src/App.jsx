@@ -41,6 +41,16 @@ export default function App() {
   },[]);
 
   useEffect(()=>{
+    let hiddenAt=null;
+    const onVisibility=()=>{
+      if(document.visibilityState==="hidden"){ hiddenAt=Date.now(); }
+      else if(hiddenAt&&Date.now()-hiddenAt>5*60*1000){ window.location.reload(); }
+    };
+    document.addEventListener("visibilitychange",onVisibility);
+    return ()=>document.removeEventListener("visibilitychange",onVisibility);
+  },[]);
+
+  useEffect(()=>{
     if(!session){ setProfile(null); return; }
     sb.from("profiles").select("*").eq("id",session.user.id).single().then(({data})=>setProfile(data));
   },[session]);
@@ -3190,11 +3200,11 @@ function KassenbuchApp({profile, onBack}) {
           <div style={KB.startRow}>
             <span style={{fontSize:13,color:"#64748B"}}>Startbetrag: <strong style={{color:"#94A3B8"}}>{eur(startbetrag)}</strong></span>
             <div style={KB.menuWrap}>
-              <button style={KB.menuBtn} onClick={()=>setShowStartMenu(v=>!v)}>
+              <button style={KB.menuBtn} onClick={e=>{ e.stopPropagation(); setShowStartMenu(v=>!v); }}>
                 ⚙️ Optionen ▾
               </button>
               {showStartMenu&&(
-                <div style={KB.menuDrop}>
+                <div style={KB.menuDrop} onClick={e=>e.stopPropagation()}>
                   <button style={KB.menuItem} onMouseDown={()=>{ setShowStartMenu(false); setFStart(startbetrag.toFixed(2)); setView("editstart"); }}>
                     ✏️ Startbetrag bearbeiten
                   </button>
