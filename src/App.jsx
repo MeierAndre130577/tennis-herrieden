@@ -253,12 +253,12 @@ function ClubstreamDetail({item,onBack}) {
           {item.event_start&&(()=>{
             const fmt=(iso,withTime)=>{
               const d=new Date(iso);
-              const t=d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
-              const day=d.toLocaleDateString("de-DE",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+              const t=d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit",timeZone:"UTC"});
+              const day=d.toLocaleDateString("de-DE",{weekday:"long",day:"numeric",month:"long",year:"numeric",timeZone:"UTC"});
               return withTime&&t!=="00:00"?`${day}, ${t} Uhr`:day;
             };
-            const sHasTime=new Date(item.event_start).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})!=="00:00";
-            const eHasTime=item.event_end&&new Date(item.event_end).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})!=="00:00";
+            const sHasTime=new Date(item.event_start).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit",timeZone:"UTC"})!=="00:00";
+            const eHasTime=item.event_end&&new Date(item.event_end).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit",timeZone:"UTC"})!=="00:00";
             return(
               <p style={{fontSize:13,color:"#8B5CF6",margin:0,fontWeight:600}}>
                 📅 {fmt(item.event_start,sHasTime)}
@@ -427,7 +427,7 @@ function ClubstreamApp({profile,onBack}) {
                   )}
                   {item.type==="event"&&item.event_start&&(
                     <div style={{marginTop:6,fontSize:12,color:"#8B5CF6",fontWeight:600}}>
-                      📅 {new Date(item.event_start).toLocaleDateString("de-DE",{weekday:"short",day:"numeric",month:"short"})}
+                      📅 {new Date(item.event_start).toLocaleDateString("de-DE",{weekday:"short",day:"numeric",month:"short",timeZone:"UTC"})}
                       {item.event_location&&<span style={{color:"#64748B",fontWeight:400}}> · 📍 {item.event_location}</span>}
                     </div>
                   )}
