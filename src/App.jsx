@@ -74,6 +74,7 @@ function HomeScreen({profile,onGoBooking,onGoKasse,onGoSettings,onGoKassenbuch,o
   const [nextBookings,setNextBookings] = useState([]);
   const [openLog,setOpenLog]           = useState([]);
   const [openTotal,setOpenTotal]       = useState(0);
+  const [btvTeams,setBtvTeams]         = useState([]);
   useEffect(()=>{
     // next 2 bookings – nur reguläre Einzelbuchungen
     sb.from("bookings").select("*,courts(name,surface)").eq("user_id",profile.id).eq("type","regular").gte("date",today()).order("date").order("slot").limit(1)
@@ -81,6 +82,9 @@ function HomeScreen({profile,onGoBooking,onGoKasse,onGoSettings,onGoKassenbuch,o
     // open kasse items
     sb.from("kasse_log").select("*").eq("user_id",profile.id).eq("paid",false)
       .then(({data})=>{ setOpenLog(data||[]); setOpenTotal((data||[]).reduce((s,l)=>s+l.price,0)); });
+    // btv team links
+    sb.from("settings").select("value").eq("key","btv_teams_config").single()
+      .then(({data})=>{ try { setBtvTeams(JSON.parse(data?.value)||[]); } catch(_){} });
   },[profile.id]);
 
   return (
@@ -138,6 +142,22 @@ function HomeScreen({profile,onGoBooking,onGoKasse,onGoSettings,onGoKassenbuch,o
               <span style={{color:"#4ADE80",fontSize:16}}>→</span>
             </div>
           </div>
+
+          {/* BTV Links */}
+          {btvTeams.length>0&&(
+            <div style={{...H.widget, cursor:"default"}}>
+              <div style={H.widgetLabel}>🔗 BTV Links</div>
+              {btvTeams.map((t,i)=>t.url&&(
+                <div key={i}
+                  onClick={()=>window.open(t.url,"_blank")}
+                  style={{display:"flex",alignItems:"center",justifyContent:"space-between",
+                    padding:"8px 0",borderTop:i>0?"1px solid #2D3748":"none",cursor:"pointer"}}>
+                  <span style={{fontSize:13,color:"#CBD5E1"}}>{t.name}</span>
+                  <span style={{fontSize:12,color:"#4ADE80"}}>→</span>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Open drinks – compact */}
           <div style={{...H.widgetCompact,...(openLog.length>0?H.widgetWarn:H.widgetOk)}} onClick={onGoKasse}>
