@@ -216,8 +216,10 @@ async function tryWidget(page, groupId, heim, gast) {
       const lookBack = matchStart > 0 ? fullRowText.slice(0, matchStart) : fullRowText;
 
       // Datum+Zeit als BTV-Paar suchen: "DD.MM.YY, HH:MM" oder "DD.MM.YYYY, HH:MM"
-      // Nur echte Terminangaben matchen, keine Score-Fragmente wie "0:01"
-      const allPairs = [...lookBack.matchAll(/(\d{1,2})\.(\d{1,2})\.(\d{2,4}),\s*(\d{1,2}:\d{2})/g)];
+      // Nur die letzten 400 Zeichen durchsuchen – verhindert dass Daten von weit
+      // entfernten anderen Matchzeilen (z.B. zukünftige Spiele weiter oben) aufgenommen werden.
+      const lookBackWindow = lookBack.slice(-400);
+      const allPairs = [...lookBackWindow.matchAll(/(\d{1,2})\.(\d{1,2})\.(\d{2,4}),\s*(\d{1,2}:\d{2})/g)];
       const lastPair = allPairs.length > 0 ? allPairs[allPairs.length - 1] : null;
 
       const time = lastPair ? lastPair[4] + " Uhr" : "–";
