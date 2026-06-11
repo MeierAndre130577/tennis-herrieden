@@ -657,92 +657,83 @@ async function parseReport(page, url, heim, gast) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// PROTOTYP: Club-Teams + Gegner scrapen
-// Läuft nur bei manuellem Trigger, speichert btv_club_teams in Supabase
+// Club-Teams scrapen – liest Staffel-URLs aus btv_teams_config in Supabase
+// Jede URL ist ein BTV-Widget (widget.btv.de/btvgroup/?groupid=XXX)
 // ══════════════════════════════════════════════════════════════════════════════
-async function scrapeClubTeams(page, vereinsnr) {
-  console.log("\n=== Club-Teams scrapen (Prototyp) ===");
-  const url = `https://btv-prod.burdadigitalsystems.de/btvmeetings/?clubnr=${vereinsnr}`;
-  try {
-    await page.goto(url, { waitUntil: "networkidle", timeout: 30_000 });
-  } catch (e) {
-    console.log("Club-Seite nicht erreichbar – übersprungen:", e.message.slice(0, 80));
-    return null;
-  }
-  await page.waitForTimeout(3000);
+async function scrapeClubTeams(page) {
+  console.log("\n=== Club-Teams scrapen ===");
 
-  const raw = await page.evaluate(() => {
-    const bodyText = document.body.innerText.replace(/\s+/g, " ").trim();
+  // Konfiguration aus Supabase laden
+  const { data: cfgRaw } = await sb.from("settings")
+    .select("value").eq("key","btv_teams_config").single();
+  let teamsConfig = [];
+  try { teamsConfig = cfgRaw?.value ? JSON.parse(cfgRaw.value) : []; } catch(_){}
 
-    // Alle Elemente mit CSS-Klassen loggen (für Debugging)
-    const allClasses = [...new Set(
-      Array.from(document.querySelectorAll("*"))
-        .map(el => el.className)
-        .filter(c => typeof c === "string" && c.includes("gb"))
-    )].slice(0, 20);
-
-    // gbmeeting-Container
-    const meetEls = Array.from(document.querySelectorAll('[class*="gbmeet"]'));
-    const matchTexts = meetEls
-      .map(m => m.textContent.trim().replace(/\s+/g, " ").slice(0, 300))
-      .filter(t => t.length > 10);
-
-    // Alle Links
-    const links = Array.from(document.querySelectorAll("a[href]"))
-      .map(a => a.href)
-      .filter(h => h.includes("btv") || h.includes("groupid") || h.includes("clubnr") || h.includes("meetid"))
-      .slice(0, 20);
-
-    // Z-Tree oder Z-List Elemente (ZK Framework Navigation)
-    const treeItems = Array.from(document.querySelectorAll('[class*="z-tree"],[class*="z-list"],[class*="z-nav"]'))
-      .map(el => el.textContent.trim().replace(/\s+/g, " ").slice(0, 100))
-      .filter(t => t.length > 3)
-      .slice(0, 10);
-
-    return { bodyText: bodyText.slice(0, 5000), matchTexts, links, allClasses, treeItems };
-  });
-
-  console.log(`Body-Länge: ${raw.bodyText.length} Zeichen`);
-  console.log(`gbmeet-Elemente: ${raw.matchTexts.length}`);
-  console.log(`Body (erste 2000):\n${raw.bodyText.slice(0, 2000)}`);
-  if (raw.allClasses.length) console.log(`GB-Klassen auf Seite: ${raw.allClasses.join(", ")}`);
-  if (raw.links.length)     console.log(`BTV-Links: ${raw.links.join(" | ")}`);
-  if (raw.treeItems.length) console.log(`Tree/Nav-Elemente: ${raw.treeItems.join(" | ")}`);
-  if (raw.matchTexts.length) {
-    console.log("Match-Texte:");
-    raw.matchTexts.slice(0, 8).forEach((t, i) => console.log(`  [${i}] ${t}`));
+  if (!teamsConfig.length) {
+    console.log("Keine Staffel-URLs konfiguriert (btv_teams_config leer).");
+    return;
   }
 
-  // ── Versuch: Teams aus Body-Text extrahieren ─────────────────────────────
-  // BTV zeigt Matches als "Heim - Gast" oder "Heim vs Gast" im Text
-  const teams = {};
-  const teamPattern = /([A-ZÄÖÜ][^\n\d:]{3,30})\s*[-–]\s*([A-ZÄÖÜ][^\n\d:]{3,30})/g;
-  for (const m of raw.bodyText.matchAll(teamPattern)) {
-    const heim = m[1].trim(); const gast = m[2].trim();
-    if (heim && gast && heim !== gast && heim.length < 40 && gast.length < 40) {
-      if (!teams[heim]) teams[heim] = new Set();
-      teams[heim].add(gast);
-    }
+  const result = [];
+
+  for (const entry of teamsConfig) {
+    const { name, url } = entry;
+    if (!url) continue;
+    const groupIdM = url.match(/groupid=(\d+)/i);
+    const groupId  = groupIdM?.[1];
+    const widgetUrl = groupId
+      ? `https://widget.btv.de/btvgroup/?groupid=${groupId}`
+      : url;
+
+    console.log(`\nLade Staffel "${name}" → ${widgetUrl}`);
+    try {
+      await page.goto(widgetUrl, { waitUntil:"domcontentloaded", timeout:25_000, referer:"https://www.btv.de/" });
+    } catch(e) { console.log("  Timeout/Fehler:", e.message.slice(0,80)); continue; }
+
+    await acceptCookies(page);
+    try { await page.waitForSelector('[class*="gbmeet"]', { timeout:20_000 }); } catch(_){}
+    await page.waitForTimeout(2000);
+
+    const teams = await page.evaluate(() => {
+      // Tabelle: alle Zeilen mit Vereinsnamen
+      const bodyText = document.body.innerText.replace(/\s+/g," ");
+
+      // Tabellen-Abschnitt: "Tabelle ... RANG VEREIN ..." → Vereine extrahieren
+      const tableM = bodyText.match(/Tabelle\s+RANG.*?(?=Spielplan|$)/i);
+      const tableText = tableM ? tableM[0] : bodyText;
+
+      // Alle gbmeet-Elemente → Teamnamen aus Matches
+      const meetEls = Array.from(document.querySelectorAll('[class*="gbmeet"]'));
+      const teamSet = new Set();
+      for (const m of meetEls) {
+        const t = m.textContent.replace(/\s+/g," ").trim();
+        // Split an Score-Mustern
+        const parts = t.split(/\d:\d|\boffen\b|\bBlanko\b|\banzeigen\b/i)
+          .map(s => s.trim()).filter(s => s.length > 3 && !/^\d/.test(s));
+        parts.forEach(p => { if(p.length < 50) teamSet.add(p); });
+      }
+
+      return {
+        teams: [...teamSet],
+        bodySnippet: bodyText.slice(0, 500),
+      };
+    });
+
+    console.log(`  Teams gefunden: ${teams.teams.join(", ") || "(keine)"}`);
+    console.log(`  Body-Snippet: ${teams.bodySnippet.slice(0,200)}`);
+
+    result.push({
+      name,
+      url,
+      groupId: groupId || null,
+      teams: teams.teams,
+    });
   }
 
-  const structured = Object.entries(teams).map(([mannschaft, gegnerSet]) => ({
-    mannschaft,
-    gegner: [...gegnerSet],
-  }));
-
-  console.log(`Extrahierte Teams: ${structured.length}`);
-  structured.forEach(t => console.log(`  ${t.mannschaft} → [${t.gegner.join(", ")}]`));
-
-  const result = {
-    vereinsnr,
-    scrapedAt: new Date().toISOString(),
-    teams: structured,
-    _raw: { matchCount: raw.matchTexts.length, sample: raw.matchTexts.slice(0, 3) },
-  };
-
-  await saveResult("btv_club_teams", result);
-  console.log("✓ btv_club_teams gespeichert");
-  return result;
+  const out = { scrapedAt: new Date().toISOString(), groups: result };
+  await saveResult("btv_club_teams", out);
+  console.log(`\n✓ btv_club_teams gespeichert (${result.length} Staffeln)`);
+  return out;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -768,7 +759,7 @@ async function scrapeClubTeams(page, vereinsnr) {
   if (teamsOnly) {
     const { browser, page } = await makeBrowser();
     try {
-      await scrapeClubTeams(page, clubnr);
+      await scrapeClubTeams(page);
     } finally {
       await browser.close();
     }
@@ -894,11 +885,6 @@ async function scrapeClubTeams(page, vereinsnr) {
     // Fehler-Flag löschen wenn erfolgreich
     await saveResult("btv_fetch_error", null);
     console.log(`\n✓ Gespeichert: ${matchData.status}  ${matchData.homeScore}:${matchData.awayScore}  ${matchData.rubbers.length} Rubbers  [auto ${matchData._savedAt}]`);
-
-    // ── Prototyp: bei manuellem Trigger auch Club-Teams scrapen ─────────────
-    if (isManual) {
-      await scrapeClubTeams(page, clubnr);
-    }
 
   } finally {
     await browser.close();

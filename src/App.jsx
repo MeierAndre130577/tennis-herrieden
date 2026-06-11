@@ -1632,9 +1632,25 @@ function SettingsDisplayTab({onToast}) {
     onToast(next ? "✅ Automatischer Fetch aktiviert" : "⏸ Automatischer Fetch deaktiviert");
   };
 
-  const [teamsStatus, setTeamsStatus] = useState(null);
+  const [showTeamsModal,  setShowTeamsModal]  = useState(false);
+  const [teamsConfig,     setTeamsConfig]     = useState([]); // [{name, url}]
+  const [teamsSaving,     setTeamsSaving]     = useState(false);
+  const [teamsStatus,     setTeamsStatus]     = useState(null);
+
+  useEffect(()=>{
+    sb.from("settings").select("value").eq("key","btv_teams_config").single()
+      .then(({data})=>{ if(data?.value) try { setTeamsConfig(JSON.parse(data.value)); } catch(_){} });
+  },[]);
+
+  const saveTeamsConfig = async () => {
+    setTeamsSaving(true);
+    await sb.from("settings").upsert({key:"btv_teams_config", value:JSON.stringify(teamsConfig)},{onConflict:"key"});
+    setTeamsSaving(false);
+    onToast("Staffel-URLs gespeichert ✓");
+  };
+
   const triggerTeamsLoad = async () => {
-    if(!githubPat) { onToast("Kein GitHub PAT hinterlegt – bitte zuerst speichern","error"); return; }
+    if(!githubPat) { onToast("Kein GitHub PAT hinterlegt","error"); return; }
     setTeamsStatus("running");
     try {
       const res = await fetch(
@@ -1644,16 +1660,16 @@ function SettingsDisplayTab({onToast}) {
           body: JSON.stringify({ ref:"main", inputs:{ teams_only:"true" } }) }
       );
       if(res.status === 204) {
-        setTeamsStatus("ok");
-        onToast("✅ Mannschaften-Laden gestartet – dauert ~30 Sek.");
+        setTeamsStatus({ok:true,  msg:"✅ Mannschaften-Laden gestartet – dauert ~60 Sek."});
+        onToast("✅ Mannschaften-Laden gestartet – dauert ~60 Sek.");
         setTimeout(()=>setTeamsStatus(null), 10000);
       } else {
-        setTeamsStatus("error");
+        setTeamsStatus({ok:false, msg:`Fehler ${res.status} beim Auslösen des Workflows`});
         onToast(`Fehler ${res.status}`,"error");
         setTimeout(()=>setTeamsStatus(null), 6000);
       }
     } catch(e) {
-      setTeamsStatus("error");
+      setTeamsStatus({ok:false, msg:`Netzwerkfehler: ${e.message}`});
       onToast(`Netzwerkfehler: ${e.message}`,"error");
       setTimeout(()=>setTeamsStatus(null), 6000);
     }
@@ -1896,16 +1912,14 @@ function SettingsDisplayTab({onToast}) {
                       </span>
                     )}
                   </div>
-                  {/* Mannschaften laden */}
+                  {/* Mannschaften konfigurieren */}
                   <div style={{marginTop:8,paddingTop:8,borderTop:"1px solid #E5E7EB"}}>
-                    <button onClick={triggerTeamsLoad} disabled={teamsStatus==="running"}
+                    <button onClick={()=>setShowTeamsModal(true)}
                       style={{background:"none",border:"1px solid #D1D5DB",borderRadius:6,
-                        padding:"5px 12px",fontSize:11,cursor:teamsStatus==="running"?"wait":"pointer",
-                        color:teamsStatus==="ok"?"#059669":teamsStatus==="error"?"#DC2626":"#6B7280",
-                        opacity:teamsStatus==="running"?0.7:1}}>
-                      {teamsStatus==="running"?"⏳ Lädt…":teamsStatus==="ok"?"✅ Geladen!":teamsStatus==="error"?"❌ Fehler":"🏓 Mannschaften laden"}
+                        padding:"5px 12px",fontSize:11,cursor:"pointer",color:"#6B7280"}}>
+                      🏓 Mannschaften konfigurieren
                     </button>
-                    <span style={{marginLeft:8,fontSize:10,color:"#9CA3AF"}}>Einmal pro Saison klicken</span>
+                    <span style={{marginLeft:8,fontSize:10,color:"#9CA3AF"}}>Einmal pro Saison</span>
                   </div>
                 </div>
               </div>
@@ -2043,6 +2057,97 @@ function SettingsDisplayTab({onToast}) {
           Display öffnen ↗
         </a>
       </div>
+
+      {/* ── MANNSCHAFTEN MODAL ── */}
+      {showTeamsModal&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:1000,
+          display:"flex",alignItems:"center",justifyContent:"center",padding:16}}
+          onClick={()=>setShowTeamsModal(false)}>
+          <div style={{background:"#fff",borderRadius:12,padding:24,width:"100%",maxWidth:520,
+            maxHeight:"90vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}}
+            onClick={e=>e.stopPropagation()}>
+            {/* Header */}
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+              <div style={{fontWeight:800,fontSize:16,color:"#111827"}}>🏓 Mannschaften konfigurieren</div>
+              <button onClick={()=>setShowTeamsModal(false)}
+                style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#9CA3AF",padding:"2px 6px"}}>✕</button>
+            </div>
+
+            {/* Erklärung */}
+            <div style={{fontSize:12,color:"#6B7280",marginBottom:16,lineHeight:1.6,
+              background:"#F8FAFC",borderRadius:8,padding:"10px 12px",border:"1px solid #E5E7EB"}}>
+              Staffel-URLs aus der BTV-Website — eine pro Mannschaft.<br/>
+              Format: <code style={{background:"#E5E7EB",padding:"0 3px",borderRadius:3,fontSize:11}}>
+                https://www.btv.de/…?groupid=XXXXXXX
+              </code>
+            </div>
+
+            {/* Zeilen */}
+            <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:12}}>
+              {teamsConfig.map((row,i)=>(
+                <div key={i} style={{display:"flex",gap:8,alignItems:"center"}}>
+                  <input
+                    placeholder="Mannschaftsname"
+                    value={row.name}
+                    onChange={e=>{const c=[...teamsConfig];c[i]={...c[i],name:e.target.value};setTeamsConfig(c);}}
+                    style={{flex:"0 0 140px",padding:"7px 10px",border:"1px solid #D1D5DB",
+                      borderRadius:6,fontSize:12}}/>
+                  <input
+                    placeholder="https://www.btv.de/…?groupid=…"
+                    value={row.url}
+                    onChange={e=>{const c=[...teamsConfig];c[i]={...c[i],url:e.target.value};setTeamsConfig(c);}}
+                    style={{flex:1,padding:"7px 10px",border:"1px solid #D1D5DB",
+                      borderRadius:6,fontSize:12}}/>
+                  <button onClick={()=>setTeamsConfig(teamsConfig.filter((_,j)=>j!==i))}
+                    style={{background:"none",border:"1px solid #FECACA",borderRadius:6,
+                      padding:"5px 9px",cursor:"pointer",color:"#EF4444",fontSize:13,flexShrink:0}}>
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* + Zeile hinzufügen */}
+            <button onClick={()=>setTeamsConfig([...teamsConfig,{name:"",url:""}])}
+              style={{background:"none",border:"1px dashed #D1D5DB",borderRadius:6,
+                padding:"6px 14px",fontSize:12,cursor:"pointer",color:"#6B7280",
+                width:"100%",marginBottom:16}}>
+              + Mannschaft hinzufügen
+            </button>
+
+            {/* Status */}
+            {teamsStatus&&(
+              <div style={{marginBottom:12,padding:"8px 12px",borderRadius:6,fontSize:12,
+                background:teamsStatus.ok?"#F0FDF4":"#FEF2F2",
+                border:`1px solid ${teamsStatus.ok?"#BBF7D0":"#FECACA"}`,
+                color:teamsStatus.ok?"#166534":"#DC2626"}}>
+                {teamsStatus.msg}
+              </div>
+            )}
+
+            {/* Buttons */}
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end",flexWrap:"wrap"}}>
+              <button onClick={()=>setShowTeamsModal(false)}
+                style={{background:"none",border:"1px solid #D1D5DB",borderRadius:6,
+                  padding:"8px 16px",fontSize:12,cursor:"pointer",color:"#6B7280"}}>
+                Schließen
+              </button>
+              <button onClick={saveTeamsConfig} disabled={teamsSaving}
+                style={{background:"#8B5CF6",color:"#fff",border:"none",borderRadius:6,
+                  padding:"8px 16px",fontSize:12,cursor:"pointer",fontWeight:600,
+                  opacity:teamsSaving?0.6:1}}>
+                {teamsSaving?"Speichern…":"💾 Speichern"}
+              </button>
+              <button onClick={triggerTeamsLoad} disabled={teamsSaving}
+                style={{background:"#2563EB",color:"#fff",border:"none",borderRadius:6,
+                  padding:"8px 16px",fontSize:12,cursor:"pointer",fontWeight:600,
+                  opacity:teamsSaving?0.6:1}}>
+                ▶ Mannschaften laden
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
