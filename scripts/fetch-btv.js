@@ -757,26 +757,47 @@ async function scrapeClubTeams(browser) {
         }
         if (!opponent || opponent.length < 3 || opponent.length > 60) continue;
 
-        // Datum + Zeit: aus Parent-Container suchen
+        // Datum + Zeit: 1) aus Element-Text, 2) aus vorherigen Geschwistern, 3) aus Parent-Text
         let matchDate = null;
         let matchTime = null;
+        const dateRe = /(\d{1,2})\.(\d{1,2})\.(\d{2,4}),?\s*(\d{1,2}:\d{2})/;
+        function parseDate(m) {
+          if (!m) return null;
+          const [, d, mo, y, t] = m;
+          return { date: `${y.length===2?"20"+y:y}-${mo.padStart(2,"0")}-${d.padStart(2,"0")}`, time: t||null };
+        }
         try {
-          let el = m;
-          let fullText = "";
-          for (let i = 0; i < 8; i++) {
-            if (!el.parentElement) break;
-            el = el.parentElement;
-            fullText = el.textContent.replace(/\s+/g, " ");
-            if (/\d{1,2}\.\d{1,2}\.\d{2}/.test(fullText)) break;
+          // 1. Datum direkt im Element-Text
+          const own = text.match(dateRe);
+          if (own) {
+            const r = parseDate(own); matchDate = r.date; matchTime = r.time;
+          } else {
+            // 2. Vorherige Geschwister-Elemente (Datumszeile über dem Spiel)
+            let prev = m.previousElementSibling;
+            for (let i = 0; i < 6 && prev && !matchDate; i++) {
+              const pm = prev.textContent.replace(/\s+/g," ").match(dateRe);
+              if (pm) { const r=parseDate(pm); matchDate=r.date; matchTime=r.time; }
+              prev = prev.previousElementSibling;
+            }
           }
-          const myPos = fullText.toLowerCase().indexOf(teamL);
-          const lookBack = myPos > 0 ? fullText.slice(0, myPos).slice(-400) : "";
-          const pairs = [...lookBack.matchAll(/(\d{1,2})\.(\d{1,2})\.(\d{2,4}),?\s*(\d{1,2}:\d{2})/g)];
-          if (pairs.length) {
-            const [, d, mo, y, t] = pairs[pairs.length - 1];
-            const year = y.length === 2 ? "20" + y : y;
-            matchDate = `${year}-${mo.padStart(2,"0")}-${d.padStart(2,"0")}`;
-            matchTime = t || null;
+          // 3. Fallback: Parent-Text mit korrekter Position des Elements
+          if (!matchDate) {
+            let el = m;
+            let fullText = "";
+            for (let i = 0; i < 8; i++) {
+              if (!el.parentElement) break;
+              el = el.parentElement;
+              fullText = el.textContent.replace(/\s+/g, " ");
+              if (/\d{1,2}\.\d{1,2}\.\d{2}/.test(fullText)) break;
+            }
+            // Korrekte Position: Element-Text suchen (nicht indexOf teamL)
+            const mSnippet = text.slice(0, 25);
+            const myPos = mSnippet ? fullText.indexOf(mSnippet) : -1;
+            const lookBack = myPos > 0 ? fullText.slice(0, myPos).slice(-400) : "";
+            const pairs = [...lookBack.matchAll(/(\d{1,2})\.(\d{1,2})\.(\d{2,4}),?\s*(\d{1,2}:\d{2})/g)];
+            if (pairs.length) {
+              const r = parseDate(pairs[pairs.length-1]); matchDate=r.date; matchTime=r.time;
+            }
           }
         } catch(_) {}
 
