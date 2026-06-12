@@ -2140,6 +2140,18 @@ function SettingsMannschaftenTab({onToast}) {
             Letzter Abruf: {new Date(scrapedAt).toLocaleDateString("de-DE",{day:"numeric",month:"long",year:"numeric"})} um {new Date(scrapedAt).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})} Uhr
           </div>
         )}
+        <div style={{marginTop:12,padding:"10px 12px",background:"#F8FAFC",border:"1px solid #E5E7EB",
+          borderRadius:8,fontSize:11,color:"#6B7280",lineHeight:1.7}}>
+          <div style={{fontWeight:700,color:"#374151",marginBottom:4}}>Dieser Abruf aktualisiert:</div>
+          <ul style={{margin:0,paddingLeft:16}}>
+            <li><strong>Heimspielwoche-Widget</strong> — Spiele der nächsten 7 Tage auf dem Startbildschirm</li>
+            <li><strong>BTV Links</strong> — Mannschaftsnamen und Verlinkungen</li>
+            <li><strong>Display Schnellauswahl</strong> — Staffeln und Gegner für den Live-Anzeigebereich</li>
+          </ul>
+          <div style={{marginTop:6,fontStyle:"italic",color:"#9CA3AF"}}>
+            Einmal pro Saison ausreichend, außer es kommen Mannschaften hinzu oder URLs ändern sich.
+          </div>
+        </div>
       </div>
     </div>
   );
