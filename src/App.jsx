@@ -1583,7 +1583,6 @@ function HeimspieleEdit({onToast, onSaved, reloadKey}) {
   const [league,    setLeague]    = useState("");
   const [matchDate, setMatchDate] = useState("");
   const [matchTime, setMatchTime] = useState("");
-  const [matchStatus, setMatchStatus] = useState("upcoming");
   const [homeScore, setHomeScore] = useState(0);
   const [awayScore, setAwayScore] = useState(0);
   const [rubbers,   setRubbers]   = useState(DEFAULT_RUBBERS("6er"));
@@ -1606,7 +1605,6 @@ function HeimspieleEdit({onToast, onSaved, reloadKey}) {
       : (m.format || "6er"); // explizit gespeichertes Format, Fallback 6er
     setFormat(det);
     setRubbers(rubs.length > 0 ? rubs : DEFAULT_RUBBERS(det));
-    setMatchStatus(m.status || "upcoming");
     setSource(m._source || "auto");
     setSavedAt(m._savedAt || null);
     setDirty(false);
@@ -1653,10 +1651,13 @@ function HeimspieleEdit({onToast, onSaved, reloadKey}) {
   const save = async () => {
     setSaving(true);
     const now = new Date().toISOString();
+    const hasPlayers = rubbers.some(r=>(r.home||"").trim()||(r.away||"").trim());
+    const openCount  = rubbers.filter(r=>r.result==="open").length;
+    const autoStatus = !hasPlayers ? "upcoming" : openCount===0 ? "done" : "live";
     const {data:raw} = await sb.from("settings").select("value").eq("key","btv_match_cache").single();
     const existing = raw?.value ? (typeof raw.value==="string" ? JSON.parse(raw.value) : raw.value) : {};
     const payload = {
-      homeTeam, awayTeam, league, status: matchStatus,
+      homeTeam, awayTeam, league, status: autoStatus,
       matchDate: matchDate||null, time: matchTime ? matchTime+" Uhr" : null,
       homeLogo: homeLogo||null, awayLogo: awayLogo||null,
       _btv: existing._btv||null,
@@ -1760,18 +1761,16 @@ function HeimspieleEdit({onToast, onSaved, reloadKey}) {
               style={{marginLeft:2,background:"none",border:"1px solid #E5E7EB",borderRadius:4,
                 padding:"2px 5px",fontSize:10,cursor:"pointer",color:"#6B7280"}}>↻</button>
           </div>
-          <div style={{display:"flex",gap:4}}>
-            {["upcoming","live","done"].map(s => (
-              <button key={s} onClick={()=>{setMatchStatus(s);setDirty(true);}}
-                style={{flex:1,padding:"2px 0",fontSize:10,fontWeight:700,borderRadius:4,
-                  border:`1.5px solid ${matchStatus===s ? statusColor(s) : "#E5E7EB"}`,
-                  background:matchStatus===s ? statusColor(s) : "#fff",
-                  color:matchStatus===s ? "#fff" : "#9CA3AF",
-                  cursor:"pointer",whiteSpace:"nowrap"}}>
-                {{upcoming:"geplant",live:"● läuft",done:"✓ fertig"}[s]}
-              </button>
-            ))}
-          </div>
+          {(()=>{
+            const hasP = rubbers.some(r=>(r.home||"").trim()||(r.away||"").trim());
+            const open = rubbers.filter(r=>r.result==="open").length;
+            const s = !hasP ? "upcoming" : open===0 ? "done" : "live";
+            return (
+              <span style={{fontSize:10,fontWeight:700,color:statusColor(s)}}>
+                {statusLabel(s)}
+              </span>
+            );
+          })()}
         </div>
       </div>
 
