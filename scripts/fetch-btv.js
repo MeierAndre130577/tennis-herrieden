@@ -1003,6 +1003,8 @@ async function scrapeClubTeams(browser) {
       homeLogo:  matchData.homeLogo,
       awayLogo:  matchData.awayLogo,
     };
+    // btv_auto_snapshot: reiner BTV-Stand, wird NIE durch manuelles Speichern überschrieben
+    await saveResult("btv_auto_snapshot", matchData);
     await saveResult("btv_match_cache", matchData);
     // Fehler-Flag löschen wenn erfolgreich
     await saveResult("btv_fetch_error", null);

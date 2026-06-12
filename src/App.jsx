@@ -1565,6 +1565,150 @@ function fmtTs(iso) {
     + " " + d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}) + " Uhr";
 }
 
+function HeimspieleVergleich({matchCache}) {
+  const [btvSnap, setBtvSnap] = useState(null);
+  const [loadingBtv, setLoadingBtv] = useState(true);
+
+  useEffect(() => {
+    sb.from("settings").select("value").eq("key","btv_auto_snapshot").single()
+      .then(({data}) => {
+        if (data?.value) {
+          let v = data.value;
+          if (typeof v === "string") v = JSON.parse(v);
+          setBtvSnap(v);
+        }
+        setLoadingBtv(false);
+      });
+  }, [matchCache]); // neu laden wenn matchCache sich ändert (nach manuellem Speichern)
+
+  const btv = btvSnap;
+  const man = matchCache;
+
+  if (!btv && !man && !loadingBtv) return null;
+
+  const fmtTs = s => s
+    ? new Date(s).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})+" Uhr"
+    : "–";
+  const statusLabel = s => ({upcoming:"geplant", live:"läuft 🔴", done:"fertig ✓"}[s] || s || "–");
+  const statusColor = s => ({upcoming:"#6B7280", live:"#059669", done:"#1D4ED8"}[s] || "#6B7280");
+  const resIcon  = r => ({win:"✓",loss:"✗",open:"·"}[r] || "·");
+  const resColor = r => ({win:"#059669",loss:"#EF4444",open:"#9CA3AF"}[r] || "#9CA3AF");
+
+  const allIds = [...new Set([
+    ...(btv?.rubbers||[]).map(r=>r.id),
+    ...(man?.rubbers||[]).map(r=>r.id),
+  ])];
+  const bM = Object.fromEntries((btv?.rubbers||[]).map(r=>[r.id,r]));
+  const mM = Object.fromEntries((man?.rubbers||[]).map(r=>[r.id,r]));
+
+  const colHead = (d, isBtv) => (
+    <div style={{padding:"8px 10px", borderRight: isBtv ? "1px solid #E2E8F0" : "none"}}>
+      <div style={{fontSize:11,fontWeight:700,
+        color: isBtv ? "#1D4ED8" : (d?._source==="manual" ? "#92400E" : "#1D4ED8")}}>
+        {isBtv ? "🤖 BTV Automatisch" : (d?._source==="manual" ? "✏️ Manuell (aktiv)" : "🤖 BTV (aktiv)")}
+      </div>
+      <div style={{fontSize:10,color:"#9CA3AF",marginTop:1}}>
+        {isBtv
+          ? (loadingBtv ? "lädt…" : (d?._savedAt ? fmtTs(d._savedAt) : "noch kein Fetch"))
+          : (d?._savedAt ? fmtTs(d._savedAt) : "kein Stand")}
+      </div>
+    </div>
+  );
+
+  const colStatus = (d, isBtv) => (
+    <div style={{padding:"6px 10px", borderRight: isBtv ? "1px solid #E2E8F0" : "none",
+      display:"flex",alignItems:"center",gap:6}}>
+      {d ? (
+        <>
+          <span style={{fontSize:11,fontWeight:700,color:statusColor(d.status)}}>
+            {statusLabel(d.status)}
+          </span>
+          {d.homeScore != null && (
+            <span style={{fontSize:14,fontWeight:800,color:"#374151",marginLeft:4}}>
+              {d.homeScore}:{d.awayScore}
+            </span>
+          )}
+        </>
+      ) : <span style={{fontSize:11,color:"#D1D5DB",fontStyle:"italic"}}>–</span>}
+    </div>
+  );
+
+  return (
+    <div style={{marginTop:12,marginBottom:4,border:"1px solid #E2E8F0",borderRadius:10,overflow:"hidden"}}>
+      {/* Spalten-Header */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",background:"#F8FAFC",
+        borderBottom:"1px solid #E2E8F0"}}>
+        {colHead(btv, true)}
+        {colHead(man, false)}
+      </div>
+
+      {/* Status + Score */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",
+        borderBottom:"1px solid #F1F5F9",background:"#fff"}}>
+        {colStatus(btv, true)}
+        {colStatus(man, false)}
+      </div>
+
+      {/* Rubbers */}
+      {allIds.length > 0 ? (
+        <div>
+          {/* Rubber-Header */}
+          <div style={{display:"grid",gridTemplateColumns:"22px 1fr 1fr",
+            background:"#F8FAFC",borderBottom:"1px solid #E2E8F0",padding:"3px 8px"}}>
+            <span/>
+            <span style={{fontSize:9,fontWeight:700,color:"#9CA3AF",paddingLeft:4}}>BTV</span>
+            <span style={{fontSize:9,fontWeight:700,color:"#9CA3AF",paddingLeft:8,
+              borderLeft:"1px solid #E2E8F0"}}>MANUELL / AKTIV</span>
+          </div>
+          {allIds.map(id => {
+            const b = bM[id];
+            const m = mM[id];
+            const diff = b && m && (b.home !== m.home || b.away !== m.away);
+            return (
+              <div key={id} style={{display:"grid",gridTemplateColumns:"22px 1fr 1fr",
+                padding:"4px 8px",
+                background: diff ? "#FFFBEB" : id.startsWith("D") ? "#F8FAFC" : "#fff",
+                borderBottom:"1px solid #F1F5F9",alignItems:"start"}}>
+                <span style={{fontSize:10,fontWeight:800,color:"#9CA3AF",paddingTop:3,
+                  lineHeight:1}}>{id}</span>
+                {[b,m].map((r,i) => (
+                  <div key={i} style={{paddingLeft:4, minWidth:0,
+                    borderLeft: i===1 ? "1px solid #E2E8F0" : "none", paddingRight:4}}>
+                    {r ? (
+                      <>
+                        <div style={{fontSize:11,color:"#374151",overflow:"hidden",
+                          textOverflow:"ellipsis",whiteSpace:"nowrap",lineHeight:1.3}}>
+                          {r.home||"–"}
+                        </div>
+                        <div style={{fontSize:11,color:"#6B7280",overflow:"hidden",
+                          textOverflow:"ellipsis",whiteSpace:"nowrap",lineHeight:1.3}}>
+                          {r.away||"–"}
+                        </div>
+                        <div style={{fontSize:10,marginTop:1,color:"#9CA3AF",lineHeight:1}}>
+                          {r.score||"–"}
+                          <span style={{marginLeft:4,fontWeight:700,color:resColor(r.result)}}>
+                            {resIcon(r.result)}
+                          </span>
+                          {diff && i===0 && <span style={{marginLeft:4,color:"#F59E0B",fontSize:9}}>≠</span>}
+                        </div>
+                      </>
+                    ) : <span style={{fontSize:11,color:"#D1D5DB",lineHeight:1.3}}>–</span>}
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div style={{padding:"10px 12px",fontSize:11,color:"#9CA3AF",fontStyle:"italic",
+          textAlign:"center"}}>
+          {loadingBtv ? "Lädt BTV-Daten…" : "Noch keine Rubber-Daten vorhanden"}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function HeimspieleManualEntry({onToast, onSaved, reloadKey}) {
   const [loading,        setLoading]        = useState(true);
   const [saving,         setSaving]         = useState(false);
@@ -2654,79 +2798,10 @@ function SettingsDisplayTab({onToast}) {
               </div>
             )}
 
-            {/* Cache-Status */}
-            {matchCache&&(()=>{
-              const c = matchCache;
-              const btv = c._btv || {};
-              const savedAt = c._savedAt ? new Date(c._savedAt).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}) : null;
-              const dateStr = c.matchDate ? new Date(c.matchDate+"T12:00:00").toLocaleDateString("de-DE",{weekday:"short",day:"numeric",month:"numeric",year:"numeric"}) : null;
-              const players = (c.rubbers||[]).filter(r=>(r.home||r.away)).length;
-              const total   = (c.rubbers||[]).length;
-              // Badges: "BTV" wenn vom Fetch, "BTV + Manuell" wenn manuell überschrieben, "Manuell" wenn kein BTV-Wert
-              const hasBtv = Object.keys(btv).length > 0;
-              const btvBadge    = {bg:"#DBEAFE",color:"#1D4ED8",label:"🤖 BTV"};
-              const manBadge    = {bg:"#FEF3C7",color:"#92400E",label:"✏️ Manuell"};
-              // Für BTV-Snapshot-Felder: zeige ob aktueller Wert noch dem BTV-Wert entspricht
-              const fieldBadges = (field) => {
-                const fromBtv = btv[field] != null;
-                const unchanged = fromBtv && btv[field] === c[field];
-                if (c._source === "auto" || unchanged) return [btvBadge];
-                if (fromBtv && !unchanged) return [btvBadge, manBadge]; // BTV-Wert wurde manuell überschrieben
-                return [manBadge];
-              };
-              // Für Rubbers/Stand: BTV wenn auto, BTV+Manuell wenn manuell überschrieben und BTV-Daten vorhanden
-              const rubberBadges = c._source === "auto" ? [btvBadge]
-                : hasBtv ? [btvBadge, manBadge]
-                : [manBadge];
-              const rows = [
-                {label:"Spieltag",  value:dateStr,  badges:fieldBadges("matchDate")},
-                {label:"Uhrzeit",   value:c.time,   badges:fieldBadges("time")},
-                {label:"Liga",      value:c.league||null, badges:fieldBadges("league")},
-                {label:"Heim-Logo", value:c.homeLogo?"✓ vorhanden":"– nicht gefunden", ok:!!c.homeLogo, badges:fieldBadges("homeLogo")},
-                {label:"Gast-Logo", value:c.awayLogo?"✓ vorhanden":"– nicht gefunden", ok:!!c.awayLogo, badges:fieldBadges("awayLogo")},
-                {label:"Spieler",   value:total>0?`${players} / ${total} eingetragen`:null, badges:rubberBadges},
-                {label:"Stand",     value:total>0?`${c.homeScore}:${c.awayScore}`:null, badges:rubberBadges},
-              ];
-              return (
-                <div style={{marginTop:12,padding:"12px 14px",background:"#F8FAFC",
-                  border:"1px solid #E2E8F0",borderRadius:8,fontSize:12}}>
-                  <div style={{fontWeight:700,color:"#374151",marginBottom:8,
-                    display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                    <span>📋 Cache-Stand</span>
-                    <span style={{fontSize:10,color:"#9CA3AF",fontWeight:400}}>{savedAt||""}</span>
-                  </div>
-                  <div style={{display:"grid",gridTemplateColumns:"auto 1fr auto",gap:"4px 10px",alignItems:"center"}}>
-                    {rows.map(r=>(
-                      <Fragment key={r.label}>
-                        <span style={{fontSize:10,color:"#9CA3AF",fontWeight:700,whiteSpace:"nowrap"}}>{r.label}</span>
-                        <span style={{color:r.value?(r.ok===false?"#EF4444":"#111827"):"#D1D5DB",
-                          fontStyle:r.value?"normal":"italic"}}>
-                          {r.value||"–"}
-                        </span>
-                        <span style={{display:"flex",gap:3}}>
-                          {r.badges.map(b=>(
-                            <span key={b.label} style={{fontSize:10,padding:"1px 6px",borderRadius:8,
-                              fontWeight:700,background:b.bg,color:b.color,whiteSpace:"nowrap"}}>
-                              {b.label}
-                            </span>
-                          ))}
-                        </span>
-                      </Fragment>
-                    ))}
-                  </div>
-                  {hasBtv && c._source !== "auto" && (
-                    <button onClick={revertToBtv}
-                      style={{marginTop:10,width:"100%",background:"none",border:"1px solid #BFDBFE",
-                        borderRadius:6,padding:"5px 0",fontSize:11,cursor:"pointer",
-                        color:"#1D4ED8",fontWeight:600}}>
-                      ↩ Auf letzten BTV-Stand zurücksetzen
-                    </button>
-                  )}
-                </div>
-              );
-            })()}
+            {/* BTV vs Manuell Vergleich */}
+            <HeimspieleVergleich matchCache={matchCache}/>
 
-            <div style={{marginTop:20}}>
+            <div style={{marginTop:16}}>
               <HeimspieleManualEntry onToast={onToast} onSaved={setMatchCache} reloadKey={revertKey}/>
             </div>
           </div>
