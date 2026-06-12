@@ -1321,10 +1321,11 @@ function SettingsApp({profile,onBack}) {
   const showToast=(msg,type="success")=>{ setToast({msg,type}); setTimeout(()=>setToast(null),2800); };
 
   const tabs=[
-    {id:"booking", label:"Buchung",   icon:"📅"},
-    {id:"courts",  label:"Plätze",    icon:"🎾"},
-    {id:"members", label:"Mitglieder",icon:"👤"},
-    {id:"display", label:"Display",   icon:"🖥️"},
+    {id:"booking",      label:"Buchung",      icon:"📅"},
+    {id:"courts",       label:"Plätze",       icon:"🎾"},
+    {id:"members",      label:"Mitglieder",   icon:"👤"},
+    {id:"display",      label:"Display",      icon:"🖥️"},
+    {id:"mannschaften", label:"Mannschaften", icon:"🏆"},
   ];
 
   return (
@@ -1359,7 +1360,8 @@ function SettingsApp({profile,onBack}) {
           {tab==="booking" &&<SettingsBookingTab onToast={showToast}/>}
           {tab==="courts"  &&<SettingsCourtsTab  onToast={showToast}/>}
           {tab==="members" &&<SettingsMembersTab onToast={showToast}/>}
-          {tab==="display" &&<SettingsDisplayTab onToast={showToast}/>}
+          {tab==="display"      &&<SettingsDisplayTab      onToast={showToast}/>}
+          {tab==="mannschaften" &&<SettingsMannschaftenTab onToast={showToast}/>}
         </main>
 
         <nav className="cfg-bottom-nav" style={{display:"none",position:"fixed",bottom:0,left:0,right:0,background:"#0F172A",borderTop:"1px solid #1E293B",zIndex:100,justifyContent:"space-around",padding:"8px 0",paddingBottom:"env(safe-area-inset-bottom)"}}>
@@ -2013,6 +2015,128 @@ function ZeitSchaltung({sched, setSched}) {
 }
 
 // ── SETTINGS: DISPLAY ────────────────────────────────────────────────────
+function SettingsMannschaftenTab({onToast}) {
+  const [teamsConfig, setTeamsConfig] = useState([]);
+  const [teamsSaving, setTeamsSaving] = useState(false);
+  const [teamsStatus, setTeamsStatus] = useState(null);
+  const [githubPat,   setGithubPat_]  = useState("");
+
+  useEffect(()=>{
+    sb.from("settings").select("value").eq("key","btv_teams_config").single()
+      .then(({data})=>{ if(data?.value) try { setTeamsConfig(JSON.parse(data.value)); } catch(_){} });
+    sb.from("settings").select("value").eq("key","github_pat").single()
+      .then(({data})=>{ if(data?.value) setGithubPat_(data.value); });
+  },[]);
+
+  const saveTeamsConfig = async () => {
+    setTeamsSaving(true);
+    await sb.from("settings").upsert({key:"btv_teams_config", value:JSON.stringify(teamsConfig)},{onConflict:"key"});
+    setTeamsSaving(false);
+    onToast("Mannschaften gespeichert ✓");
+  };
+
+  const triggerTeamsLoad = async () => {
+    if(!githubPat) { onToast("Kein GitHub PAT hinterlegt (Display-Tab → Speichern)","error"); return; }
+    setTeamsStatus("running");
+    try {
+      const res = await fetch(
+        "https://api.github.com/repos/MeierAndre130577/tennis-herrieden/actions/workflows/btv-fetch.yml/dispatches",
+        { method:"POST",
+          headers:{Authorization:`Bearer ${githubPat}`,Accept:"application/vnd.github+json","Content-Type":"application/json"},
+          body: JSON.stringify({ref:"main", inputs:{teams_only:"true"}}) }
+      );
+      if(res.status===204){
+        setTeamsStatus({ok:true, msg:"✅ Mannschaften-Fetch gestartet – dauert ~3 Min."});
+        setTimeout(()=>setTeamsStatus(null), 8000);
+      } else {
+        const txt = await res.text();
+        setTeamsStatus({ok:false, msg:`Fehler ${res.status}: ${txt}`});
+      }
+    } catch(e) {
+      setTeamsStatus({ok:false, msg:`Netzwerkfehler: ${e.message}`});
+    }
+  };
+
+  return (
+    <div style={{padding:"0 0 32px"}}>
+      <h2 style={S.pageTitle}>Mannschaften</h2>
+      <p style={S.pageSub}>Staffel-Konfiguration für Heimspielplan und BTV-Links</p>
+
+      <div style={S.card}>
+        <div style={{fontSize:12,color:"#6B7280",marginBottom:16,lineHeight:1.6,
+          background:"#F8FAFC",borderRadius:8,padding:"10px 12px",border:"1px solid #E5E7EB"}}>
+          Eine Zeile pro Mannschaft. Der BTV-Teamname muss exakt so stehen wie auf der Staffelseite (z.B. "SG Herrieden II").<br/>
+          Format URL: <code style={{background:"#E5E7EB",padding:"0 3px",borderRadius:3,fontSize:11}}>
+            https://www.btv.de/…?groupid=XXXXXXX
+          </code>
+        </div>
+
+        {/* Spaltenköpfe */}
+        <div style={{display:"grid",gridTemplateColumns:"130px 140px 1fr 28px",gap:6,marginBottom:4,paddingLeft:2}}>
+          {["Bezeichnung","BTV-Teamname","Staffel-URL",""].map(h=>(
+            <span key={h} style={{fontSize:10,fontWeight:700,color:"#9CA3AF",textTransform:"uppercase"}}>{h}</span>
+          ))}
+        </div>
+
+        {/* Zeilen */}
+        <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:12}}>
+          {teamsConfig.map((row,i)=>(
+            <div key={i} style={{border:"1px solid #E5E7EB",borderRadius:8,padding:"8px",background:"#FAFAFA"}}>
+              <div style={{display:"grid",gridTemplateColumns:"130px 140px 1fr 28px",gap:6,alignItems:"center",marginBottom:5}}>
+                <input placeholder="z.B. Herren 1" value={row.name||""}
+                  onChange={e=>{const c=[...teamsConfig];c[i]={...c[i],name:e.target.value};setTeamsConfig(c);}}
+                  style={{padding:"6px 8px",border:"1px solid #D1D5DB",borderRadius:6,fontSize:12}}/>
+                <input placeholder="z.B. SG Herrieden" value={row.teamName||""}
+                  onChange={e=>{const c=[...teamsConfig];c[i]={...c[i],teamName:e.target.value};setTeamsConfig(c);}}
+                  style={{padding:"6px 8px",border:"1px solid #D1D5DB",borderRadius:6,fontSize:12}}/>
+                <input placeholder="https://www.btv.de/…?groupid=…" value={row.url||""}
+                  onChange={e=>{const c=[...teamsConfig];c[i]={...c[i],url:e.target.value};setTeamsConfig(c);}}
+                  style={{padding:"6px 8px",border:"1px solid #D1D5DB",borderRadius:6,fontSize:12}}/>
+                <button onClick={()=>setTeamsConfig(teamsConfig.filter((_,j)=>j!==i))}
+                  style={{background:"none",border:"1px solid #FECACA",borderRadius:6,
+                    padding:"4px",cursor:"pointer",color:"#EF4444",fontSize:13,textAlign:"center"}}>✕</button>
+              </div>
+              <input placeholder="Liga / Staffel  z.B. Bezirksklasse Gruppe 3" value={row.liga||""}
+                onChange={e=>{const c=[...teamsConfig];c[i]={...c[i],liga:e.target.value};setTeamsConfig(c);}}
+                style={{width:"100%",padding:"5px 8px",border:"1px solid #D1D5DB",borderRadius:6,fontSize:11,
+                  color:"#6B7280",boxSizing:"border-box"}}/>
+            </div>
+          ))}
+        </div>
+
+        <button onClick={()=>setTeamsConfig([...teamsConfig,{name:"",teamName:"",url:"",liga:""}])}
+          style={{background:"none",border:"1px dashed #D1D5DB",borderRadius:6,
+            padding:"6px 14px",fontSize:12,cursor:"pointer",color:"#6B7280",width:"100%",marginBottom:16}}>
+          + Mannschaft hinzufügen
+        </button>
+
+        {teamsStatus&&typeof teamsStatus==="object"&&(
+          <div style={{marginBottom:12,padding:"8px 12px",borderRadius:6,fontSize:12,
+            background:teamsStatus.ok?"#F0FDF4":"#FEF2F2",
+            border:`1px solid ${teamsStatus.ok?"#BBF7D0":"#FECACA"}`,
+            color:teamsStatus.ok?"#166534":"#DC2626"}}>
+            {teamsStatus.msg}
+          </div>
+        )}
+
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <button onClick={saveTeamsConfig} disabled={teamsSaving}
+            style={{background:"#8B5CF6",color:"#fff",border:"none",borderRadius:6,
+              padding:"8px 16px",fontSize:12,cursor:"pointer",fontWeight:600,opacity:teamsSaving?0.6:1}}>
+            {teamsSaving?"Speichern…":"💾 Speichern"}
+          </button>
+          <button onClick={triggerTeamsLoad} disabled={teamsSaving||teamsStatus==="running"}
+            style={{background:"#2563EB",color:"#fff",border:"none",borderRadius:6,
+              padding:"8px 16px",fontSize:12,cursor:"pointer",fontWeight:600,
+              opacity:(teamsSaving||teamsStatus==="running")?0.6:1}}>
+            {teamsStatus==="running"?"Lädt…":"▶ Mannschaften laden"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SettingsDisplayTab({onToast}) {
   const [activeTab,      setActiveTab]      = useState("schedule");
   const [mode,           setMode]           = useState("schedule"); // toggle-aktiver Modus
@@ -2163,13 +2287,10 @@ function SettingsDisplayTab({onToast}) {
     onToast(next ? "✅ Automatischer Fetch aktiviert" : "⏸ Automatischer Fetch deaktiviert");
   };
 
-  const [showTeamsModal,  setShowTeamsModal]  = useState(false);
-  const [teamsConfig,     setTeamsConfig]     = useState([]); // [{name, teamName, url}]
-  const [teamsSaving,     setTeamsSaving]     = useState(false);
-  const [teamsStatus,     setTeamsStatus]     = useState(null);
-  const [clubTeams,       setClubTeams]       = useState(null); // btv_club_teams
-  const [selStaffel,      setSelStaffel]      = useState("");   // ausgewählte Staffel (name)
-  const [selGegner,       setSelGegner]       = useState("");   // ausgewählter Gegner
+  const [teamsConfig,     setTeamsConfig]     = useState([]); // für Schnellauswahl
+  const [clubTeams,       setClubTeams]       = useState(null);
+  const [selStaffel,      setSelStaffel]      = useState("");
+  const [selGegner,       setSelGegner]       = useState("");
 
   useEffect(()=>{
     sb.from("settings").select("value").eq("key","btv_teams_config").single()
@@ -2220,39 +2341,6 @@ function SettingsDisplayTab({onToast}) {
       setFetchStatus("error");
       onToast(`Netzwerkfehler: ${e.message}`,"error");
       setTimeout(()=>setFetchStatus(null),6000);
-    }
-  };
-
-  const saveTeamsConfig = async () => {
-    setTeamsSaving(true);
-    await sb.from("settings").upsert({key:"btv_teams_config", value:JSON.stringify(teamsConfig)},{onConflict:"key"});
-    setTeamsSaving(false);
-    onToast("Staffel-URLs gespeichert ✓");
-  };
-
-  const triggerTeamsLoad = async () => {
-    if(!githubPat) { onToast("Kein GitHub PAT hinterlegt","error"); return; }
-    setTeamsStatus("running");
-    try {
-      const res = await fetch(
-        "https://api.github.com/repos/MeierAndre130577/tennis-herrieden/actions/workflows/btv-fetch.yml/dispatches",
-        { method:"POST",
-          headers:{ Authorization:`Bearer ${githubPat}`, Accept:"application/vnd.github+json", "Content-Type":"application/json" },
-          body: JSON.stringify({ ref:"main", inputs:{ teams_only:"true" } }) }
-      );
-      if(res.status === 204) {
-        setTeamsStatus({ok:true,  msg:"✅ Mannschaften-Laden gestartet – dauert ~60 Sek."});
-        onToast("✅ Mannschaften-Laden gestartet – dauert ~60 Sek.");
-        setTimeout(()=>setTeamsStatus(null), 10000);
-      } else {
-        setTeamsStatus({ok:false, msg:`Fehler ${res.status} beim Auslösen des Workflows`});
-        onToast(`Fehler ${res.status}`,"error");
-        setTimeout(()=>setTeamsStatus(null), 6000);
-      }
-    } catch(e) {
-      setTeamsStatus({ok:false, msg:`Netzwerkfehler: ${e.message}`});
-      onToast(`Netzwerkfehler: ${e.message}`,"error");
-      setTimeout(()=>setTeamsStatus(null), 6000);
     }
   };
 
@@ -2542,15 +2630,6 @@ function SettingsDisplayTab({onToast}) {
                       </span>
                     )}
                   </div>
-                  {/* Mannschaften konfigurieren */}
-                  <div style={{marginTop:8,paddingTop:8,borderTop:"1px solid #E5E7EB"}}>
-                    <button onClick={()=>setShowTeamsModal(true)}
-                      style={{background:"none",border:"1px solid #D1D5DB",borderRadius:6,
-                        padding:"5px 12px",fontSize:11,cursor:"pointer",color:"#6B7280"}}>
-                      🏓 Mannschaften konfigurieren
-                    </button>
-                    <span style={{marginLeft:8,fontSize:10,color:"#9CA3AF"}}>Einmal pro Saison</span>
-                  </div>
                 </div>
               </div>
             )}
@@ -2686,115 +2765,6 @@ function SettingsDisplayTab({onToast}) {
         </a>
       </div>
 
-      {/* ── MANNSCHAFTEN MODAL ── */}
-      {showTeamsModal&&(
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:1000,
-          display:"flex",alignItems:"center",justifyContent:"center",padding:16}}
-          onClick={()=>setShowTeamsModal(false)}>
-          <div style={{background:"#fff",borderRadius:12,padding:24,width:"100%",maxWidth:520,
-            maxHeight:"90vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}}
-            onClick={e=>e.stopPropagation()}>
-            {/* Header */}
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-              <div style={{fontWeight:800,fontSize:16,color:"#111827"}}>🏓 Mannschaften konfigurieren</div>
-              <button onClick={()=>setShowTeamsModal(false)}
-                style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#9CA3AF",padding:"2px 6px"}}>✕</button>
-            </div>
-
-            {/* Erklärung */}
-            <div style={{fontSize:12,color:"#6B7280",marginBottom:16,lineHeight:1.6,
-              background:"#F8FAFC",borderRadius:8,padding:"10px 12px",border:"1px solid #E5E7EB"}}>
-              Eine Zeile pro Mannschaft. Der BTV-Teamname muss exakt so stehen wie auf der Staffelseite (z.B. "SG Herrieden II").<br/>
-              Format URL: <code style={{background:"#E5E7EB",padding:"0 3px",borderRadius:3,fontSize:11}}>
-                https://www.btv.de/…?groupid=XXXXXXX
-              </code>
-            </div>
-
-            {/* Spaltenköpfe */}
-            <div style={{display:"grid",gridTemplateColumns:"130px 140px 1fr 28px",gap:6,
-              marginBottom:4,paddingLeft:2}}>
-              {["Bezeichnung","BTV-Teamname","Staffel-URL",""].map(h=>(
-                <span key={h} style={{fontSize:10,fontWeight:700,color:"#9CA3AF",textTransform:"uppercase"}}>{h}</span>
-              ))}
-            </div>
-
-            {/* Zeilen */}
-            <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:12}}>
-              {teamsConfig.map((row,i)=>(
-                <div key={i} style={{border:"1px solid #E5E7EB",borderRadius:8,padding:"8px",background:"#FAFAFA"}}>
-                  <div style={{display:"grid",gridTemplateColumns:"130px 140px 1fr 28px",gap:6,alignItems:"center",marginBottom:5}}>
-                    <input
-                      placeholder="z.B. Herren 1"
-                      value={row.name||""}
-                      onChange={e=>{const c=[...teamsConfig];c[i]={...c[i],name:e.target.value};setTeamsConfig(c);}}
-                      style={{padding:"6px 8px",border:"1px solid #D1D5DB",borderRadius:6,fontSize:12}}/>
-                    <input
-                      placeholder="z.B. SG Herrieden"
-                      value={row.teamName||""}
-                      onChange={e=>{const c=[...teamsConfig];c[i]={...c[i],teamName:e.target.value};setTeamsConfig(c);}}
-                      style={{padding:"6px 8px",border:"1px solid #D1D5DB",borderRadius:6,fontSize:12}}/>
-                    <input
-                      placeholder="https://www.btv.de/…?groupid=…"
-                      value={row.url||""}
-                      onChange={e=>{const c=[...teamsConfig];c[i]={...c[i],url:e.target.value};setTeamsConfig(c);}}
-                      style={{padding:"6px 8px",border:"1px solid #D1D5DB",borderRadius:6,fontSize:12}}/>
-                    <button onClick={()=>setTeamsConfig(teamsConfig.filter((_,j)=>j!==i))}
-                      style={{background:"none",border:"1px solid #FECACA",borderRadius:6,
-                        padding:"4px",cursor:"pointer",color:"#EF4444",fontSize:13,textAlign:"center"}}>
-                      ✕
-                    </button>
-                  </div>
-                  <input
-                    placeholder="Liga / Staffel  z.B. Bezirksklasse Gruppe 3"
-                    value={row.liga||""}
-                    onChange={e=>{const c=[...teamsConfig];c[i]={...c[i],liga:e.target.value};setTeamsConfig(c);}}
-                    style={{width:"100%",padding:"5px 8px",border:"1px solid #D1D5DB",borderRadius:6,fontSize:11,
-                      color:"#6B7280",boxSizing:"border-box"}}/>
-                </div>
-              ))}
-            </div>
-
-            {/* + Zeile hinzufügen */}
-            <button onClick={()=>setTeamsConfig([...teamsConfig,{name:"",teamName:"",url:"",liga:""}])}
-              style={{background:"none",border:"1px dashed #D1D5DB",borderRadius:6,
-                padding:"6px 14px",fontSize:12,cursor:"pointer",color:"#6B7280",
-                width:"100%",marginBottom:16}}>
-              + Mannschaft hinzufügen
-            </button>
-
-            {/* Status */}
-            {teamsStatus&&(
-              <div style={{marginBottom:12,padding:"8px 12px",borderRadius:6,fontSize:12,
-                background:teamsStatus.ok?"#F0FDF4":"#FEF2F2",
-                border:`1px solid ${teamsStatus.ok?"#BBF7D0":"#FECACA"}`,
-                color:teamsStatus.ok?"#166534":"#DC2626"}}>
-                {teamsStatus.msg}
-              </div>
-            )}
-
-            {/* Buttons */}
-            <div style={{display:"flex",gap:8,justifyContent:"flex-end",flexWrap:"wrap"}}>
-              <button onClick={()=>setShowTeamsModal(false)}
-                style={{background:"none",border:"1px solid #D1D5DB",borderRadius:6,
-                  padding:"8px 16px",fontSize:12,cursor:"pointer",color:"#6B7280"}}>
-                Schließen
-              </button>
-              <button onClick={saveTeamsConfig} disabled={teamsSaving}
-                style={{background:"#8B5CF6",color:"#fff",border:"none",borderRadius:6,
-                  padding:"8px 16px",fontSize:12,cursor:"pointer",fontWeight:600,
-                  opacity:teamsSaving?0.6:1}}>
-                {teamsSaving?"Speichern…":"💾 Speichern"}
-              </button>
-              <button onClick={triggerTeamsLoad} disabled={teamsSaving}
-                style={{background:"#2563EB",color:"#fff",border:"none",borderRadius:6,
-                  padding:"8px 16px",fontSize:12,cursor:"pointer",fontWeight:600,
-                  opacity:teamsSaving?0.6:1}}>
-                ▶ Mannschaften laden
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
