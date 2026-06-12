@@ -1009,10 +1009,28 @@ async function scrapeClubTeams(browser) {
     };
     // btv_auto_snapshot: reiner BTV-Stand, wird NIE durch manuelles Speichern überschrieben
     await saveResult("btv_auto_snapshot", matchData);
-    await saveResult("btv_match_cache", matchData);
+
+    // Manuellen Stand lesen und vergleichen – den fortgeschritteneren übernehmen
+    const { data: currentCacheData } = await sb.from("settings")
+      .select("value").eq("key", "btv_match_cache").single();
+    const currentCache = currentCacheData?.value
+      ? (typeof currentCacheData.value === "string" ? JSON.parse(currentCacheData.value) : currentCacheData.value)
+      : null;
+
+    const decidedCount = rubbers => (rubbers||[]).filter(r => r.result === "win" || r.result === "loss").length;
+    const btvDecided    = decidedCount(matchData.rubbers);
+    const manualDecided = decidedCount(currentCache?.rubbers);
+
+    if (currentCache?._source === "manual" && manualDecided > btvDecided) {
+      console.log(`\n↩ Manueller Stand ist weiter (${manualDecided} vs ${btvDecided} entschiedene Rubbers) – Cache bleibt erhalten.`);
+    } else {
+      await saveResult("btv_match_cache", matchData);
+      console.log(`\n✓ BTV-Stand übernommen: ${btvDecided} entschiedene Rubbers (manuell hatte ${manualDecided}).`);
+    }
+
     // Fehler-Flag löschen wenn erfolgreich
     await saveResult("btv_fetch_error", null);
-    console.log(`\n✓ Gespeichert: ${matchData.status}  ${matchData.homeScore}:${matchData.awayScore}  ${matchData.rubbers.length} Rubbers  [auto ${matchData._savedAt}]`);
+    console.log(`Status: ${matchData.status}  Score: ${matchData.homeScore}:${matchData.awayScore}  ${matchData.rubbers.length} Rubbers  [auto ${matchData._savedAt}]`);
 
   } finally {
     await browser.close();
