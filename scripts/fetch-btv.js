@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// scripts/fetch-btv.js – GitHub Actions Fr/Sa/So alle 10 Minuten
+// scripts/fetch-btv.js – GitHub Actions Fr/Sa/So alle 20 Minuten
 
 const { chromium } = require("playwright");
 const { createClient } = require("@supabase/supabase-js");
@@ -17,7 +17,7 @@ async function getSettings() {
   return Object.fromEntries(data.map(r => [r.key, r.value]));
 }
 
-// ── Zeitfenster prüfen: 1h vor bis 10h nach Spielbeginn ─────────────────────
+// ── Zeitfenster prüfen: ab Spielbeginn bis 10h danach ──────────────────────
 // matchDate: "2026-06-14"  matchTime: "10:00" (HH:MM)
 function isInMatchWindow(matchDate, matchTime, isDone = false) {
   if (!matchTime) return true; // keine Zeit → ganzen Spieltag laufen
@@ -26,7 +26,7 @@ function isInMatchWindow(matchDate, matchTime, isDone = false) {
   const matchMs  = new Date(`${matchDate}T${String(h).padStart(2,"0")}:${String(min).padStart(2,"0")}:00`).getTime();
   const nowMs    = Date.now();
   const afterEnd = isDone ? 2 * 60 * 60 * 1000 : 10 * 60 * 60 * 1000; // done: 2h, laufend: 10h
-  return nowMs >= matchMs - 60 * 60 * 1000 && nowMs <= matchMs + afterEnd;
+  return nowMs >= matchMs && nowMs <= matchMs + afterEnd;
 }
 
 async function saveResult(key, value) {
