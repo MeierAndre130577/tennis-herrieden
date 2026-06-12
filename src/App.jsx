@@ -1600,7 +1600,9 @@ function HeimspieleEdit({onToast, onSaved, reloadKey}) {
     setHomeScore(m.homeScore ?? 0);
     setAwayScore(m.awayScore ?? 0);
     const rubs = m.rubbers?.length > 0 ? m.rubbers.map(r=>({...r})) : [];
-    const det = rubs.filter(r=>r.id.startsWith("E")).length <= 4 ? "4er" : "6er";
+    const det = rubs.length > 0
+      ? (rubs.filter(r=>r.id.startsWith("E")).length <= 4 ? "4er" : "6er")
+      : (m.format || "6er"); // explizit gespeichertes Format, Fallback 6er
     setFormat(det);
     setRubbers(rubs.length > 0 ? rubs : DEFAULT_RUBBERS(det));
     setSource(m._source || "auto");
@@ -1855,8 +1857,10 @@ function HeimspieleEdit({onToast, onSaved, reloadKey}) {
             {label:"Liga",    btv: btvSnap?.league||null,          act: league||null},
             {label:"Heim",    btv: btvSnap?.homeTeam||null,        act: homeTeam||null},
             {label:"Gast",    btv: btvSnap?.awayTeam||null,        act: awayTeam||null},
-            {label:"Format",  btv: btvSnap?.rubbers?.length ? (btvSnap.rubbers.filter(r=>r.id.startsWith("E")).length<=4?"4er":"6er") : null,
-                              act: format},
+            {label:"Format",
+              btv: btvSnap?.format
+                || (btvSnap?.rubbers?.length > 0 ? (btvSnap.rubbers.filter(r=>r.id.startsWith("E")).length<=4?"4er":"6er") : null),
+              act: format},
           ];
           return (
             <div style={{background:"#fff",borderTop:"1px solid #F1F5F9"}}>

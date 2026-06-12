@@ -995,6 +995,10 @@ async function scrapeClubTeams(browser) {
 
     matchData._source  = "auto";
     matchData._savedAt = new Date().toISOString();
+    // Format aus Rubber-Anzahl ableiten und explizit speichern
+    if (matchData.rubbers?.length > 0) {
+      matchData.format = matchData.rubbers.filter(r => r.id.startsWith("E")).length <= 4 ? "4er" : "6er";
+    }
     // BTV-Snapshot: welche Felder kamen von BTV (bleibt erhalten auch nach manuellem Speichern)
     matchData._btv = {
       matchDate: matchData.matchDate,
