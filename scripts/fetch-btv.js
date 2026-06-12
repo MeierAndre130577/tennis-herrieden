@@ -721,6 +721,20 @@ async function scrapeClubTeams(browser) {
     await page.waitForTimeout(1000);
 
     const teamName = entry.teamName || "";
+
+    // Liga aus Seiten-Header lesen
+    const league = await page.evaluate(() => {
+      const candidates = Array.from(document.querySelectorAll(
+        "h1,h2,h3,.z-caption,.gbgroup-title,[class*='group-title'],[class*='caption']"
+      ));
+      for (const el of candidates) {
+        const t = el.textContent.trim().replace(/\s+/g," ");
+        if (t.length > 5 && t.length < 100 && /liga|klasse|staffel|bezirk|kreis|gr\.\s*\d/i.test(t)) return t;
+      }
+      return "";
+    });
+    if (league) console.log(`  Liga: "${league}"`);
+
     const homeGames_raw = await page.evaluate((teamNameArg) => {
       const teamL = teamNameArg.toLowerCase();
       const meetEls = Array.from(document.querySelectorAll('[class*="gbmeet"]'));
@@ -828,6 +842,7 @@ async function scrapeClubTeams(browser) {
       teamName,
       url,
       groupId: groupId || null,
+      league: league || null,
       homeGames,
     });
 

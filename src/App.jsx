@@ -76,9 +76,20 @@ function HeimspielwocheScreen({onBack, profile}) {
   const [groups,setGroups] = useState([]);
   const [loading,setLoading] = useState(true);
   const [scrapedAt,setScrapedAt] = useState(null);
+  const [ligaMap,setLigaMap] = useState({});
   const isAdmin = profile?.role === "admin";
 
   useEffect(()=>{
+    // Liga aus btv_teams_config laden
+    sb.from("settings").select("value").eq("key","btv_teams_config").single()
+      .then(({data})=>{
+        try {
+          const cfg = JSON.parse(data?.value)||[];
+          const m = {};
+          cfg.forEach(t=>{ if(t.name && t.liga) m[t.name]=t.liga; });
+          setLigaMap(m);
+        } catch(_){}
+      });
     sb.from("settings").select("value").eq("key","btv_club_teams").single()
       .then(({data})=>{
         try {
@@ -155,8 +166,13 @@ function HeimspielwocheScreen({onBack, profile}) {
               <div style={{display:"flex",flexDirection:"column",gap:8}}>
                 {games.map((g,i)=>(
                   <div key={i} style={{background:"#1E293B",border:"1.5px solid #334155",borderRadius:12,padding:"12px 14px"}}>
-                    <div style={{fontSize:11,fontWeight:700,color:"#94A3B8",textTransform:"uppercase",letterSpacing:.6,marginBottom:6}}>
-                      {g.team}
+                    <div style={{display:"flex",alignItems:"baseline",gap:6,marginBottom:6}}>
+                      <span style={{fontSize:11,fontWeight:700,color:"#94A3B8",textTransform:"uppercase",letterSpacing:.6}}>
+                        {g.team}
+                      </span>
+                      {ligaMap[g.team] && (
+                        <span style={{fontSize:10,color:"#64748B",fontStyle:"italic"}}>{ligaMap[g.team]}</span>
+                      )}
                     </div>
                     <div style={{display:"flex",alignItems:"center",gap:10}}>
                       {g.homeLogo && (
@@ -2703,35 +2719,43 @@ function SettingsDisplayTab({onToast}) {
             </div>
 
             {/* Zeilen */}
-            <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:12}}>
+            <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:12}}>
               {teamsConfig.map((row,i)=>(
-                <div key={i} style={{display:"grid",gridTemplateColumns:"130px 140px 1fr 28px",gap:6,alignItems:"center"}}>
+                <div key={i} style={{border:"1px solid #E5E7EB",borderRadius:8,padding:"8px",background:"#FAFAFA"}}>
+                  <div style={{display:"grid",gridTemplateColumns:"130px 140px 1fr 28px",gap:6,alignItems:"center",marginBottom:5}}>
+                    <input
+                      placeholder="z.B. Herren 1"
+                      value={row.name||""}
+                      onChange={e=>{const c=[...teamsConfig];c[i]={...c[i],name:e.target.value};setTeamsConfig(c);}}
+                      style={{padding:"6px 8px",border:"1px solid #D1D5DB",borderRadius:6,fontSize:12}}/>
+                    <input
+                      placeholder="z.B. SG Herrieden"
+                      value={row.teamName||""}
+                      onChange={e=>{const c=[...teamsConfig];c[i]={...c[i],teamName:e.target.value};setTeamsConfig(c);}}
+                      style={{padding:"6px 8px",border:"1px solid #D1D5DB",borderRadius:6,fontSize:12}}/>
+                    <input
+                      placeholder="https://www.btv.de/…?groupid=…"
+                      value={row.url||""}
+                      onChange={e=>{const c=[...teamsConfig];c[i]={...c[i],url:e.target.value};setTeamsConfig(c);}}
+                      style={{padding:"6px 8px",border:"1px solid #D1D5DB",borderRadius:6,fontSize:12}}/>
+                    <button onClick={()=>setTeamsConfig(teamsConfig.filter((_,j)=>j!==i))}
+                      style={{background:"none",border:"1px solid #FECACA",borderRadius:6,
+                        padding:"4px",cursor:"pointer",color:"#EF4444",fontSize:13,textAlign:"center"}}>
+                      ✕
+                    </button>
+                  </div>
                   <input
-                    placeholder="z.B. Herren 1"
-                    value={row.name||""}
-                    onChange={e=>{const c=[...teamsConfig];c[i]={...c[i],name:e.target.value};setTeamsConfig(c);}}
-                    style={{padding:"6px 8px",border:"1px solid #D1D5DB",borderRadius:6,fontSize:12}}/>
-                  <input
-                    placeholder="z.B. SG Herrieden"
-                    value={row.teamName||""}
-                    onChange={e=>{const c=[...teamsConfig];c[i]={...c[i],teamName:e.target.value};setTeamsConfig(c);}}
-                    style={{padding:"6px 8px",border:"1px solid #D1D5DB",borderRadius:6,fontSize:12}}/>
-                  <input
-                    placeholder="https://www.btv.de/…?groupid=…"
-                    value={row.url||""}
-                    onChange={e=>{const c=[...teamsConfig];c[i]={...c[i],url:e.target.value};setTeamsConfig(c);}}
-                    style={{padding:"6px 8px",border:"1px solid #D1D5DB",borderRadius:6,fontSize:12}}/>
-                  <button onClick={()=>setTeamsConfig(teamsConfig.filter((_,j)=>j!==i))}
-                    style={{background:"none",border:"1px solid #FECACA",borderRadius:6,
-                      padding:"4px",cursor:"pointer",color:"#EF4444",fontSize:13,textAlign:"center"}}>
-                    ✕
-                  </button>
+                    placeholder="Liga / Staffel  z.B. Bezirksklasse Gruppe 3"
+                    value={row.liga||""}
+                    onChange={e=>{const c=[...teamsConfig];c[i]={...c[i],liga:e.target.value};setTeamsConfig(c);}}
+                    style={{width:"100%",padding:"5px 8px",border:"1px solid #D1D5DB",borderRadius:6,fontSize:11,
+                      color:"#6B7280",boxSizing:"border-box"}}/>
                 </div>
               ))}
             </div>
 
             {/* + Zeile hinzufügen */}
-            <button onClick={()=>setTeamsConfig([...teamsConfig,{name:"",teamName:"",url:""}])}
+            <button onClick={()=>setTeamsConfig([...teamsConfig,{name:"",teamName:"",url:"",liga:""}])}
               style={{background:"none",border:"1px dashed #D1D5DB",borderRadius:6,
                 padding:"6px 14px",fontSize:12,cursor:"pointer",color:"#6B7280",
                 width:"100%",marginBottom:16}}>
