@@ -2298,7 +2298,7 @@ function SettingsDisplayTab({onToast}) {
         // Cache nach ~35 Sek. neu laden
         setTimeout(async ()=>{
           const {data} = await sb.from("settings").select("value").eq("key","btv_match_cache").single();
-          if(data?.value) try { setMatchCache(JSON.parse(data.value)); } catch(_){}
+          if(data?.value) try { setMatchCache(JSON.parse(data.value)); setRevertKey(k=>k+1); } catch(_){}
           setFetchStatus(null);
         }, 35000);
       } else {
@@ -2363,7 +2363,7 @@ function SettingsDisplayTab({onToast}) {
         onToast(`✅ Fetch gestartet: ${newMannschaft} vs. ${selGegner}`);
         setTimeout(async()=>{
           const {data}=await sb.from("settings").select("value").eq("key","btv_match_cache").single();
-          if(data?.value) try { setMatchCache(JSON.parse(data.value)); } catch(_){}
+          if(data?.value) try { setMatchCache(JSON.parse(data.value)); setRevertKey(k=>k+1); } catch(_){}
           setFetchStatus(null);
         },35000);
       } else {
@@ -2647,24 +2647,11 @@ function SettingsDisplayTab({onToast}) {
                 {matchUrl&&<div style={{marginTop:4,wordBreak:"break-all",opacity:0.7,fontSize:11}}>
                   🔗 {matchUrl.slice(0,70)}{matchUrl.length>70?"…":""}
                 </div>}
-                <div style={{marginTop:10,paddingTop:10,borderTop:"1px solid #BFDBFE"}}>
-                  <button onClick={triggerFetch} disabled={fetchStatus==="running"}
-                    style={{display:"inline-flex",alignItems:"center",gap:6,
-                      background:fetchStatus==="ok"?"#059669":fetchStatus==="error"?"#DC2626":"#1E40AF",
-                      color:"#fff",borderRadius:6,padding:"6px 12px",fontSize:11,fontWeight:700,
-                      border:"none",cursor:fetchStatus==="running"?"wait":"pointer",
-                      opacity:fetchStatus==="running"?0.7:1}}>
-                    {fetchStatus==="running"?"⏳ Startet…":fetchStatus==="ok"?"✅ Gestartet!":fetchStatus==="error"?"❌ Fehler":"▶ Fetch jetzt starten"}
-                  </button>
-                  <div style={{marginTop:5,fontSize:10,color:"#6B7280",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                    <span>Nach Gegner-Änderung einmal klicken → Daten kommen in ~30 Sek.</span>
-                    {matchCache?._savedAt&&(
-                      <span style={{fontSize:10,color:"#6B7280",fontStyle:"italic"}}>
-                        Letzter Fetch: {new Date(matchCache._savedAt).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})} Uhr
-                      </span>
-                    )}
+                {matchCache?._savedAt&&(
+                  <div style={{marginTop:6,fontSize:10,color:"#6B7280",fontStyle:"italic"}}>
+                    Letzter Fetch: {new Date(matchCache._savedAt).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})} Uhr
                   </div>
-                </div>
+                )}
               </div>
             )}
 
