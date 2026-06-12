@@ -867,16 +867,13 @@ async function scrapeClubTeams(browser) {
   const groupUrl = cfg.display_match_url   || "";
   const clubnr   = String(cfg.display_vereinsnummer || "6085").padStart(5, "0");
 
-  console.log(`Heim: "${heim}"  Gast: "${gast}"`);
-  if (!heim || !gast) { console.log("Nicht konfiguriert."); return; }
-
   // Manuell getriggert (workflow_dispatch) → Pre-Check überspringen
   const isManual   = process.env.GITHUB_EVENT_NAME === "workflow_dispatch";
   const teamsOnly  = process.env.TEAMS_ONLY === "true";
   if (isManual)   console.log("▶ Manueller Trigger – Pre-Check wird übersprungen");
   if (teamsOnly)  console.log("▶ teams_only – nur Mannschaften scrapen, kein Match-Fetch");
 
-  // teams_only: direkt Mannschaften scrapen und beenden
+  // teams_only: direkt Mannschaften scrapen und beenden (braucht kein Gast/Gegner)
   if (teamsOnly) {
     const { browser } = await makeBrowser();
     try {
@@ -886,6 +883,9 @@ async function scrapeClubTeams(browser) {
     }
     return;
   }
+
+  console.log(`Heim: "${heim}"  Gast: "${gast}"`);
+  if (!heim || !gast) { console.log("Nicht konfiguriert."); return; }
 
   // Fetch deaktiviert? → Cron-Jobs sofort beenden (manueller Trigger läuft trotzdem)
   if (!isManual) {
