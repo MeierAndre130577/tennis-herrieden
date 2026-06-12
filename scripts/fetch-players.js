@@ -32,6 +32,28 @@ async function makeBrowser() {
   return { browser, page };
 }
 
+// Cookie-Banner wegklicken (identisch zu fetch-btv.js)
+async function acceptCookies(page) {
+  const selectors = [
+    "#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll",
+    ".sp_choice_type_11",
+    "[title*='Alle akzeptieren']",
+    "button[id*='accept']",
+    "[aria-label*='Alle akzeptieren']",
+  ];
+  for (const sel of selectors) {
+    try {
+      const btn = await page.$(sel);
+      if (btn) {
+        await btn.click();
+        await page.waitForTimeout(1500);
+        return true;
+      }
+    } catch (_) {}
+  }
+  return false;
+}
+
 // Alle Teamnamen aus der geladenen Tabelle auslesen
 async function readTabelle(page) {
   const text = await page.evaluate(() => document.body?.innerText || "");
@@ -91,11 +113,22 @@ async function scrapePlayersOnPage(page, teamName) {
 
 // Alle Teams einer Staffel scrapen
 async function scrapeGroupPlayers(page, groupId, configEntry) {
-  const url = `https://btv-prod.burdadigitalsystems.de/btvgroup/?groupid=${groupId}`;
+  // widget.btv.de ist von GitHub Actions aus erreichbar (btv-prod nicht)
+  const url = `https://widget.btv.de/btvgroup/?groupid=${groupId}`;
   console.log(`\nLade Staffel ${groupId} (${configEntry.name})...`);
-  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
-  process.stdout.write("  Warte auf ZK (20s)...");
-  await page.waitForTimeout(20_000);
+
+  try {
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 40_000 });
+  } catch(e) {
+    console.log(`  ✗ Timeout beim Laden: ${e.message.slice(0, 80)}`);
+    return { opponents: [], teams: {} };
+  }
+
+  // Cookie-Banner
+  await acceptCookies(page);
+
+  process.stdout.write("  Warte auf ZK (22s)...");
+  await page.waitForTimeout(22_000);
 
   const bodyLen = await page.evaluate(() => (document.body?.innerText || "").length);
   console.log(` Text: ${bodyLen} Zeichen`);
@@ -127,8 +160,14 @@ async function scrapeGroupPlayers(page, groupId, configEntry) {
         await page.waitForTimeout(3000);
       } catch(_) {
         // Fallback: Seite neu laden
-        await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
-        await page.waitForTimeout(20_000);
+        try {
+          await page.goto(url, { waitUntil: "domcontentloaded", timeout: 40_000 });
+          await acceptCookies(page);
+          await page.waitForTimeout(22_000);
+        } catch(e2) {
+          console.log(`  ✗ Reload fehlgeschlagen: ${e2.message.slice(0,60)}`);
+          break;
+        }
       }
     } catch(e) {
       console.log(`  ✗ ${teamName}: ${e.message.slice(0, 80)}`);
