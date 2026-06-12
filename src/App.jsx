@@ -1583,6 +1583,7 @@ function HeimspieleEdit({onToast, onSaved, reloadKey}) {
   const [league,    setLeague]    = useState("");
   const [matchDate, setMatchDate] = useState("");
   const [matchTime, setMatchTime] = useState("");
+  const [matchStatus, setMatchStatus] = useState("upcoming");
   const [homeScore, setHomeScore] = useState(0);
   const [awayScore, setAwayScore] = useState(0);
   const [rubbers,   setRubbers]   = useState(DEFAULT_RUBBERS("6er"));
@@ -1605,6 +1606,7 @@ function HeimspieleEdit({onToast, onSaved, reloadKey}) {
       : (m.format || "6er"); // explizit gespeichertes Format, Fallback 6er
     setFormat(det);
     setRubbers(rubs.length > 0 ? rubs : DEFAULT_RUBBERS(det));
+    setMatchStatus(m.status || "upcoming");
     setSource(m._source || "auto");
     setSavedAt(m._savedAt || null);
     setDirty(false);
@@ -1651,14 +1653,10 @@ function HeimspieleEdit({onToast, onSaved, reloadKey}) {
   const save = async () => {
     setSaving(true);
     const now = new Date().toISOString();
-    const hasPlayers = rubbers.some(r=>(r.home||"").trim()||(r.away||"").trim());
-    const openCount  = rubbers.filter(r=>r.result==="open").length;
-    const nonOpen    = rubbers.filter(r=>r.result!=="open").length;
-    const autoStatus = !hasPlayers&&nonOpen===0 ? "upcoming" : openCount===0 ? "done" : "live";
     const {data:raw} = await sb.from("settings").select("value").eq("key","btv_match_cache").single();
     const existing = raw?.value ? (typeof raw.value==="string" ? JSON.parse(raw.value) : raw.value) : {};
     const payload = {
-      homeTeam, awayTeam, league, status: autoStatus,
+      homeTeam, awayTeam, league, status: matchStatus,
       matchDate: matchDate||null, time: matchTime ? matchTime+" Uhr" : null,
       homeLogo: homeLogo||null, awayLogo: awayLogo||null,
       _btv: existing._btv||null,
@@ -1747,19 +1745,33 @@ function HeimspieleEdit({onToast, onSaved, reloadKey}) {
             </>
           ) : <span style={{fontSize:11,color:"#D1D5DB",fontStyle:"italic"}}>–</span>}
         </div>
-        <div style={{padding:"4px 8px",display:"flex",alignItems:"center",gap:4}}>
-          <input type="number" min={0} max={9} value={homeScore}
-            onChange={e=>{setHomeScore(e.target.value);setDirty(true);}}
-            style={{width:34,textAlign:"center",fontSize:16,fontWeight:800,
-              border:"1.5px solid #E5E7EB",borderRadius:5,padding:"2px 0"}}/>
-          <span style={{fontSize:14,color:"#9CA3AF",fontWeight:700}}>:</span>
-          <input type="number" min={0} max={9} value={awayScore}
-            onChange={e=>{setAwayScore(e.target.value);setDirty(true);}}
-            style={{width:34,textAlign:"center",fontSize:16,fontWeight:800,
-              border:"1.5px solid #E5E7EB",borderRadius:5,padding:"2px 0"}}/>
-          <button onClick={recalcScore} title="Aus Rubbers berechnen"
-            style={{marginLeft:2,background:"none",border:"1px solid #E5E7EB",borderRadius:4,
-              padding:"2px 5px",fontSize:10,cursor:"pointer",color:"#6B7280"}}>↻</button>
+        <div style={{padding:"4px 8px",display:"flex",flexDirection:"column",gap:4}}>
+          <div style={{display:"flex",alignItems:"center",gap:4}}>
+            <input type="number" min={0} max={9} value={homeScore}
+              onChange={e=>{setHomeScore(e.target.value);setDirty(true);}}
+              style={{width:34,textAlign:"center",fontSize:16,fontWeight:800,
+                border:"1.5px solid #E5E7EB",borderRadius:5,padding:"2px 0"}}/>
+            <span style={{fontSize:14,color:"#9CA3AF",fontWeight:700}}>:</span>
+            <input type="number" min={0} max={9} value={awayScore}
+              onChange={e=>{setAwayScore(e.target.value);setDirty(true);}}
+              style={{width:34,textAlign:"center",fontSize:16,fontWeight:800,
+                border:"1.5px solid #E5E7EB",borderRadius:5,padding:"2px 0"}}/>
+            <button onClick={recalcScore} title="Aus Rubbers berechnen"
+              style={{marginLeft:2,background:"none",border:"1px solid #E5E7EB",borderRadius:4,
+                padding:"2px 5px",fontSize:10,cursor:"pointer",color:"#6B7280"}}>↻</button>
+          </div>
+          <div style={{display:"flex",gap:4}}>
+            {["upcoming","live","done"].map(s => (
+              <button key={s} onClick={()=>{setMatchStatus(s);setDirty(true);}}
+                style={{flex:1,padding:"2px 0",fontSize:10,fontWeight:700,borderRadius:4,
+                  border:`1.5px solid ${matchStatus===s ? statusColor(s) : "#E5E7EB"}`,
+                  background:matchStatus===s ? statusColor(s) : "#fff",
+                  color:matchStatus===s ? "#fff" : "#9CA3AF",
+                  cursor:"pointer",whiteSpace:"nowrap"}}>
+                {{upcoming:"geplant",live:"● läuft",done:"✓ fertig"}[s]}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
