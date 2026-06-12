@@ -1668,7 +1668,7 @@ function HeimspieleEdit({onToast, onSaved, reloadKey}) {
     setSaving(false);
     if (error) { onToast(`Fehler: ${error.message}`,"error"); return; }
     setSavedAt(now); setSource("manual"); setDirty(false);
-    onToast("📲 Spielstand auf Display übertragen ✓");
+    onToast("💾 Gespeichert ✓");
     onSaved?.(payload);
   };
   const revertToBtv = () => { if (btvSnap) { applyCache(btvSnap); setDirty(true); } };
@@ -1930,7 +1930,7 @@ function HeimspieleEdit({onToast, onSaved, reloadKey}) {
           style={{width:"100%",background:dirty?"#D97706":"#9CA3AF",color:"#fff",border:"none",
             borderRadius:8,padding:"10px 0",fontSize:13,fontWeight:700,
             cursor:dirty?"pointer":"default",opacity:saving?0.6:1,transition:"background .2s"}}>
-          {saving?"Speichern…":"📲 Spielstand auf Display übertragen"}
+          {saving?"Speichern…":"💾 Speichern"}
         </button>
       </div>
     </div>
