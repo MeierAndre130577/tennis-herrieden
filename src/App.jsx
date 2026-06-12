@@ -1709,6 +1709,7 @@ function HeimspieleEdit({onToast, onSaved, reloadKey}) {
       )}
 
       {/* Spalten-Header */}
+
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",background:"#F8FAFC",
         borderBottom:"1px solid #E2E8F0"}}>
         <div style={{padding:"8px 10px",borderRight:"1px solid #E2E8F0"}}>
@@ -1926,10 +1927,10 @@ function HeimspieleEdit({onToast, onSaved, reloadKey}) {
       {/* Speichern-Button */}
       <div style={{padding:"10px 12px",borderTop:"1px solid #E2E8F0",background:"#F8FAFC"}}>
         <button onClick={save} disabled={saving||!dirty}
-          style={{width:"100%",background:dirty?"#D97706":"#9CA3AF",color:"#fff",border:"none",
+          style={{width:"100%",background:dirty?"#D97706":"#059669",color:"#fff",border:"none",
             borderRadius:8,padding:"10px 0",fontSize:13,fontWeight:700,
             cursor:dirty?"pointer":"default",opacity:saving?0.6:1,transition:"background .2s"}}>
-          {saving?"Speichern…":"📲 Auf Display übertragen"}
+          {saving?"Speichern…":dirty?"📲 Auf Display übertragen":"✓ Aktuell auf Display"}
         </button>
       </div>
     </div>
