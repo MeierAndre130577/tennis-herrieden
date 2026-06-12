@@ -2053,11 +2053,13 @@ function ZeitSchaltung({sched, setSched}) {
 
 // ── SETTINGS: DISPLAY ────────────────────────────────────────────────────
 function SettingsMannschaftenTab({onToast}) {
-  const [teamsConfig, setTeamsConfig] = useState([]);
-  const [teamsSaving, setTeamsSaving] = useState(false);
-  const [teamsStatus, setTeamsStatus] = useState(null);
-  const [githubPat,   setGithubPat_]  = useState("");
-  const [scrapedAt,   setScrapedAt]   = useState(null);
+  const [teamsConfig,   setTeamsConfig]   = useState([]);
+  const [teamsSaving,   setTeamsSaving]   = useState(false);
+  const [teamsStatus,   setTeamsStatus]   = useState(null);
+  const [playersStatus, setPlayersStatus] = useState(null);
+  const [githubPat,     setGithubPat_]    = useState("");
+  const [scrapedAt,     setScrapedAt]     = useState(null);
+  const [playersData,   setPlayersData]   = useState(null); // btv_players
 
   useEffect(()=>{
     sb.from("settings").select("value").eq("key","btv_teams_config").single()
@@ -2066,6 +2068,8 @@ function SettingsMannschaftenTab({onToast}) {
       .then(({data})=>{ if(data?.value) setGithubPat_(data.value); });
     sb.from("settings").select("value").eq("key","btv_club_teams").single()
       .then(({data})=>{ try { setScrapedAt(JSON.parse(data?.value)?.scrapedAt||null); } catch(_){} });
+    sb.from("settings").select("value").eq("key","btv_players").single()
+      .then(({data})=>{ try { setPlayersData(JSON.parse(data?.value)||null); } catch(_){} });
   },[]);
 
   const saveTeamsConfig = async () => {
@@ -2094,6 +2098,28 @@ function SettingsMannschaftenTab({onToast}) {
       }
     } catch(e) {
       setTeamsStatus({ok:false, msg:`Netzwerkfehler: ${e.message}`});
+    }
+  };
+
+  const triggerPlayersLoad = async () => {
+    if(!githubPat) { onToast("Kein GitHub PAT hinterlegt (Display-Tab → Speichern)","error"); return; }
+    setPlayersStatus("running");
+    try {
+      const res = await fetch(
+        "https://api.github.com/repos/MeierAndre130577/tennis-herrieden/actions/workflows/btv-fetch.yml/dispatches",
+        { method:"POST",
+          headers:{Authorization:`Bearer ${githubPat}`,Accept:"application/vnd.github+json","Content-Type":"application/json"},
+          body: JSON.stringify({ref:"main", inputs:{players_only:"true"}}) }
+      );
+      if(res.status===204){
+        setPlayersStatus({ok:true, msg:"✅ Spieler-Fetch gestartet – dauert ~5–8 Min. je nach Staffelgröße."});
+        setTimeout(()=>setPlayersStatus(null), 12000);
+      } else {
+        const txt = await res.text();
+        setPlayersStatus({ok:false, msg:`Fehler ${res.status}: ${txt}`});
+      }
+    } catch(e) {
+      setPlayersStatus({ok:false, msg:`Netzwerkfehler: ${e.message}`});
     }
   };
 
@@ -2189,6 +2215,89 @@ function SettingsMannschaftenTab({onToast}) {
             Einmal pro Saison ausreichend, außer es kommen Mannschaften hinzu oder URLs ändern sich.
           </div>
         </div>
+      </div>
+
+      {/* ── Spieler laden ── */}
+      <div style={S.card}>
+        <div style={{fontWeight:700,color:"#374151",fontSize:13,marginBottom:8}}>Meldelisten (Spieler)</div>
+        <p style={{fontSize:12,color:"#6B7280",marginBottom:12,lineHeight:1.6}}>
+          Lädt die offiziellen BTV-Meldelisten aller konfigurierten Staffeln — Heimteam und alle Gegner.
+          Einmal pro Saison ausreichend. Ergebnis wird für die Namens-Vorschläge bei der Ergebniseingabe genutzt.
+        </p>
+
+        {playersStatus&&typeof playersStatus==="object"&&(
+          <div style={{marginBottom:12,padding:"8px 12px",borderRadius:6,fontSize:12,
+            background:playersStatus.ok?"#F0FDF4":"#FEF2F2",
+            border:`1px solid ${playersStatus.ok?"#BBF7D0":"#FECACA"}`,
+            color:playersStatus.ok?"#166534":"#DC2626"}}>
+            {playersStatus.msg}
+          </div>
+        )}
+
+        <button onClick={triggerPlayersLoad} disabled={playersStatus==="running"}
+          style={{background:"#059669",color:"#fff",border:"none",borderRadius:6,
+            padding:"8px 16px",fontSize:12,cursor:"pointer",fontWeight:600,
+            opacity:playersStatus==="running"?0.6:1,marginBottom:16}}>
+          {playersStatus==="running"?"Lädt…":"👤 Spieler laden"}
+        </button>
+
+        {/* Geladene Spieler anzeigen */}
+        {playersData&&(()=>{
+          const cfg = playersData.config||[];
+          const teams = playersData.teams||{};
+          const ts = playersData.scrapedAt ? new Date(playersData.scrapedAt) : null;
+          return (
+            <div>
+              {ts&&(
+                <div style={{fontSize:11,color:"#9CA3AF",marginBottom:10}}>
+                  Geladen am {ts.toLocaleDateString("de-DE",{day:"numeric",month:"long",year:"numeric"})} um {ts.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})} Uhr
+                </div>
+              )}
+              {cfg.map(entry=>{
+                const homeCount = teams[entry.teamName]?.length||0;
+                const opponents = entry.opponents||[];
+                return (
+                  <div key={entry.name} style={{marginBottom:12,padding:"10px 12px",
+                    background:"#F8FAFC",border:"1px solid #E5E7EB",borderRadius:8}}>
+                    <div style={{fontWeight:600,color:"#374151",fontSize:12,marginBottom:6}}>
+                      {entry.name}
+                      <span style={{fontWeight:400,color:"#6B7280",marginLeft:6}}>({entry.teamName})</span>
+                    </div>
+                    {/* Heimteam */}
+                    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
+                      <span style={{fontSize:10,background:"#DBEAFE",color:"#1E40AF",
+                        padding:"1px 6px",borderRadius:4,fontWeight:600}}>Heim</span>
+                      <span style={{fontSize:11,color:"#374151"}}>{entry.teamName}</span>
+                      <span style={{fontSize:11,color:homeCount>0?"#059669":"#9CA3AF",fontWeight:600}}>
+                        {homeCount>0?`${homeCount} Spieler`:"nicht geladen"}
+                      </span>
+                    </div>
+                    {/* Gegner */}
+                    {opponents.length>0&&(
+                      <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:4}}>
+                        {opponents.map(opp=>{
+                          const cnt = teams[opp]?.length||0;
+                          return (
+                            <span key={opp} style={{fontSize:10,padding:"2px 7px",borderRadius:4,
+                              background:cnt>0?"#F0FDF4":"#F9FAFB",
+                              border:`1px solid ${cnt>0?"#BBF7D0":"#E5E7EB"}`,
+                              color:cnt>0?"#166534":"#9CA3AF"}}>
+                              {opp}{cnt>0?` (${cnt})`:""}</span>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {cfg.length===0&&Object.keys(teams).length>0&&(
+                <div style={{fontSize:12,color:"#6B7280"}}>
+                  {Object.keys(teams).length} Teams geladen (altes Format — einmal neu laden).
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

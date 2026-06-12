@@ -14,6 +14,11 @@ on:
         required: false
         default: 'false'
         type: string
+      players_only:
+        description: 'Nur Spieler-Meldelisten laden (1x pro Saison)'
+        required: false
+        default: 'false'
+        type: string
 
 jobs:
   fetch:
@@ -37,9 +42,17 @@ jobs:
         run: npx playwright install chromium --with-deps
 
       - name: BTV Daten holen
+        if: ${{ inputs.players_only != 'true' }}
         run: node scripts/fetch-btv.js
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           TZ: Europe/Berlin
           TEAMS_ONLY: ${{ inputs.teams_only || (github.event.schedule == '0 2 * * *' && 'true' || 'false') }}
+
+      - name: Spieler-Meldelisten laden
+        if: ${{ inputs.players_only == 'true' }}
+        run: node scripts/fetch-players.js
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
