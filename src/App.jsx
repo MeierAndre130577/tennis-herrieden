@@ -1651,8 +1651,17 @@ function HeimspieleEdit({onToast, onSaved, reloadKey}) {
   const save = async () => {
     setSaving(true);
     const now = new Date().toISOString();
-    const hasPlayers = rubbers.some(r=>(r.home||"").trim()||(r.away||"").trim());
-    const openCount  = rubbers.filter(r=>r.result==="open").length;
+    const btvRubMap = Object.fromEntries((btvSnap?.rubbers||[]).map(r=>[r.id,r]));
+    const mergedRubbers = rubbers.map(r => {
+      const b = btvRubMap[r.id];
+      return {
+        ...r,
+        home: (b?.home && b.home!=="–") ? b.home : r.home,
+        away: (b?.away && b.away!=="–") ? b.away : r.away,
+      };
+    });
+    const hasPlayers = mergedRubbers.some(r=>(r.home||"").trim()||(r.away||"").trim());
+    const openCount  = mergedRubbers.filter(r=>r.result==="open").length;
     const autoStatus = !hasPlayers ? "upcoming" : openCount===0 ? "done" : "live";
     const {data:raw} = await sb.from("settings").select("value").eq("key","btv_match_cache").single();
     const existing = raw?.value ? (typeof raw.value==="string" ? JSON.parse(raw.value) : raw.value) : {};
@@ -1662,7 +1671,7 @@ function HeimspieleEdit({onToast, onSaved, reloadKey}) {
       homeLogo: homeLogo||null, awayLogo: awayLogo||null,
       _btv: existing._btv||null,
       homeScore: Number(homeScore), awayScore: Number(awayScore),
-      rubbers, _source:"manual", _savedAt: now,
+      rubbers: mergedRubbers, _source:"manual", _savedAt: now,
     };
     const {error} = await sb.from("settings")
       .upsert([{key:"btv_match_cache",value:JSON.stringify(payload)}],{onConflict:"key"});
@@ -1821,16 +1830,30 @@ function HeimspieleEdit({onToast, onSaved, reloadKey}) {
             <div style={{paddingLeft:6,minWidth:0,borderLeft:"1px solid #E2E8F0"}}>
               {m ? (
                 <>
-                  <input value={m.home} onChange={e=>updRubber(id,"home",e.target.value)}
-                    placeholder="Heim"
-                    style={{width:"100%",fontSize:11,border:"1px solid #D1D5DB",borderRadius:4,
-                      padding:"2px 4px",marginBottom:2,boxSizing:"border-box",
-                      background:diff&&m.home!==b?.home?"#FEF3C7":"#fff"}}/>
-                  <input value={m.away} onChange={e=>updRubber(id,"away",e.target.value)}
-                    placeholder="Gast"
-                    style={{width:"100%",fontSize:11,border:"1px solid #D1D5DB",borderRadius:4,
-                      padding:"2px 4px",marginBottom:2,boxSizing:"border-box",
-                      background:diff&&m.away!==b?.away?"#FEF3C7":"#fff"}}/>
+                  {b?.home && b.home!=="–" ? (
+                    <div style={{fontSize:11,color:"#374151",padding:"2px 4px",marginBottom:2,
+                      background:"#F0FDF4",borderRadius:4,border:"1px solid #BBF7D0",
+                      overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                      {b.home}
+                    </div>
+                  ) : (
+                    <input value={m.home} onChange={e=>updRubber(id,"home",e.target.value)}
+                      placeholder="Heim"
+                      style={{width:"100%",fontSize:11,border:"1px solid #D1D5DB",borderRadius:4,
+                        padding:"2px 4px",marginBottom:2,boxSizing:"border-box",background:"#fff"}}/>
+                  )}
+                  {b?.away && b.away!=="–" ? (
+                    <div style={{fontSize:11,color:"#6B7280",padding:"2px 4px",marginBottom:2,
+                      background:"#F0FDF4",borderRadius:4,border:"1px solid #BBF7D0",
+                      overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                      {b.away}
+                    </div>
+                  ) : (
+                    <input value={m.away} onChange={e=>updRubber(id,"away",e.target.value)}
+                      placeholder="Gast"
+                      style={{width:"100%",fontSize:11,border:"1px solid #D1D5DB",borderRadius:4,
+                        padding:"2px 4px",marginBottom:2,boxSizing:"border-box",background:"#fff"}}/>
+                  )}
                   <div style={{display:"flex",gap:2}}>
                     <input value={m.score} onChange={e=>updRubber(id,"score",e.target.value)}
                       placeholder="6:3"
