@@ -1857,10 +1857,6 @@ function HeimspieleEdit({onToast, onSaved, reloadKey}) {
             {label:"Liga",    btv: btvSnap?.league||null,          act: league||null},
             {label:"Heim",    btv: btvSnap?.homeTeam||null,        act: homeTeam||null},
             {label:"Gast",    btv: btvSnap?.awayTeam||null,        act: awayTeam||null},
-            {label:"Format",
-              btv: btvSnap?.format
-                || (btvSnap?.rubbers?.length > 0 ? (btvSnap.rubbers.filter(r=>r.id.startsWith("E")).length<=4?"4er":"6er") : null),
-              act: format},
           ];
           return (
             <div style={{background:"#fff",borderTop:"1px solid #F1F5F9"}}>
@@ -1892,6 +1888,15 @@ function HeimspieleEdit({onToast, onSaved, reloadKey}) {
                   </div>
                 );
               })}
+              {/* Format – abgeleitet aus Rubbers, kein echter BTV-Wert */}
+              <div style={{display:"grid",gridTemplateColumns:"52px 1fr",
+                padding:"4px 6px",borderBottom:"1px solid #F9FAFB",background:"#fff",alignItems:"center"}}>
+                <span style={{fontSize:10,fontWeight:700,color:"#9CA3AF"}}>Format</span>
+                <div style={{paddingLeft:4,fontSize:11,color:"#374151"}}>
+                  {format}
+                  <span style={{marginLeft:6,fontSize:9,color:"#9CA3AF"}}>(aus Rubber-Anzahl ermittelt)</span>
+                </div>
+              </div>
               {btvSnap&&(
                 <div style={{padding:"8px 10px"}}>
                   <button onClick={revertToBtv}
