@@ -65,22 +65,25 @@ export default function App() {
   if(screen==="kassenbuch")  return <KassenbuchApp  profile={profile} onBack={()=>setScreen("home")}/>;
   if(screen==="clubstream")  return <ClubstreamApp  profile={profile} onBack={()=>setScreen("home")}/>;
   if(screen==="btv")         return <BtvLinksScreen onBack={()=>setScreen("home")}/>;
-  if(screen==="heimspiel")   return <HeimspielwocheScreen onBack={()=>setScreen("home")}/>;
+  if(screen==="heimspiel")   return <HeimspielwocheScreen onBack={()=>setScreen("home")} profile={profile}/>;
   return <HomeScreen profile={profile} onGoBooking={()=>setScreen("booking")} onGoKasse={()=>setScreen("kasse")} onGoSettings={()=>setScreen("settings")} onGoKassenbuch={()=>setScreen("kassenbuch")} onGoClubstream={()=>setScreen("clubstream")} onGoBtv={()=>setScreen("btv")} onGoHeimspiele={()=>setScreen("heimspiel")}/>;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HEIMSPIELWOCHE SCREEN
 // ═══════════════════════════════════════════════════════════════════════════
-function HeimspielwocheScreen({onBack}) {
+function HeimspielwocheScreen({onBack, profile}) {
   const [groups,setGroups] = useState([]);
   const [loading,setLoading] = useState(true);
+  const [scrapedAt,setScrapedAt] = useState(null);
+  const isAdmin = profile?.role === "admin";
 
   useEffect(()=>{
     sb.from("settings").select("value").eq("key","btv_club_teams").single()
       .then(({data})=>{
         try {
           const ct = JSON.parse(data?.value);
+          setScrapedAt(ct?.scrapedAt || null);
           const now = new Date(); now.setHours(0,0,0,0);
           const end = new Date(now); end.setDate(end.getDate()+7);
           // Sammle alle Heimspiele in den nächsten 7 Tagen
@@ -117,6 +120,23 @@ function HeimspielwocheScreen({onBack}) {
           <button onClick={onBack} style={{background:"none",border:"none",color:"#94A3B8",fontSize:22,cursor:"pointer",padding:"0 4px"}}>←</button>
           <h2 style={{color:"#F8FAFC",fontSize:20,fontWeight:800,margin:0}}>🏠 Heimspielwoche</h2>
         </div>
+
+        {isAdmin && scrapedAt && (()=>{
+          const age = (Date.now() - new Date(scrapedAt)) / 86400000;
+          const stale = age > 1.5;
+          const d = new Date(scrapedAt);
+          const label = d.toLocaleDateString("de-DE",{day:"numeric",month:"short"}) + ", " + d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}) + " Uhr";
+          return (
+            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:12,
+              background: stale?"#431407":"#0F2A1A", border:`1px solid ${stale?"#C2410C44":"#16A34A44"}`,
+              borderRadius:8, padding:"6px 10px"}}>
+              <span style={{fontSize:13}}>{stale?"⚠️":"✅"}</span>
+              <span style={{fontSize:11,color: stale?"#FB923C":"#4ADE80"}}>
+                Aktualisiert: {label}{stale?" – veraltet!":""}
+              </span>
+            </div>
+          );
+        })()}
 
         {loading && <div style={{textAlign:"center",color:"#64748B",padding:32}}>Lade…</div>}
 
