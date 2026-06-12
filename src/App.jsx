@@ -1703,7 +1703,7 @@ function HeimspieleEdit({onToast, onSaved, reloadKey}) {
           <button onClick={save} disabled={saving}
             style={{background:"#D97706",color:"#fff",border:"none",borderRadius:6,
               padding:"5px 14px",fontSize:12,fontWeight:700,cursor:"pointer",opacity:saving?0.6:1}}>
-            {saving?"Speichern…":"💾 Speichern"}
+            {saving?"Speichern…":"📲 Auf Display übertragen"}
           </button>
         </div>
       )}
@@ -1929,7 +1929,7 @@ function HeimspieleEdit({onToast, onSaved, reloadKey}) {
           style={{width:"100%",background:dirty?"#D97706":"#9CA3AF",color:"#fff",border:"none",
             borderRadius:8,padding:"10px 0",fontSize:13,fontWeight:700,
             cursor:dirty?"pointer":"default",opacity:saving?0.6:1,transition:"background .2s"}}>
-          {saving?"Speichern…":"💾 Speichern"}
+          {saving?"Speichern…":"📲 Auf Display übertragen"}
         </button>
       </div>
     </div>
