@@ -1565,151 +1565,359 @@ function fmtTs(iso) {
     + " " + d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}) + " Uhr";
 }
 
-function HeimspieleVergleich({matchCache}) {
-  const [btvSnap, setBtvSnap] = useState(null);
-  const [loadingBtv, setLoadingBtv] = useState(true);
+function HeimspieleEdit({onToast, onSaved, reloadKey}) {
+  const [loading,    setLoading]    = useState(true);
+  const [saving,     setSaving]     = useState(false);
+  const [dirty,      setDirty]      = useState(false);
+  const [btvSnap,    setBtvSnap]    = useState(null);
+  const [extraOpen,  setExtraOpen]  = useState(false);
 
-  useEffect(() => {
-    sb.from("settings").select("value").eq("key","btv_auto_snapshot").single()
-      .then(({data}) => {
-        if (data?.value) {
-          let v = data.value;
-          if (typeof v === "string") v = JSON.parse(v);
-          setBtvSnap(v);
-        }
-        setLoadingBtv(false);
-      });
-  }, [matchCache]); // neu laden wenn matchCache sich ändert (nach manuellem Speichern)
+  // Cache-Metadaten
+  const [source,    setSource]    = useState(null);
+  const [savedAt,   setSavedAt]   = useState(null);
 
-  const btv = btvSnap;
-  const man = matchCache;
+  // Editierbare Felder
+  const [format,    setFormat]    = useState("6er");
+  const [homeTeam,  setHomeTeam]  = useState("");
+  const [awayTeam,  setAwayTeam]  = useState("");
+  const [league,    setLeague]    = useState("");
+  const [matchDate, setMatchDate] = useState("");
+  const [matchTime, setMatchTime] = useState("");
+  const [homeScore, setHomeScore] = useState(0);
+  const [awayScore, setAwayScore] = useState(0);
+  const [rubbers,   setRubbers]   = useState(DEFAULT_RUBBERS("6er"));
+  const [homeLogo,  setHomeLogo]  = useState(null);
+  const [awayLogo,  setAwayLogo]  = useState(null);
 
-  if (!btv && !man && !loadingBtv) return null;
+  const applyCache = (m) => {
+    setHomeLogo(m.homeLogo || null);
+    setAwayLogo(m.awayLogo || null);
+    setHomeTeam(m.homeTeam || "");
+    setAwayTeam(m.awayTeam || "");
+    setLeague(m.league || "");
+    setMatchDate(m.matchDate || "");
+    setMatchTime((m.time || "").replace(/\s*Uhr$/i, "").trim());
+    setHomeScore(m.homeScore ?? 0);
+    setAwayScore(m.awayScore ?? 0);
+    const rubs = m.rubbers?.length > 0 ? m.rubbers.map(r=>({...r})) : [];
+    const det = rubs.filter(r=>r.id.startsWith("E")).length <= 4 ? "4er" : "6er";
+    setFormat(det);
+    setRubbers(rubs.length > 0 ? rubs : DEFAULT_RUBBERS(det));
+    setSource(m._source || "auto");
+    setSavedAt(m._savedAt || null);
+    setDirty(false);
+  };
+
+  const load = async () => {
+    const [btvRes, cacheRes] = await Promise.all([
+      sb.from("settings").select("value").eq("key","btv_auto_snapshot").single(),
+      sb.from("settings").select("value").eq("key","btv_match_cache").single(),
+    ]);
+    if (btvRes.data?.value) {
+      let v = btvRes.data.value;
+      if (typeof v === "string") v = JSON.parse(v);
+      setBtvSnap(v);
+    }
+    if (cacheRes.data?.value) {
+      let m = cacheRes.data.value;
+      if (typeof m === "string") m = JSON.parse(m);
+      applyCache(m);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, []);
+  useEffect(() => { if (reloadKey) load(); }, [reloadKey]);
+
+  const mark = setter => val => { setter(val); setDirty(true); };
+  const updRubber = (id, field, val) => {
+    setRubbers(prev => prev.map(r => r.id===id ? {...r,[field]:val} : r));
+    setDirty(true);
+  };
+  const switchFormat = newFmt => {
+    const ids = RUBBER_IDS[newFmt];
+    const rubberMap = Object.fromEntries(rubbers.map(r=>[r.id,r]));
+    setRubbers(ids.map(id => rubberMap[id] || {id,home:"",away:"",score:"",result:"open"}));
+    setFormat(newFmt);
+    setDirty(true);
+  };
+  const recalcScore = () => {
+    setHomeScore(rubbers.filter(r=>r.result==="win").length);
+    setAwayScore(rubbers.filter(r=>r.result==="loss").length);
+    setDirty(true);
+  };
+  const save = async () => {
+    setSaving(true);
+    const now = new Date().toISOString();
+    const hasPlayers = rubbers.some(r=>(r.home||"").trim()||(r.away||"").trim());
+    const openCount  = rubbers.filter(r=>r.result==="open").length;
+    const nonOpen    = rubbers.filter(r=>r.result!=="open").length;
+    const autoStatus = !hasPlayers&&nonOpen===0 ? "upcoming" : openCount===0 ? "done" : "live";
+    const {data:raw} = await sb.from("settings").select("value").eq("key","btv_match_cache").single();
+    const existing = raw?.value ? (typeof raw.value==="string" ? JSON.parse(raw.value) : raw.value) : {};
+    const payload = {
+      homeTeam, awayTeam, league, status: autoStatus,
+      matchDate: matchDate||null, time: matchTime ? matchTime+" Uhr" : null,
+      homeLogo: homeLogo||null, awayLogo: awayLogo||null,
+      _btv: existing._btv||null,
+      homeScore: Number(homeScore), awayScore: Number(awayScore),
+      rubbers, _source:"manual", _savedAt: now,
+    };
+    const {error} = await sb.from("settings")
+      .upsert([{key:"btv_match_cache",value:JSON.stringify(payload)}],{onConflict:"key"});
+    setSaving(false);
+    if (error) { onToast(`Fehler: ${error.message}`,"error"); return; }
+    setSavedAt(now); setSource("manual"); setDirty(false);
+    onToast("📲 Spielstand auf Display übertragen ✓");
+    onSaved?.(payload);
+  };
+  const revertToBtv = () => { if (btvSnap) { applyCache(btvSnap); setDirty(true); } };
 
   const fmtTs = s => s
     ? new Date(s).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})+" Uhr"
     : "–";
   const statusLabel = s => ({upcoming:"geplant", live:"läuft 🔴", done:"fertig ✓"}[s] || s || "–");
   const statusColor = s => ({upcoming:"#6B7280", live:"#059669", done:"#1D4ED8"}[s] || "#6B7280");
-  const resIcon  = r => ({win:"✓",loss:"✗",open:"·"}[r] || "·");
   const resColor = r => ({win:"#059669",loss:"#EF4444",open:"#9CA3AF"}[r] || "#9CA3AF");
 
   const allIds = [...new Set([
-    ...(btv?.rubbers||[]).map(r=>r.id),
-    ...(man?.rubbers||[]).map(r=>r.id),
+    ...(btvSnap?.rubbers||[]).map(r=>r.id),
+    ...rubbers.map(r=>r.id),
   ])];
-  const bM = Object.fromEntries((btv?.rubbers||[]).map(r=>[r.id,r]));
-  const mM = Object.fromEntries((man?.rubbers||[]).map(r=>[r.id,r]));
+  const bM = Object.fromEntries((btvSnap?.rubbers||[]).map(r=>[r.id,r]));
 
-  const colHead = (d, isBtv) => (
-    <div style={{padding:"8px 10px", borderRight: isBtv ? "1px solid #E2E8F0" : "none"}}>
-      <div style={{fontSize:11,fontWeight:700,
-        color: isBtv ? "#1D4ED8" : (d?._source==="manual" ? "#92400E" : "#1D4ED8")}}>
-        {isBtv ? "🤖 BTV Automatisch" : (d?._source==="manual" ? "✏️ Manuell (aktiv)" : "🤖 BTV (aktiv)")}
-      </div>
-      <div style={{fontSize:10,color:"#9CA3AF",marginTop:1}}>
-        {isBtv
-          ? (loadingBtv ? "lädt…" : (d?._savedAt ? fmtTs(d._savedAt) : "noch kein Fetch"))
-          : (d?._savedAt ? fmtTs(d._savedAt) : "kein Stand")}
-      </div>
-    </div>
-  );
-
-  const colStatus = (d, isBtv) => (
-    <div style={{padding:"6px 10px", borderRight: isBtv ? "1px solid #E2E8F0" : "none",
-      display:"flex",alignItems:"center",gap:6}}>
-      {d ? (
-        <>
-          <span style={{fontSize:11,fontWeight:700,color:statusColor(d.status)}}>
-            {statusLabel(d.status)}
-          </span>
-          {d.homeScore != null && (
-            <span style={{fontSize:14,fontWeight:800,color:"#374151",marginLeft:4}}>
-              {d.homeScore}:{d.awayScore}
-            </span>
-          )}
-        </>
-      ) : <span style={{fontSize:11,color:"#D1D5DB",fontStyle:"italic"}}>–</span>}
-    </div>
+  if (loading) return (
+    <div style={{padding:"16px",fontSize:12,color:"#9CA3AF",textAlign:"center"}}>Lade Daten…</div>
   );
 
   return (
-    <div style={{marginTop:12,marginBottom:4,border:"1px solid #E2E8F0",borderRadius:10,overflow:"hidden"}}>
+    <div style={{border:`1.5px solid ${dirty?"#F59E0B":"#E2E8F0"}`,borderRadius:12,
+      overflow:"hidden",marginBottom:20}}>
+
+      {/* Dirty-Banner */}
+      {dirty&&(
+        <div style={{background:"#FFFBEB",borderBottom:"1px solid #FDE68A",
+          padding:"8px 12px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <span style={{fontSize:11,color:"#92400E",fontWeight:600}}>● Ungespeicherte Änderungen</span>
+          <button onClick={save} disabled={saving}
+            style={{background:"#D97706",color:"#fff",border:"none",borderRadius:6,
+              padding:"5px 14px",fontSize:12,fontWeight:700,cursor:"pointer",opacity:saving?0.6:1}}>
+            {saving?"Speichern…":"💾 Speichern"}
+          </button>
+        </div>
+      )}
+
       {/* Spalten-Header */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",background:"#F8FAFC",
         borderBottom:"1px solid #E2E8F0"}}>
-        {colHead(btv, true)}
-        {colHead(man, false)}
+        <div style={{padding:"8px 10px",borderRight:"1px solid #E2E8F0"}}>
+          <div style={{fontSize:11,fontWeight:700,color:"#1D4ED8"}}>🤖 BTV (Scraper)</div>
+          <div style={{fontSize:10,color:"#9CA3AF",marginTop:1}}>
+            {btvSnap?._savedAt ? fmtTs(btvSnap._savedAt) : "noch nicht gelaufen"}
+          </div>
+          <div style={{fontSize:9,color:"#C4C4C4",marginTop:1}}>was BTV zuletzt hatte</div>
+        </div>
+        <div style={{padding:"8px 10px"}}>
+          <div style={{fontSize:11,fontWeight:700,
+            color:source==="manual"?"#92400E":"#059669"}}>
+            {source==="manual"?"✏️ Display (manuell)":"📺 Display (BTV)"}
+          </div>
+          <div style={{fontSize:10,color:"#9CA3AF",marginTop:1}}>
+            {savedAt ? fmtTs(savedAt) : "kein Stand"}
+          </div>
+          <div style={{fontSize:9,color:"#C4C4C4",marginTop:1}}>was gerade gezeigt wird</div>
+        </div>
       </div>
 
       {/* Status + Score */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",
-        borderBottom:"1px solid #F1F5F9",background:"#fff"}}>
-        {colStatus(btv, true)}
-        {colStatus(man, false)}
+        borderBottom:"1px solid #E2E8F0",background:"#fff"}}>
+        <div style={{padding:"6px 10px",borderRight:"1px solid #E2E8F0",
+          display:"flex",alignItems:"center",gap:6}}>
+          {btvSnap ? (
+            <>
+              <span style={{fontSize:11,fontWeight:700,color:statusColor(btvSnap.status)}}>
+                {statusLabel(btvSnap.status)}
+              </span>
+              <span style={{fontSize:14,fontWeight:800,color:"#374151"}}>
+                {btvSnap.homeScore}:{btvSnap.awayScore}
+              </span>
+            </>
+          ) : <span style={{fontSize:11,color:"#D1D5DB",fontStyle:"italic"}}>–</span>}
+        </div>
+        <div style={{padding:"4px 8px",display:"flex",alignItems:"center",gap:4}}>
+          <input type="number" min={0} max={9} value={homeScore}
+            onChange={e=>{setHomeScore(e.target.value);setDirty(true);}}
+            style={{width:34,textAlign:"center",fontSize:16,fontWeight:800,
+              border:"1.5px solid #E5E7EB",borderRadius:5,padding:"2px 0"}}/>
+          <span style={{fontSize:14,color:"#9CA3AF",fontWeight:700}}>:</span>
+          <input type="number" min={0} max={9} value={awayScore}
+            onChange={e=>{setAwayScore(e.target.value);setDirty(true);}}
+            style={{width:34,textAlign:"center",fontSize:16,fontWeight:800,
+              border:"1.5px solid #E5E7EB",borderRadius:5,padding:"2px 0"}}/>
+          <button onClick={recalcScore} title="Aus Rubbers berechnen"
+            style={{marginLeft:2,background:"none",border:"1px solid #E5E7EB",borderRadius:4,
+              padding:"2px 5px",fontSize:10,cursor:"pointer",color:"#6B7280"}}>↻</button>
+        </div>
       </div>
 
-      {/* Rubbers */}
-      {allIds.length > 0 ? (
-        <div>
-          {/* Rubber-Header */}
-          <div style={{display:"grid",gridTemplateColumns:"22px 1fr 1fr",
-            background:"#F8FAFC",borderBottom:"1px solid #E2E8F0",padding:"3px 8px"}}>
-            <span/>
-            <span style={{fontSize:9,fontWeight:700,color:"#9CA3AF",paddingLeft:4}}>BTV</span>
-            <span style={{fontSize:9,fontWeight:700,color:"#9CA3AF",paddingLeft:8,
-              borderLeft:"1px solid #E2E8F0"}}>MANUELL / AKTIV</span>
-          </div>
-          {allIds.map(id => {
-            const b = bM[id];
-            const m = mM[id];
-            const diff = b && m && (b.home !== m.home || b.away !== m.away);
-            return (
-              <div key={id} style={{display:"grid",gridTemplateColumns:"22px 1fr 1fr",
-                padding:"4px 8px",
-                background: diff ? "#FFFBEB" : id.startsWith("D") ? "#F8FAFC" : "#fff",
-                borderBottom:"1px solid #F1F5F9",alignItems:"start"}}>
-                <span style={{fontSize:10,fontWeight:800,color:"#9CA3AF",paddingTop:3,
-                  lineHeight:1}}>{id}</span>
-                {[b,m].map((r,i) => (
-                  <div key={i} style={{paddingLeft:4, minWidth:0,
-                    borderLeft: i===1 ? "1px solid #E2E8F0" : "none", paddingRight:4}}>
-                    {r ? (
-                      <>
-                        <div style={{fontSize:11,color:"#374151",overflow:"hidden",
-                          textOverflow:"ellipsis",whiteSpace:"nowrap",lineHeight:1.3}}>
-                          {r.home||"–"}
-                        </div>
-                        <div style={{fontSize:11,color:"#6B7280",overflow:"hidden",
-                          textOverflow:"ellipsis",whiteSpace:"nowrap",lineHeight:1.3}}>
-                          {r.away||"–"}
-                        </div>
-                        <div style={{fontSize:10,marginTop:1,color:"#9CA3AF",lineHeight:1}}>
-                          {r.score||"–"}
-                          <span style={{marginLeft:4,fontWeight:700,color:resColor(r.result)}}>
-                            {resIcon(r.result)}
-                          </span>
-                          {diff && i===0 && <span style={{marginLeft:4,color:"#F59E0B",fontSize:9}}>≠</span>}
-                        </div>
-                      </>
-                    ) : <span style={{fontSize:11,color:"#D1D5DB",lineHeight:1.3}}>–</span>}
-                  </div>
-                ))}
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div style={{padding:"10px 12px",fontSize:11,color:"#9CA3AF",fontStyle:"italic",
-          textAlign:"center"}}>
-          {loadingBtv ? "Lädt BTV-Daten…" : "Noch keine Rubber-Daten vorhanden"}
+      {/* Rubber-Spalten-Header */}
+      <div style={{display:"grid",gridTemplateColumns:"20px 1fr 1fr",
+        background:"#F8FAFC",borderBottom:"1px solid #E2E8F0",padding:"3px 6px"}}>
+        <span/>
+        <span style={{fontSize:9,fontWeight:700,color:"#9CA3AF",paddingLeft:4}}>BTV</span>
+        <span style={{fontSize:9,fontWeight:700,color:"#9CA3AF",paddingLeft:8,
+          borderLeft:"1px solid #E2E8F0"}}>BEARBEITEN</span>
+      </div>
+
+      {allIds.length===0&&(
+        <div style={{padding:"12px",fontSize:11,color:"#9CA3AF",textAlign:"center",fontStyle:"italic"}}>
+          Noch keine Rubber-Daten
         </div>
       )}
+      {allIds.map(id => {
+        const b = bM[id];
+        const m = rubbers.find(r=>r.id===id);
+        const diff = b&&m&&(b.home!==m.home||b.away!==m.away);
+        return (
+          <div key={id} style={{display:"grid",gridTemplateColumns:"20px 1fr 1fr",
+            padding:"4px 6px",
+            background:diff?"#FFFBEB":id.startsWith("D")?"#F8FAFC":"#fff",
+            borderBottom:"1px solid #F1F5F9",alignItems:"start"}}>
+            <span style={{fontSize:10,fontWeight:800,color:"#9CA3AF",paddingTop:3,lineHeight:1}}>
+              {id}
+            </span>
+            <div style={{paddingLeft:4,paddingRight:4,minWidth:0}}>
+              {b ? (
+                <>
+                  <div style={{fontSize:11,color:"#374151",overflow:"hidden",
+                    textOverflow:"ellipsis",whiteSpace:"nowrap",lineHeight:1.4}}>{b.home||"–"}</div>
+                  <div style={{fontSize:11,color:"#6B7280",overflow:"hidden",
+                    textOverflow:"ellipsis",whiteSpace:"nowrap",lineHeight:1.4}}>{b.away||"–"}</div>
+                  <div style={{fontSize:10,color:"#9CA3AF",lineHeight:1.3}}>
+                    {b.score||"–"}
+                    <span style={{marginLeft:3,fontWeight:700,color:resColor(b.result)}}>
+                      {b.result==="win"?"✓":b.result==="loss"?"✗":"·"}
+                    </span>
+                    {diff&&<span style={{marginLeft:4,color:"#F59E0B",fontSize:9}}>≠</span>}
+                  </div>
+                </>
+              ) : <span style={{fontSize:11,color:"#D1D5DB"}}>–</span>}
+            </div>
+            <div style={{paddingLeft:6,minWidth:0,borderLeft:"1px solid #E2E8F0"}}>
+              {m ? (
+                <>
+                  <input value={m.home} onChange={e=>updRubber(id,"home",e.target.value)}
+                    placeholder="Heim"
+                    style={{width:"100%",fontSize:11,border:"1px solid #D1D5DB",borderRadius:4,
+                      padding:"2px 4px",marginBottom:2,boxSizing:"border-box",
+                      background:diff&&m.home!==b?.home?"#FEF3C7":"#fff"}}/>
+                  <input value={m.away} onChange={e=>updRubber(id,"away",e.target.value)}
+                    placeholder="Gast"
+                    style={{width:"100%",fontSize:11,border:"1px solid #D1D5DB",borderRadius:4,
+                      padding:"2px 4px",marginBottom:2,boxSizing:"border-box",
+                      background:diff&&m.away!==b?.away?"#FEF3C7":"#fff"}}/>
+                  <div style={{display:"flex",gap:2}}>
+                    <input value={m.score} onChange={e=>updRubber(id,"score",e.target.value)}
+                      placeholder="6:3"
+                      style={{width:46,fontSize:10,border:"1px solid #D1D5DB",borderRadius:4,
+                        padding:"2px 3px",boxSizing:"border-box"}}/>
+                    <select value={m.result} onChange={e=>updRubber(id,"result",e.target.value)}
+                      style={{flex:1,fontSize:10,border:"1px solid #D1D5DB",borderRadius:4,
+                        padding:"2px 2px",background:"#fff",fontWeight:600,
+                        color:resColor(m.result)}}>
+                      {RUBBER_RESULT_OPTS.map(o=>(
+                        <option key={o.v} value={o.v}>{o.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              ) : <span style={{fontSize:11,color:"#D1D5DB"}}>–</span>}
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Weitere Felder */}
+      <div style={{borderTop:"1px solid #E2E8F0"}}>
+        <button onClick={()=>setExtraOpen(o=>!o)}
+          style={{width:"100%",background:"#F8FAFC",border:"none",padding:"8px 12px",
+            fontSize:11,color:"#6B7280",cursor:"pointer",textAlign:"left",
+            display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <span>⚙️ Weitere Felder (Teams, Datum, Format)</span>
+          <span>{extraOpen?"▲":"▼"}</span>
+        </button>
+        {extraOpen&&(
+          <div style={{padding:"12px",background:"#fff",borderTop:"1px solid #F1F5F9"}}>
+            <div style={{marginBottom:10}}>
+              <div style={{fontSize:10,fontWeight:700,color:"#6B7280",marginBottom:5}}>FORMAT</div>
+              <div style={{display:"flex",gap:6}}>
+                {["6er","4er"].map(f=>(
+                  <button key={f} onClick={()=>switchFormat(f)}
+                    style={{flex:1,padding:"6px 0",borderRadius:6,fontSize:12,fontWeight:700,
+                      cursor:"pointer",border:`2px solid ${format===f?"#8B5CF6":"#E5E7EB"}`,
+                      background:format===f?"#F5F3FF":"#fff",
+                      color:format===f?"#7C3AED":"#6B7280"}}>
+                    {f==="6er"?"6er · E1–E6 + D1–D3":"4er · E1–E4 + D1–D2"}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+              <div>
+                <div style={{fontSize:10,fontWeight:700,color:"#6B7280",marginBottom:3}}>HEIM</div>
+                <input value={homeTeam} onChange={e=>mark(setHomeTeam)(e.target.value)}
+                  style={{...S.input,width:"100%",fontSize:12,boxSizing:"border-box"}}/>
+              </div>
+              <div>
+                <div style={{fontSize:10,fontWeight:700,color:"#6B7280",marginBottom:3}}>GAST</div>
+                <input value={awayTeam} onChange={e=>mark(setAwayTeam)(e.target.value)}
+                  style={{...S.input,width:"100%",fontSize:12,boxSizing:"border-box"}}/>
+              </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+              <div>
+                <div style={{fontSize:10,fontWeight:700,color:"#6B7280",marginBottom:3}}>DATUM</div>
+                <input type="date" value={matchDate} onChange={e=>mark(setMatchDate)(e.target.value)}
+                  style={{...S.input,fontSize:12,width:"100%",boxSizing:"border-box"}}/>
+              </div>
+              <div>
+                <div style={{fontSize:10,fontWeight:700,color:"#6B7280",marginBottom:3}}>UHRZEIT</div>
+                <input type="time" value={matchTime} onChange={e=>mark(setMatchTime)(e.target.value)}
+                  style={{...S.input,fontSize:12,width:"100%",boxSizing:"border-box"}}/>
+              </div>
+            </div>
+            <div style={{marginBottom:10}}>
+              <div style={{fontSize:10,fontWeight:700,color:"#6B7280",marginBottom:3}}>LIGA</div>
+              <input value={league} onChange={e=>mark(setLeague)(e.target.value)}
+                style={{...S.input,width:"100%",fontSize:12,boxSizing:"border-box"}}/>
+            </div>
+            {btvSnap&&(
+              <button onClick={revertToBtv}
+                style={{width:"100%",background:"none",border:"1px solid #BFDBFE",
+                  borderRadius:6,padding:"6px 0",fontSize:11,cursor:"pointer",
+                  color:"#1D4ED8",fontWeight:600}}>
+                ↩ Auf BTV-Stand zurücksetzen
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Speichern-Button */}
+      <div style={{padding:"10px 12px",borderTop:"1px solid #E2E8F0",background:"#F8FAFC"}}>
+        <button onClick={save} disabled={saving||!dirty}
+          style={{width:"100%",background:dirty?"#D97706":"#9CA3AF",color:"#fff",border:"none",
+            borderRadius:8,padding:"10px 0",fontSize:13,fontWeight:700,
+            cursor:dirty?"pointer":"default",opacity:saving?0.6:1,transition:"background .2s"}}>
+          {saving?"Speichern…":"📲 Spielstand auf Display übertragen"}
+        </button>
+      </div>
     </div>
   );
 }
 
-function HeimspieleManualEntry({onToast, onSaved, reloadKey}) {
+function HeimspieleManualEntry_DELETED() { // entfernt – ersetzt durch HeimspieleEdit
   const [loading,        setLoading]        = useState(true);
   const [saving,         setSaving]         = useState(false);
   const [open,           setOpen]           = useState(false);
@@ -2798,12 +3006,7 @@ function SettingsDisplayTab({onToast}) {
               </div>
             )}
 
-            {/* BTV vs Manuell Vergleich */}
-            <HeimspieleVergleich matchCache={matchCache}/>
-
-            <div style={{marginTop:16}}>
-              <HeimspieleManualEntry onToast={onToast} onSaved={setMatchCache} reloadKey={revertKey}/>
-            </div>
+            <HeimspieleEdit onToast={onToast} onSaved={setMatchCache} reloadKey={revertKey}/>
           </div>
         )}
 
