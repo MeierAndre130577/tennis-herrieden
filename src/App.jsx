@@ -2020,12 +2020,15 @@ function SettingsMannschaftenTab({onToast}) {
   const [teamsSaving, setTeamsSaving] = useState(false);
   const [teamsStatus, setTeamsStatus] = useState(null);
   const [githubPat,   setGithubPat_]  = useState("");
+  const [scrapedAt,   setScrapedAt]   = useState(null);
 
   useEffect(()=>{
     sb.from("settings").select("value").eq("key","btv_teams_config").single()
       .then(({data})=>{ if(data?.value) try { setTeamsConfig(JSON.parse(data.value)); } catch(_){} });
     sb.from("settings").select("value").eq("key","github_pat").single()
       .then(({data})=>{ if(data?.value) setGithubPat_(data.value); });
+    sb.from("settings").select("value").eq("key","btv_club_teams").single()
+      .then(({data})=>{ try { setScrapedAt(JSON.parse(data?.value)?.scrapedAt||null); } catch(_){} });
   },[]);
 
   const saveTeamsConfig = async () => {
@@ -2132,6 +2135,11 @@ function SettingsMannschaftenTab({onToast}) {
             {teamsStatus==="running"?"Lädt…":"▶ Mannschaften laden"}
           </button>
         </div>
+        {scrapedAt&&(
+          <div style={{marginTop:10,fontSize:11,color:"#9CA3AF"}}>
+            Letzter Abruf: {new Date(scrapedAt).toLocaleDateString("de-DE",{day:"numeric",month:"long",year:"numeric"})} um {new Date(scrapedAt).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})} Uhr
+          </div>
+        )}
       </div>
     </div>
   );
