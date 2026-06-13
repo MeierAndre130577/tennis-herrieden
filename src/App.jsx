@@ -1804,19 +1804,9 @@ function HeimspieleEdit({onToast, onSaved, reloadKey}) {
           <div style={{fontSize:9,color:"#C4C4C4",marginTop:1}}>was BTV zuletzt hatte</div>
         </div>
         <div style={{padding:"8px 10px"}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-            <div style={{fontSize:11,fontWeight:700,
-              color:source==="manual"?"#92400E":"#059669"}}>
-              {source==="manual"?"✏️ Display (manuell)":"📺 Display (BTV)"}
-            </div>
-            <button onClick={()=>setSharePanel(p=>!p)}
-              style={{background:shareToken?"#F0FDF4":"#F3F4F6",
-                border:`1px solid ${shareToken?"#BBF7D0":"#E5E7EB"}`,
-                borderRadius:5,cursor:"pointer",fontSize:10,padding:"2px 7px",
-                color:shareToken?"#059669":"#6B7280",fontWeight:600,
-                opacity:shareLoading?0.5:1,whiteSpace:"nowrap"}}>
-              🔗 {shareToken?"Link aktiv":"Teilen"}
-            </button>
+          <div style={{fontSize:11,fontWeight:700,
+            color:source==="manual"?"#92400E":"#059669"}}>
+            {source==="manual"?"✏️ Display (manuell)":"📺 Display (BTV)"}
           </div>
           <div style={{fontSize:10,color:"#9CA3AF",marginTop:1}}>
             {savedAt ? fmtTs(savedAt) : "kein Stand"}
@@ -2057,13 +2047,22 @@ function HeimspieleEdit({onToast, onSaved, reloadKey}) {
         })()}
       </div>
 
-      {/* Speichern-Button */}
-      <div style={{padding:"10px 12px",borderTop:"1px solid #E2E8F0",background:"#F8FAFC"}}>
+      {/* Speichern-Button + Teilen */}
+      <div style={{padding:"10px 12px",borderTop:"1px solid #E2E8F0",background:"#F8FAFC",
+        display:"flex",gap:8,alignItems:"stretch"}}>
         <button onClick={save} disabled={saving||!dirty}
-          style={{width:"100%",background:dirty?"#D97706":"#059669",color:"#fff",border:"none",
+          style={{flex:1,background:dirty?"#D97706":"#059669",color:"#fff",border:"none",
             borderRadius:8,padding:"10px 0",fontSize:13,fontWeight:700,
             cursor:dirty?"pointer":"default",opacity:saving?0.6:1,transition:"background .2s"}}>
           {saving?"Speichern…":dirty?"📲 Auf Display übertragen":"✓ Aktuell auf Display"}
+        </button>
+        <button onClick={()=>setSharePanel(p=>!p)}
+          style={{background:sharePanel?"#1E293B":shareToken?"#F0FDF4":"#F3F4F6",
+            border:`1px solid ${sharePanel?"#1E293B":shareToken?"#BBF7D0":"#E5E7EB"}`,
+            borderRadius:8,cursor:"pointer",fontSize:11,padding:"0 14px",
+            color:sharePanel?"#fff":shareToken?"#059669":"#6B7280",
+            fontWeight:600,whiteSpace:"nowrap"}}>
+          🔗 {shareToken?"Aktiv":"Teilen"}
         </button>
       </div>
 
