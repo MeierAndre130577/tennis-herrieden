@@ -1162,6 +1162,8 @@ function initAffe(alleMinuten, dauerSek, modes, currentMode) {
   const INTERVAL_MS = alleMinuten * 60 * 1000;
   const t = dauerSek / 10;
 
+  let _showIdx = 0;
+
   function showMonkey() {
     const css = document.createElement('style');
     css.textContent = `
@@ -1210,20 +1212,21 @@ function initAffe(alleMinuten, dauerSek, modes, currentMode) {
       <ellipse cx="45" cy="84" rx="19" ry="21" fill="url(#ag1)"/>
       <ellipse cx="45" cy="87" rx="11" ry="14" fill="url(#ag2)"/>
 
-      <!-- Linker Arm + Schläger (winken) — overflow:visible zeigt ihn komplett -->
+      <!-- Linker Arm + Schläger — Griff in der Hand, Kopf nach links -->
       <g class="affe-arm-l">
         <rect x="9" y="70" width="17" height="8" rx="4" fill="#7A4018"/>
         <circle cx="8" cy="74" r="5.5" fill="url(#ag2)"/>
-        <!-- Schläger gross & klar -->
-        <ellipse cx="-5" cy="73" rx="11" ry="14" fill="#102010" stroke="#22C55E" stroke-width="2.5"/>
-        <line x1="-16" y1="66" x2="6" y2="66" stroke="#4ADE80" stroke-width="1.3"/>
-        <line x1="-16" y1="70" x2="6" y2="70" stroke="#4ADE80" stroke-width="1.3"/>
-        <line x1="-16" y1="74" x2="6" y2="74" stroke="#4ADE80" stroke-width="1.3"/>
-        <line x1="-16" y1="78" x2="6" y2="78" stroke="#4ADE80" stroke-width="1.3"/>
-        <line x1="-11" y1="59" x2="-11" y2="87" stroke="#4ADE80" stroke-width="1.3"/>
-        <line x1="-5"  y1="59" x2="-5"  y2="87" stroke="#4ADE80" stroke-width="1.3"/>
-        <line x1="1"   y1="59" x2="1"   y2="87" stroke="#4ADE80" stroke-width="1.3"/>
-        <rect x="-8" y="86" width="6" height="10" rx="3" fill="#0a0a0a"/>
+        <!-- Griff direkt in der Hand -->
+        <rect x="-3" y="71" width="12" height="6" rx="3" fill="#111"/>
+        <!-- Schläger-Kopf links vom Griff -->
+        <ellipse cx="-15" cy="74" rx="11" ry="14" fill="#102010" stroke="#22C55E" stroke-width="2.5"/>
+        <line x1="-26" y1="67" x2="-4" y2="67" stroke="#4ADE80" stroke-width="1.3"/>
+        <line x1="-26" y1="71" x2="-4" y2="71" stroke="#4ADE80" stroke-width="1.3"/>
+        <line x1="-26" y1="75" x2="-4" y2="75" stroke="#4ADE80" stroke-width="1.3"/>
+        <line x1="-26" y1="79" x2="-4" y2="79" stroke="#4ADE80" stroke-width="1.3"/>
+        <line x1="-21" y1="60" x2="-21" y2="88" stroke="#4ADE80" stroke-width="1.3"/>
+        <line x1="-15" y1="60" x2="-15" y2="88" stroke="#4ADE80" stroke-width="1.3"/>
+        <line x1="-9"  y1="60" x2="-9"  y2="88" stroke="#4ADE80" stroke-width="1.3"/>
       </g>
 
       <!-- Rechter Arm (klopfen) -->
@@ -1319,8 +1322,9 @@ function initAffe(alleMinuten, dauerSek, modes, currentMode) {
       stolen = { target, origText, floater: fl };
     };
 
-    // 2 zufällige Shows
-    const show = Math.random() < 0.5 ? 'A' : 'B';
+    // 3 Shows reihum — nie zweimal dasselbe
+    const show = ['A','B','C'][_showIdx % 3];
+    _showIdx++;
     let cur = 0;
 
     after(50*t, () => wrap.classList.add('in'));
@@ -1333,13 +1337,19 @@ function initAffe(alleMinuten, dauerSek, modes, currentMode) {
       after(cur, () => doKnock());                             cur += 1900*t;
       after(cur, () => wrap.classList.remove('affe-knock'));   cur += 500*t;
       after(cur, () => doSteal());                             cur += 1300*t;
-    } else {
+    } else if (show === 'B') {
       // Show B: Springen → Winken → Buchstabe klauen
       after(cur, () => wrap.classList.add('affe-jump'));       cur += 1600*t;
       after(cur, () => wrap.classList.remove('affe-jump'));    cur += 400*t;
       after(cur, () => wrap.classList.add('affe-wave'));       cur += 1800*t;
       after(cur, () => wrap.classList.remove('affe-wave'));    cur += 400*t;
       after(cur, () => doSteal());                             cur += 1300*t;
+    } else {
+      // Show C: Klopfen → Springen → schnell weg (kein Diebstahl)
+      after(cur, () => doKnock());                             cur += 1800*t;
+      after(cur, () => wrap.classList.remove('affe-knock'));   cur += 300*t;
+      after(cur, () => wrap.classList.add('affe-jump'));       cur += 1600*t;
+      after(cur, () => wrap.classList.remove('affe-jump'));    cur += 300*t;
     }
 
     after(cur, () => {
