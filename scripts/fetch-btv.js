@@ -1024,6 +1024,17 @@ async function scrapeClubTeams(browser) {
     if (currentCache?._source === "manual" && manualDecided > btvDecided) {
       console.log(`\n↩ Manueller Stand ist weiter (${manualDecided} vs ${btvDecided} entschiedene Rubbers) – Cache bleibt erhalten.`);
     } else {
+      // Meldeposition-Prefixe ([N] Name) aus manuellem Cache übernehmen
+      if (currentCache?.rubbers?.length) {
+        matchData.rubbers = matchData.rubbers.map(r => {
+          const manR = currentCache.rubbers.find(mr => mr.id === r.id);
+          return {
+            ...r,
+            home: manR?.home?.startsWith("[") ? manR.home : r.home,
+            away: manR?.away?.startsWith("[") ? manR.away : r.away,
+          };
+        });
+      }
       await saveResult("btv_match_cache", matchData);
       console.log(`\n✓ BTV-Stand übernommen: ${btvDecided} entschiedene Rubbers (manuell hatte ${manualDecided}).`);
     }
