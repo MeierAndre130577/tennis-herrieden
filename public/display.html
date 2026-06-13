@@ -1156,12 +1156,11 @@ async function startFotosModus(intervalSec) {
 }
 
 // ── AFFEN-EASTER-EGG ──────────────────────────────────────────────────────
-(function () {
-  const ALLE_MINUTEN = 10;  // Wie oft erscheint der Affe? (in Minuten)
-  const DAUER_SEK    = 10;  // Wie lange ist der Affe sichtbar? (in Sekunden)
+function initAffe(alleMinuten, dauerSek, modes, currentMode) {
+  if (!modes.includes(currentMode)) return; // nur auf erlaubten Displays
 
-  const INTERVAL_MS = ALLE_MINUTEN * 60 * 1000;
-  const t = DAUER_SEK / 10; // interner Skalierungsfaktor
+  const INTERVAL_MS = alleMinuten * 60 * 1000;
+  const t = dauerSek / 10;
 
   function showMonkey() {
     const css = document.createElement('style');
@@ -1337,7 +1336,7 @@ async function startFotosModus(intervalSec) {
   }
 
   setTimeout(function tick() { showMonkey(); setTimeout(tick, INTERVAL_MS); }, INTERVAL_MS);
-})();
+}
 
 // ── MIDNIGHT RELOAD ───────────────────────────────────────────────────────
 function scheduleMidnightReload() {
@@ -1354,7 +1353,8 @@ function scheduleMidnightReload() {
     .in("key", ["display_mode","display_theme","display_vereinsnummer","display_saison",
                 "display_bild_url","display_mannschaft","display_gegner",
                 "display_sched_schedule","display_sched_heimspiel","display_sched_bild",
-                "display_foto_interval"]);
+                "display_foto_interval",
+                "display_affe_minuten","display_affe_sekunden","display_affe_modes"]);
   const settings    = Object.fromEntries((settingsData || []).map(r => [r.key, r.value]));
 
   // Zeitschaltung: prüfen ob ein Modus gerade aktiv ist
@@ -1375,13 +1375,19 @@ function scheduleMidnightReload() {
   const mannschaft   = settings.display_mannschaft    || "";
   const gegner       = settings.display_gegner        || "";
   const bildUrl      = settings.display_bild_url      || "";
-  const fotoInterval = Number(settings.display_foto_interval) || 8;
+  const fotoInterval  = Number(settings.display_foto_interval) || 8;
+  const affeMinuten   = Number(settings.display_affe_minuten)  || 10;
+  const affeSekunden  = Number(settings.display_affe_sekunden) || 10;
+  let   affeModes     = ["schedule","heimspiel","bild","fotos"];
+  try { if(settings.display_affe_modes) affeModes = JSON.parse(settings.display_affe_modes); } catch(_){}
 
   // Theme gilt für alle Modi – immer zuerst setzen
   if (displayTheme === "light")    document.body.classList.add("theme-light");
   if (displayTheme === "contrast") document.body.classList.add("theme-contrast");
 
   document.getElementById("loading").style.display = "none";
+
+  initAffe(affeMinuten, affeSekunden, affeModes, displayMode);
 
   startSettingsPolling(displayMode, displayTheme, vereinsnr, saison, mannschaft, gegner);
 

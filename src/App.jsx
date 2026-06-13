@@ -2681,7 +2681,10 @@ function SettingsDisplayTab({onToast}) {
   const [fetchEnabled,   setFetchEnabled]   = useState(true); // btv_fetch_enabled
   const [uploading,      setUploading]      = useState(false);
   const [fotosInterval,  setFotosInterval]  = useState(8);
-  const [saving,         setSaving]         = useState(false);
+  const [affeMinuten,   setAffeMinuten]    = useState(10);
+  const [affeSekunden,  setAffeSekunden]   = useState(10);
+  const [affeModes,     setAffeModes]      = useState(["schedule","heimspiel","bild","fotos"]);
+  const [saving,        setSaving]         = useState(false);
   const [fetchStatus,    setFetchStatus]    = useState(null);
   const [schedError,     setSchedError]     = useState(null);
 
@@ -2691,7 +2694,8 @@ function SettingsDisplayTab({onToast}) {
                  "display_mannschaft","display_gegner","display_match_url",
                  "display_bild_url","github_pat",
                  "display_sched_schedule","display_sched_heimspiel","display_sched_bild",
-                 "btv_match_cache","btv_fetch_enabled"])
+                 "btv_match_cache","btv_fetch_enabled",
+                 "display_affe_minuten","display_affe_sekunden","display_affe_modes"])
       .then(({data})=>{
         if(!data) return;
         const map=Object.fromEntries(data.map(r=>[r.key,r.value]));
@@ -2710,6 +2714,9 @@ function SettingsDisplayTab({onToast}) {
         try { if(map.btv_match_cache)         setMatchCache(JSON.parse(map.btv_match_cache)); } catch(_){}
         if(map.btv_fetch_enabled !== undefined) setFetchEnabled(map.btv_fetch_enabled !== "false");
         if(map.display_foto_interval)          setFotosInterval(Number(map.display_foto_interval)||8);
+        if(map.display_affe_minuten)           setAffeMinuten(Number(map.display_affe_minuten)||10);
+        if(map.display_affe_sekunden)          setAffeSekunden(Number(map.display_affe_sekunden)||10);
+        try { if(map.display_affe_modes) setAffeModes(JSON.parse(map.display_affe_modes)); } catch(_){}
       });
   },[]);
 
@@ -2770,6 +2777,9 @@ function SettingsDisplayTab({onToast}) {
       {key:"display_sched_heimspiel", value:JSON.stringify(schedHeim)},
       {key:"display_sched_bild",      value:JSON.stringify(schedBild)},
       {key:"display_foto_interval",   value:String(fotosInterval)},
+      {key:"display_affe_minuten",    value:String(affeMinuten)},
+      {key:"display_affe_sekunden",   value:String(affeSekunden)},
+      {key:"display_affe_modes",      value:JSON.stringify(affeModes)},
     ],{onConflict:"key"});
     setSaving(false);
     if(error){ onToast(`Fehler: ${error.message}`,"error"); return; }
@@ -2897,7 +2907,7 @@ function SettingsDisplayTab({onToast}) {
   ];
 
   const TABS = [
-    {id:"farbschema", icon:"🎨", label:"Farbschema"},
+    {id:"farbschema", icon:"⚙️", label:"Einstellungen"},
     {id:"schedule",   icon:"📅", label:"Tagesbelegung"},
     {id:"heimspiel",  icon:"🏆", label:"Heimspiel"},
     {id:"bild",       icon:"🖼️", label:"Bildanzeige"},
@@ -2948,10 +2958,12 @@ function SettingsDisplayTab({onToast}) {
       {/* Tab-Inhalt */}
       <div style={{paddingTop:20,paddingBottom:8}}>
 
-        {/* ── FARBSCHEMA ── */}
+        {/* ── EINSTELLUNGEN (Farbschema + Affe) ── */}
         {activeTab==="farbschema"&&(
           <div>
-            <p style={{fontSize:12,color:"#6B7280",marginBottom:16}}>
+            {/* Farbschema */}
+            <div style={{fontSize:11,fontWeight:700,color:"#6B7280",textTransform:"uppercase",letterSpacing:.7,marginBottom:10}}>Farbschema</div>
+            <p style={{fontSize:12,color:"#6B7280",marginBottom:12}}>
               Gilt übergreifend für alle Anzeigemodi.
             </p>
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
@@ -2972,6 +2984,45 @@ function SettingsDisplayTab({onToast}) {
                   {theme===t.id&&<span style={{color:"#8B5CF6",fontWeight:800,fontSize:18}}>✓</span>}
                 </button>
               ))}
+            </div>
+
+            {/* Tennisaffe */}
+            <div style={{borderTop:"1.5px solid #E5E7EB",marginTop:24,paddingTop:20}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#6B7280",textTransform:"uppercase",letterSpacing:.7,marginBottom:12}}>🐒 Easter Egg – Tennisaffe</div>
+              <div style={{display:"flex",gap:12,marginBottom:16}}>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>ALLE X MINUTEN</div>
+                  <input type="number" min="1" max="120" value={affeMinuten}
+                    onChange={e=>setAffeMinuten(Math.max(1,Number(e.target.value)))}
+                    style={{...S.input,width:"100%"}}/>
+                </div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>DAUER (SEKUNDEN)</div>
+                  <input type="number" min="5" max="60" value={affeSekunden}
+                    onChange={e=>setAffeSekunden(Math.max(5,Number(e.target.value)))}
+                    style={{...S.input,width:"100%"}}/>
+                </div>
+              </div>
+              <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:8}}>AUF WELCHEN DISPLAYS ERSCHEINT DER AFFE?</div>
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {[
+                  {id:"schedule",  label:"Tagesbelegungsplan", icon:"📅"},
+                  {id:"heimspiel", label:"Heimspielmodus",     icon:"🏆"},
+                  {id:"bild",      label:"Bildanzeige",        icon:"🖼️"},
+                  {id:"fotos",     label:"Fotos-Slideshow",    icon:"📸"},
+                ].map(m=>{
+                  const on = affeModes.includes(m.id);
+                  return (
+                    <div key={m.id} onClick={()=>setAffeModes(prev=>on?prev.filter(x=>x!==m.id):[...prev,m.id])}
+                      style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:8,cursor:"pointer",
+                        background:on?"#F5F3FF":"#F9FAFB",border:`1.5px solid ${on?"#8B5CF6":"#E5E7EB"}`}}>
+                      <span style={{fontSize:16}}>{m.icon}</span>
+                      <span style={{flex:1,fontSize:13,fontWeight:600,color:on?"#7C3AED":"#374151"}}>{m.label}</span>
+                      <span style={{fontSize:16}}>{on?"✓":""}</span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}
