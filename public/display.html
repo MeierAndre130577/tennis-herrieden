@@ -1049,8 +1049,9 @@ async function startFotosModus(intervalSec) {
   // Gleiche Filter wie Clubstream: status=published, deleted_at null, hat Bild
   async function loadPhotos() {
     const { from, to } = weekRange();
-    const { data } = await sb.from("news_items")
-      .select("id,title,image_url,published_at")
+    console.log("[Fotos] Woche:", from, "→", to);
+    const { data, error } = await sb.from("news_items")
+      .select("id,title,image_url,published_at,status,deleted_at")
       .eq("status", "published")
       .is("deleted_at", null)
       .not("image_url", "is", null)
@@ -1058,6 +1059,18 @@ async function startFotosModus(intervalSec) {
       .gte("published_at", from)
       .lte("published_at", to)
       .order("published_at", { ascending: false });
+    console.log("[Fotos] Ergebnis:", data?.length ?? 0, "Fotos, Fehler:", error?.message ?? "keiner");
+    if (data?.length) console.log("[Fotos] Erste IDs:", data.slice(0,3).map(p=>`${p.id} (${p.published_at})`));
+
+    // Fallback: ohne Wochenfilter prüfen ob überhaupt was da ist
+    if (!data?.length && !error) {
+      const { data: all } = await sb.from("news_items")
+        .select("id,title,image_url,published_at,status")
+        .not("image_url", "is", null)
+        .neq("image_url", "")
+        .limit(5);
+      console.log("[Fotos] Alle Fotos ohne Filter:", all?.length ?? 0, all?.map(p=>`${p.id} status=${p.status} date=${p.published_at}`));
+    }
     return (data || []).filter(r => r.image_url);
   }
 
