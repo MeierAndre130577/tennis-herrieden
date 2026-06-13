@@ -1166,189 +1166,190 @@ function initAffe(alleMinuten, dauerSek, modes, currentMode) {
     const css = document.createElement('style');
     css.textContent = `
       #affe-wrap {
-        position:fixed; bottom:0; right:-120px; width:85px; height:132px;
-        z-index:9999; pointer-events:none;
+        position:fixed; bottom:0; right:-115px; width:90px; height:118px;
+        z-index:9999; pointer-events:none; overflow:visible;
         transition: right 0.9s cubic-bezier(0.34,1.15,0.64,1);
       }
-      #affe-wrap.in  { right: 12px; }
-      #affe-wrap.out { right:-120px; transition:right 0.8s ease-in; }
+      #affe-wrap.in  { right: 14px; }
+      #affe-wrap.out { right:-115px; transition:right 0.8s ease-in; }
 
-      @keyframes aw { 0%,100%{transform:rotate(0deg)} 35%{transform:rotate(-85deg)} 70%{transform:rotate(-20deg)} }
-      @keyframes ak { 0%,100%{transform:rotate(0deg)} 45%{transform:rotate(40deg)} }
-      @keyframes aj { 0%,100%{transform:translateY(0)} 45%{transform:translateY(-50px)} }
-      @keyframes at { 0%,100%{transform:rotate(0deg)} 50%{transform:rotate(22deg)} }
-      @keyframes ab { 0%,88%,100%{transform:scaleY(1)} 94%{transform:scaleY(0.1)} }
+      @keyframes aw { 0%,100%{transform:rotate(0deg)} 35%{transform:rotate(-90deg)} 70%{transform:rotate(-25deg)} }
+      @keyframes ak { 0%,100%{transform:rotate(0deg)} 45%{transform:rotate(38deg)} }
+      @keyframes aj { 0%,100%{transform:translateY(0)} 45%{transform:translateY(-44px)} }
+      @keyframes at { 0%,100%{transform:rotate(0deg)} 50%{transform:rotate(20deg)} }
+      @keyframes ab { 0%,85%,100%{transform:scaleY(1)} 93%{transform:scaleY(0.08)} }
 
       .affe-arm-l { transform-box:fill-box; transform-origin:right center; }
       .affe-arm-r { transform-box:fill-box; transform-origin:left center; }
       .affe-tail  { transform-box:fill-box; transform-origin:0% 100%; animation:at 0.9s ease-in-out infinite; }
       .affe-eye   { transform-box:fill-box; transform-origin:center; animation:ab 3.5s ease-in-out infinite; }
 
-      .affe-wave  .affe-arm-l { animation:aw 0.7s ease-in-out 3; }
-      .affe-knock .affe-arm-r { animation:ak 0.38s ease-in-out 5; }
-      .affe-jump              { animation:aj 0.45s ease-in-out 3; }
+      .affe-wave  .affe-arm-l { animation:aw 0.65s ease-in-out 3; }
+      .affe-knock .affe-arm-r { animation:ak 0.35s ease-in-out 5; }
+      .affe-jump              { animation:aj 0.42s ease-in-out 3; }
     `;
     document.head.appendChild(css);
 
     const wrap = document.createElement('div');
     wrap.id = 'affe-wrap';
-    wrap.innerHTML = `<svg viewBox="0 0 90 132" xmlns="http://www.w3.org/2000/svg" width="85" height="125">
+    wrap.innerHTML = `<svg viewBox="0 0 90 118" xmlns="http://www.w3.org/2000/svg" width="90" height="118" style="overflow:visible">
       <defs>
-        <radialGradient id="ag1" cx="35%" cy="30%">
-          <stop offset="0%" stop-color="#D4874A"/><stop offset="100%" stop-color="#A05C28"/>
+        <radialGradient id="ag1" cx="35%" cy="28%">
+          <stop offset="0%" stop-color="#D9894C"/><stop offset="100%" stop-color="#9E5820"/>
         </radialGradient>
-        <radialGradient id="ag2" cx="35%" cy="30%">
-          <stop offset="0%" stop-color="#FFD9AA"/><stop offset="100%" stop-color="#E8B882"/>
+        <radialGradient id="ag2" cx="35%" cy="28%">
+          <stop offset="0%" stop-color="#FFE0B5"/><stop offset="100%" stop-color="#E8BB80"/>
         </radialGradient>
       </defs>
 
       <!-- Schwanz -->
-      <path class="affe-tail" d="M55 110 Q76 117 78 102 Q82 86 64 81"
-            stroke="#8B5025" stroke-width="6" fill="none" stroke-linecap="round"/>
+      <path class="affe-tail" d="M57 96 Q76 104 78 90 Q82 74 64 70"
+            stroke="#7A4018" stroke-width="6" fill="none" stroke-linecap="round"/>
 
-      <!-- Körper (klein & rund) -->
-      <ellipse cx="43" cy="100" rx="20" ry="22" fill="url(#ag1)"/>
-      <ellipse cx="43" cy="103" rx="12" ry="15" fill="url(#ag2)"/>
+      <!-- Körper — eng an den Kopf gerückt -->
+      <ellipse cx="45" cy="84" rx="19" ry="21" fill="url(#ag1)"/>
+      <ellipse cx="45" cy="87" rx="11" ry="14" fill="url(#ag2)"/>
 
-      <!-- Linker Arm + Schläger (winken) -->
+      <!-- Linker Arm + Schläger (winken) — overflow:visible zeigt ihn komplett -->
       <g class="affe-arm-l">
-        <rect x="8" y="84" width="18" height="8" rx="4" fill="#8B5025"/>
-        <circle cx="7" cy="88" r="5.5" fill="url(#ag2)"/>
-        <!-- Schläger: dunkler Hintergrund + grüne Saiten = klar erkennbar -->
-        <ellipse cx="-4" cy="87" rx="9" ry="12" fill="#0a2a0a" stroke="#22C55E" stroke-width="2.2"/>
-        <line x1="-13" y1="81" x2="5" y2="81" stroke="#4ADE80" stroke-width="1.1"/>
-        <line x1="-13" y1="85" x2="5" y2="85" stroke="#4ADE80" stroke-width="1.1"/>
-        <line x1="-13" y1="89" x2="5" y2="89" stroke="#4ADE80" stroke-width="1.1"/>
-        <line x1="-13" y1="93" x2="5" y2="93" stroke="#4ADE80" stroke-width="1.1"/>
-        <line x1="-9"  y1="75" x2="-9"  y2="99" stroke="#4ADE80" stroke-width="1.1"/>
-        <line x1="-4"  y1="75" x2="-4"  y2="99" stroke="#4ADE80" stroke-width="1.1"/>
-        <line x1="1"   y1="75" x2="1"   y2="99" stroke="#4ADE80" stroke-width="1.1"/>
-        <rect x="-7" y="98" width="5" height="9" rx="2.5" fill="#111"/>
+        <rect x="9" y="70" width="17" height="8" rx="4" fill="#7A4018"/>
+        <circle cx="8" cy="74" r="5.5" fill="url(#ag2)"/>
+        <!-- Schläger gross & klar -->
+        <ellipse cx="-5" cy="73" rx="11" ry="14" fill="#102010" stroke="#22C55E" stroke-width="2.5"/>
+        <line x1="-16" y1="66" x2="6" y2="66" stroke="#4ADE80" stroke-width="1.3"/>
+        <line x1="-16" y1="70" x2="6" y2="70" stroke="#4ADE80" stroke-width="1.3"/>
+        <line x1="-16" y1="74" x2="6" y2="74" stroke="#4ADE80" stroke-width="1.3"/>
+        <line x1="-16" y1="78" x2="6" y2="78" stroke="#4ADE80" stroke-width="1.3"/>
+        <line x1="-11" y1="59" x2="-11" y2="87" stroke="#4ADE80" stroke-width="1.3"/>
+        <line x1="-5"  y1="59" x2="-5"  y2="87" stroke="#4ADE80" stroke-width="1.3"/>
+        <line x1="1"   y1="59" x2="1"   y2="87" stroke="#4ADE80" stroke-width="1.3"/>
+        <rect x="-8" y="86" width="6" height="10" rx="3" fill="#0a0a0a"/>
       </g>
 
       <!-- Rechter Arm (klopfen) -->
       <g class="affe-arm-r">
-        <rect x="57" y="84" width="18" height="8" rx="4" fill="#8B5025"/>
-        <circle cx="76" cy="88" r="5.5" fill="url(#ag2)"/>
+        <rect x="64" y="70" width="17" height="8" rx="4" fill="#7A4018"/>
+        <circle cx="82" cy="74" r="5.5" fill="url(#ag2)"/>
       </g>
 
-      <!-- Beine (kurz & dicklich) -->
-      <rect x="30" y="118" width="11" height="13" rx="5.5" fill="#7A4020"/>
-      <ellipse cx="35" cy="132" rx="7" ry="3.5" fill="#5A2E12"/>
-      <rect x="46" y="118" width="11" height="13" rx="5.5" fill="#7A4020"/>
-      <ellipse cx="51" cy="132" rx="7" ry="3.5" fill="#5A2E12"/>
+      <!-- Beine -->
+      <rect x="32" y="102" width="11" height="13" rx="5.5" fill="#6A3515"/>
+      <ellipse cx="37" cy="116" rx="7" ry="3.5" fill="#4A2208"/>
+      <rect x="48" y="102" width="11" height="13" rx="5.5" fill="#6A3515"/>
+      <ellipse cx="53" cy="116" rx="7" ry="3.5" fill="#4A2208"/>
 
-      <!-- GROSSER KOPF — dominiert das ganze Bild -->
-      <circle cx="43" cy="35" r="32" fill="url(#ag1)"/>
+      <!-- GROSSER RUNDER KOPF -->
+      <circle cx="45" cy="32" r="30" fill="url(#ag1)"/>
       <!-- Ohren -->
-      <circle cx="11" cy="34" r="11" fill="url(#ag1)"/>
-      <circle cx="11" cy="34" r="7"  fill="url(#ag2)"/>
-      <circle cx="75" cy="34" r="11" fill="url(#ag1)"/>
-      <circle cx="75" cy="34" r="7"  fill="url(#ag2)"/>
+      <circle cx="15" cy="31" r="11" fill="url(#ag1)"/>
+      <circle cx="15" cy="31" r="7"  fill="url(#ag2)"/>
+      <circle cx="75" cy="31" r="11" fill="url(#ag1)"/>
+      <circle cx="75" cy="31" r="7"  fill="url(#ag2)"/>
       <!-- Schnauze -->
-      <ellipse cx="43" cy="50" rx="17" ry="12" fill="url(#ag2)"/>
+      <ellipse cx="45" cy="46" rx="16" ry="11" fill="url(#ag2)"/>
 
-      <!-- RIESIGE SÜSSE AUGEN -->
-      <circle cx="31" cy="30" r="11" fill="white"/>
-      <circle cx="55" cy="30" r="11" fill="white"/>
-      <!-- Iris dunkel -->
-      <circle class="affe-eye" cx="32" cy="31" r="7" fill="#1a0800"/>
-      <circle class="affe-eye" cx="56" cy="31" r="7" fill="#1a0800"/>
-      <!-- Großer Glanzpunkt oben -->
-      <circle cx="35" cy="26" r="3.5" fill="white"/>
-      <circle cx="59" cy="26" r="3.5" fill="white"/>
-      <!-- Kleiner Glanzpunkt unten -->
-      <circle cx="28" cy="34" r="1.5" fill="white" opacity="0.6"/>
-      <circle cx="52" cy="34" r="1.5" fill="white" opacity="0.6"/>
+      <!-- GROSSE KNUDDEL-AUGEN -->
+      <circle cx="33" cy="27" r="11" fill="white"/>
+      <circle cx="57" cy="27" r="11" fill="white"/>
+      <circle class="affe-eye" cx="34" cy="28" r="7.5" fill="#160800"/>
+      <circle class="affe-eye" cx="58" cy="28" r="7.5" fill="#160800"/>
+      <!-- Großer Glanzpunkt -->
+      <circle cx="37" cy="23" r="4" fill="white"/>
+      <circle cx="61" cy="23" r="4" fill="white"/>
+      <!-- Kleiner Glanzpunkt -->
+      <circle cx="30" cy="31" r="1.8" fill="white" opacity="0.55"/>
+      <circle cx="54" cy="31" r="1.8" fill="white" opacity="0.55"/>
 
-      <!-- Augenbrauen (hochgezogen = süßer Ausdruck) -->
-      <path d="M22 19 Q31 13 39 18" stroke="#7A3A10" stroke-width="2" fill="none" stroke-linecap="round"/>
-      <path d="M47 18 Q55 13 64 19" stroke="#7A3A10" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <!-- Augenbrauen -->
+      <path d="M23 16 Q33 10 41 15" stroke="#7A3A10" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+      <path d="M49 15 Q57 10 67 16" stroke="#7A3A10" stroke-width="2.2" fill="none" stroke-linecap="round"/>
 
-      <!-- ROTE WANGEN = Knuddel-Faktor Nr. 1 -->
-      <ellipse cx="17" cy="43" rx="8" ry="5.5" fill="rgba(255,90,70,0.28)"/>
-      <ellipse cx="69" cy="43" rx="8" ry="5.5" fill="rgba(255,90,70,0.28)"/>
+      <!-- ROTE WANGEN -->
+      <ellipse cx="18" cy="40" rx="8" ry="5.5" fill="rgba(255,80,60,0.27)"/>
+      <ellipse cx="72" cy="40" rx="8" ry="5.5" fill="rgba(255,80,60,0.27)"/>
 
-      <!-- Nase (winzig & süß) -->
-      <ellipse cx="43" cy="46" rx="4" ry="2.8" fill="#7A3010"/>
-      <circle cx="40" cy="45" r="1.6" fill="#5A1E05"/>
-      <circle cx="46" cy="45" r="1.6" fill="#5A1E05"/>
+      <!-- Nase -->
+      <ellipse cx="45" cy="42" rx="4" ry="2.8" fill="#7A3010"/>
+      <circle cx="42" cy="41" r="1.7" fill="#541A04"/>
+      <circle cx="48" cy="41" r="1.7" fill="#541A04"/>
 
-      <!-- BREITES STRAHLENDES GRINSEN -->
-      <path d="M31 56 Q43 69 55 56" stroke="#7A2E00" stroke-width="2.5" stroke-linecap="round" fill="none"/>
-      <path d="M35 56 Q43 64 51 56" fill="white" opacity="0.9"/>
+      <!-- Breites Grinsen -->
+      <path d="M32 52 Q45 65 58 52" stroke="#7A2A00" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+      <path d="M36 52 Q45 60 54 52" fill="white" opacity="0.9"/>
     </svg>`;
     document.body.appendChild(wrap);
 
     let stolen = null;
     const after = (ms, fn) => setTimeout(fn, ms);
 
-    after(50*t,   () => wrap.classList.add('in'));
-    after(1100*t, () => wrap.classList.add('affe-wave'));
-    after(3300*t, () => wrap.classList.remove('affe-wave'));
-
-    after(3800*t, () => {
+    const doKnock = () => {
       wrap.classList.add('affe-knock');
       let s = 0;
       const shake = setInterval(() => {
         document.body.style.transform = s++ % 2 ? 'translateX(3px)' : 'translateX(-3px)';
         if (s > 8) { clearInterval(shake); document.body.style.transform = ''; }
       }, 60);
-    });
-    after(5800*t, () => wrap.classList.remove('affe-knock'));
+    };
 
-    after(6200*t, () => wrap.classList.add('affe-jump'));
-    after(7700*t, () => wrap.classList.remove('affe-jump'));
-
-    after(8000*t, () => {
+    const doSteal = () => {
       const selectors = ['.logo-title', '#hs-team', '#date-display', '.hs-team-name'];
       let target = null;
       for (const sel of selectors) {
         const el = document.querySelector(sel);
-        if (el && el.offsetParent !== null && el.textContent.trim().length > 4) {
-          target = el; break;
-        }
+        if (el && el.offsetParent !== null && el.textContent.trim().length > 4) { target = el; break; }
       }
       if (!target) return;
-
       const origText = target.textContent;
       const letter   = origText[origText.length - 1];
       target.textContent = origText.slice(0, -1);
-
-      const tRect   = target.getBoundingClientRect();
-      const wRect   = wrap.getBoundingClientRect();
-      const cs      = getComputedStyle(target);
-      const floater = document.createElement('div');
-      floater.textContent = letter;
-      Object.assign(floater.style, {
-        position: 'fixed', left: tRect.right - 12 + 'px', top: tRect.top + 'px',
-        fontSize: cs.fontSize, color: cs.color, fontWeight: cs.fontWeight,
-        fontFamily: cs.fontFamily, zIndex: '10000', pointerEvents: 'none',
-        transition: 'left 0.65s ease-in, top 0.65s ease-in, transform 0.65s',
-        transform: 'scale(1)',
+      const tRect = target.getBoundingClientRect();
+      const wRect = wrap.getBoundingClientRect();
+      const cs    = getComputedStyle(target);
+      const fl    = document.createElement('div');
+      fl.textContent = letter;
+      Object.assign(fl.style, {
+        position:'fixed', left:tRect.right-12+'px', top:tRect.top+'px',
+        fontSize:cs.fontSize, color:cs.color, fontWeight:cs.fontWeight,
+        fontFamily:cs.fontFamily, zIndex:'10000', pointerEvents:'none',
+        transition:'left 0.6s ease-in, top 0.6s ease-in, transform 0.6s',
+        transform:'scale(1)',
       });
-      document.body.appendChild(floater);
-      after(30, () => {
-        floater.style.left      = wRect.left + 55 + 'px';
-        floater.style.top       = wRect.top  + 65 + 'px';
-        floater.style.transform = 'scale(0.55) rotate(-15deg)';
-      });
-      stolen = { target, origText, floater };
-    });
+      document.body.appendChild(fl);
+      after(30, () => { fl.style.left=wRect.left+45+'px'; fl.style.top=wRect.top+55+'px'; fl.style.transform='scale(0.5) rotate(-15deg)'; });
+      stolen = { target, origText, floater: fl };
+    };
 
-    after(9400*t, () => {
+    // 2 zufällige Shows
+    const show = Math.random() < 0.5 ? 'A' : 'B';
+    let cur = 0;
+
+    after(50*t, () => wrap.classList.add('in'));
+    cur = 900*t;
+
+    if (show === 'A') {
+      // Show A: Winken → Klopfen → Buchstabe klauen
+      after(cur, () => wrap.classList.add('affe-wave'));       cur += 2100*t;
+      after(cur, () => wrap.classList.remove('affe-wave'));    cur += 400*t;
+      after(cur, () => doKnock());                             cur += 1900*t;
+      after(cur, () => wrap.classList.remove('affe-knock'));   cur += 500*t;
+      after(cur, () => doSteal());                             cur += 1300*t;
+    } else {
+      // Show B: Springen → Winken → Buchstabe klauen
+      after(cur, () => wrap.classList.add('affe-jump'));       cur += 1600*t;
+      after(cur, () => wrap.classList.remove('affe-jump'));    cur += 400*t;
+      after(cur, () => wrap.classList.add('affe-wave'));       cur += 1800*t;
+      after(cur, () => wrap.classList.remove('affe-wave'));    cur += 400*t;
+      after(cur, () => doSteal());                             cur += 1300*t;
+    }
+
+    after(cur, () => {
       wrap.classList.remove('in');
       wrap.classList.add('out');
-      if (stolen?.floater) {
-        stolen.floater.style.transition = 'left 0.8s ease-in, top 0s, transform 0s';
-        stolen.floater.style.left = '-200px';
-      }
+      if (stolen?.floater) { stolen.floater.style.transition='left 0.8s ease-in,top 0s,transform 0s'; stolen.floater.style.left='-200px'; }
     });
-
-    after(10500*t, () => {
+    after(cur + 1100, () => {
       if (stolen) { stolen.target.textContent = stolen.origText; stolen.floater.remove(); }
-      wrap.remove();
-      css.remove();
+      wrap.remove(); css.remove();
     });
   }
 
