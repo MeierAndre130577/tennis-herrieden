@@ -1031,71 +1031,75 @@ async function startFotosModus(intervalSec) {
   const screen = document.getElementById("fotos-screen");
   screen.style.display = "block";
 
-  const interval = Math.max(3, intervalSec || 8) * 1000;
+  const slideInterval = Math.max(3, intervalSec || 8) * 1000;
 
-  // Aktuelle Woche: Montag 00:00 bis Sonntag 23:59:59
-  const now = new Date();
-  const dow = now.getDay() === 0 ? 6 : now.getDay() - 1; // Mo=0 … So=6
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - dow);
-  monday.setHours(0, 0, 0, 0);
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  sunday.setHours(23, 59, 59, 999);
+  // Aktuelle Woche: Montag 00:00 bis Sonntag 23:59:59 (lokal)
+  function weekRange() {
+    const now = new Date();
+    const dow = now.getDay() === 0 ? 6 : now.getDay() - 1;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - dow);
+    monday.setHours(0, 0, 0, 0);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23, 59, 59, 999);
+    return { from: monday.toISOString(), to: sunday.toISOString() };
+  }
 
+  // Gleiche Filter wie Clubstream: status=published, deleted_at null, hat Bild
   async function loadPhotos() {
+    const { from, to } = weekRange();
     const { data } = await sb.from("news_items")
       .select("id,title,image_url,published_at")
+      .eq("status", "published")
+      .is("deleted_at", null)
       .not("image_url", "is", null)
       .neq("image_url", "")
-      .gte("published_at", monday.toISOString())
-      .lte("published_at", sunday.toISOString())
+      .gte("published_at", from)
+      .lte("published_at", to)
       .order("published_at", { ascending: false });
     return (data || []).filter(r => r.image_url);
   }
 
   let photos = await loadPhotos();
   let current = 0;
-  let timer = null;
+  let slideTimer = null;
 
-  function render(list) {
+  function buildSlides(list) {
     const slides = document.getElementById("fotos-slides");
     const dotsEl = document.getElementById("fotos-dots");
-    const empty  = document.getElementById("fotos-empty");
-    const caption = document.getElementById("fotos-caption");
+    slides.innerHTML = list.map((p, i) =>
+      `<img src="${p.image_url}" data-id="${p.id}"
+            data-title="${(p.title||"").replace(/"/g,"&quot;")}"
+            class="${i === 0 ? "active" : ""}">`
+    ).join("");
+    dotsEl.innerHTML = list.map((_, i) =>
+      `<span class="fotos-dot ${i === 0 ? "active" : ""}"></span>`
+    ).join("");
+  }
 
+  function render(list) {
+    const empty   = document.getElementById("fotos-empty");
+    const caption = document.getElementById("fotos-caption");
     if (!list.length) {
-      slides.innerHTML = "";
-      dotsEl.innerHTML = "";
+      document.getElementById("fotos-slides").innerHTML = "";
+      document.getElementById("fotos-dots").innerHTML = "";
       caption.style.display = "none";
       empty.style.display = "flex";
       return;
     }
     empty.style.display = "none";
     caption.style.display = "flex";
-
-    // Bilder neu aufbauen nur wenn sich die Liste geändert hat
-    const existingIds = [...slides.querySelectorAll("img")].map(i => i.dataset.id);
-    const newIds = list.map(p => String(p.id));
-    if (JSON.stringify(existingIds) !== JSON.stringify(newIds)) {
-      slides.innerHTML = list.map((p, i) =>
-        `<img src="${p.image_url}" data-id="${p.id}" data-title="${(p.title||"").replace(/"/g,"&quot;")}"
-              class="${i === current ? "active" : ""}">`
-      ).join("");
-      dotsEl.innerHTML = list.map((_, i) =>
-        `<span class="fotos-dot ${i === current ? "active" : ""}"></span>`
-      ).join("");
-    }
+    buildSlides(list);
     updateSlide(list);
   }
 
   function updateSlide(list) {
-    const imgs = document.getElementById("fotos-slides").querySelectorAll("img");
-    const dots = document.getElementById("fotos-dots").querySelectorAll(".fotos-dot");
-    const titleEl = document.getElementById("fotos-title");
-    imgs.forEach((img, i) => img.classList.toggle("active", i === current));
-    dots.forEach((d, i) => d.classList.toggle("active", i === current));
-    titleEl.textContent = list[current]?.title || "";
+    document.getElementById("fotos-slides").querySelectorAll("img")
+      .forEach((img, i) => img.classList.toggle("active", i === current));
+    document.getElementById("fotos-dots").querySelectorAll(".fotos-dot")
+      .forEach((d, i) => d.classList.toggle("active", i === current));
+    document.getElementById("fotos-title").textContent = list[current]?.title || "";
   }
 
   function next() {
@@ -1104,20 +1108,26 @@ async function startFotosModus(intervalSec) {
     updateSlide(photos);
   }
 
-  render(photos);
-  if (photos.length > 1) timer = setInterval(next, interval);
+  function startSlideTimer() {
+    if (slideTimer) clearInterval(slideTimer);
+    if (photos.length > 1) slideTimer = setInterval(next, slideInterval);
+  }
 
-  // Stündlich neu laden (neue Fotos der Woche)
+  render(photos);
+  startSlideTimer();
+
+  // Alle 5 Minuten prüfen — nur neu aufbauen wenn sich IDs geändert haben
   setInterval(async () => {
     const fresh = await loadPhotos();
-    if (JSON.stringify(fresh.map(p=>p.id)) !== JSON.stringify(photos.map(p=>p.id))) {
-      if (timer) clearInterval(timer);
+    const oldIds = photos.map(p => p.id).join(",");
+    const newIds = fresh.map(p => p.id).join(",");
+    if (oldIds !== newIds) {
       photos = fresh;
       current = 0;
       render(photos);
-      if (photos.length > 1) timer = setInterval(next, interval);
+      startSlideTimer();
     }
-  }, 60 * 60 * 1000);
+  }, 5 * 60 * 1000);
 }
 
 // ── MIDNIGHT RELOAD ───────────────────────────────────────────────────────
