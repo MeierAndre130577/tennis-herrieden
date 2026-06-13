@@ -1157,7 +1157,11 @@ async function startFotosModus(intervalSec) {
 
 // ── AFFEN-EASTER-EGG ──────────────────────────────────────────────────────
 (function () {
-  const INTERVAL_MS = 10 * 60 * 1000;
+  const ALLE_MINUTEN = 10;  // Wie oft erscheint der Affe? (in Minuten)
+  const DAUER_SEK    = 10;  // Wie lange ist der Affe sichtbar? (in Sekunden)
+
+  const INTERVAL_MS = ALLE_MINUTEN * 60 * 1000;
+  const t = DAUER_SEK / 10; // interner Skalierungsfaktor
 
   function showMonkey() {
     const css = document.createElement('style');
@@ -1263,11 +1267,11 @@ async function startFotosModus(intervalSec) {
     let stolen = null;
     const after = (ms, fn) => setTimeout(fn, ms);
 
-    after(50,   () => wrap.classList.add('in'));
-    after(1100, () => wrap.classList.add('affe-wave'));
-    after(3300, () => wrap.classList.remove('affe-wave'));
+    after(50*t,   () => wrap.classList.add('in'));
+    after(1100*t, () => wrap.classList.add('affe-wave'));
+    after(3300*t, () => wrap.classList.remove('affe-wave'));
 
-    after(3800, () => {
+    after(3800*t, () => {
       wrap.classList.add('affe-knock');
       let s = 0;
       const shake = setInterval(() => {
@@ -1275,12 +1279,12 @@ async function startFotosModus(intervalSec) {
         if (s > 8) { clearInterval(shake); document.body.style.transform = ''; }
       }, 60);
     });
-    after(5800, () => wrap.classList.remove('affe-knock'));
+    after(5800*t, () => wrap.classList.remove('affe-knock'));
 
-    after(6200, () => wrap.classList.add('affe-jump'));
-    after(7700, () => wrap.classList.remove('affe-jump'));
+    after(6200*t, () => wrap.classList.add('affe-jump'));
+    after(7700*t, () => wrap.classList.remove('affe-jump'));
 
-    after(8000, () => {
+    after(8000*t, () => {
       const selectors = ['.logo-title', '#hs-team', '#date-display', '.hs-team-name'];
       let target = null;
       for (const sel of selectors) {
@@ -1316,7 +1320,7 @@ async function startFotosModus(intervalSec) {
       stolen = { target, origText, floater };
     });
 
-    after(9400, () => {
+    after(9400*t, () => {
       wrap.classList.remove('in');
       wrap.classList.add('out');
       if (stolen?.floater) {
@@ -1325,7 +1329,7 @@ async function startFotosModus(intervalSec) {
       }
     });
 
-    after(10500, () => {
+    after(10500*t, () => {
       if (stolen) { stolen.target.textContent = stolen.origText; stolen.floater.remove(); }
       wrap.remove();
       css.remove();
