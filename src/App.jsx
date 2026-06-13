@@ -2186,7 +2186,7 @@ function SettingsMannschaftenTab({onToast}) {
                   const st = playersStatus[gid];
                   const pEntry = playersData?.config?.find(c=>c.groupId===gid);
                   const playerCount = pEntry
-                    ? pEntry.opponents.reduce((s,o)=>(playersData.teams?.[o]?.length||0)+s, playersData.teams?.[row.teamName]?.length||0)
+                    ? pEntry.opponents.reduce((s,o)=>(playersData.teams?.[`${gid}:${o}`]?.length||0)+s, playersData.teams?.[`${gid}:${row.teamName}`]?.length||0)
                     : 0;
                   return (
                     <button onClick={()=>triggerPlayersLoad(row)}
@@ -2255,7 +2255,8 @@ function SettingsMannschaftenTab({onToast}) {
 
       {/* ── Spieler-Popup ── */}
       {playersPopup&&(()=>{
-        const players = playersData?.teams?.[playersPopup]||[];
+        const players = playersData?.teams?.[playersPopup.key]||[];
+        const label   = playersPopup.name;
         return (
           <div onClick={()=>setPlayersPopup(null)}
             style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:1000,
@@ -2265,7 +2266,7 @@ function SettingsMannschaftenTab({onToast}) {
                 maxHeight:"80vh",overflow:"auto",boxShadow:"0 8px 32px rgba(0,0,0,0.18)"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
                 <div>
-                  <div style={{fontWeight:700,fontSize:14,color:"#111827"}}>{playersPopup}</div>
+                  <div style={{fontWeight:700,fontSize:14,color:"#111827"}}>{label}</div>
                   <div style={{fontSize:11,color:"#9CA3AF"}}>{players.length} Spieler</div>
                 </div>
                 <button onClick={()=>setPlayersPopup(null)}
@@ -2307,7 +2308,8 @@ function SettingsMannschaftenTab({onToast}) {
                 </div>
               )}
               {cfg.map(entry=>{
-                const homeCount = teams[entry.teamName]?.length||0;
+                const homeKey   = `${entry.groupId}:${entry.teamName}`;
+                const homeCount = teams[homeKey]?.length||0;
                 const opponents = entry.opponents||[];
                 return (
                   <div key={entry.name} style={{marginBottom:12,padding:"10px 12px",
@@ -2321,12 +2323,12 @@ function SettingsMannschaftenTab({onToast}) {
                       <span style={{fontSize:10,background:"#DBEAFE",color:"#1E40AF",
                         padding:"1px 6px",borderRadius:4,fontWeight:600}}>Heim</span>
                       <span
-                        onClick={homeCount>0?()=>setPlayersPopup(entry.teamName):undefined}
+                        onClick={homeCount>0?()=>setPlayersPopup({key:homeKey,name:entry.teamName}):undefined}
                         style={{fontSize:11,color:"#374151",cursor:homeCount>0?"pointer":"default"}}>
                         {entry.teamName}
                       </span>
                       <span
-                        onClick={homeCount>0?()=>setPlayersPopup(entry.teamName):undefined}
+                        onClick={homeCount>0?()=>setPlayersPopup({key:homeKey,name:entry.teamName}):undefined}
                         style={{fontSize:11,fontWeight:600,cursor:homeCount>0?"pointer":"default",
                           color:homeCount>0?"#059669":"#9CA3AF",
                           textDecoration:homeCount>0?"underline dotted":"none"}}>
@@ -2337,10 +2339,11 @@ function SettingsMannschaftenTab({onToast}) {
                     {opponents.length>0&&(
                       <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:4}}>
                         {opponents.map(opp=>{
-                          const cnt = teams[opp]?.length||0;
+                          const oppKey = `${entry.groupId}:${opp}`;
+                          const cnt = teams[oppKey]?.length||0;
                           return (
                             <span key={opp}
-                              onClick={cnt>0?()=>setPlayersPopup(opp):undefined}
+                              onClick={cnt>0?()=>setPlayersPopup({key:oppKey,name:opp}):undefined}
                               style={{fontSize:10,padding:"2px 7px",borderRadius:4,
                                 cursor:cnt>0?"pointer":"default",
                                 background:cnt>0?"#F0FDF4":"#F9FAFB",
