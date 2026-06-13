@@ -2056,7 +2056,7 @@ function SettingsMannschaftenTab({onToast}) {
   const [teamsConfig,   setTeamsConfig]   = useState([]);
   const [teamsSaving,   setTeamsSaving]   = useState(false);
   const [teamsStatus,   setTeamsStatus]   = useState(null);
-  const [playersStatus, setPlayersStatus] = useState(null);
+  const [playersStatus, setPlayersStatus] = useState({}); // { [groupId]: "running" | {ok:bool} }
   const [githubPat,     setGithubPat_]    = useState("");
   const [scrapedAt,     setScrapedAt]     = useState(null);
   const [playersData,   setPlayersData]   = useState(null); // btv_players
@@ -2101,25 +2101,36 @@ function SettingsMannschaftenTab({onToast}) {
     }
   };
 
-  const triggerPlayersLoad = async () => {
+  const triggerPlayersLoad = async (cfg) => {
     if(!githubPat) { onToast("Kein GitHub PAT hinterlegt (Display-Tab → Speichern)","error"); return; }
-    setPlayersStatus("running");
+    const groupIdM = cfg.url?.match(/groupid=(\d+)/i);
+    if(!groupIdM) { onToast("Keine groupId in URL für diese Mannschaft","error"); return; }
+    const groupId = groupIdM[1];
+    setPlayersStatus(s=>({...s, [groupId]:"running"}));
     try {
       const res = await fetch(
         "https://api.github.com/repos/MeierAndre130577/tennis-herrieden/actions/workflows/btv-fetch.yml/dispatches",
         { method:"POST",
           headers:{Authorization:`Bearer ${githubPat}`,Accept:"application/vnd.github+json","Content-Type":"application/json"},
-          body: JSON.stringify({ref:"main", inputs:{players_only:"true"}}) }
+          body: JSON.stringify({ref:"main", inputs:{
+            players_only:"true",
+            players_group_id: groupId,
+            players_team_name: cfg.teamName||"",
+            players_config_name: cfg.name||"",
+          }}) }
       );
       if(res.status===204){
-        setPlayersStatus({ok:true, msg:"✅ Spieler-Fetch gestartet – dauert ~5–8 Min. je nach Staffelgröße."});
-        setTimeout(()=>setPlayersStatus(null), 12000);
+        setPlayersStatus(s=>({...s, [groupId]:{ok:true}}));
+        onToast(`✅ Spieler-Fetch gestartet: ${cfg.name} – dauert ~3–5 Min.`);
+        setTimeout(()=>setPlayersStatus(s=>{const n={...s};delete n[groupId];return n;}), 15000);
       } else {
         const txt = await res.text();
-        setPlayersStatus({ok:false, msg:`Fehler ${res.status}: ${txt}`});
+        setPlayersStatus(s=>({...s, [groupId]:{ok:false}}));
+        onToast(`Fehler ${res.status}: ${txt}`,"error");
       }
     } catch(e) {
-      setPlayersStatus({ok:false, msg:`Netzwerkfehler: ${e.message}`});
+      setPlayersStatus(s=>({...s, [groupId]:{ok:false}}));
+      onToast(`Netzwerkfehler: ${e.message}`,"error");
     }
   };
 
@@ -2162,10 +2173,34 @@ function SettingsMannschaftenTab({onToast}) {
                   style={{background:"none",border:"1px solid #FECACA",borderRadius:6,
                     padding:"4px",cursor:"pointer",color:"#EF4444",fontSize:13,textAlign:"center"}}>✕</button>
               </div>
-              <input placeholder="Liga / Staffel  z.B. Bezirksklasse Gruppe 3" value={row.liga||""}
-                onChange={e=>{const c=[...teamsConfig];c[i]={...c[i],liga:e.target.value};setTeamsConfig(c);}}
-                style={{width:"100%",padding:"5px 8px",border:"1px solid #D1D5DB",borderRadius:6,fontSize:11,
-                  color:"#6B7280",boxSizing:"border-box"}}/>
+              <div style={{display:"flex",gap:6,alignItems:"center",marginTop:5}}>
+                <input placeholder="Liga / Staffel  z.B. Bezirksklasse Gruppe 3" value={row.liga||""}
+                  onChange={e=>{const c=[...teamsConfig];c[i]={...c[i],liga:e.target.value};setTeamsConfig(c);}}
+                  style={{flex:1,padding:"5px 8px",border:"1px solid #D1D5DB",borderRadius:6,fontSize:11,
+                    color:"#6B7280"}}/>
+                {(()=>{
+                  const gm = row.url?.match(/groupid=(\d+)/i);
+                  const gid = gm?.[1];
+                  if(!gid) return null;
+                  const st = playersStatus[gid];
+                  const pEntry = playersData?.config?.find(c=>c.groupId===gid);
+                  const playerCount = pEntry
+                    ? pEntry.opponents.reduce((s,o)=>(playersData.teams?.[o]?.length||0)+s, playersData.teams?.[row.teamName]?.length||0)
+                    : 0;
+                  return (
+                    <button onClick={()=>triggerPlayersLoad(row)}
+                      disabled={st==="running"}
+                      title={playerCount>0?`${playerCount} Spieler geladen`:"Noch nicht geladen"}
+                      style={{flexShrink:0,background:st==="running"?"#F3F4F6":playerCount>0?"#F0FDF4":"#F8FAFC",
+                        border:`1px solid ${st==="running"?"#D1D5DB":playerCount>0?"#BBF7D0":"#E5E7EB"}`,
+                        borderRadius:6,padding:"4px 10px",fontSize:11,cursor:st==="running"?"not-allowed":"pointer",
+                        color:st==="running"?"#9CA3AF":playerCount>0?"#166534":"#6B7280",fontWeight:600,
+                        whiteSpace:"nowrap"}}>
+                      {st==="running"?"⏳ Lädt…":playerCount>0?`👤 ${playerCount} Spieler`:"👤 Spieler laden"}
+                    </button>
+                  );
+                })()}
+              </div>
             </div>
           ))}
         </div>
@@ -2217,29 +2252,13 @@ function SettingsMannschaftenTab({onToast}) {
         </div>
       </div>
 
-      {/* ── Spieler laden ── */}
+      {/* ── Spieler-Übersicht ── */}
       <div style={S.card}>
-        <div style={{fontWeight:700,color:"#374151",fontSize:13,marginBottom:8}}>Meldelisten (Spieler)</div>
+        <div style={{fontWeight:700,color:"#374151",fontSize:13,marginBottom:4}}>Meldelisten (Spieler)</div>
         <p style={{fontSize:12,color:"#6B7280",marginBottom:12,lineHeight:1.6}}>
-          Lädt die offiziellen BTV-Meldelisten aller konfigurierten Staffeln — Heimteam und alle Gegner.
-          Einmal pro Saison ausreichend. Ergebnis wird für die Namens-Vorschläge bei der Ergebniseingabe genutzt.
+          Pro Mannschaft "👤 Spieler laden" klicken — lädt Heimteam + alle Gegner dieser Staffel (ca. 3–5 Min.).
+          Einmal pro Saison ausreichend.
         </p>
-
-        {playersStatus&&typeof playersStatus==="object"&&(
-          <div style={{marginBottom:12,padding:"8px 12px",borderRadius:6,fontSize:12,
-            background:playersStatus.ok?"#F0FDF4":"#FEF2F2",
-            border:`1px solid ${playersStatus.ok?"#BBF7D0":"#FECACA"}`,
-            color:playersStatus.ok?"#166534":"#DC2626"}}>
-            {playersStatus.msg}
-          </div>
-        )}
-
-        <button onClick={triggerPlayersLoad} disabled={playersStatus==="running"}
-          style={{background:"#059669",color:"#fff",border:"none",borderRadius:6,
-            padding:"8px 16px",fontSize:12,cursor:"pointer",fontWeight:600,
-            opacity:playersStatus==="running"?0.6:1,marginBottom:16}}>
-          {playersStatus==="running"?"Lädt…":"👤 Spieler laden"}
-        </button>
 
         {/* Geladene Spieler anzeigen */}
         {playersData&&(()=>{

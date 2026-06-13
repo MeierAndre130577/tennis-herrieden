@@ -180,60 +180,58 @@ async function scrapeGroupPlayers(page, groupId, configEntry) {
 }
 
 async function main() {
-  // Teams-Konfiguration laden
-  const { data: cfgData } = await sb.from("settings").select("value").eq("key", "btv_teams_config").single();
-  const teamsConfig = cfgData?.value ? JSON.parse(cfgData.value) : [];
+  // Ziel-Mannschaft aus Umgebungsvariablen (von GitHub Actions Input)
+  const targetGroupId   = process.env.PLAYERS_GROUP_ID   || "";
+  const targetTeamName  = process.env.PLAYERS_TEAM_NAME  || "";
+  const targetCfgName   = process.env.PLAYERS_CONFIG_NAME || "";
 
-  if (!teamsConfig.length) {
-    console.log("Keine Mannschaften konfiguriert. Abbruch.");
-    process.exit(0);
+  if (!targetGroupId || !targetTeamName) {
+    console.log("PLAYERS_GROUP_ID oder PLAYERS_TEAM_NAME nicht gesetzt. Abbruch.");
+    process.exit(1);
   }
 
-  console.log(`${teamsConfig.length} Mannschaft(en) konfiguriert.`);
+  console.log(`Lade Spieler für: ${targetCfgName} (${targetTeamName}, groupId=${targetGroupId})`);
+
+  const cfg = { name: targetCfgName, teamName: targetTeamName, url: `?groupid=${targetGroupId}` };
 
   const { browser, page } = await makeBrowser();
 
-  const result = {
-    scrapedAt: new Date().toISOString(),
-    config: [],   // pro Mannschaft: welche Gegner wurden geladen
-    teams: {},    // alle Spielerlisten: { "Teamname": ["Name1", ...] }
-  };
-
-  // Bereits vorhandene Daten laden (um nichts zu überschreiben falls ein Scrape fehlschlägt)
+  // Vorhandene Daten laden — wir mergen, nicht überschreiben
   const { data: existingData } = await sb.from("settings").select("value").eq("key", "btv_players").single();
   const existing = existingData?.value ? JSON.parse(existingData.value) : null;
-  if (existing?.teams) result.teams = existing.teams;
 
-  for (const cfg of teamsConfig) {
-    if (!cfg.url) { console.log(`\nKeine URL für ${cfg.name}, überspringe.`); continue; }
-    const groupIdM = cfg.url.match(/groupid=(\d+)/i);
-    if (!groupIdM) { console.log(`\nKeine groupId in URL für ${cfg.name}, überspringe.`); continue; }
-    const groupId = groupIdM[1];
+  const result = {
+    scrapedAt: existing?.scrapedAt || new Date().toISOString(),
+    config: existing?.config || [],
+    teams:  existing?.teams  || {},
+  };
 
-    const { opponents, teams } = await scrapeGroupPlayers(page, groupId, cfg);
-
-    // Teams mergen
-    Object.assign(result.teams, teams);
-
-    result.config.push({
-      name: cfg.name,
-      teamName: cfg.teamName,
-      groupId,
-      opponents,
-    });
-  }
-
+  const { opponents, teams } = await scrapeGroupPlayers(page, targetGroupId, cfg);
   await browser.close();
 
-  // Speichern
+  // Teams mergen (neue Daten überschreiben alte für diesen groupId)
+  Object.assign(result.teams, teams);
+
+  // config-Eintrag für diese Mannschaft aktualisieren oder neu anlegen
+  const existingCfgIdx = result.config.findIndex(c => c.groupId === targetGroupId);
+  const cfgEntry = { name: targetCfgName, teamName: targetTeamName, groupId: targetGroupId, opponents };
+  if (existingCfgIdx >= 0) {
+    result.config[existingCfgIdx] = cfgEntry;
+  } else {
+    result.config.push(cfgEntry);
+  }
+
+  // Timestamp nur für diese Mannschaft aktualisieren
+  result.scrapedAt = new Date().toISOString();
+
   await sb.from("settings").upsert(
     { key: "btv_players", value: JSON.stringify(result) },
     { onConflict: "key" }
   );
 
-  const teamCount = Object.keys(result.teams).length;
-  const playerCount = Object.values(result.teams).reduce((s, a) => s + a.length, 0);
-  console.log(`\n✓ Gespeichert: ${teamCount} Teams, ${playerCount} Spieler gesamt`);
+  const loaded = Object.keys(teams).length;
+  const players = Object.values(teams).reduce((s, a) => s + a.length, 0);
+  console.log(`\n✓ ${targetCfgName}: ${loaded} Teams, ${players} Spieler geladen und gespeichert`);
 }
 
 main().catch(e => { console.error(e); process.exit(1); });

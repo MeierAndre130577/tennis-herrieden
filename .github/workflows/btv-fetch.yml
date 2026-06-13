@@ -19,6 +19,21 @@ on:
         required: false
         default: 'false'
         type: string
+      players_group_id:
+        description: 'groupId der Staffel (für players_only)'
+        required: false
+        default: ''
+        type: string
+      players_team_name:
+        description: 'BTV-Teamname der Heimmannschaft (für players_only)'
+        required: false
+        default: ''
+        type: string
+      players_config_name:
+        description: 'Bezeichnung der Mannschaft (für players_only)'
+        required: false
+        default: ''
+        type: string
 
 jobs:
   fetch:
@@ -56,3 +71,6 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          PLAYERS_GROUP_ID: ${{ inputs.players_group_id }}
+          PLAYERS_TEAM_NAME: ${{ inputs.players_team_name }}
+          PLAYERS_CONFIG_NAME: ${{ inputs.players_config_name }}
