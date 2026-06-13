@@ -151,7 +151,7 @@ async function scrapeGroupPlayers(page, groupId, configEntry) {
       await page.waitForTimeout(5000);
 
       const players = await scrapePlayersOnPage(page, teamName);
-      scrapedTeams[teamName] = players;
+      scrapedTeams[`${groupId}:${teamName}`] = players;
       console.log(`  ✓ ${teamName}: ${players.length} Spieler`);
 
       // Zurück zur Tabelle
