@@ -1050,28 +1050,26 @@ async function startFotosModus(intervalSec) {
   async function loadPhotos() {
     const { from, to } = weekRange();
     console.log("[Fotos] Woche:", from, "→", to);
-    const { data, error } = await sb.from("news_items")
-      .select("id,title,image_url,published_at,status,deleted_at")
-      .eq("status", "published")
-      .is("deleted_at", null)
-      .not("image_url", "is", null)
-      .neq("image_url", "")
-      .gte("published_at", from)
-      .lte("published_at", to)
-      .order("published_at", { ascending: false });
-    console.log("[Fotos] Ergebnis:", data?.length ?? 0, "Fotos, Fehler:", error?.message ?? "keiner");
-    if (data?.length) console.log("[Fotos] Erste IDs:", data.slice(0,3).map(p=>`${p.id} (${p.published_at})`));
 
-    // Fallback: ohne Wochenfilter prüfen ob überhaupt was da ist
-    if (!data?.length && !error) {
-      const { data: all } = await sb.from("news_items")
-        .select("id,title,image_url,published_at,status")
-        .not("image_url", "is", null)
-        .neq("image_url", "")
-        .limit(5);
-      console.log("[Fotos] Alle Fotos ohne Filter:", all?.length ?? 0, all?.map(p=>`${p.id} status=${p.status} date=${p.published_at}`));
-    }
-    return (data || []).filter(r => r.image_url);
+    const { data, error } = await sb.from("club_photos")
+      .select("*")
+      .gte("created_at", from)
+      .lte("created_at", to)
+      .order("created_at", { ascending: false });
+
+    console.log("[Fotos] club_photos Ergebnis:", data?.length ?? 0, "Fehler:", error?.message ?? "keiner");
+    if (data?.length) console.log("[Fotos] Felder erstes Objekt:", Object.keys(data[0]), data[0]);
+
+    if (!data?.length) return [];
+
+    // Bild-URL-Feld ermitteln: url / image_url / photo_url / src
+    const urlField = ["url","image_url","photo_url","src","file_url"].find(f => data[0][f]);
+    const titleField = ["caption","title","description","name"].find(f => data[0][f]);
+    console.log("[Fotos] URL-Feld:", urlField, "Titel-Feld:", titleField);
+
+    return data
+      .map(r => ({ id: r.id, image_url: r[urlField] || "", title: r[titleField] || "" }))
+      .filter(r => r.image_url);
   }
 
   let photos = await loadPhotos();
