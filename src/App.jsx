@@ -2057,6 +2057,7 @@ function SettingsMannschaftenTab({onToast}) {
   const [teamsSaving,   setTeamsSaving]   = useState(false);
   const [teamsStatus,   setTeamsStatus]   = useState(null);
   const [playersStatus, setPlayersStatus] = useState({}); // { [groupId]: "running" | {ok:bool} }
+  const [playersPopup,  setPlayersPopup]  = useState(null); // Teamname dessen Spieler angezeigt werden
   const [githubPat,     setGithubPat_]    = useState("");
   const [scrapedAt,     setScrapedAt]     = useState(null);
   const [playersData,   setPlayersData]   = useState(null); // btv_players
@@ -2252,6 +2253,39 @@ function SettingsMannschaftenTab({onToast}) {
         </div>
       </div>
 
+      {/* ── Spieler-Popup ── */}
+      {playersPopup&&(()=>{
+        const players = playersData?.teams?.[playersPopup]||[];
+        return (
+          <div onClick={()=>setPlayersPopup(null)}
+            style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:1000,
+              display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <div onClick={e=>e.stopPropagation()}
+              style={{background:"#fff",borderRadius:12,padding:"20px 24px",width:360,
+                maxHeight:"80vh",overflow:"auto",boxShadow:"0 8px 32px rgba(0,0,0,0.18)"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+                <div>
+                  <div style={{fontWeight:700,fontSize:14,color:"#111827"}}>{playersPopup}</div>
+                  <div style={{fontSize:11,color:"#9CA3AF"}}>{players.length} Spieler</div>
+                </div>
+                <button onClick={()=>setPlayersPopup(null)}
+                  style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#9CA3AF",lineHeight:1}}>✕</button>
+              </div>
+              {players.length===0
+                ? <div style={{fontSize:12,color:"#9CA3AF"}}>Keine Spieler geladen.</div>
+                : players.map((p,i)=>(
+                  <div key={i} style={{display:"flex",alignItems:"center",gap:8,
+                    padding:"6px 0",borderBottom:"1px solid #F3F4F6"}}>
+                    <span style={{fontSize:11,color:"#9CA3AF",minWidth:20,textAlign:"right"}}>{i+1}</span>
+                    <span style={{fontSize:13,color:"#111827"}}>{p}</span>
+                  </div>
+                ))
+              }
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── Spieler-Übersicht ── */}
       <div style={S.card}>
         <div style={{fontWeight:700,color:"#374151",fontSize:13,marginBottom:4}}>Meldelisten (Spieler)</div>
@@ -2286,9 +2320,17 @@ function SettingsMannschaftenTab({onToast}) {
                     <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
                       <span style={{fontSize:10,background:"#DBEAFE",color:"#1E40AF",
                         padding:"1px 6px",borderRadius:4,fontWeight:600}}>Heim</span>
-                      <span style={{fontSize:11,color:"#374151"}}>{entry.teamName}</span>
-                      <span style={{fontSize:11,color:homeCount>0?"#059669":"#9CA3AF",fontWeight:600}}>
-                        {homeCount>0?`${homeCount} Spieler`:"nicht geladen"}
+                      <span
+                        onClick={homeCount>0?()=>setPlayersPopup(entry.teamName):undefined}
+                        style={{fontSize:11,color:"#374151",cursor:homeCount>0?"pointer":"default"}}>
+                        {entry.teamName}
+                      </span>
+                      <span
+                        onClick={homeCount>0?()=>setPlayersPopup(entry.teamName):undefined}
+                        style={{fontSize:11,fontWeight:600,cursor:homeCount>0?"pointer":"default",
+                          color:homeCount>0?"#059669":"#9CA3AF",
+                          textDecoration:homeCount>0?"underline dotted":"none"}}>
+                        {homeCount>0?`✓ ${homeCount} Spieler`:"nicht geladen"}
                       </span>
                     </div>
                     {/* Gegner */}
@@ -2297,10 +2339,13 @@ function SettingsMannschaftenTab({onToast}) {
                         {opponents.map(opp=>{
                           const cnt = teams[opp]?.length||0;
                           return (
-                            <span key={opp} style={{fontSize:10,padding:"2px 7px",borderRadius:4,
-                              background:cnt>0?"#F0FDF4":"#F9FAFB",
-                              border:`1px solid ${cnt>0?"#BBF7D0":"#E5E7EB"}`,
-                              color:cnt>0?"#166534":"#9CA3AF"}}>
+                            <span key={opp}
+                              onClick={cnt>0?()=>setPlayersPopup(opp):undefined}
+                              style={{fontSize:10,padding:"2px 7px",borderRadius:4,
+                                cursor:cnt>0?"pointer":"default",
+                                background:cnt>0?"#F0FDF4":"#F9FAFB",
+                                border:`1px solid ${cnt>0?"#BBF7D0":"#E5E7EB"}`,
+                                color:cnt>0?"#166534":"#9CA3AF"}}>
                               {opp}{cnt>0?` (${cnt})`:""}</span>
                           );
                         })}
