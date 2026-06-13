@@ -2297,6 +2297,14 @@ function SettingsMannschaftenTab({onToast}) {
           Einmal pro Saison ausreichend.
         </p>
 
+        {/* Debug */}
+        <div style={{fontSize:10,fontFamily:"monospace",color:"#9CA3AF",marginBottom:8,padding:"4px 8px",background:"#F9FAFB",borderRadius:4}}>
+          btv_players: {playersData===null?"null (nicht geladen)":
+            `config=${playersData.config?.length??0} Einträge, teams=${Object.keys(playersData.teams||{}).length} Keys`}
+          {playersData&&<><br/>Erste 3 Keys: {Object.keys(playersData.teams||{}).slice(0,3).join(", ")||"—"}</>}
+          {playersData?.config?.[0]&&<><br/>Config[0]: {JSON.stringify(playersData.config[0]).slice(0,120)}</>}
+        </div>
+
         {/* Geladene Spieler anzeigen */}
         {playersData&&(()=>{
           const cfg = playersData.config||[];
