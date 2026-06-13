@@ -104,6 +104,74 @@
       overflow: hidden;
     }
 
+    /* ── FOTOS MODE ── */
+    #fotos-screen {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: #000;
+      overflow: hidden;
+    }
+    #fotos-slides {
+      position: absolute;
+      inset: 0;
+    }
+    #fotos-slides img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      opacity: 0;
+      transition: opacity 0.8s ease;
+    }
+    #fotos-slides img.active {
+      opacity: 1;
+    }
+    #fotos-caption {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 20px 32px;
+      background: linear-gradient(transparent, rgba(0,0,0,0.65));
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    #fotos-title {
+      font-size: clamp(16px, 2vw, 28px);
+      font-weight: 700;
+      color: #fff;
+      text-shadow: 0 1px 6px rgba(0,0,0,.6);
+      flex: 1;
+    }
+    #fotos-dots {
+      display: flex;
+      gap: 7px;
+      flex-shrink: 0;
+    }
+    .fotos-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.35);
+      transition: background 0.3s;
+    }
+    .fotos-dot.active {
+      background: #fff;
+    }
+    #fotos-empty {
+      display: none;
+      position: absolute;
+      inset: 0;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(18px, 2.5vw, 36px);
+      color: rgba(255,255,255,0.4);
+    }
+
     /* ── WHITE SCREEN MODE ── */
     #white-screen {
       display: none;
@@ -486,6 +554,16 @@
 </div>
 
 <div id="white-screen"></div>
+
+<!-- ── FOTOS MODE ── -->
+<div id="fotos-screen">
+  <div id="fotos-slides"></div>
+  <div id="fotos-caption">
+    <span id="fotos-title"></span>
+    <span id="fotos-dots"></span>
+  </div>
+  <div id="fotos-empty">📷 Keine Fotos diese Woche</div>
+</div>
 
 <!-- ── BILD MODE ── -->
 <div id="bild-screen">
@@ -948,6 +1026,100 @@ function startHeimspielmodus() {
   setInterval(loadHsMatch, 60_000);
 }
 
+// ── FOTOS SLIDESHOW ───────────────────────────────────────────────────────
+async function startFotosModus(intervalSec) {
+  const screen = document.getElementById("fotos-screen");
+  screen.style.display = "block";
+
+  const interval = Math.max(3, intervalSec || 8) * 1000;
+
+  // Aktuelle Woche: Montag 00:00 bis Sonntag 23:59:59
+  const now = new Date();
+  const dow = now.getDay() === 0 ? 6 : now.getDay() - 1; // Mo=0 … So=6
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - dow);
+  monday.setHours(0, 0, 0, 0);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23, 59, 59, 999);
+
+  async function loadPhotos() {
+    const { data } = await sb.from("news_items")
+      .select("id,title,image_url,published_at")
+      .not("image_url", "is", null)
+      .neq("image_url", "")
+      .gte("published_at", monday.toISOString())
+      .lte("published_at", sunday.toISOString())
+      .order("published_at", { ascending: false });
+    return (data || []).filter(r => r.image_url);
+  }
+
+  let photos = await loadPhotos();
+  let current = 0;
+  let timer = null;
+
+  function render(list) {
+    const slides = document.getElementById("fotos-slides");
+    const dotsEl = document.getElementById("fotos-dots");
+    const empty  = document.getElementById("fotos-empty");
+    const caption = document.getElementById("fotos-caption");
+
+    if (!list.length) {
+      slides.innerHTML = "";
+      dotsEl.innerHTML = "";
+      caption.style.display = "none";
+      empty.style.display = "flex";
+      return;
+    }
+    empty.style.display = "none";
+    caption.style.display = "flex";
+
+    // Bilder neu aufbauen nur wenn sich die Liste geändert hat
+    const existingIds = [...slides.querySelectorAll("img")].map(i => i.dataset.id);
+    const newIds = list.map(p => String(p.id));
+    if (JSON.stringify(existingIds) !== JSON.stringify(newIds)) {
+      slides.innerHTML = list.map((p, i) =>
+        `<img src="${p.image_url}" data-id="${p.id}" data-title="${(p.title||"").replace(/"/g,"&quot;")}"
+              class="${i === current ? "active" : ""}">`
+      ).join("");
+      dotsEl.innerHTML = list.map((_, i) =>
+        `<span class="fotos-dot ${i === current ? "active" : ""}"></span>`
+      ).join("");
+    }
+    updateSlide(list);
+  }
+
+  function updateSlide(list) {
+    const imgs = document.getElementById("fotos-slides").querySelectorAll("img");
+    const dots = document.getElementById("fotos-dots").querySelectorAll(".fotos-dot");
+    const titleEl = document.getElementById("fotos-title");
+    imgs.forEach((img, i) => img.classList.toggle("active", i === current));
+    dots.forEach((d, i) => d.classList.toggle("active", i === current));
+    titleEl.textContent = list[current]?.title || "";
+  }
+
+  function next() {
+    if (!photos.length) return;
+    current = (current + 1) % photos.length;
+    updateSlide(photos);
+  }
+
+  render(photos);
+  if (photos.length > 1) timer = setInterval(next, interval);
+
+  // Stündlich neu laden (neue Fotos der Woche)
+  setInterval(async () => {
+    const fresh = await loadPhotos();
+    if (JSON.stringify(fresh.map(p=>p.id)) !== JSON.stringify(photos.map(p=>p.id))) {
+      if (timer) clearInterval(timer);
+      photos = fresh;
+      current = 0;
+      render(photos);
+      if (photos.length > 1) timer = setInterval(next, interval);
+    }
+  }, 60 * 60 * 1000);
+}
+
 // ── MIDNIGHT RELOAD ───────────────────────────────────────────────────────
 function scheduleMidnightReload() {
   const now  = new Date();
@@ -962,7 +1134,8 @@ function scheduleMidnightReload() {
   const { data: settingsData } = await sb.from("settings").select("*")
     .in("key", ["display_mode","display_theme","display_vereinsnummer","display_saison",
                 "display_bild_url","display_mannschaft","display_gegner",
-                "display_sched_schedule","display_sched_heimspiel","display_sched_bild"]);
+                "display_sched_schedule","display_sched_heimspiel","display_sched_bild",
+                "display_foto_interval"]);
   const settings    = Object.fromEntries((settingsData || []).map(r => [r.key, r.value]));
 
   // Zeitschaltung: prüfen ob ein Modus gerade aktiv ist
@@ -983,6 +1156,7 @@ function scheduleMidnightReload() {
   const mannschaft   = settings.display_mannschaft    || "";
   const gegner       = settings.display_gegner        || "";
   const bildUrl      = settings.display_bild_url      || "";
+  const fotoInterval = Number(settings.display_foto_interval) || 8;
 
   // Theme gilt für alle Modi – immer zuerst setzen
   if (displayTheme === "light")    document.body.classList.add("theme-light");
@@ -995,6 +1169,13 @@ function scheduleMidnightReload() {
   // Weißer Bildschirm (legacy)
   if (displayMode === "white") {
     document.getElementById("white-screen").style.display = "block";
+    return;
+  }
+
+  // Fotos-Slideshow
+  if (displayMode === "fotos") {
+    startFotosModus(fotoInterval);
+    scheduleMidnightReload();
     return;
   }
 

@@ -2680,6 +2680,7 @@ function SettingsDisplayTab({onToast}) {
   const [revertKey,      setRevertKey]      = useState(0);
   const [fetchEnabled,   setFetchEnabled]   = useState(true); // btv_fetch_enabled
   const [uploading,      setUploading]      = useState(false);
+  const [fotosInterval,  setFotosInterval]  = useState(8);
   const [saving,         setSaving]         = useState(false);
   const [fetchStatus,    setFetchStatus]    = useState(null);
   const [schedError,     setSchedError]     = useState(null);
@@ -2708,6 +2709,7 @@ function SettingsDisplayTab({onToast}) {
         try { if(map.display_sched_bild)      setSchedBild(JSON.parse(map.display_sched_bild)); } catch(_){}
         try { if(map.btv_match_cache)         setMatchCache(JSON.parse(map.btv_match_cache)); } catch(_){}
         if(map.btv_fetch_enabled !== undefined) setFetchEnabled(map.btv_fetch_enabled !== "false");
+        if(map.display_foto_interval)          setFotosInterval(Number(map.display_foto_interval)||8);
       });
   },[]);
 
@@ -2767,6 +2769,7 @@ function SettingsDisplayTab({onToast}) {
       {key:"display_sched_schedule",  value:JSON.stringify(schedSchedule)},
       {key:"display_sched_heimspiel", value:JSON.stringify(schedHeim)},
       {key:"display_sched_bild",      value:JSON.stringify(schedBild)},
+      {key:"display_foto_interval",   value:String(fotosInterval)},
     ],{onConflict:"key"});
     setSaving(false);
     if(error){ onToast(`Fehler: ${error.message}`,"error"); return; }
@@ -2898,6 +2901,7 @@ function SettingsDisplayTab({onToast}) {
     {id:"schedule",   icon:"📅", label:"Tagesbelegung"},
     {id:"heimspiel",  icon:"🏆", label:"Heimspiel"},
     {id:"bild",       icon:"🖼️", label:"Bildanzeige"},
+    {id:"fotos",      icon:"📸", label:"Fotos"},
   ];
 
   const ModeRow = ({modeId}) => (
@@ -3178,6 +3182,29 @@ function SettingsDisplayTab({onToast}) {
               </div>
             )}
             {!bildUrl&&<div style={{marginTop:10,fontSize:12,color:"#9CA3AF"}}>Noch kein Bild hochgeladen.</div>}
+          </div>
+        )}
+
+        {/* ── FOTOS ── */}
+        {activeTab==="fotos"&&(
+          <div>
+            <ModeRow modeId="fotos"/>
+            <div style={{padding:"14px",background:"#F8FAFC",border:"1px solid #E2E8F0",
+              borderRadius:8,fontSize:12,color:"#6B7280",lineHeight:1.6,marginBottom:16}}>
+              <div style={{fontWeight:700,color:"#374151",marginBottom:4}}>📸 Fotos der aktuellen Woche</div>
+              <div>Zeigt alle Fotos aus dem Clubstream die diese Woche (Mo–So) hochgeladen wurden.</div>
+              <div style={{marginTop:4}}>Der Wechsel erfolgt automatisch — kein Tippen nötig.</div>
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:8}}>
+              <label style={{fontSize:13,fontWeight:600,color:"#374151",whiteSpace:"nowrap"}}>
+                Wechsel alle
+              </label>
+              <input type="number" min={3} max={120} value={fotosInterval}
+                onChange={e=>setFotosInterval(Math.max(3,Number(e.target.value)))}
+                style={{width:64,fontSize:14,fontWeight:700,textAlign:"center",
+                  border:"1.5px solid #E5E7EB",borderRadius:6,padding:"5px 8px"}}/>
+              <label style={{fontSize:13,color:"#6B7280"}}>Sekunden</label>
+            </div>
           </div>
         )}
       </div>
