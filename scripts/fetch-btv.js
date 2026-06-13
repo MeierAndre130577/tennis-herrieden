@@ -1010,6 +1010,40 @@ async function scrapeClubTeams(browser) {
     // btv_auto_snapshot: reiner BTV-Stand, wird NIE durch manuelles Speichern überschrieben
     await saveResult("btv_auto_snapshot", matchData);
 
+    // Meldeliste laden für automatische Positionsermittlung
+    const { data: playersSettingData } = await sb.from("settings").select("value").eq("key","btv_players").single();
+    const playersDb = playersSettingData?.value
+      ? (typeof playersSettingData.value === "string" ? JSON.parse(playersSettingData.value) : playersSettingData.value)
+      : null;
+
+    function getPlayerPos(name, teamName) {
+      if (!playersDb?.config?.length || !name || name === "–") return null;
+      const entry = playersDb.config.find(e => e.teamName === teamName);
+      if (!entry) return null;
+      const list = playersDb.teams?.[`${entry.groupId}:${teamName}`] || [];
+      const idx = list.findIndex(p => p === name);
+      return idx >= 0 ? idx + 1 : null;
+    }
+
+    function addPos(playerStr, teamName) {
+      if (!playerStr || playerStr === "–") return playerStr;
+      if (/^\[\d+\]/.test(playerStr)) return playerStr;
+      if (playerStr.includes(" / ")) {
+        return playerStr.split(" / ").map(p => addPos(p.trim(), teamName)).join(" / ");
+      }
+      const pos = getPlayerPos(playerStr, teamName);
+      return pos ? `[${pos}] ${playerStr}` : playerStr;
+    }
+
+    // Meldeposition zu Rubber-Spielernamen ergänzen
+    if (matchData.rubbers?.length && playersDb) {
+      matchData.rubbers = matchData.rubbers.map(r => ({
+        ...r,
+        home: addPos(r.home, matchData.homeTeam),
+        away: addPos(r.away, matchData.awayTeam),
+      }));
+    }
+
     // Manuellen Stand lesen und vergleichen – den fortgeschritteneren übernehmen
     const { data: currentCacheData } = await sb.from("settings")
       .select("value").eq("key", "btv_match_cache").single();
@@ -1024,17 +1058,6 @@ async function scrapeClubTeams(browser) {
     if (currentCache?._source === "manual" && manualDecided > btvDecided) {
       console.log(`\n↩ Manueller Stand ist weiter (${manualDecided} vs ${btvDecided} entschiedene Rubbers) – Cache bleibt erhalten.`);
     } else {
-      // Meldeposition-Prefixe ([N] Name) aus manuellem Cache übernehmen
-      if (currentCache?.rubbers?.length) {
-        matchData.rubbers = matchData.rubbers.map(r => {
-          const manR = currentCache.rubbers.find(mr => mr.id === r.id);
-          return {
-            ...r,
-            home: manR?.home?.startsWith("[") ? manR.home : r.home,
-            away: manR?.away?.startsWith("[") ? manR.away : r.away,
-          };
-        });
-      }
       await saveResult("btv_match_cache", matchData);
       console.log(`\n✓ BTV-Stand übernommen: ${btvDecided} entschiedene Rubbers (manuell hatte ${manualDecided}).`);
     }
