@@ -27,12 +27,47 @@ function datesBetween(from,to){ const dates=[]; let cur=from; while(cur<=to){ da
 function daysUntil(s){ const diff=Math.round((new Date(s+"T12:00:00")-new Date())/86400000); if(diff===0)return"Heute"; if(diff===1)return"Morgen"; return`in ${diff} Tagen`; }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// SHARED DISPLAY EDIT (share link, kein Login nötig)
+// ═══════════════════════════════════════════════════════════════════════════
+function SharedDisplayEdit() {
+  const [toast, setToast] = useState(null);
+  const showToast = (msg, type="success") => { setToast({msg,type}); setTimeout(()=>setToast(null),2800); };
+  return (
+    <div style={{minHeight:"100dvh",background:"#F1F5F9",display:"flex",flexDirection:"column"}}>
+      <div style={{background:"#0F172A",padding:"10px 16px",display:"flex",alignItems:"center",gap:10}}>
+        <span style={{fontSize:18}}>🎾</span>
+        <span style={{color:"#fff",fontWeight:700,fontSize:14}}>SG Herrieden – Display bearbeiten</span>
+      </div>
+      <div style={{flex:1,padding:"16px",maxWidth:700,margin:"0 auto",width:"100%",boxSizing:"border-box"}}>
+        <HeimspieleEdit onToast={showToast} onSaved={()=>{}} reloadKey={0}/>
+      </div>
+      {toast&&(
+        <div style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",
+          background:toast.type==="error"?"#EF4444":"#059669",color:"#fff",
+          padding:"10px 20px",borderRadius:8,fontSize:13,fontWeight:600,
+          boxShadow:"0 4px 12px rgba(0,0,0,.25)",zIndex:9999}}>
+          {toast.msg}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // ROOT
 // ═══════════════════════════════════════════════════════════════════════════
 export default function App() {
+  const shareParam = useState(()=>new URLSearchParams(window.location.search).get("share"))[0];
+  const [shareValid, setShareValid] = useState(null); // null=prüft, true/false
   const [session,setSession]   = useState(undefined);
   const [profile,setProfile]   = useState(null);
   const [screen,setScreen]     = useState("home"); // "home" | "booking" | "kasse" | "settings" | "kassenbuch" | "clubstream" | "btv" | "heimspiel"
+
+  useEffect(()=>{
+    if (!shareParam) { setShareValid(false); return; }
+    sb.from("settings").select("value").eq("key","display_share_token").single()
+      .then(({data})=>setShareValid(data?.value === shareParam));
+  },[]);
 
   useEffect(()=>{
     sb.auth.getSession().then(({data:{session}})=>setSession(session));
@@ -55,6 +90,8 @@ export default function App() {
     sb.from("profiles").select("*").eq("id",session.user.id).single().then(({data})=>setProfile(data));
   },[session]);
 
+  if(shareParam && shareValid===null) return <Loading msg="Prüfe Link…"/>;
+  if(shareParam && shareValid===true) return <SharedDisplayEdit/>;
   if(session===undefined) return <Loading msg="Verbinde mit Datenbank…"/>;
   if(!session) return <LoginScreen/>;
   if(!profile) return <Loading msg="Lade Profil…"/>;
@@ -1590,6 +1627,10 @@ function HeimspieleEdit({onToast, onSaved, reloadKey}) {
   const [rubbers,   setRubbers]   = useState(DEFAULT_RUBBERS("6er"));
   const [homeLogo,  setHomeLogo]  = useState(null);
   const [awayLogo,  setAwayLogo]  = useState(null);
+  const [playersData,  setPlayersData]  = useState(null);
+  const [shareToken,   setShareToken]   = useState(null);
+  const [sharePanel,   setSharePanel]   = useState(false);
+  const [shareLoading, setShareLoading] = useState(false);
 
   const applyCache = (m) => {
     setHomeLogo(m.homeLogo || null);
@@ -1613,9 +1654,11 @@ function HeimspieleEdit({onToast, onSaved, reloadKey}) {
   };
 
   const load = async () => {
-    const [btvRes, cacheRes] = await Promise.all([
+    const [btvRes, cacheRes, playersRes, shareRes] = await Promise.all([
       sb.from("settings").select("value").eq("key","btv_auto_snapshot").single(),
       sb.from("settings").select("value").eq("key","btv_match_cache").single(),
+      sb.from("settings").select("value").eq("key","btv_players").single(),
+      sb.from("settings").select("value").eq("key","display_share_token").single(),
     ]);
     if (btvRes.data?.value) {
       let v = btvRes.data.value;
@@ -1627,6 +1670,11 @@ function HeimspieleEdit({onToast, onSaved, reloadKey}) {
       if (typeof m === "string") m = JSON.parse(m);
       applyCache(m);
     }
+    if (playersRes.data?.value) {
+      let v = playersRes.data.value;
+      try { if (typeof v === "string") v = JSON.parse(v); setPlayersData(v); } catch(_){}
+    }
+    if (shareRes.data?.value) setShareToken(shareRes.data.value);
     setLoading(false);
   };
 
@@ -1685,6 +1733,19 @@ function HeimspieleEdit({onToast, onSaved, reloadKey}) {
   };
   const revertToBtv = () => { if (btvSnap) { applyCache(btvSnap); setDirty(true); } };
 
+  const toggleShare = async () => {
+    setShareLoading(true);
+    if (shareToken) {
+      await sb.from("settings").upsert({key:"display_share_token",value:null},{onConflict:"key"});
+      setShareToken(null);
+    } else {
+      const token = crypto.randomUUID();
+      await sb.from("settings").upsert({key:"display_share_token",value:token},{onConflict:"key"});
+      setShareToken(token);
+    }
+    setShareLoading(false);
+  };
+
   const fmtTs = s => s
     ? new Date(s).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})+" Uhr"
     : "–";
@@ -1697,6 +1758,18 @@ function HeimspieleEdit({onToast, onSaved, reloadKey}) {
     ...rubbers.map(r=>r.id),
   ])];
   const bM = Object.fromEntries((btvSnap?.rubbers||[]).map(r=>[r.id,r]));
+
+  const [homePlayers, awayPlayers] = (() => {
+    if (!playersData?.config?.length || !homeTeam || !awayTeam) return [[],[]];
+    const entry = playersData.config.find(e =>
+      e.groupId && e.teamName === homeTeam && (e.opponents||[]).includes(awayTeam)
+    );
+    if (!entry) return [[],[]];
+    return [
+      playersData.teams?.[`${entry.groupId}:${entry.teamName}`] || [],
+      playersData.teams?.[`${entry.groupId}:${awayTeam}`] || [],
+    ];
+  })();
 
   if (loading) return (
     <div style={{padding:"16px",fontSize:12,color:"#9CA3AF",textAlign:"center"}}>Lade Daten…</div>
@@ -1731,9 +1804,16 @@ function HeimspieleEdit({onToast, onSaved, reloadKey}) {
           <div style={{fontSize:9,color:"#C4C4C4",marginTop:1}}>was BTV zuletzt hatte</div>
         </div>
         <div style={{padding:"8px 10px"}}>
-          <div style={{fontSize:11,fontWeight:700,
-            color:source==="manual"?"#92400E":"#059669"}}>
-            {source==="manual"?"✏️ Display (manuell)":"📺 Display (BTV)"}
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <div style={{fontSize:11,fontWeight:700,
+              color:source==="manual"?"#92400E":"#059669"}}>
+              {source==="manual"?"✏️ Display (manuell)":"📺 Display (BTV)"}
+            </div>
+            <button onClick={()=>setSharePanel(p=>!p)} title="Zugriffs-Link teilen"
+              style={{background:"none",border:"none",cursor:"pointer",fontSize:15,padding:"0 2px",
+                color:shareToken?"#059669":"#9CA3AF",opacity:shareLoading?0.5:1}}>
+              🔗
+            </button>
           </div>
           <div style={{fontSize:10,color:"#9CA3AF",marginTop:1}}>
             {savedAt ? fmtTs(savedAt) : "kein Stand"}
@@ -1830,48 +1910,73 @@ function HeimspieleEdit({onToast, onSaved, reloadKey}) {
               ) : <span style={{fontSize:11,color:"#D1D5DB"}}>–</span>}
             </div>
             <div style={{paddingLeft:6,minWidth:0,borderLeft:"1px solid #E2E8F0"}}>
-              {m ? (
-                <>
-                  {b?.home && b.home!=="–" ? (
-                    <div style={{fontSize:11,color:"#374151",padding:"2px 4px",marginBottom:2,
-                      background:"#F0FDF4",borderRadius:4,border:"1px solid #BBF7D0",
-                      overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                      {b.home}
+              {m ? (()=>{
+                const isD = id.startsWith("D");
+                const selStyle = {width:"100%",fontSize:11,border:"1px solid #D1D5DB",
+                  borderRadius:4,padding:"2px 4px",marginBottom:2,
+                  boxSizing:"border-box",background:"#fff"};
+                const badgeHome = {fontSize:11,color:"#374151",padding:"2px 4px",marginBottom:2,
+                  background:"#F0FDF4",borderRadius:4,border:"1px solid #BBF7D0",
+                  overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"};
+                const badgeAway = {...badgeHome,color:"#6B7280"};
+
+                const renderSide = (side, players) => {
+                  const val = m[side];
+                  const bVal = side==="home" ? b?.home : b?.away;
+                  if (bVal && bVal!=="–") {
+                    return <div style={side==="home"?badgeHome:badgeAway}>{bVal}</div>;
+                  }
+                  if (isD) {
+                    const parts = (val||"").split("/").map(s=>s.trim());
+                    return (
+                      <div style={{display:"flex",gap:2,marginBottom:2}}>
+                        {[0,1].map(pi=>(
+                          <select key={pi} value={parts[pi]||""}
+                            onChange={e=>{const p=[...parts];p[pi]=e.target.value;updRubber(id,side,p.filter(Boolean).join(" / "));}}
+                            style={{flex:1,fontSize:10,border:"1px solid #D1D5DB",borderRadius:4,
+                              padding:"2px 2px",background:"#fff",minWidth:0}}>
+                            <option value="">{side==="home"?(pi===0?"H1":"H2"):(pi===0?"G1":"G2")}</option>
+                            {players.map((p,i)=><option key={p} value={p}>{i+1}. {p}</option>)}
+                          </select>
+                        ))}
+                      </div>
+                    );
+                  }
+                  if (players.length > 0) {
+                    return (
+                      <select value={val} onChange={e=>updRubber(id,side,e.target.value)} style={selStyle}>
+                        <option value="">— {side==="home"?"Heim":"Gast"} —</option>
+                        {players.map((p,i)=><option key={p} value={p}>{i+1}. {p}</option>)}
+                      </select>
+                    );
+                  }
+                  return (
+                    <input value={val} onChange={e=>updRubber(id,side,e.target.value)}
+                      placeholder={side==="home"?"Heim":"Gast"} style={selStyle}/>
+                  );
+                };
+
+                return (
+                  <>
+                    {renderSide("home", homePlayers)}
+                    {renderSide("away", awayPlayers)}
+                    <div style={{display:"flex",gap:2}}>
+                      <input value={m.score} onChange={e=>updRubber(id,"score",e.target.value)}
+                        placeholder="6:3"
+                        style={{width:46,fontSize:10,border:"1px solid #D1D5DB",borderRadius:4,
+                          padding:"2px 3px",boxSizing:"border-box"}}/>
+                      <select value={m.result} onChange={e=>updRubber(id,"result",e.target.value)}
+                        style={{flex:1,fontSize:10,border:"1px solid #D1D5DB",borderRadius:4,
+                          padding:"2px 2px",background:"#fff",fontWeight:600,
+                          color:resColor(m.result)}}>
+                        {RUBBER_RESULT_OPTS.map(o=>(
+                          <option key={o.v} value={o.v}>{o.label}</option>
+                        ))}
+                      </select>
                     </div>
-                  ) : (
-                    <input value={m.home} onChange={e=>updRubber(id,"home",e.target.value)}
-                      placeholder="Heim"
-                      style={{width:"100%",fontSize:11,border:"1px solid #D1D5DB",borderRadius:4,
-                        padding:"2px 4px",marginBottom:2,boxSizing:"border-box",background:"#fff"}}/>
-                  )}
-                  {b?.away && b.away!=="–" ? (
-                    <div style={{fontSize:11,color:"#6B7280",padding:"2px 4px",marginBottom:2,
-                      background:"#F0FDF4",borderRadius:4,border:"1px solid #BBF7D0",
-                      overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                      {b.away}
-                    </div>
-                  ) : (
-                    <input value={m.away} onChange={e=>updRubber(id,"away",e.target.value)}
-                      placeholder="Gast"
-                      style={{width:"100%",fontSize:11,border:"1px solid #D1D5DB",borderRadius:4,
-                        padding:"2px 4px",marginBottom:2,boxSizing:"border-box",background:"#fff"}}/>
-                  )}
-                  <div style={{display:"flex",gap:2}}>
-                    <input value={m.score} onChange={e=>updRubber(id,"score",e.target.value)}
-                      placeholder="6:3"
-                      style={{width:46,fontSize:10,border:"1px solid #D1D5DB",borderRadius:4,
-                        padding:"2px 3px",boxSizing:"border-box"}}/>
-                    <select value={m.result} onChange={e=>updRubber(id,"result",e.target.value)}
-                      style={{flex:1,fontSize:10,border:"1px solid #D1D5DB",borderRadius:4,
-                        padding:"2px 2px",background:"#fff",fontWeight:600,
-                        color:resColor(m.result)}}>
-                      {RUBBER_RESULT_OPTS.map(o=>(
-                        <option key={o.v} value={o.v}>{o.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                </>
-              ) : <span style={{fontSize:11,color:"#D1D5DB"}}>–</span>}
+                  </>
+                );
+              })() : <span style={{fontSize:11,color:"#D1D5DB"}}>–</span>}
             </div>
           </div>
         );
@@ -1958,6 +2063,42 @@ function HeimspieleEdit({onToast, onSaved, reloadKey}) {
           {saving?"Speichern…":dirty?"📲 Auf Display übertragen":"✓ Aktuell auf Display"}
         </button>
       </div>
+
+      {/* Share-Panel */}
+      {sharePanel&&(
+        <div style={{padding:"12px",borderTop:"1px solid #E2E8F0",background:"#F8FAFC"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+            <span style={{fontSize:12,fontWeight:700,color:"#374151"}}>🔗 Zugriffs-Link</span>
+            <ToggleSwitch on={!!shareToken} onToggle={toggleShare}/>
+          </div>
+          {shareToken ? (
+            <>
+              <div style={{fontSize:11,color:"#6B7280",marginBottom:6}}>
+                Personen mit diesem Link können das Display bearbeiten — ohne Login.
+                Toggle aus = Link sofort ungültig.
+              </div>
+              <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                <input readOnly
+                  value={`${window.location.origin}${window.location.pathname}?share=${shareToken}`}
+                  onClick={e=>e.target.select()}
+                  style={{flex:1,fontSize:10,fontFamily:"monospace",
+                    border:"1px solid #BBF7D0",borderRadius:4,padding:"5px 7px",
+                    background:"#fff",color:"#374151"}}/>
+                <button
+                  onClick={()=>navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?share=${shareToken}`).then(()=>onToast("Link kopiert ✓"))}
+                  style={{background:"#059669",color:"#fff",border:"none",borderRadius:6,
+                    padding:"5px 10px",fontSize:11,cursor:"pointer",whiteSpace:"nowrap",fontWeight:600}}>
+                  Kopieren
+                </button>
+              </div>
+            </>
+          ) : (
+            <div style={{fontSize:11,color:"#9CA3AF"}}>
+              Toggle aktivieren um einen neuen Link zu generieren.
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
