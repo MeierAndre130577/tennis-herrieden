@@ -1738,7 +1738,7 @@ function HeimspieleEdit({onToast, onSaved, reloadKey}) {
   const toggleShare = async () => {
     setShareLoading(true);
     if (shareToken) {
-      await sb.from("settings").delete().eq("key","display_share_token");
+      await sb.from("settings").update({value:""}).eq("key","display_share_token");
       setShareToken(null);
     } else {
       const token = crypto.randomUUID();
