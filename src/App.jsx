@@ -1809,10 +1809,13 @@ function HeimspieleEdit({onToast, onSaved, reloadKey}) {
               color:source==="manual"?"#92400E":"#059669"}}>
               {source==="manual"?"✏️ Display (manuell)":"📺 Display (BTV)"}
             </div>
-            <button onClick={()=>setSharePanel(p=>!p)} title="Zugriffs-Link teilen"
-              style={{background:"none",border:"none",cursor:"pointer",fontSize:15,padding:"0 2px",
-                color:shareToken?"#059669":"#9CA3AF",opacity:shareLoading?0.5:1}}>
-              🔗
+            <button onClick={()=>setSharePanel(p=>!p)}
+              style={{background:shareToken?"#F0FDF4":"#F3F4F6",
+                border:`1px solid ${shareToken?"#BBF7D0":"#E5E7EB"}`,
+                borderRadius:5,cursor:"pointer",fontSize:10,padding:"2px 7px",
+                color:shareToken?"#059669":"#6B7280",fontWeight:600,
+                opacity:shareLoading?0.5:1,whiteSpace:"nowrap"}}>
+              🔗 {shareToken?"Link aktiv":"Teilen"}
             </button>
           </div>
           <div style={{fontSize:10,color:"#9CA3AF",marginTop:1}}>
@@ -1926,7 +1929,7 @@ function HeimspieleEdit({onToast, onSaved, reloadKey}) {
                   if (bVal && bVal!=="–") {
                     return <div style={side==="home"?badgeHome:badgeAway}>{bVal}</div>;
                   }
-                  if (isD) {
+                  if (isD && players.length > 0) {
                     const parts = (val||"").split("/").map(s=>s.trim());
                     return (
                       <div style={{display:"flex",gap:2,marginBottom:2}}>
@@ -1942,7 +1945,7 @@ function HeimspieleEdit({onToast, onSaved, reloadKey}) {
                       </div>
                     );
                   }
-                  if (players.length > 0) {
+                  if (!isD && players.length > 0) {
                     return (
                       <select value={val} onChange={e=>updRubber(id,side,e.target.value)} style={selStyle}>
                         <option value="">— {side==="home"?"Heim":"Gast"} —</option>
@@ -2438,13 +2441,11 @@ function SettingsMannschaftenTab({onToast}) {
           Einmal pro Saison ausreichend.
         </p>
 
-        {/* Debug */}
-        <div style={{fontSize:10,fontFamily:"monospace",color:"#9CA3AF",marginBottom:8,padding:"4px 8px",background:"#F9FAFB",borderRadius:4}}>
-          btv_players: {playersData===null?"null (nicht geladen)":
-            `config=${playersData.config?.length??0} Einträge, teams=${Object.keys(playersData.teams||{}).length} Keys`}
-          {playersData&&<><br/>Erste 3 Keys: {Object.keys(playersData.teams||{}).slice(0,3).join(", ")||"—"}</>}
-          {playersData?.config?.[0]&&<><br/>Config[0]: {JSON.stringify(playersData.config[0]).slice(0,120)}</>}
-        </div>
+        {!playersData&&(
+          <div style={{fontSize:11,color:"#9CA3AF",fontStyle:"italic",marginBottom:8}}>
+            Noch keine Spielerdaten geladen — "👤 Spieler laden" bei einer Mannschaft klicken.
+          </div>
+        )}
 
         {/* Geladene Spieler anzeigen */}
         {playersData&&(()=>{
