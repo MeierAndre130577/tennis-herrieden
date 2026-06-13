@@ -1166,12 +1166,12 @@ function initAffe(alleMinuten, dauerSek, modes, currentMode) {
     const css = document.createElement('style');
     css.textContent = `
       #affe-wrap {
-        position:fixed; bottom:0; right:-160px; width:120px; height:180px;
+        position:fixed; bottom:0; right:-120px; width:85px; height:132px;
         z-index:9999; pointer-events:none;
         transition: right 0.9s cubic-bezier(0.34,1.15,0.64,1);
       }
-      #affe-wrap.in  { right: 18px; }
-      #affe-wrap.out { right:-160px; transition:right 0.8s ease-in; }
+      #affe-wrap.in  { right: 12px; }
+      #affe-wrap.out { right:-120px; transition:right 0.8s ease-in; }
 
       @keyframes aw { 0%,100%{transform:rotate(0deg)} 35%{transform:rotate(-85deg)} 70%{transform:rotate(-20deg)} }
       @keyframes ak { 0%,100%{transform:rotate(0deg)} 45%{transform:rotate(40deg)} }
@@ -1192,74 +1192,91 @@ function initAffe(alleMinuten, dauerSek, modes, currentMode) {
 
     const wrap = document.createElement('div');
     wrap.id = 'affe-wrap';
-    wrap.innerHTML = `<svg viewBox="0 0 120 180" xmlns="http://www.w3.org/2000/svg" width="120" height="180">
+    wrap.innerHTML = `<svg viewBox="0 0 90 132" xmlns="http://www.w3.org/2000/svg" width="85" height="125">
       <defs>
-        <radialGradient id="ag1" cx="38%" cy="32%">
-          <stop offset="0%" stop-color="#C87D3B"/><stop offset="100%" stop-color="#8B5832"/>
+        <radialGradient id="ag1" cx="35%" cy="30%">
+          <stop offset="0%" stop-color="#D4874A"/><stop offset="100%" stop-color="#A05C28"/>
         </radialGradient>
-        <radialGradient id="ag2" cx="38%" cy="32%">
-          <stop offset="0%" stop-color="#F5C9A0"/><stop offset="100%" stop-color="#D4A574"/>
+        <radialGradient id="ag2" cx="35%" cy="30%">
+          <stop offset="0%" stop-color="#FFD9AA"/><stop offset="100%" stop-color="#E8B882"/>
         </radialGradient>
       </defs>
 
       <!-- Schwanz -->
-      <path class="affe-tail" d="M70 152 Q98 160 104 140 Q112 116 88 110"
-            stroke="#7A4F2A" stroke-width="9" fill="none" stroke-linecap="round"/>
+      <path class="affe-tail" d="M55 110 Q76 117 78 102 Q82 86 64 81"
+            stroke="#8B5025" stroke-width="6" fill="none" stroke-linecap="round"/>
 
-      <!-- Körper -->
-      <ellipse cx="58" cy="120" rx="29" ry="34" fill="url(#ag1)"/>
-      <ellipse cx="58" cy="123" rx="17" ry="21" fill="url(#ag2)"/>
+      <!-- Körper (klein & rund) -->
+      <ellipse cx="43" cy="100" rx="20" ry="22" fill="url(#ag1)"/>
+      <ellipse cx="43" cy="103" rx="12" ry="15" fill="url(#ag2)"/>
 
-      <!-- Linker Arm + Tennisschläger (winken) -->
+      <!-- Linker Arm + Schläger (winken) -->
       <g class="affe-arm-l">
-        <rect x="10" y="90" width="27" height="11" rx="5.5" fill="#8B5832"/>
-        <circle cx="9" cy="95" r="8" fill="url(#ag2)"/>
-        <ellipse cx="-2" cy="95" rx="11" ry="15" stroke="#4ADE80" stroke-width="2.5" fill="none"/>
-        <line x1="-2" y1="80" x2="-2" y2="110" stroke="#4ADE80" stroke-width="1.2" opacity="0.7"/>
-        <line x1="-13" y1="95" x2="9"  y2="95"  stroke="#4ADE80" stroke-width="1.2" opacity="0.7"/>
-        <rect x="-5" y="108" width="6" height="11" rx="3" fill="#222" opacity="0.8"/>
+        <rect x="8" y="84" width="18" height="8" rx="4" fill="#8B5025"/>
+        <circle cx="7" cy="88" r="5.5" fill="url(#ag2)"/>
+        <!-- Schläger: dunkler Hintergrund + grüne Saiten = klar erkennbar -->
+        <ellipse cx="-4" cy="87" rx="9" ry="12" fill="#0a2a0a" stroke="#22C55E" stroke-width="2.2"/>
+        <line x1="-13" y1="81" x2="5" y2="81" stroke="#4ADE80" stroke-width="1.1"/>
+        <line x1="-13" y1="85" x2="5" y2="85" stroke="#4ADE80" stroke-width="1.1"/>
+        <line x1="-13" y1="89" x2="5" y2="89" stroke="#4ADE80" stroke-width="1.1"/>
+        <line x1="-13" y1="93" x2="5" y2="93" stroke="#4ADE80" stroke-width="1.1"/>
+        <line x1="-9"  y1="75" x2="-9"  y2="99" stroke="#4ADE80" stroke-width="1.1"/>
+        <line x1="-4"  y1="75" x2="-4"  y2="99" stroke="#4ADE80" stroke-width="1.1"/>
+        <line x1="1"   y1="75" x2="1"   y2="99" stroke="#4ADE80" stroke-width="1.1"/>
+        <rect x="-7" y="98" width="5" height="9" rx="2.5" fill="#111"/>
       </g>
 
       <!-- Rechter Arm (klopfen) -->
       <g class="affe-arm-r">
-        <rect x="83" y="90" width="27" height="11" rx="5.5" fill="#8B5832"/>
-        <circle cx="111" cy="95" r="8" fill="url(#ag2)"/>
-        <line x1="107" y1="91" x2="107" y2="99" stroke="#C8A070" stroke-width="1" opacity="0.5"/>
-        <line x1="111" y1="91" x2="111" y2="99" stroke="#C8A070" stroke-width="1" opacity="0.5"/>
-        <line x1="115" y1="91" x2="115" y2="99" stroke="#C8A070" stroke-width="1" opacity="0.5"/>
+        <rect x="57" y="84" width="18" height="8" rx="4" fill="#8B5025"/>
+        <circle cx="76" cy="88" r="5.5" fill="url(#ag2)"/>
       </g>
 
-      <!-- Beine -->
-      <rect x="39" y="147" width="16" height="22" rx="8" fill="#7A4F2A"/>
-      <ellipse cx="47" cy="170" rx="10" ry="5" fill="#5A3518"/>
-      <rect x="63" y="147" width="16" height="22" rx="8" fill="#7A4F2A"/>
-      <ellipse cx="71" cy="170" rx="10" ry="5" fill="#5A3518"/>
+      <!-- Beine (kurz & dicklich) -->
+      <rect x="30" y="118" width="11" height="13" rx="5.5" fill="#7A4020"/>
+      <ellipse cx="35" cy="132" rx="7" ry="3.5" fill="#5A2E12"/>
+      <rect x="46" y="118" width="11" height="13" rx="5.5" fill="#7A4020"/>
+      <ellipse cx="51" cy="132" rx="7" ry="3.5" fill="#5A2E12"/>
 
-      <!-- Kopf -->
-      <circle cx="58" cy="53" r="36" fill="url(#ag1)"/>
+      <!-- GROSSER KOPF — dominiert das ganze Bild -->
+      <circle cx="43" cy="35" r="32" fill="url(#ag1)"/>
       <!-- Ohren -->
-      <circle cx="21" cy="53" r="14" fill="url(#ag1)"/>
-      <circle cx="21" cy="53" r="9"  fill="url(#ag2)"/>
-      <circle cx="95" cy="53" r="14" fill="url(#ag1)"/>
-      <circle cx="95" cy="53" r="9"  fill="url(#ag2)"/>
+      <circle cx="11" cy="34" r="11" fill="url(#ag1)"/>
+      <circle cx="11" cy="34" r="7"  fill="url(#ag2)"/>
+      <circle cx="75" cy="34" r="11" fill="url(#ag1)"/>
+      <circle cx="75" cy="34" r="7"  fill="url(#ag2)"/>
       <!-- Schnauze -->
-      <ellipse cx="58" cy="69" rx="21" ry="16" fill="url(#ag2)"/>
-      <!-- Augen -->
-      <circle cx="46" cy="48" r="9" fill="white"/>
-      <circle cx="70" cy="48" r="9" fill="white"/>
-      <ellipse class="affe-eye" cx="48" cy="49" rx="5" ry="5" fill="#1a0a00"/>
-      <ellipse class="affe-eye" cx="72" cy="49" rx="5" ry="5" fill="#1a0a00"/>
-      <circle cx="49" cy="47" r="2" fill="white"/>
-      <circle cx="73" cy="47" r="2" fill="white"/>
-      <!-- Stirn-Detail -->
-      <path d="M37 37 Q58 27 79 37" stroke="#7A4F2A" stroke-width="2.5" fill="none" opacity="0.4" stroke-linecap="round"/>
-      <!-- Nase -->
-      <ellipse cx="58" cy="64" rx="7" ry="4.5" fill="#6B3A1F"/>
-      <circle cx="54" cy="63" r="2.5" fill="#4A2010"/>
-      <circle cx="62" cy="63" r="2.5" fill="#4A2010"/>
-      <!-- Lächeln + Zähne -->
-      <path d="M47 75 Q58 87 69 75" stroke="#7A3A1F" stroke-width="2.5" stroke-linecap="round" fill="none"/>
-      <path d="M51 75 Q58 81 65 75" fill="white" opacity="0.8"/>
+      <ellipse cx="43" cy="50" rx="17" ry="12" fill="url(#ag2)"/>
+
+      <!-- RIESIGE SÜSSE AUGEN -->
+      <circle cx="31" cy="30" r="11" fill="white"/>
+      <circle cx="55" cy="30" r="11" fill="white"/>
+      <!-- Iris dunkel -->
+      <circle class="affe-eye" cx="32" cy="31" r="7" fill="#1a0800"/>
+      <circle class="affe-eye" cx="56" cy="31" r="7" fill="#1a0800"/>
+      <!-- Großer Glanzpunkt oben -->
+      <circle cx="35" cy="26" r="3.5" fill="white"/>
+      <circle cx="59" cy="26" r="3.5" fill="white"/>
+      <!-- Kleiner Glanzpunkt unten -->
+      <circle cx="28" cy="34" r="1.5" fill="white" opacity="0.6"/>
+      <circle cx="52" cy="34" r="1.5" fill="white" opacity="0.6"/>
+
+      <!-- Augenbrauen (hochgezogen = süßer Ausdruck) -->
+      <path d="M22 19 Q31 13 39 18" stroke="#7A3A10" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <path d="M47 18 Q55 13 64 19" stroke="#7A3A10" stroke-width="2" fill="none" stroke-linecap="round"/>
+
+      <!-- ROTE WANGEN = Knuddel-Faktor Nr. 1 -->
+      <ellipse cx="17" cy="43" rx="8" ry="5.5" fill="rgba(255,90,70,0.28)"/>
+      <ellipse cx="69" cy="43" rx="8" ry="5.5" fill="rgba(255,90,70,0.28)"/>
+
+      <!-- Nase (winzig & süß) -->
+      <ellipse cx="43" cy="46" rx="4" ry="2.8" fill="#7A3010"/>
+      <circle cx="40" cy="45" r="1.6" fill="#5A1E05"/>
+      <circle cx="46" cy="45" r="1.6" fill="#5A1E05"/>
+
+      <!-- BREITES STRAHLENDES GRINSEN -->
+      <path d="M31 56 Q43 69 55 56" stroke="#7A2E00" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+      <path d="M35 56 Q43 64 51 56" fill="white" opacity="0.9"/>
     </svg>`;
     document.body.appendChild(wrap);
 
