@@ -39,7 +39,7 @@ function SharedDisplayEdit() {
         <span style={{color:"#fff",fontWeight:700,fontSize:14}}>SG Herrieden – Display bearbeiten</span>
       </div>
       <div style={{flex:1,padding:"16px",maxWidth:700,margin:"0 auto",width:"100%",boxSizing:"border-box"}}>
-        <HeimspieleEdit onToast={showToast} onSaved={()=>{}} reloadKey={0}/>
+        <HeimspieleEdit onToast={showToast} onSaved={()=>{}} reloadKey={0} hideShare/>
       </div>
       {toast&&(
         <div style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",
@@ -1606,7 +1606,7 @@ function fmtTs(iso) {
     + " " + d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}) + " Uhr";
 }
 
-function HeimspieleEdit({onToast, onSaved, reloadKey}) {
+function HeimspieleEdit({onToast, onSaved, reloadKey, hideShare=false}) {
   const [loading,    setLoading]    = useState(true);
   const [saving,     setSaving]     = useState(false);
   const [dirty,      setDirty]      = useState(false);
@@ -2058,18 +2058,20 @@ function HeimspieleEdit({onToast, onSaved, reloadKey}) {
             cursor:dirty?"pointer":"default",opacity:saving?0.6:1,transition:"background .2s"}}>
           {saving?"Speichern…":dirty?"📲 Auf Display übertragen":"✓ Aktuell auf Display"}
         </button>
-        <button onClick={()=>setSharePanel(p=>!p)}
-          style={{background:sharePanel?"#1E293B":shareToken?"#F0FDF4":"#F3F4F6",
-            border:`1px solid ${sharePanel?"#1E293B":shareToken?"#BBF7D0":"#E5E7EB"}`,
-            borderRadius:8,cursor:"pointer",fontSize:11,padding:"0 14px",
-            color:sharePanel?"#fff":shareToken?"#059669":"#6B7280",
-            fontWeight:600,whiteSpace:"nowrap"}}>
-          🔗 {shareToken?"Aktiv":"Teilen"}
-        </button>
+        {!hideShare&&(
+          <button onClick={()=>setSharePanel(p=>!p)}
+            style={{background:sharePanel?"#1E293B":shareToken?"#F0FDF4":"#F3F4F6",
+              border:`1px solid ${sharePanel?"#1E293B":shareToken?"#BBF7D0":"#E5E7EB"}`,
+              borderRadius:8,cursor:"pointer",fontSize:11,padding:"0 14px",
+              color:sharePanel?"#fff":shareToken?"#059669":"#6B7280",
+              fontWeight:600,whiteSpace:"nowrap"}}>
+            🔗 {shareToken?"Aktiv":"Teilen"}
+          </button>
+        )}
       </div>
 
       {/* Share-Panel */}
-      {sharePanel&&(
+      {!hideShare&&sharePanel&&(
         <div style={{padding:"12px",borderTop:"1px solid #E2E8F0",background:"#F8FAFC"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
             <span style={{fontSize:12,fontWeight:700,color:"#374151"}}>🔗 Zugriffs-Link</span>
