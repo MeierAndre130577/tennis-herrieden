@@ -1326,6 +1326,7 @@ function SettingsApp({profile,onBack}) {
     {id:"members",      label:"Mitglieder",   icon:"👤"},
     {id:"display",      label:"Display",      icon:"🖥️"},
     {id:"mannschaften", label:"Mannschaften", icon:"🏆"},
+    {id:"jobs",         label:"Hintergrund",  icon:"⚡"},
   ];
 
   return (
@@ -1357,11 +1358,12 @@ function SettingsApp({profile,onBack}) {
             <span style={{width:80}}/>
           </div>
 
-          {tab==="booking" &&<SettingsBookingTab onToast={showToast}/>}
-          {tab==="courts"  &&<SettingsCourtsTab  onToast={showToast}/>}
-          {tab==="members" &&<SettingsMembersTab onToast={showToast}/>}
+          {tab==="booking"      &&<SettingsBookingTab      onToast={showToast}/>}
+          {tab==="courts"       &&<SettingsCourtsTab       onToast={showToast}/>}
+          {tab==="members"      &&<SettingsMembersTab      onToast={showToast}/>}
           {tab==="display"      &&<SettingsDisplayTab      onToast={showToast}/>}
           {tab==="mannschaften" &&<SettingsMannschaftenTab onToast={showToast}/>}
+          {tab==="jobs"         &&<SettingsJobsTab/>}
         </main>
 
         <nav className="cfg-bottom-nav" style={{display:"none",position:"fixed",bottom:0,left:0,right:0,background:"#0F172A",borderTop:"1px solid #1E293B",zIndex:100,justifyContent:"space-around",padding:"8px 0",paddingBottom:"env(safe-area-inset-bottom)"}}>
@@ -2366,6 +2368,135 @@ function SettingsMannschaftenTab({onToast}) {
           );
         })()}
       </div>
+    </div>
+  );
+}
+
+// ── SETTINGS: HINTERGRUND-JOBS ────────────────────────────────────────────
+function SettingsJobsTab() {
+  const [data, setData] = useState({});
+
+  useEffect(()=>{
+    const keys = ["btv_auto_snapshot","btv_club_teams","btv_players","btv_fetch_error"];
+    sb.from("settings").select("key,value").in("key", keys).then(({data:rows})=>{
+      if (!rows) return;
+      const m = {};
+      rows.forEach(r=>{ try { m[r.key] = typeof r.value==="string" ? JSON.parse(r.value) : r.value; } catch(_){ m[r.key]=r.value; } });
+      setData(m);
+    });
+  },[]);
+
+  const fmt = iso => {
+    if (!iso) return null;
+    const d = new Date(iso);
+    return d.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit",year:"numeric"}) + " " +
+           d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}) + " Uhr";
+  };
+
+  const lastMatch  = data.btv_auto_snapshot?._savedAt;
+  const lastPlan   = data.btv_club_teams?.scrapedAt;
+  const lastMelde  = data.btv_players?.scrapedAt;
+  const fetchErr   = data.btv_fetch_error;
+
+  const jobs = [
+    {
+      icon: "⚡",
+      name: "BTV Ergebnisse",
+      trigger: "Automatisch",
+      schedule: "Alle 20 Minuten (nur während Heimspiel)",
+      desc: "Scrapet Einzel-Ergebnisse vom BTV-Widget während eines laufenden Heimspiels. Startet ab Spielbeginn und läuft bis zu 10 Stunden danach.",
+      lastRun: lastMatch,
+      error: fetchErr ? `Letzter Fehler: ${fetchErr.message||JSON.stringify(fetchErr).slice(0,80)}` : null,
+      saves: ["btv_auto_snapshot","btv_match_cache"],
+      color: "#6366F1",
+      bg: "#EEF2FF",
+      border: "#C7D2FE",
+    },
+    {
+      icon: "📅",
+      name: "BTV Spielplan",
+      trigger: "Automatisch",
+      schedule: "Täglich um 03:00 Uhr (MEZ)",
+      desc: "Aktualisiert Spielplan, Tabelle und Ergebnisse aller Mannschaften. Läuft nachts damit tagsüber immer aktuelle Daten vorhanden sind.",
+      lastRun: lastPlan,
+      error: null,
+      saves: ["btv_club_teams"],
+      color: "#059669",
+      bg: "#F0FDF4",
+      border: "#BBF7D0",
+    },
+    {
+      icon: "👤",
+      name: "BTV Meldelisten",
+      trigger: "Manuell",
+      schedule: "Einmal pro Saison (in Mannschaften → Spieler laden)",
+      desc: "Lädt die offiziellen Spieler-Meldelisten vom BTV für das Heimteam und alle Gegner einer Staffel. Pro Mannschaft ca. 3–5 Minuten.",
+      lastRun: lastMelde,
+      error: null,
+      saves: ["btv_players"],
+      color: "#D97706",
+      bg: "#FFFBEB",
+      border: "#FDE68A",
+    },
+  ];
+
+  return (
+    <div style={{padding:"24px 20px",maxWidth:680}}>
+      <div style={{fontWeight:800,fontSize:17,color:"#111827",marginBottom:4}}>Hintergrund-Jobs</div>
+      <p style={{fontSize:13,color:"#6B7280",marginBottom:20,lineHeight:1.6}}>
+        Automatische Prozesse die Daten vom BTV holen und in der Datenbank speichern.
+      </p>
+
+      {jobs.map(job=>(
+        <div key={job.name} style={{marginBottom:16,padding:"14px 16px",background:"#fff",
+          border:"1px solid #E5E7EB",borderRadius:10,boxShadow:"0 1px 3px rgba(0,0,0,0.05)"}}>
+          <div style={{display:"flex",alignItems:"flex-start",gap:12}}>
+            <div style={{fontSize:22,lineHeight:1}}>{job.icon}</div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:4}}>
+                <span style={{fontWeight:700,fontSize:14,color:"#111827"}}>{job.name}</span>
+                <span style={{fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:20,
+                  background:job.bg,color:job.color,border:`1px solid ${job.border}`}}>
+                  {job.trigger}
+                </span>
+              </div>
+              <div style={{fontSize:11,color:"#6B7280",marginBottom:6}}>🕐 {job.schedule}</div>
+              <div style={{fontSize:12,color:"#374151",lineHeight:1.6,marginBottom:8}}>{job.desc}</div>
+
+              {/* Letzter Lauf */}
+              <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                <span style={{fontSize:11,color:"#9CA3AF"}}>Zuletzt:</span>
+                {job.lastRun
+                  ? <span style={{fontSize:11,fontWeight:600,color:"#059669"}}>✓ {fmt(job.lastRun)}</span>
+                  : <span style={{fontSize:11,color:"#9CA3AF"}}>noch nie gelaufen</span>
+                }
+              </div>
+
+              {/* Fehler */}
+              {job.error&&(
+                <div style={{marginTop:8,padding:"6px 10px",background:"#FEF2F2",
+                  border:"1px solid #FECACA",borderRadius:6,fontSize:11,color:"#DC2626"}}>
+                  ⚠ {job.error}
+                </div>
+              )}
+
+              {/* Gespeicherte Keys */}
+              <div style={{marginTop:8,display:"flex",gap:4,flexWrap:"wrap"}}>
+                {job.saves.map(k=>(
+                  <span key={k} style={{fontSize:10,fontFamily:"monospace",
+                    background:"#F3F4F6",color:"#6B7280",padding:"1px 6px",borderRadius:4,
+                    border:"1px solid #E5E7EB"}}>{k}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
+
+      <p style={{fontSize:11,color:"#9CA3AF",marginTop:8,lineHeight:1.6}}>
+        Alle Jobs laufen auf GitHub Actions. Logs und manuelle Starts unter{" "}
+        <span style={{fontFamily:"monospace"}}>Actions → BTV Daten holen</span>.
+      </p>
     </div>
   );
 }
