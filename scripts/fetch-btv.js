@@ -669,8 +669,25 @@ async function parseReport(page, url, heim, gast) {
 // Club-Teams scrapen – liest Staffel-URLs aus btv_teams_config in Supabase
 // Jede URL ist ein BTV-Widget (widget.btv.de/btvgroup/?groupid=XXX)
 // ══════════════════════════════════════════════════════════════════════════════
-async function scrapeClubTeams(browser) {
+async function scrapeClubTeams(browser, { force = false } = {}) {
   console.log("\n=== Club-Teams scrapen ===");
+
+  // Prüfen ob heute schon ein erfolgreicher Lauf existiert (dann überspringen)
+  if (!force) {
+    try {
+      const { data: existing } = await sb.from("settings")
+        .select("value").eq("key","btv_club_teams").single();
+      if (existing?.value) {
+        const parsed = typeof existing.value === "string" ? JSON.parse(existing.value) : existing.value;
+        const scrapedDay = (parsed?.scrapedAt || "").slice(0, 10);
+        const today = new Date().toISOString().slice(0, 10);
+        if (scrapedDay === today) {
+          console.log(`✓ Heute bereits erfolgreich gescraped (${parsed.scrapedAt}) – kein erneuter Lauf nötig.`);
+          return parsed;
+        }
+      }
+    } catch(_) {}
+  }
 
   // Konfiguration aus Supabase laden
   const { data: cfgRaw } = await sb.from("settings")
@@ -684,6 +701,8 @@ async function scrapeClubTeams(browser) {
   }
 
   const result = [];
+  const totalConfigured = teamsConfig.filter(e => e.url).length;
+  let failCount = 0;
 
   for (const entry of teamsConfig) {
     const { name, url } = entry;
@@ -703,6 +722,7 @@ async function scrapeClubTeams(browser) {
     } catch(e) {
       console.log("  Timeout/Fehler:", e.message.slice(0,80));
       await page.close();
+      failCount++;
       // Kurze Pause vor dem nächsten Versuch
       await new Promise(r => setTimeout(r, 3000));
       continue;
@@ -851,9 +871,20 @@ async function scrapeClubTeams(browser) {
     await new Promise(r => setTimeout(r, 3000));
   }
 
+  console.log(`\nErgebnis: ${result.length}/${totalConfigured} Staffeln geladen, ${failCount} Fehler`);
+
+  if (result.length === 0) {
+    console.log("⚠ Keine einzige Staffel geladen – btv_club_teams wird NICHT überschrieben.");
+    return null;
+  }
+  if (failCount > 2) {
+    console.log(`⚠ Zu viele Fehler (${failCount}) – btv_club_teams wird NICHT überschrieben.`);
+    return null;
+  }
+
   const out = { scrapedAt: new Date().toISOString(), groups: result };
   await saveResult("btv_club_teams", out);
-  console.log(`\n✓ btv_club_teams gespeichert (${result.length} Staffeln)`);
+  console.log(`✓ btv_club_teams gespeichert (${result.length} Staffeln)`);
   return out;
 }
 
@@ -877,7 +908,7 @@ async function scrapeClubTeams(browser) {
   if (teamsOnly) {
     const { browser } = await makeBrowser();
     try {
-      await scrapeClubTeams(browser);
+      await scrapeClubTeams(browser, { force: isManual });
     } finally {
       await browser.close();
     }
