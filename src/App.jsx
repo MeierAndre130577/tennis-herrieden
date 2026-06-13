@@ -2556,7 +2556,7 @@ function SettingsJobsTab() {
       icon: "⚡",
       name: "BTV Ergebnisse",
       trigger: "Automatisch",
-      schedule: "Alle 20 Minuten (nur während Heimspiel)",
+      schedule: "Alle 30 Minuten (nur während Heimspiel)",
       desc: "Scrapet Einzel-Ergebnisse vom BTV-Widget während eines laufenden Heimspiels. Startet ab Spielbeginn und läuft bis zu 10 Stunden danach.",
       lastRun: lastMatch,
       error: fetchErr ? `Letzter Fehler: ${fetchErr.message||JSON.stringify(fetchErr).slice(0,80)}` : null,
