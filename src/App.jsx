@@ -1931,7 +1931,7 @@ function HeimspieleEdit({onToast, onSaved, reloadKey}) {
                             style={{flex:1,fontSize:10,border:"1px solid #D1D5DB",borderRadius:4,
                               padding:"2px 2px",background:"#fff",minWidth:0}}>
                             <option value="">{side==="home"?(pi===0?"H1":"H2"):(pi===0?"G1":"G2")}</option>
-                            {players.map((p,i)=><option key={p} value={p}>{i+1}. {p}</option>)}
+                            {players.map((p,i)=><option key={p} value={`[${i+1}] ${p}`}>{i+1}. {p}</option>)}
                           </select>
                         ))}
                       </div>
@@ -1941,7 +1941,7 @@ function HeimspieleEdit({onToast, onSaved, reloadKey}) {
                     return (
                       <select value={val} onChange={e=>updRubber(id,side,e.target.value)} style={selStyle}>
                         <option value="">— {side==="home"?"Heim":"Gast"} —</option>
-                        {players.map((p,i)=><option key={p} value={p}>{i+1}. {p}</option>)}
+                        {players.map((p,i)=><option key={p} value={`[${i+1}] ${p}`}>{i+1}. {p}</option>)}
                       </select>
                     );
                   }
