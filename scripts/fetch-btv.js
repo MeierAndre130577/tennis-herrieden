@@ -893,9 +893,9 @@ async function scrapeClubTeams(browser, { force = false } = {}) {
 // ══════════════════════════════════════════════════════════════════════════════
 (async () => {
   const cfg      = await getSettings();
-  let   heim     = cfg.display_mannschaft  || "";
-  let   gast     = cfg.display_gegner      || "";
-  let   groupUrl = cfg.display_match_url   || "";
+  const heim     = cfg.display_mannschaft  || "";
+  const gast     = cfg.display_gegner      || "";
+  const groupUrl = cfg.display_match_url   || "";
   const clubnr   = String(cfg.display_vereinsnummer || "6085").padStart(5, "0");
 
   // Manuell getriggert (workflow_dispatch) → Pre-Check überspringen
@@ -913,39 +913,6 @@ async function scrapeClubTeams(browser, { force = false } = {}) {
       await browser.close();
     }
     return;
-  }
-
-  // ── Auto-Spielerkennung: Heimspiel heute aus btv_club_teams ─────────────────
-  // Sucht automatisch das heutige Heimspiel und setzt display_* ohne manuellen Eingriff.
-  try {
-    const { data: ctRaw } = await sb.from("settings")
-      .select("value").eq("key","btv_club_teams").single();
-    if (ctRaw?.value) {
-      const ct = typeof ctRaw.value === "string" ? JSON.parse(ctRaw.value) : ctRaw.value;
-      const todayStr = new Date().toISOString().slice(0, 10);
-      for (const group of (ct.groups || [])) {
-        const todayGame = (group.homeGames || []).find(g => g.date === todayStr);
-        if (todayGame) {
-          console.log(`📅 Auto-Erkennung: ${group.name} – ${group.teamName} vs ${todayGame.opponent}`);
-          if (todayGame.opponent !== gast || group.teamName !== heim) {
-            await sb.from("settings").upsert([
-              { key: "display_mannschaft", value: group.teamName },
-              { key: "display_gegner",     value: todayGame.opponent },
-              { key: "display_match_url",  value: group.url },
-            ], { onConflict: "key" });
-            heim     = group.teamName;
-            gast     = todayGame.opponent;
-            groupUrl = group.url;
-            console.log(`✓ display_* automatisch gesetzt: ${heim} vs ${gast}`);
-          } else {
-            console.log(`✓ display_* bereits korrekt: ${heim} vs ${gast}`);
-          }
-          break;
-        }
-      }
-    }
-  } catch(e) {
-    console.log("Auto-Erkennung Fehler (ignoriert):", e.message);
   }
 
   console.log(`Heim: "${heim}"  Gast: "${gast}"`);

@@ -1,9 +1,9 @@
 name: BTV Daten holen
 
 on:
-  # Alle 20 Minuten – Skript prüft selbst ob Spiel im Zeitfenster liegt
+  # Alle 30 Minuten – Skript prüft selbst ob Spiel im Zeitfenster liegt
   schedule:
-    - cron: '*/20 * * * *'
+    - cron: '*/30 * * * *'
     # Täglich 02:00 UTC (03:00 MEZ / 04:00 MESZ) – Heimspielplan aktualisieren
     - cron: '0 2 * * *'
   # Manuell auslösbar – optional nur Mannschaften laden
