@@ -552,6 +552,12 @@
   <div class="spinner"></div>
   <div>Lade…</div>
 </div>
+<script>
+setTimeout(function() {
+  var el = document.getElementById('loading');
+  if (el) el.style.display = 'none';
+}, 8000);
+</script>
 
 <div id="white-screen"></div>
 
