@@ -1391,12 +1391,14 @@ function scheduleMidnightReload() {
 
 // ── INIT ──────────────────────────────────────────────────────────────────
 (async function init() {
-  const { data: settingsData } = await sb.from("settings").select("*")
+  const _settingsFetch = sb.from("settings").select("*")
     .in("key", ["display_mode","display_theme","display_vereinsnummer","display_saison",
                 "display_bild_url","display_mannschaft","display_gegner",
                 "display_sched_schedule","display_sched_heimspiel","display_sched_bild",
                 "display_foto_interval",
                 "display_affe_minuten","display_affe_sekunden","display_affe_modes"]);
+  const _timeout = new Promise(resolve => setTimeout(() => resolve({ data: null }), 5000));
+  const { data: settingsData } = await Promise.race([_settingsFetch, _timeout]);
   const settings    = Object.fromEntries((settingsData || []).map(r => [r.key, r.value]));
 
   // Zeitschaltung: prüfen ob ein Modus gerade aktiv ist
