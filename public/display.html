@@ -1310,73 +1310,82 @@ function initAffe(alleMinuten, dauerSek, modes, currentMode) {
     }
 
     // ── Shows A, B, D: Affe erscheint ──────────────────────────────────────
-    const show = ['A','B','','D'][_showIdx % 4];
+    var shows    = ['A','B','C_ball','D'];
+    var showName = shows[_showIdx % 4];
     _showIdx++;
-    const fromLeft = (show === 'D');
+    var fromLeft = (showName === 'D');
 
-    const wrap = document.createElement('div');
+    var wrap = document.createElement('div');
     wrap.id = 'affe-wrap';
     if (fromLeft) wrap.classList.add('from-l');
     wrap.innerHTML = AFFE_SVG;
     document.body.appendChild(wrap);
 
-    let stolen = null;
+    var stolen = null;
 
-    const doSteal = () => {
-      const selectors = ['.logo-title', '#hs-team', '#date-display', '.hs-team-name'];
-      let target = null;
-      for (const sel of selectors) {
-        const el = document.querySelector(sel);
+    var doSteal = function() {
+      var selectors = ['.logo-title', '#hs-team', '#date-display', '.hs-team-name'];
+      var target = null;
+      for (var si = 0; si < selectors.length; si++) {
+        var el = document.querySelector(selectors[si]);
         if (el && el.offsetParent !== null && el.textContent.trim().length > 4) { target = el; break; }
       }
       if (!target) return;
-      const origText = target.textContent;
-      const letter   = origText[origText.length - 1];
+      var origText = target.textContent;
+      var letter   = origText[origText.length - 1];
       target.textContent = origText.slice(0, -1);
-      const tRect = target.getBoundingClientRect();
-      const wRect = wrap.getBoundingClientRect();
-      const cs    = getComputedStyle(target);
-      const fl    = document.createElement('div');
+      var tRect = target.getBoundingClientRect();
+      var wRect = wrap.getBoundingClientRect();
+      var cs    = getComputedStyle(target);
+      var fl    = document.createElement('div');
       fl.textContent = letter;
-      Object.assign(fl.style, {
-        position:'fixed', left:tRect.right-12+'px', top:tRect.top+'px',
-        fontSize:cs.fontSize, color:cs.color, fontWeight:cs.fontWeight,
-        fontFamily:cs.fontFamily, zIndex:'10000', pointerEvents:'none',
-        transition:'left 0.6s ease-in, top 0.6s ease-in, transform 0.6s',
-        transform:'scale(1)',
-      });
+      fl.style.position   = 'fixed';
+      fl.style.left       = (tRect.right - 12) + 'px';
+      fl.style.top        = tRect.top + 'px';
+      fl.style.fontSize   = cs.fontSize;
+      fl.style.color      = cs.color;
+      fl.style.fontWeight = cs.fontWeight;
+      fl.style.fontFamily = cs.fontFamily;
+      fl.style.zIndex     = '10000';
+      fl.style.pointerEvents = 'none';
+      fl.style.transition = 'left 0.6s ease-in, top 0.6s ease-in, transform 0.6s';
+      fl.style.transform  = 'scale(1)';
       document.body.appendChild(fl);
-      after(30, () => { fl.style.left=wRect.left+45+'px'; fl.style.top=wRect.top+55+'px'; fl.style.transform='scale(0.5) rotate(-15deg)'; });
-      stolen = { target, origText, floater: fl };
+      after(30, function() {
+        fl.style.left      = (wRect.left + 45) + 'px';
+        fl.style.top       = (wRect.top + 55) + 'px';
+        fl.style.transform = 'scale(0.5) rotate(-15deg)';
+      });
+      stolen = { target: target, origText: origText, floater: fl };
     };
 
-    let cur = 0;
-    after(50*t, () => wrap.classList.add('in'));
+    var cur = 0;
+    after(50*t, function() { wrap.classList.add('in'); });
     cur = 900*t;
 
-    if (show === 'A') {
-      // Rechts: Winken → Buchstabe klauen
-      after(cur, () => wrap.classList.add('affe-wave'));       cur += 2100*t;
-      after(cur, () => wrap.classList.remove('affe-wave'));    cur += 400*t;
-      after(cur, () => doSteal());                             cur += 1300*t;
-    } else if (show === 'B') {
-      // Rechts: Doppelsprung → weg
-      after(cur, () => wrap.classList.add('affe-jump'));       cur += 1500*t;
-      after(cur, () => wrap.classList.remove('affe-jump'));    cur += 300*t;
-      after(cur, () => wrap.classList.add('affe-jump'));       cur += 1500*t;
-      after(cur, () => wrap.classList.remove('affe-jump'));    cur += 300*t;
+    if (showName === 'A') {
+      after(cur, function() { wrap.classList.add('affe-wave'); });       cur += 2100*t;
+      after(cur, function() { wrap.classList.remove('affe-wave'); });    cur += 400*t;
+      after(cur, function() { doSteal(); });                             cur += 1300*t;
+    } else if (showName === 'B') {
+      after(cur, function() { wrap.classList.add('affe-jump'); });       cur += 1500*t;
+      after(cur, function() { wrap.classList.remove('affe-jump'); });    cur += 300*t;
+      after(cur, function() { wrap.classList.add('affe-jump'); });       cur += 1500*t;
+      after(cur, function() { wrap.classList.remove('affe-jump'); });    cur += 300*t;
     } else {
-      // Links (D): Klopfen → weg
-      after(cur, () => wrap.classList.add('affe-knock'));      cur += 2000*t;
-      after(cur, () => wrap.classList.remove('affe-knock'));   cur += 400*t;
+      after(cur, function() { wrap.classList.add('affe-knock'); });      cur += 2000*t;
+      after(cur, function() { wrap.classList.remove('affe-knock'); });   cur += 400*t;
     }
 
-    after(cur, () => {
+    after(cur, function() {
       wrap.classList.remove('in');
       wrap.classList.add('out');
-      if (stolen?.floater) { stolen.floater.style.transition='left 0.8s ease-in,top 0s,transform 0s'; stolen.floater.style.left='-200px'; }
+      if (stolen && stolen.floater) {
+        stolen.floater.style.transition = 'left 0.8s ease-in,top 0s,transform 0s';
+        stolen.floater.style.left = '-200px';
+      }
     });
-    after(cur + 1100, () => {
+    after(cur + 1100, function() {
       if (stolen) { stolen.target.textContent = stolen.origText; stolen.floater.remove(); }
       wrap.remove(); css.remove();
     });
