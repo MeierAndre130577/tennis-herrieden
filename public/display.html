@@ -1182,13 +1182,13 @@ async function startFotosModus(intervalSec) {
 
 // ── AFFEN-EASTER-EGG ──────────────────────────────────────────────────────
 function initAffe(alleMinuten, dauerSek, modes, currentMode) {
-  if (!modes.includes(currentMode)) return; // nur auf erlaubten Displays
+  if (!modes.includes(currentMode)) return;
 
-  const t = dauerSek / 5; // t=2 bei 10s → Affe ~10s sichtbar
+  var t = dauerSek / 5;
 
-  let _showIdx = 0;
+  var _showIdx = 0;
 
-  const AFFE_SVG = `<svg viewBox="0 0 90 118" xmlns="http://www.w3.org/2000/svg" width="90" height="118" style="overflow:visible">
+  var AFFE_SVG = `<svg viewBox="0 0 90 118" xmlns="http://www.w3.org/2000/svg" width="90" height="118" style="overflow:visible">
     <defs>
       <radialGradient id="ag1" cx="35%" cy="28%">
         <stop offset="0%" stop-color="#D9894C"/><stop offset="100%" stop-color="#9E5820"/>
@@ -1291,21 +1291,16 @@ function initAffe(alleMinuten, dauerSek, modes, currentMode) {
     `;
     document.head.appendChild(css);
 
-    const after = (ms, fn) => setTimeout(fn, ms);
+    var after = function(ms, fn) { return setTimeout(fn, ms); };
 
     // ── Show C: Tennisball schiesst quer übers Bild ─────────────────────────
     if (_showIdx % 4 === 2) {
       _showIdx++;
-      const ball = document.createElement('div');
+      var ball = document.createElement('div');
       ball.id = 'affe-ball';
-      ball.innerHTML = `<svg viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="22" cy="22" r="21" fill="#CCE535"/>
-        <path d="M2 22 Q11 7 22 22 Q33 37 42 22" stroke="white" stroke-width="2.8" fill="none" opacity="0.8"/>
-        <path d="M2 22 Q11 37 22 22 Q33 7 42 22" stroke="white" stroke-width="2.8" fill="none" opacity="0.8"/>
-        <circle cx="22" cy="22" r="21" fill="none" stroke="rgba(180,210,0,0.4)" stroke-width="1"/>
-      </svg>`;
+      ball.innerHTML = '<svg viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg"><circle cx="22" cy="22" r="21" fill="#CCE535"/><path d="M2 22 Q11 7 22 22 Q33 37 42 22" stroke="white" stroke-width="2.8" fill="none" opacity="0.8"/><path d="M2 22 Q11 37 22 22 Q33 7 42 22" stroke="white" stroke-width="2.8" fill="none" opacity="0.8"/></svg>';
       document.body.appendChild(ball);
-      after(2000, () => { ball.remove(); css.remove(); });
+      after(2000, function() { ball.remove(); css.remove(); });
       return;
     }
 
@@ -1391,18 +1386,18 @@ function initAffe(alleMinuten, dauerSek, modes, currentMode) {
     });
   }
 
-  // Berechne exakt wie viele ms bis zum nächsten Trigger (z.B. nächste volle 5 Minuten)
-  function scheduleNext() {
-    var now        = new Date();
-    var msInDay    = (now.getMinutes() * 60 + now.getSeconds()) * 1000 + now.getMilliseconds();
-    var intervalMs = alleMinuten * 60 * 1000;
-    var msUntilNext = intervalMs - (msInDay % intervalMs);
-    setTimeout(function() {
-      try { showMonkey(); } catch(e) {}
-      scheduleNext();
-    }, msUntilNext);
+  // Berechne exakt wie viele ms bis zum nächsten Takt-Punkt
+  var intervalMs = alleMinuten * 60 * 1000;
+  function msUntilNext() {
+    var now = new Date();
+    var ms  = (now.getMinutes() * 60 + now.getSeconds()) * 1000 + now.getMilliseconds();
+    return intervalMs - (ms % intervalMs);
   }
-  scheduleNext();
+  function tick() {
+    showMonkey();
+    setTimeout(tick, msUntilNext());
+  }
+  setTimeout(tick, msUntilNext());
 }
 
 // ── MIDNIGHT RELOAD ───────────────────────────────────────────────────────
