@@ -2991,10 +2991,13 @@ function SettingsDisplayTab({onToast}) {
               <div style={{fontSize:11,fontWeight:700,color:"#6B7280",textTransform:"uppercase",letterSpacing:.7,marginBottom:12}}>🐒 Easter Egg – Tennisaffe</div>
               <div style={{display:"flex",gap:12,marginBottom:16}}>
                 <div style={{flex:1}}>
-                  <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>ALLE X MINUTEN</div>
-                  <input type="number" min="1" max="120" value={affeMinuten}
-                    onChange={e=>setAffeMinuten(Math.max(1,Number(e.target.value)))}
-                    style={{...S.input,width:"100%"}}/>
+                  <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>TAKT (MINUTEN)</div>
+                  <select value={affeMinuten} onChange={e=>setAffeMinuten(Number(e.target.value))}
+                    style={{...S.input,width:"100%"}}>
+                    <option value={1}>Jede Minute (:01, :02, …)</option>
+                    <option value={5}>Alle 5 Min (:00, :05, :10, …)</option>
+                    <option value={10}>Alle 10 Min (:00, :10, :20, …)</option>
+                  </select>
                 </div>
                 <div style={{flex:1}}>
                   <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>DAUER (SEKUNDEN)</div>
