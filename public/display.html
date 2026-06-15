@@ -1391,17 +1391,18 @@ function initAffe(alleMinuten, dauerSek, modes, currentMode) {
     });
   }
 
-  // Alle 5 Sekunden prüfen ob Uhrzeit ein Vielfaches von alleMinuten ist
-  var _lastTriggerKey = -1;
-  setInterval(function() {
-    var now = new Date();
-    var m   = now.getMinutes();
-    var key = now.getHours() * 60 + m;
-    if (m % alleMinuten === 0 && key !== _lastTriggerKey) {
-      _lastTriggerKey = key;
+  // Berechne exakt wie viele ms bis zum nächsten Trigger (z.B. nächste volle 5 Minuten)
+  function scheduleNext() {
+    var now        = new Date();
+    var msInDay    = (now.getMinutes() * 60 + now.getSeconds()) * 1000 + now.getMilliseconds();
+    var intervalMs = alleMinuten * 60 * 1000;
+    var msUntilNext = intervalMs - (msInDay % intervalMs);
+    setTimeout(function() {
       try { showMonkey(); } catch(e) {}
-    }
-  }, 5000);
+      scheduleNext();
+    }, msUntilNext);
+  }
+  scheduleNext();
 }
 
 // ── MIDNIGHT RELOAD ───────────────────────────────────────────────────────
