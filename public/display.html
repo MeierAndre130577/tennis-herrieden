@@ -1184,7 +1184,7 @@ async function startFotosModus(intervalSec) {
 function initAffe(alleMinuten, dauerSek, modes, currentMode) {
   if (!modes.includes(currentMode)) return; // nur auf erlaubten Displays
 
-  const t = dauerSek / 10;
+  const t = dauerSek / 5; // t=2 bei 10s → Affe ~10s sichtbar
 
   let _showIdx = 0;
 
@@ -1382,23 +1382,17 @@ function initAffe(alleMinuten, dauerSek, modes, currentMode) {
     });
   }
 
-  // Uhrzeitbasierter Trigger: bei jedem vollen Vielfachen von alleMinuten
-  function msUntilNextTrigger() {
-    const now  = new Date();
-    const mins = now.getMinutes();
-    const secs = now.getSeconds();
-    const ms   = now.getMilliseconds();
-    const totalSecs      = mins * 60 + secs;
-    const intervalSecs   = alleMinuten * 60;
-    const secsUntilNext  = intervalSecs - (totalSecs % intervalSecs);
-    return secsUntilNext * 1000 - ms;
-  }
-
-  function tick() {
-    showMonkey();
-    setTimeout(tick, msUntilNextTrigger());
-  }
-  setTimeout(tick, msUntilNextTrigger());
+  // Alle 10 Sekunden prüfen ob Uhrzeit ein Vielfaches von alleMinuten ist
+  let _lastTriggerKey = -1;
+  setInterval(function() {
+    const now = new Date();
+    const m   = now.getMinutes();
+    const key = now.getHours() * 60 + m;
+    if (m % alleMinuten === 0 && key !== _lastTriggerKey) {
+      _lastTriggerKey = key;
+      try { showMonkey(); } catch(e) { console.warn('Affe:', e); }
+    }
+  }, 10000);
 }
 
 // ── MIDNIGHT RELOAD ───────────────────────────────────────────────────────
