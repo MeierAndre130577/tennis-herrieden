@@ -1391,17 +1391,17 @@ function initAffe(alleMinuten, dauerSek, modes, currentMode) {
     });
   }
 
-  // Alle 10 Sekunden prüfen ob Uhrzeit ein Vielfaches von alleMinuten ist
-  let _lastTriggerKey = -1;
+  // Alle 5 Sekunden prüfen ob Uhrzeit ein Vielfaches von alleMinuten ist
+  var _lastTriggerKey = -1;
   setInterval(function() {
-    const now = new Date();
-    const m   = now.getMinutes();
-    const key = now.getHours() * 60 + m;
+    var now = new Date();
+    var m   = now.getMinutes();
+    var key = now.getHours() * 60 + m;
     if (m % alleMinuten === 0 && key !== _lastTriggerKey) {
       _lastTriggerKey = key;
-      try { showMonkey(); } catch(e) { console.warn('Affe:', e); }
+      try { showMonkey(); } catch(e) {}
     }
-  }, 10000);
+  }, 5000);
 }
 
 // ── MIDNIGHT RELOAD ───────────────────────────────────────────────────────
