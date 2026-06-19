@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, Fragment, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-const SUPABASE_URL  = import.meta.env.VITE_SUPABASE_URL  || "https://irszeiamvwyrntyauury.supabase.co";
-const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlyc3plaWFtdnd5cm50eWF1dXJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2Mzc1MjcsImV4cCI6MjA5NjIxMzUyN30.ryxib1E5E2cfkwfXj6i2EnmD56tyCtz_39u7Bpw7qSc";
-const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
+const SUPABASE_URL  = import.meta.env.VITE_SUPABASE_URL  || "";
+const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON || "";
+const sb = SUPABASE_URL ? createClient(SUPABASE_URL, SUPABASE_ANON) : null;
 
 const SLOTS = ["08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00"];
 const DE_DAYS  = ["Mo","Di","Mi","Do","Fr","Sa","So"];
@@ -82,6 +82,26 @@ function SharedDisplayEdit() {
 // ROOT
 // ═══════════════════════════════════════════════════════════════════════════
 export default function App() {
+  if(!SUPABASE_URL) return (
+    <div style={{minHeight:"100vh",background:"#0F172A",display:"flex",alignItems:"center",justifyContent:"center",padding:24,fontFamily:"system-ui,sans-serif"}}>
+      <div style={{maxWidth:380,textAlign:"center"}}>
+        <div style={{fontSize:56,marginBottom:16}}>🎾</div>
+        <h1 style={{color:"#F1F5F9",fontSize:22,fontWeight:800,margin:"0 0 12px"}}>SG Herrieden Tennis</h1>
+        <p style={{color:"#94A3B8",fontSize:15,lineHeight:1.6,margin:"0 0 24px"}}>
+          Diese App wurde auf eine neue Plattform umgezogen.
+          Bitte registriere dich dort neu — deine Daten sind sicher übertragen.
+        </p>
+        <a href="https://www.tennis-herrieden.de"
+          style={{display:"inline-block",background:"#22C55E",color:"#fff",fontWeight:700,fontSize:15,padding:"13px 28px",borderRadius:12,textDecoration:"none"}}>
+          → Zur neuen App
+        </a>
+        <p style={{color:"#475569",fontSize:12,marginTop:20}}>
+          Bei Fragen wende dich an den Vereinsvorstand.
+        </p>
+      </div>
+    </div>
+  );
+
   const shareParam = useState(()=>new URLSearchParams(window.location.search).get("share"))[0];
   const isRecovery = useState(()=>window.location.hash.includes("type=recovery"))[0];
   const [shareValid, setShareValid] = useState(null); // null=prüft, true/false
