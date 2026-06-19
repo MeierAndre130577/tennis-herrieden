@@ -460,13 +460,6 @@ function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassen
               <span style={H.navTileSub}>Systemkonfiguration</span>
             </button>
           )}
-          {profile.role==="admin"&&(
-            <button style={{...H.navTile,borderColor:"#3B82F633",gridColumn:"1 / -1"}} onClick={onGoClubstream}>
-              <span style={{fontSize:28}}>📰</span>
-              <span style={H.navTileLabel}>Clubstream</span>
-              <span style={H.navTileSub}>News & Vereinsmeldungen</span>
-            </button>
-          )}
         </div>
 
         {/* Logout */}
