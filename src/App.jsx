@@ -1568,8 +1568,11 @@ function SettingsCourtsTab({onToast}) {
 
 // ── SETTINGS: MITGLIEDER ──────────────────────────────────────────────────
 function SettingsMembersTab({onToast}) {
-  const [members,setMembers]   = useState([]);
-  const [saving,setSaving]     = useState(null);
+  const [members,setMembers]     = useState([]);
+  const [saving,setSaving]       = useState(null);
+  const [search,setSearch]       = useState("");
+  const [roleFilter,setRoleFilter] = useState("all");
+  const [sort,setSort]           = useState({col:"vorname",dir:1});
 
   const load=async()=>{ const {data}=await sb.from("profiles").select("*").order("name"); setMembers(data||[]); };
   useEffect(()=>{ load(); },[]);
@@ -1582,35 +1585,101 @@ function SettingsMembersTab({onToast}) {
     else { onToast("Rolle aktualisiert ✓"); load(); }
   };
   const deleteMember=async(uid,mname)=>{
-    if(!window.confirm(`Mitglied „${mname}" und alle Buchungen wirklich löschen?`)) return;
+    if(!window.confirm(`Mitglied „${mname}" wirklich löschen?`)) return;
     await sb.from("bookings").delete().eq("user_id",uid);
     await sb.from("profiles").delete().eq("id",uid);
     onToast("Mitglied gelöscht."); load();
   };
 
+  const withSplit = members.map(m=>{
+    const parts=(m.name||"").split(" ");
+    return {...m, firstName:parts[0]||"", lastName:parts.slice(1).join(" ")||""};
+  });
+
+  const filtered = withSplit.filter(m=>{
+    const q=search.toLowerCase();
+    const matchSearch=!q||m.name.toLowerCase().includes(q)||(m.email||"").toLowerCase().includes(q);
+    const matchRole=roleFilter==="all"||m.role===roleFilter;
+    return matchSearch&&matchRole;
+  });
+
+  const sorted=[...filtered].sort((a,b)=>{
+    const vals={vorname:[a.firstName,b.firstName],nachname:[a.lastName,b.lastName],email:[a.email||"",b.email||""],rolle:[a.role||"",b.role||""]};
+    const [av,bv]=vals[sort.col]||[a.firstName,b.firstName];
+    return av.localeCompare(bv)*sort.dir;
+  });
+
+  const toggleSort=(col)=>setSort(prev=>prev.col===col?{col,dir:prev.dir*-1}:{col,dir:1});
+
+  const RC={pending:{bg:"#FEF3C7",color:"#92400E",border:"#F59E0B"},member:{bg:"#DCFCE7",color:"#166534",border:"#22C55E"},member2:{bg:"#DBEAFE",color:"#1E40AF",border:"#3B82F6"},admin:{bg:"#F3E8FF",color:"#6B21A8",border:"#8B5CF6"}};
+  const rc=(role)=>RC[role]||RC.member;
+
+  const Arrow=({col})=>sort.col!==col?<span style={{color:"#D1D5DB"}}>⇅</span>:<span style={{color:"#6B7280"}}>{sort.dir===1?"↑":"↓"}</span>;
+  const Th=({col,label,w})=>(
+    <th onClick={()=>toggleSort(col)} style={{textAlign:"left",padding:"9px 10px",fontSize:11,fontWeight:700,color:"#6B7280",textTransform:"uppercase",letterSpacing:.6,cursor:"pointer",userSelect:"none",whiteSpace:"nowrap",width:w}}>
+      {label} <Arrow col={col}/>
+    </th>
+  );
+
+  const ROLE_FILTER_LABELS={all:"Alle",...ROLE_LABELS};
+
   return (
     <div style={K.page}>
       <h1 style={S.pageTitle}>Mitgliederverwaltung</h1>
-      <p style={S.pageSub}>Rollen zuweisen und Mitglieder verwalten</p>
+      <p style={S.pageSub}>{members.length} Mitglieder gesamt</p>
 
-      <div style={{display:"flex",flexDirection:"column",gap:8,marginTop:20}}>
-        {members.map(m=>(
-          <div key={m.id} style={{...S.card,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
-            <Av name={m.name}/>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontWeight:700,fontSize:14}}>{m.name}</div>
-              <div style={{fontSize:11,color:"#6B7280",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.email||""}</div>
-            </div>
-            <select value={m.role||"pending"} disabled={saving===m.id} onChange={e=>changeRole(m.id,e.target.value)}
-              style={{border:`1.5px solid ${m.role==="pending"?"#F59E0B":"#E5E7EB"}`,borderRadius:7,padding:"5px 8px",fontSize:13,fontWeight:600,cursor:"pointer",background:m.role==="pending"?"#FEF3C7":"#fff",color:m.role==="pending"?"#92400E":"#374151"}}>
-              <option value="pending">⏳ Ausstehend</option>
-              <option value="member">Mitglied</option>
-              <option value="member2">Mitglied Plus</option>
-              <option value="admin">Administrator</option>
-            </select>
-            <button style={{...S.cancelBtn,padding:"5px 9px",fontSize:13}} onClick={()=>deleteMember(m.id,m.name)}>✕</button>
-          </div>
-        ))}
+      <div style={{display:"flex",gap:10,marginTop:20,flexWrap:"wrap",alignItems:"center"}}>
+        <input placeholder="Name oder E-Mail suchen…" value={search} onChange={e=>setSearch(e.target.value)}
+          style={{...S.input,flex:1,minWidth:160,maxWidth:280}}/>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+          {["all","pending","member","member2","admin"].map(r=>(
+            <button key={r} onClick={()=>setRoleFilter(r)}
+              style={{padding:"6px 12px",borderRadius:20,border:`1.5px solid ${roleFilter===r?"#374151":"#E5E7EB"}`,background:roleFilter===r?"#374151":"#fff",color:roleFilter===r?"#fff":"#374151",fontSize:12,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}}>
+              {ROLE_FILTER_LABELS[r]}{r!=="all"&&<span style={{marginLeft:4,opacity:.65}}>({members.filter(m=>m.role===r).length})</span>}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{marginTop:14,overflowX:"auto",border:"1.5px solid #E5E7EB",borderRadius:10}}>
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+          <thead style={{background:"#F9FAFB",borderBottom:"1.5px solid #E5E7EB"}}>
+            <tr>
+              <Th col="vorname"  label="Vorname"  w="16%"/>
+              <Th col="nachname" label="Nachname" w="18%"/>
+              <Th col="email"    label="E-Mail"   w="28%"/>
+              <Th col="rolle"    label="Rolle"    w="22%"/>
+              <th style={{width:"16%"}}/>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.length===0&&(
+              <tr><td colSpan={5} style={{textAlign:"center",padding:"32px 0",color:"#9CA3AF"}}>Keine Einträge gefunden</td></tr>
+            )}
+            {sorted.map((m,i)=>{
+              const c=rc(m.role);
+              return (
+                <tr key={m.id} style={{background:i%2===0?"#fff":"#F9FAFB",borderBottom:"1px solid #F3F4F6"}}>
+                  <td style={{padding:"10px 10px",fontWeight:600,color:"#111827",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.firstName}</td>
+                  <td style={{padding:"10px 10px",color:"#374151",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.lastName||"–"}</td>
+                  <td style={{padding:"10px 10px",color:"#6B7280",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.email||"–"}</td>
+                  <td style={{padding:"10px 10px"}}>
+                    <select value={m.role||"pending"} disabled={saving===m.id} onChange={e=>changeRole(m.id,e.target.value)}
+                      style={{border:`1.5px solid ${c.border}`,borderRadius:20,padding:"4px 8px",fontSize:11,fontWeight:700,cursor:"pointer",background:c.bg,color:c.color,width:"100%",maxWidth:140}}>
+                      <option value="pending">⏳ Ausstehend</option>
+                      <option value="member">Mitglied</option>
+                      <option value="member2">Mitglied Plus</option>
+                      <option value="admin">Administrator</option>
+                    </select>
+                  </td>
+                  <td style={{padding:"10px 10px",textAlign:"right"}}>
+                    <button style={{...S.cancelBtn,padding:"4px 10px",fontSize:12}} onClick={()=>deleteMember(m.id,m.name)}>Löschen</button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     </div>
   );
