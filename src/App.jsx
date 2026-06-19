@@ -3867,7 +3867,7 @@ function LoginScreen() {
   return (
     <div style={S.loginWrap}>
       <div style={S.loginCard}>
-        <div style={{textAlign:"center",marginBottom:28}}><TennisBall size={52}/><h1 style={{fontSize:22,fontWeight:800,letterSpacing:-.5,marginTop:12}}>Tennis Herrieden</h1><p style={{color:"#6B7280",fontSize:13,marginTop:4}}>Tennisplatz-Buchungssystem</p></div>
+        <div style={{textAlign:"center",marginBottom:28}}><img src="/logo.png" alt="Tennis Herrieden" style={{width:72,height:72,objectFit:"contain",margin:"0 auto",display:"block"}}/><h1 style={{fontSize:22,fontWeight:800,letterSpacing:-.5,marginTop:12}}>Tennis Herrieden</h1><p style={{color:"#6B7280",fontSize:13,marginTop:4}}>Vereins-App</p></div>
         <div style={{display:"flex",gap:6,marginBottom:20}}>{[["login","Anmelden"],["register","Registrieren"]].map(([m,l])=>(<button key={m} style={{...S.tabBtn,flex:1,...(mode===m?S.tabBtnActive:{})}} onClick={()=>{setMode(m);setMsg(null);}}>{l}</button>))}</div>
         <div style={{display:"flex",flexDirection:"column",gap:12}}>
           {mode==="register"&&<input placeholder="Vorname" value={firstName} onChange={e=>setFirstName(e.target.value)} style={S.input}/>}
