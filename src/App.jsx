@@ -629,6 +629,9 @@ function ClubstreamApp({profile,onBack}) {
   const lbTouchX                     = useRef(null);
   const lbSwiped                     = useRef(false);
   const kwTouchX                     = useRef(null);
+  const allTouchX                    = useRef(null);
+  const allSwiped                    = useRef(false);
+  const [allIdxMap,setAllIdxMap]     = useState({});
   const fileInputRef                 = useRef(null);
 
   useEffect(()=>{
@@ -885,24 +888,39 @@ function ClubstreamApp({profile,onBack}) {
           <div style={{display:"flex",flexDirection:"column",gap:10}}>
             {filtered.map(item=>{
               if(item._isPhoto) {
-                const src = item.image_url||item.url;
                 const kwPhotos = item._kwPhotos||[item];
+                const idx = allIdxMap[item._kwLabel]||0;
+                const cur = kwPhotos[idx]||kwPhotos[0];
+                const src = cur.image_url||cur.url;
+                const goPrev = e=>{ e.stopPropagation(); setAllIdxMap(m=>({...m,[item._kwLabel]:Math.max(0,(m[item._kwLabel]||0)-1)})); };
+                const goNext = e=>{ e.stopPropagation(); setAllIdxMap(m=>({...m,[item._kwLabel]:Math.min(kwPhotos.length-1,(m[item._kwLabel]||0)+1)})); };
                 return (
-                  <div key={item._kwLabel||item.id} style={{background:"#1E293B",border:"1.5px solid #EC489933",borderRadius:14,overflow:"hidden",cursor:"pointer"}} onClick={()=>{setLbPhotos(kwPhotos);setLbIdx(0);}}>
-                    <div style={{position:"relative"}}>
-                      {src&&<img src={src} alt={item.caption||""} style={{width:"100%",height:200,objectFit:"cover",display:"block"}}/>}
-                      {kwPhotos.length>1&&(
-                        <div style={{position:"absolute",top:8,right:8,background:"#00000099",borderRadius:20,padding:"3px 10px",fontSize:12,fontWeight:700,color:"#fff"}}>
-                          🖼️ {kwPhotos.length} Fotos
-                        </div>
-                      )}
+                  <div key={item._kwLabel||item.id} style={{background:"#1E293B",border:"1.5px solid #EC489933",borderRadius:14,overflow:"hidden"}}>
+                    {/* Bild mit Swipe */}
+                    <div style={{position:"relative"}}
+                      onTouchStart={e=>{allTouchX.current=e.touches[0].clientX;allSwiped.current=false;}}
+                      onTouchEnd={e=>{const dx=e.changedTouches[0].clientX-(allTouchX.current||0);if(Math.abs(dx)>30){allSwiped.current=true;if(dx>0&&idx>0)setAllIdxMap(m=>({...m,[item._kwLabel]:idx-1}));else if(dx<0&&idx<kwPhotos.length-1)setAllIdxMap(m=>({...m,[item._kwLabel]:idx+1}));}}}
+                      onClick={()=>{if(!allSwiped.current){setLbPhotos(kwPhotos);setLbIdx(idx);}}}
+                    >
+                      {src&&<img src={src} alt={cur.caption||""} style={{width:"100%",height:220,objectFit:"cover",display:"block",cursor:"pointer"}}/>}
+                      {idx>0&&<button onMouseDown={goPrev} style={{position:"absolute",left:8,top:"50%",transform:"translateY(-50%)",background:"#00000077",border:"none",color:"#fff",fontSize:20,borderRadius:"50%",width:32,height:32,cursor:"pointer",lineHeight:"32px",textAlign:"center"}}>‹</button>}
+                      {idx<kwPhotos.length-1&&<button onMouseDown={goNext} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"#00000077",border:"none",color:"#fff",fontSize:20,borderRadius:"50%",width:32,height:32,cursor:"pointer",lineHeight:"32px",textAlign:"center"}}>›</button>}
                     </div>
-                    <div style={{padding:"10px 14px",display:"flex",alignItems:"center",gap:8}}>
+                    {/* Instagram-Punkte */}
+                    {kwPhotos.length>1&&(
+                      <div style={{display:"flex",justifyContent:"center",gap:5,padding:"8px 0 2px"}}>
+                        {kwPhotos.map((_,i)=>(
+                          <div key={i} style={{width:i===idx?16:6,height:6,borderRadius:3,background:i===idx?"#EC4899":"#334155",transition:"width .2s"}}/>
+                        ))}
+                      </div>
+                    )}
+                    {/* Info-Zeile */}
+                    <div style={{padding:"8px 14px 12px",display:"flex",alignItems:"center",gap:8}}>
                       <div style={{flex:1,minWidth:0}}>
                         <div style={{fontSize:10,fontWeight:700,color:"#EC4899",textTransform:"uppercase",letterSpacing:.7,marginBottom:2}}>📸 {item._kwLabel}</div>
-                        {item.caption&&<div style={{fontSize:13,color:"#CBD5E1",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.caption}</div>}
+                        {cur.caption&&<div style={{fontSize:13,color:"#CBD5E1",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{cur.caption}</div>}
                       </div>
-                      <div style={{fontSize:11,color:"#475569",flexShrink:0}}>{csTimeAgo(item.created_at)}</div>
+                      <div style={{fontSize:11,color:"#475569",flexShrink:0}}>{csTimeAgo(cur.created_at)}</div>
                     </div>
                   </div>
                 );
