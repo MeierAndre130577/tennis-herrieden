@@ -655,6 +655,18 @@ function ClubstreamApp({profile,onBack}) {
               ⏳ {pending} ausstehend
             </span>
           )}
+          {profile.role==="admin"&&(
+            <button onClick={async()=>{
+              const {data:{session}}=await sb.auth.getSession();
+              const base="https://clubstream-hub.vercel.app";
+              const url=session?.access_token
+                ?`${base}/#access_token=${session.access_token}&refresh_token=${session.refresh_token}&token_type=bearer`
+                :base;
+              window.open(url,"_blank");
+            }} style={{fontSize:11,fontWeight:700,padding:"4px 12px",borderRadius:20,border:"1px solid #8B5CF644",background:"#8B5CF618",color:"#A78BFA",cursor:"pointer"}}>
+              ⚙️ Admin
+            </button>
+          )}
         </div>
 
         <div style={{...H.header,paddingTop:8}}>
