@@ -641,7 +641,7 @@ function ClubstreamApp({profile,onBack}) {
         .order("published_at",{ascending:false})
         .limit(60),
       sb.from("news_items").select("*",{count:"exact",head:true}).eq("status","pending_review").is("deleted_at",null),
-      sb.from("club_photos").select("id,url,image_url,caption,created_at").order("created_at",{ascending:false}).limit(200),
+      sb.from("club_photos").select("id,url,image_url,caption,created_at,user_id").order("created_at",{ascending:false}).limit(200),
     ]).then(([{data:news,error},{count},{data:pics}])=>{
       if(!error) setItems(news||[]);
       setPending(count||0);
@@ -662,10 +662,20 @@ function ClubstreamApp({profile,onBack}) {
       const {data:{publicUrl}} = sb.storage.from("club-photos").getPublicUrl(path);
       const {error:insErr} = await sb.from("club_photos").insert({image_url: publicUrl, caption: caption||null, user_id: profile.id});
       if(insErr) throw insErr;
-      const {data:newPhotos} = await sb.from("club_photos").select("id,url,image_url,caption,created_at").order("created_at",{ascending:false}).limit(200);
+      const {data:newPhotos} = await sb.from("club_photos").select("id,url,image_url,caption,created_at,user_id").order("created_at",{ascending:false}).limit(200);
       setPhotos(newPhotos||[]); setPendingFile(null); setPendingCaption("");
     } catch(e) { setUploadErr(e.message||"Fehler beim Upload"); }
     setUploading(false);
+  };
+
+  const deletePhoto = async (photo) => {
+    if(!window.confirm("Dieses Foto löschen?")) return;
+    const path = (photo.image_url||"").split("/club-photos/")[1];
+    if(path) await sb.storage.from("club-photos").remove([path]);
+    await sb.from("club_photos").delete().eq("id", photo.id);
+    const {data} = await sb.from("club_photos").select("id,url,image_url,caption,created_at,user_id").order("created_at",{ascending:false}).limit(200);
+    setPhotos(data||[]);
+    setKwIdxMap({});
   };
 
   const getKWLabel = (dateStr) => {
@@ -828,6 +838,12 @@ function ClubstreamApp({profile,onBack}) {
                     {idx>0&&<button onClick={prev} style={{position:"absolute",left:8,top:"50%",transform:"translateY(-50%)",background:"#00000088",border:"none",color:"#fff",fontSize:20,borderRadius:"50%",width:34,height:34,cursor:"pointer"}}>‹</button>}
                     {idx<kphotos.length-1&&<button onClick={next} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"#00000088",border:"none",color:"#fff",fontSize:20,borderRadius:"50%",width:34,height:34,cursor:"pointer"}}>›</button>}
                     <div style={{position:"absolute",bottom:8,right:10,background:"#00000088",borderRadius:20,padding:"2px 8px",fontSize:11,color:"#fff",fontWeight:700}}>{idx+1}/{kphotos.length}</div>
+                    {(cur.user_id===profile.id||profile.role==="admin")&&(
+                      <button onClick={e=>{e.stopPropagation();deletePhoto(cur);}}
+                        style={{position:"absolute",top:8,right:8,background:"#EF444488",border:"none",color:"#fff",fontSize:14,borderRadius:"50%",width:30,height:30,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                        🗑
+                      </button>
+                    )}
                   </div>
                   {cur.caption&&<div style={{marginTop:6,fontSize:13,color:"#94A3B8",padding:"0 2px"}}>{cur.caption}</div>}
                   <div style={{marginTop:3,fontSize:11,color:"#475569"}}>{new Date(cur.created_at).toLocaleDateString("de-DE",{day:"numeric",month:"long",year:"numeric"})}</div>
@@ -867,13 +883,17 @@ function ClubstreamApp({profile,onBack}) {
             {filtered.map(item=>{
               if(item._isPhoto) {
                 const src = item.image_url||item.url;
+                const kw = getKWLabel(item.created_at);
+                const kwGroup = kwGroups.find(g=>g.label===kw);
+                const kwPhotos = kwGroup?.photos||[item];
+                const kwPhotoIdx = kwPhotos.findIndex(p=>p.id===item.id);
                 return (
-                  <div key={item.id} style={{background:"#1E293B",border:"1.5px solid #EC489933",borderRadius:14,overflow:"hidden",cursor:"pointer"}} onClick={()=>{setLbPhotos([item]);setLbIdx(0);}}>
+                  <div key={item.id} style={{background:"#1E293B",border:"1.5px solid #EC489933",borderRadius:14,overflow:"hidden",cursor:"pointer"}} onClick={()=>{setLbPhotos(kwPhotos);setLbIdx(Math.max(0,kwPhotoIdx));}}>
                     {src&&<img src={src} alt={item.caption||""} style={{width:"100%",height:200,objectFit:"cover",display:"block"}}/>}
                     <div style={{padding:"10px 14px",display:"flex",alignItems:"center",gap:8}}>
                       <span style={{fontSize:18}}>🖼️</span>
                       <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontSize:10,fontWeight:700,color:"#EC4899",textTransform:"uppercase",letterSpacing:.7,marginBottom:2}}>Foto</div>
+                        <div style={{fontSize:10,fontWeight:700,color:"#EC4899",textTransform:"uppercase",letterSpacing:.7,marginBottom:2}}>Foto · {kw} ({kwPhotos.length})</div>
                         {item.caption&&<div style={{fontSize:13,color:"#CBD5E1",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.caption}</div>}
                       </div>
                       <div style={{fontSize:11,color:"#475569",flexShrink:0}}>{csTimeAgo(item.created_at)}</div>
