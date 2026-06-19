@@ -696,10 +696,12 @@ function ClubstreamApp({profile,onBack}) {
     allPhotos.forEach(p=>{ const k=getKWLabel(p.created_at); if(!map[k]){map[k]=[];order.push(k);} map[k].push(p); });
     return order.map(k=>({label:k, photos:map[k]}));
   })();
+  // Pro KW nur eine Karte in Alle (neueste pro Woche als Repräsentant)
+  const kwCards = kwGroups.map(g=>({...g.photos[0], _isPhoto:true, _kwLabel:g.label, _kwPhotos:g.photos, published_at:g.photos[0].created_at}));
   const filtered = typeFilter && typeFilter!=="__fotos__"
     ? items.filter(i=>i.type===typeFilter)
     : typeFilter===null
-      ? [...items, ...allPhotos.map(p=>({...p,_isPhoto:true,published_at:p.created_at}))].sort((a,b)=>new Date(b.published_at)-new Date(a.published_at))
+      ? [...items, ...kwCards].sort((a,b)=>new Date(b.published_at)-new Date(a.published_at))
       : items;
 
   return (
@@ -884,17 +886,20 @@ function ClubstreamApp({profile,onBack}) {
             {filtered.map(item=>{
               if(item._isPhoto) {
                 const src = item.image_url||item.url;
-                const kw = getKWLabel(item.created_at);
-                const kwGroup = kwGroups.find(g=>g.label===kw);
-                const kwPhotos = kwGroup?.photos||[item];
-                const kwPhotoIdx = kwPhotos.findIndex(p=>p.id===item.id);
+                const kwPhotos = item._kwPhotos||[item];
                 return (
-                  <div key={item.id} style={{background:"#1E293B",border:"1.5px solid #EC489933",borderRadius:14,overflow:"hidden",cursor:"pointer"}} onClick={()=>{setLbPhotos(kwPhotos);setLbIdx(Math.max(0,kwPhotoIdx));}}>
-                    {src&&<img src={src} alt={item.caption||""} style={{width:"100%",height:200,objectFit:"cover",display:"block"}}/>}
+                  <div key={item._kwLabel||item.id} style={{background:"#1E293B",border:"1.5px solid #EC489933",borderRadius:14,overflow:"hidden",cursor:"pointer"}} onClick={()=>{setLbPhotos(kwPhotos);setLbIdx(0);}}>
+                    <div style={{position:"relative"}}>
+                      {src&&<img src={src} alt={item.caption||""} style={{width:"100%",height:200,objectFit:"cover",display:"block"}}/>}
+                      {kwPhotos.length>1&&(
+                        <div style={{position:"absolute",top:8,right:8,background:"#00000099",borderRadius:20,padding:"3px 10px",fontSize:12,fontWeight:700,color:"#fff"}}>
+                          🖼️ {kwPhotos.length} Fotos
+                        </div>
+                      )}
+                    </div>
                     <div style={{padding:"10px 14px",display:"flex",alignItems:"center",gap:8}}>
-                      <span style={{fontSize:18}}>🖼️</span>
                       <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontSize:10,fontWeight:700,color:"#EC4899",textTransform:"uppercase",letterSpacing:.7,marginBottom:2}}>Foto · {kw} ({kwPhotos.length})</div>
+                        <div style={{fontSize:10,fontWeight:700,color:"#EC4899",textTransform:"uppercase",letterSpacing:.7,marginBottom:2}}>📸 {item._kwLabel}</div>
                         {item.caption&&<div style={{fontSize:13,color:"#CBD5E1",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.caption}</div>}
                       </div>
                       <div style={{fontSize:11,color:"#475569",flexShrink:0}}>{csTimeAgo(item.created_at)}</div>
