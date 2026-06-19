@@ -12,8 +12,9 @@ const DE_MONTH = ["Jan","Feb","Mär","Apr","Mai","Jun","Jul","Aug","Sep","Okt","
 const COURT_COLORS = ["#22C55E","#EF4444","#3B82F6","#F59E0B","#8B5CF6","#EC4899","#14B8A6","#F97316"];
 const BOOKING_TYPE_COLORS = { regular:"#6B7280", training:"#3B82F6", match:"#EF4444" };
 const BOOKING_TYPE_MAP = { regular:{icon:"🎾",color:"#22C55E"}, training:{icon:"🏋️",color:"#3B82F6"}, match:{icon:"🏆",color:"#EF4444"} };
-const ROLE_LABELS = { admin:"Administrator", member2:"Mitglied Plus", member:"Mitglied", pending:"Ausstehend" };
-const ROLES = ["pending","member","member2","admin"];
+const ROLE_LABELS = { admin:"Administrator", member2:"Mitglied Plus", member:"Mitglied", known:"Bekannt", pending:"Ausstehend" };
+const ROLES = ["pending","known","member","member2","admin"];
+const PERM_ROLES = ["public","pending","known","member","member2"]; // admin immer true
 const MODULES = [
   {id:"booking",       label:"Platzbuchung",         icon:"📅"},
   {id:"kasse",         label:"Getränke",             icon:"🧾"},
@@ -31,9 +32,9 @@ const DEFAULT_PERMISSIONS = {
   booking:       ["member","member2","admin"],
   kasse:         ["member","member2","admin"],
   kassenbuch:    ["admin"],
-  clubstream:    ["pending","member","member2","admin"],
-  btv:           ["pending","member","member2","admin"],
-  heimspiel:     ["pending","member","member2","admin"],
+  clubstream:    ["public","pending","known","member","member2","admin"],
+  btv:           ["public","pending","known","member","member2","admin"],
+  heimspiel:     ["public","pending","known","member","member2","admin"],
   einstellungen: ["admin"],
   massenbuchung: ["member2","admin"],
   kasse_alle:    ["admin"],
@@ -109,6 +110,7 @@ export default function App() {
   const [profile,setProfile]       = useState(null);
   const [permissions,setPerms]     = useState(DEFAULT_PERMISSIONS);
   const [screen,setScreen]         = useState("home");
+  const [showLogin,setShowLogin]   = useState(false);
 
   useEffect(()=>{
     if (!shareParam) { setShareValid(false); return; }
@@ -132,24 +134,45 @@ export default function App() {
     return ()=>document.removeEventListener("visibilitychange",onVisibility);
   },[]);
 
+  // Permissions immer laden (auch ohne Login, für öffentliche Module)
+  useEffect(()=>{
+    sb.from("settings").select("value").eq("key","role_permissions").single()
+      .then(({data})=>{ try{ if(data?.value) setPerms({...DEFAULT_PERMISSIONS,...JSON.parse(data.value)}); }catch(_){} });
+  },[]);
+
   useEffect(()=>{
     if(!session){ setProfile(null); return; }
     sb.from("profiles").select("*").eq("id",session.user.id).single().then(({data})=>setProfile(data));
-    sb.from("settings").select("value").eq("key","role_permissions").single()
-      .then(({data})=>{ try{ if(data?.value) setPerms({...DEFAULT_PERMISSIONS,...JSON.parse(data.value)}); }catch(_){} });
   },[session]);
 
+  const guestProfile = {role:"public", id:null, email:null, name:"Gast"};
+
   const canDo = (module) => {
-    const role = profile?.role || "pending";
+    const role = profile?.role || "public";
     if(role === "admin") return true;
     return (permissions[module]||[]).includes(role);
   };
+
+  const canDoPublic = (module) => (permissions[module]||[]).includes("public");
 
   if(shareParam && shareValid===null) return <Loading msg="Prüfe Link…"/>;
   if(shareParam && shareValid===true) return <SharedDisplayEdit/>;
   if(session===undefined) return <Loading msg="Verbinde mit Datenbank…"/>;
   if(isRecovery || (session && isRecovery)) return <ResetPasswordScreen/>;
-  if(!session) return <LoginScreen/>;
+  if(!session) {
+    if(showLogin) return <LoginScreen onBack={()=>setShowLogin(false)}/>;
+    const pubModules = MODULES.filter(m=>canDoPublic(m.id));
+    if(pubModules.length===0) return <LoginScreen/>;
+    // Öffentlich zugängliche Screens ohne Login
+    if(screen==="clubstream" && canDoPublic("clubstream")) return <ClubstreamApp profile={guestProfile} onBack={()=>setScreen("home")} onLogin={()=>setShowLogin(true)}/>;
+    if(screen==="btv"        && canDoPublic("btv"))        return <BtvLinksScreen onBack={()=>setScreen("home")}/>;
+    if(screen==="heimspiel"  && canDoPublic("heimspiel"))  return <HeimspielwocheScreen onBack={()=>setScreen("home")} profile={guestProfile}/>;
+    return <HomeScreen profile={guestProfile} canDo={canDoPublic} isGuest
+      onGoBooking={()=>setShowLogin(true)} onGoKasse={()=>setShowLogin(true)}
+      onGoSettings={()=>setShowLogin(true)} onGoKassenbuch={()=>setShowLogin(true)}
+      onGoClubstream={()=>setScreen("clubstream")} onGoBtv={()=>setScreen("btv")}
+      onGoHeimspiele={()=>setScreen("heimspiel")} onLogin={()=>setShowLogin(true)}/>;
+  }
   if(!profile) return <Loading msg="Lade Profil…"/>;
 
   if(screen==="booking"    && canDo("booking"))       return <BookingApp     profile={profile} perms={permissions} onBack={()=>setScreen("home")}/>;
@@ -332,7 +355,7 @@ function BtvLinksScreen({onBack}) {
 // ═══════════════════════════════════════════════════════════════════════════
 // HOME SCREEN
 // ═══════════════════════════════════════════════════════════════════════════
-function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassenbuch,onGoClubstream,onGoBtv,onGoHeimspiele}) {
+function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassenbuch,onGoClubstream,onGoBtv,onGoHeimspiele,isGuest=false,onLogin}) {
   const [nextBookings,setNextBookings] = useState([]);
   const [openLog,setOpenLog]           = useState([]);
   const [openTotal,setOpenTotal]       = useState(0);
@@ -340,10 +363,10 @@ function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassen
   const [heimspielCount,setHeimspielCount] = useState(0);
   useEffect(()=>{
     // next 2 bookings – nur reguläre Einzelbuchungen
-    sb.from("bookings").select("*,courts(name,surface)").eq("user_id",profile.id).eq("type","regular").gte("date",today()).order("date").order("slot").limit(1)
+    if(profile.id) sb.from("bookings").select("*,courts(name,surface)").eq("user_id",profile.id).eq("type","regular").gte("date",today()).order("date").order("slot").limit(1)
       .then(({data})=>setNextBookings(data||[]));
     // open kasse items
-    sb.from("kasse_log").select("*").eq("user_id",profile.id).eq("paid",false)
+    if(profile.id) sb.from("kasse_log").select("*").eq("user_id",profile.id).eq("paid",false)
       .then(({data})=>{ setOpenLog(data||[]); setOpenTotal((data||[]).reduce((s,l)=>s+l.price,0)); });
     // btv team links
     sb.from("settings").select("value").eq("key","btv_teams_config").single()
@@ -376,11 +399,14 @@ function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassen
           <h1 style={H.title}>Tennis Herrieden</h1>
           <p style={H.greeting}>Hallo, {profile.name} 👋</p>
           {(()=>{
-            const badges={admin:{icon:"👑",label:"Administrator",color:"#8B5CF6",bg:"#8B5CF618"},member2:{icon:"⭐",label:"Mitglied Plus",color:"#3B82F6",bg:"#3B82F618"},member:{icon:"🎾",label:"Mitglied",color:"#22C55E",bg:"#22C55E18"},pending:{icon:"⏳",label:"Ausstehend",color:"#F59E0B",bg:"#F59E0B18"}};
+            const badges={admin:{icon:"👑",label:"Administrator",color:"#8B5CF6",bg:"#8B5CF618"},member2:{icon:"⭐",label:"Mitglied Plus",color:"#3B82F6",bg:"#3B82F618"},member:{icon:"🎾",label:"Mitglied",color:"#22C55E",bg:"#22C55E18"},known:{icon:"🤝",label:"Tennisfreund",color:"#F59E0B",bg:"#F59E0B18"},pending:{icon:"🤝",label:"Tennisfreund",color:"#F59E0B",bg:"#F59E0B18"},public:{icon:"👋",label:"Gast",color:"#64748B",bg:"#64748B18"}};
             const b=badges[profile.role]||badges.pending;
-            return <div style={{display:"inline-flex",alignItems:"center",gap:5,marginTop:6,padding:"3px 10px",borderRadius:20,background:b.bg,border:`1px solid ${b.color}44`}}>
-              <span style={{fontSize:12}}>{b.icon}</span>
-              <span style={{fontSize:11,fontWeight:700,color:b.color,letterSpacing:.4}}>{b.label}</span>
+            return <div style={{display:"flex",flexDirection:"column",alignItems:"flex-start",gap:6,marginTop:6}}>
+              <div style={{display:"inline-flex",alignItems:"center",gap:5,padding:"3px 10px",borderRadius:20,background:b.bg,border:`1px solid ${b.color}44`}}>
+                <span style={{fontSize:12}}>{b.icon}</span>
+                <span style={{fontSize:11,fontWeight:700,color:b.color,letterSpacing:.4}}>{b.label}</span>
+              </div>
+              {isGuest&&<button onClick={onLogin} style={{fontSize:12,fontWeight:700,padding:"5px 14px",borderRadius:20,border:"1px solid #22C55E44",background:"#22C55E18",color:"#4ADE80",cursor:"pointer"}}>→ Anmelden / Registrieren</button>}
             </div>;
           })()}
         </div>
@@ -1921,6 +1947,7 @@ function SettingsMembersTab({onToast}) {
                     <select value={m.role||"pending"} disabled={saving===m.id} onChange={e=>changeRole(m.id,e.target.value)}
                       style={{border:`1.5px solid ${c.border}`,borderRadius:20,padding:"4px 8px",fontSize:11,fontWeight:700,cursor:"pointer",background:c.bg,color:c.color,width:"100%",maxWidth:140}}>
                       <option value="pending">⏳ Ausstehend</option>
+                      <option value="known">🤝 Bekannt</option>
                       <option value="member">Mitglied</option>
                       <option value="member2">Mitglied Plus</option>
                       <option value="admin">Administrator</option>
@@ -1965,12 +1992,13 @@ function SettingsPermissionsTab({onToast}) {
     else onToast("Berechtigungen gespeichert ✓");
   };
 
-  const roleColors={pending:"#F59E0B",member:"#22C55E",member2:"#3B82F6",admin:"#8B5CF6"};
+  const roleColors={public:"#94A3B8",pending:"#F59E0B",known:"#F59E0B",member:"#22C55E",member2:"#3B82F6",admin:"#8B5CF6"};
+  const roleLabels={public:"Öffentlich",pending:"Ausstehend",known:"Bekannt",member:"Mitglied",member2:"Mitglied+",admin:"Admin"};
 
   return (
     <div style={K.page}>
       <h1 style={S.pageTitle}>Berechtigungen</h1>
-      <p style={S.pageSub}>Welche Rollen dürfen welche Module nutzen?</p>
+      <p style={S.pageSub}>Welche Rollen dürfen welche Module nutzen? Admin hat immer Zugriff.</p>
 
       {[
         {title:"Hauptmodule",    mods:MODULES},
@@ -1978,38 +2006,36 @@ function SettingsPermissionsTab({onToast}) {
       ].map(({title,mods})=>(
         <div key={title} style={{overflowX:"auto",marginTop:20}}>
           <div style={{fontSize:11,fontWeight:700,color:"#94A3B8",textTransform:"uppercase",letterSpacing:.7,marginBottom:6}}>{title}</div>
-          <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
             <thead>
               <tr>
-                <th style={{textAlign:"left",padding:"8px 12px",color:"#94A3B8",fontWeight:700,fontSize:11,textTransform:"uppercase",letterSpacing:.7}}>Modul</th>
-                {ROLES.map(r=>(
-                  <th key={r} style={{padding:"8px 10px",color:roleColors[r],fontWeight:700,fontSize:11,textTransform:"uppercase",letterSpacing:.7,textAlign:"center",whiteSpace:"nowrap"}}>
-                    {ROLE_LABELS[r]}
+                <th style={{textAlign:"left",padding:"8px 10px",color:"#94A3B8",fontWeight:700,fontSize:11,textTransform:"uppercase",letterSpacing:.7}}>Modul</th>
+                {PERM_ROLES.map(r=>(
+                  <th key={r} style={{padding:"6px 8px",color:roleColors[r],fontWeight:700,fontSize:10,textTransform:"uppercase",letterSpacing:.5,textAlign:"center",whiteSpace:"nowrap"}}>
+                    {roleLabels[r]}
                   </th>
                 ))}
+                <th style={{padding:"6px 8px",color:"#8B5CF6",fontWeight:700,fontSize:10,textTransform:"uppercase",letterSpacing:.5,textAlign:"center"}}>Admin</th>
               </tr>
             </thead>
             <tbody>
               {mods.map((mod,i)=>(
                 <tr key={mod.id} style={{background:i%2===0?"#1E293B":"#162032"}}>
-                  <td style={{padding:"10px 12px",fontWeight:600,color:"#F1F5F9"}}>
-                    <span style={{marginRight:6}}>{mod.icon}</span>{mod.label}
+                  <td style={{padding:"10px 10px",fontWeight:600,color:"#F1F5F9",whiteSpace:"nowrap"}}>
+                    <span style={{marginRight:5}}>{mod.icon}</span>{mod.label}
                   </td>
-                  {ROLES.map(role=>{
-                    const isAdminRole = role==="admin";
-                    const checked = isAdminRole || (perms[mod.id]||[]).includes(role);
+                  {PERM_ROLES.map(role=>{
+                    const checked = (perms[mod.id]||[]).includes(role);
                     return (
-                      <td key={role} style={{textAlign:"center",padding:"10px 10px"}}>
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          disabled={isAdminRole}
-                          onChange={()=>toggle(mod.id,role)}
-                          style={{width:16,height:16,accentColor:roleColors[role],cursor:isAdminRole?"default":"pointer"}}
-                        />
+                      <td key={role} style={{textAlign:"center",padding:"10px 8px"}}>
+                        <input type="checkbox" checked={checked} onChange={()=>toggle(mod.id,role)}
+                          style={{width:15,height:15,accentColor:roleColors[role],cursor:"pointer"}}/>
                       </td>
                     );
                   })}
+                  <td style={{textAlign:"center",padding:"10px 8px"}}>
+                    <input type="checkbox" checked disabled style={{width:15,height:15,accentColor:"#8B5CF6"}}/>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -4237,7 +4263,7 @@ function AdminView({data,allBookings,guestFee,onSaveGuestFee,onAddCourt,onUpdate
         {supaUsers.map(u=>(<div key={u.id} style={{...S.card,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
           <div style={{display:"flex",alignItems:"center",gap:12}}><Av name={u.name}/><div><div style={{fontWeight:700,fontSize:14}}>{u.name}</div><div style={{fontSize:12,color:"#6B7280",marginTop:2}}>{u.email||"–"}</div><span style={{fontSize:11,padding:"2px 8px",borderRadius:20,background:"#F3F4F6",color:"#374151",fontWeight:600,marginTop:4,display:"inline-block"}}>{ROLE_LABELS[u.role]}</span></div></div>
           <div style={{display:"flex",gap:8,alignItems:"center",flexShrink:0}}>
-            <select value={u.role} onChange={e=>updateRole(u.id,e.target.value)} style={{...S.input,width:"auto",padding:"6px 10px",fontSize:12,borderColor:u.role==="pending"?"#F59E0B":"#334155"}}><option value="pending">Ausstehend</option><option value="member">Mitglied</option><option value="member2">Mitglied Plus</option><option value="admin">Administrator</option></select>
+            <select value={u.role} onChange={e=>updateRole(u.id,e.target.value)} style={{...S.input,width:"auto",padding:"6px 10px",fontSize:12,borderColor:["pending","known"].includes(u.role)?"#F59E0B":"#334155"}}><option value="pending">⏳ Ausstehend</option><option value="known">🤝 Bekannt</option><option value="member">🎾 Mitglied</option><option value="member2">⭐ Mitglied Plus</option><option value="admin">👑 Administrator</option></select>
             <button style={S.cancelBtn} onClick={()=>{if(window.confirm(`${u.name} wirklich löschen?`))deleteUser(u.id);}}>Löschen</button>
           </div>
         </div>))}
