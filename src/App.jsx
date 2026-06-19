@@ -453,7 +453,7 @@ function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassen
               <span style={H.navTileSub}>Einnahmen & Ausgaben</span>
             </button>
           )}
-          {canDo("einstellungen")&&(
+          {profile.role==="admin"&&(
             <button style={{...H.navTile,borderColor:"#8B5CF633",gridColumn:"1 / -1"}} onClick={onGoSettings}>
               <span style={{fontSize:28}}>⚙️</span>
               <span style={H.navTileLabel}>Einstellungen</span>
