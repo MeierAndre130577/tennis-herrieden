@@ -1576,8 +1576,10 @@ function SettingsMembersTab({onToast}) {
 
   const changeRole=async(uid,role)=>{
     setSaving(uid);
-    await sb.from("profiles").update({role}).eq("id",uid);
-    setSaving(null); onToast("Rolle aktualisiert ✓"); load();
+    const {error}=await sb.rpc("admin_set_role",{target_user_id:uid,new_role:role});
+    setSaving(null);
+    if(error) onToast("Fehler: "+error.message,"error");
+    else { onToast("Rolle aktualisiert ✓"); load(); }
   };
   const deleteMember=async(uid,mname)=>{
     if(!window.confirm(`Mitglied „${mname}" und alle Buchungen wirklich löschen?`)) return;
