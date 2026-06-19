@@ -620,6 +620,8 @@ function ClubstreamApp({profile,onBack}) {
   const [detail,setDetail]       = useState(null);
   const [typeFilter,setTypeFilter] = useState(null);
   const [lightbox,setLightbox]   = useState(null);
+  const [photoIdx,setPhotoIdx]   = useState(0);
+  const touchStartX              = React.useRef(null);
 
   useEffect(()=>{
     setLoading(true);
@@ -717,23 +719,71 @@ function ClubstreamApp({profile,onBack}) {
           </div>
         )}
 
-        {/* Foto-Raster */}
+        {/* Foto-Karussell */}
         {typeFilter==="__fotos__"?(
           photos.length===0?(
             <div style={{background:"#1E293B",border:"1.5px solid #334155",borderRadius:14,padding:"32px 14px",textAlign:"center"}}>
               <span style={{fontSize:32}}>🖼️</span>
               <p style={{color:"#475569",fontSize:13,marginTop:8}}>Noch keine Fotos hochgeladen</p>
             </div>
-          ):(
-            <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8}}>
-              {photos.map(p=>(
-                <div key={p.id} onClick={()=>setLightbox(p)} style={{borderRadius:12,overflow:"hidden",cursor:"pointer",background:"#1E293B",border:"1.5px solid #EC489922"}}>
-                  <img src={p.url} alt={p.caption||""} style={{width:"100%",height:130,objectFit:"cover",display:"block"}}/>
-                  {p.caption&&<div style={{padding:"6px 8px",fontSize:11,color:"#94A3B8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.caption}</div>}
+          ):(()=>{
+            const cur = photos[photoIdx] || photos[0];
+            const prev = ()=>setPhotoIdx(i=>Math.max(0,i-1));
+            const next = ()=>setPhotoIdx(i=>Math.min(photos.length-1,i+1));
+            return (
+              <div>
+                {/* Großes Foto */}
+                <div
+                  style={{position:"relative",borderRadius:16,overflow:"hidden",background:"#0F172A",border:"1.5px solid #EC489933"}}
+                  onTouchStart={e=>{ touchStartX.current=e.touches[0].clientX; }}
+                  onTouchEnd={e=>{ const dx=e.changedTouches[0].clientX-(touchStartX.current||0); if(dx>50)prev(); else if(dx<-50)next(); }}
+                >
+                  <img
+                    src={cur.url} alt={cur.caption||""}
+                    style={{width:"100%",height:280,objectFit:"cover",display:"block",transition:"opacity .2s"}}
+                    onClick={()=>setLightbox(cur)}
+                  />
+                  {/* Pfeile */}
+                  {photoIdx>0&&(
+                    <button onClick={prev} style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",background:"#00000088",border:"none",color:"#fff",fontSize:20,borderRadius:"50%",width:36,height:36,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>‹</button>
+                  )}
+                  {photoIdx<photos.length-1&&(
+                    <button onClick={next} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"#00000088",border:"none",color:"#fff",fontSize:20,borderRadius:"50%",width:36,height:36,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>›</button>
+                  )}
+                  {/* Zähler */}
+                  <div style={{position:"absolute",bottom:10,right:12,background:"#00000088",borderRadius:20,padding:"2px 8px",fontSize:11,color:"#fff",fontWeight:700}}>
+                    {photoIdx+1} / {photos.length}
+                  </div>
                 </div>
-              ))}
-            </div>
-          )
+                {/* Caption */}
+                {cur.caption&&(
+                  <div style={{marginTop:8,fontSize:13,color:"#94A3B8",textAlign:"center",padding:"0 4px"}}>{cur.caption}</div>
+                )}
+                {/* Datum */}
+                <div style={{marginTop:4,fontSize:11,color:"#475569",textAlign:"center"}}>
+                  {new Date(cur.created_at).toLocaleDateString("de-DE",{day:"numeric",month:"long",year:"numeric"})}
+                </div>
+                {/* Punkte-Navigation */}
+                <div style={{display:"flex",justifyContent:"center",gap:5,marginTop:12,flexWrap:"wrap"}}>
+                  {photos.map((_,i)=>(
+                    <button key={i} onClick={()=>setPhotoIdx(i)}
+                      style={{width:i===photoIdx?20:8,height:8,borderRadius:4,background:i===photoIdx?"#EC4899":"#334155",border:"none",cursor:"pointer",padding:0,transition:"width .2s"}}
+                    />
+                  ))}
+                </div>
+                {/* Thumbnail-Streifen */}
+                <div style={{display:"flex",gap:6,overflowX:"auto",marginTop:12,paddingBottom:4}}>
+                  {photos.map((p,i)=>(
+                    <div key={p.id} onClick={()=>setPhotoIdx(i)}
+                      style={{flexShrink:0,width:64,height:64,borderRadius:8,overflow:"hidden",cursor:"pointer",border:`2px solid ${i===photoIdx?"#EC4899":"transparent"}`,opacity:i===photoIdx?1:.6,transition:"all .15s"}}
+                    >
+                      <img src={p.url} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()
         ):(
 
         /* Liste */
