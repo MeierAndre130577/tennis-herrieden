@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, Fragment } from "react";
+import { useState, useEffect, useCallback, Fragment, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL  = import.meta.env.VITE_SUPABASE_URL  || "https://irszeiamvwyrntyauury.supabase.co";
@@ -621,7 +621,7 @@ function ClubstreamApp({profile,onBack}) {
   const [typeFilter,setTypeFilter] = useState(null);
   const [lightbox,setLightbox]   = useState(null);
   const [photoIdx,setPhotoIdx]   = useState(0);
-  const touchStartX              = React.useRef(null);
+  const touchStartX              = useRef(null);
 
   useEffect(()=>{
     setLoading(true);
