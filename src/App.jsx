@@ -355,7 +355,7 @@ function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassen
         <div style={H.header}>
           <TennisBall size={52}/>
           <h1 style={H.title}>Tennis Herrieden</h1>
-          <p style={H.greeting}>Hallo, {profile.name} 👋</p>
+          <p style={H.greeting}>Hallo, {profile.name} 👋 [{profile.role}]</p>
         </div>
 
         {/* ── Widgets ── */}
