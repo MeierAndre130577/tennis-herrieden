@@ -614,10 +614,12 @@ function ClubstreamDetail({item,onBack}) {
 
 function ClubstreamApp({profile,onBack}) {
   const [items,setItems]         = useState([]);
+  const [photos,setPhotos]       = useState([]);
   const [pending,setPending]     = useState(0);
   const [loading,setLoading]     = useState(true);
   const [detail,setDetail]       = useState(null);
   const [typeFilter,setTypeFilter] = useState(null);
+  const [lightbox,setLightbox]   = useState(null);
 
   useEffect(()=>{
     setLoading(true);
@@ -630,9 +632,11 @@ function ClubstreamApp({profile,onBack}) {
         .order("published_at",{ascending:false})
         .limit(60),
       sb.from("news_items").select("*",{count:"exact",head:true}).eq("status","pending_review").is("deleted_at",null),
-    ]).then(([{data:news,error},{count}])=>{
+      sb.from("club_photos").select("id,url,caption,created_at").order("created_at",{ascending:false}).limit(200),
+    ]).then(([{data:news,error},{count},{data:pics}])=>{
       if(!error) setItems(news||[]);
       setPending(count||0);
+      setPhotos(pics||[]);
       setLoading(false);
     });
   },[]);
@@ -641,7 +645,7 @@ function ClubstreamApp({profile,onBack}) {
 
   // Typen die tatsächlich in den Daten vorkommen, für Filter-Pills
   const availableTypes = [...new Set(items.map(i=>i.type))];
-  const filtered = typeFilter ? items.filter(i=>i.type===typeFilter) : items;
+  const filtered = (typeFilter && typeFilter!=="__fotos__") ? items.filter(i=>i.type===typeFilter) : items;
 
   return (
     <div style={H.wrap}>
@@ -675,7 +679,7 @@ function ClubstreamApp({profile,onBack}) {
         </div>
 
         {/* Filter-Pills */}
-        {!loading&&availableTypes.length>1&&(
+        {!loading&&(
           <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:2}}>
             <button
               onClick={()=>setTypeFilter(null)}
@@ -693,11 +697,47 @@ function ClubstreamApp({profile,onBack}) {
                 </button>
               );
             })}
+            {photos.length>0&&(
+              <button
+                onClick={()=>setTypeFilter(typeFilter==="__fotos__"?null:"__fotos__")}
+                style={{flexShrink:0,fontSize:11,fontWeight:700,padding:"4px 12px",borderRadius:20,border:"1.5px solid #EC489944",cursor:"pointer",background:typeFilter==="__fotos__"?"#EC489933":"transparent",color:typeFilter==="__fotos__"?"#F472B6":"#64748B"}}
+              >
+                🖼️ Fotos ({photos.length})
+              </button>
+            )}
           </div>
         )}
 
-        {/* Liste */}
-        {loading?(
+        {/* Foto-Lightbox */}
+        {lightbox&&(
+          <div onClick={()=>setLightbox(null)} style={{position:"fixed",inset:0,background:"#000000CC",zIndex:1000,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:16}}>
+            <img src={lightbox.url} alt={lightbox.caption||""} style={{maxWidth:"100%",maxHeight:"80vh",borderRadius:10,objectFit:"contain"}} onClick={e=>e.stopPropagation()}/>
+            {lightbox.caption&&<p style={{color:"#F1F5F9",fontSize:13,marginTop:12,textAlign:"center",maxWidth:400}}>{lightbox.caption}</p>}
+            <button onClick={()=>setLightbox(null)} style={{marginTop:16,color:"#94A3B8",fontSize:12,background:"none",border:"none",cursor:"pointer"}}>✕ Schließen</button>
+          </div>
+        )}
+
+        {/* Foto-Raster */}
+        {typeFilter==="__fotos__"?(
+          photos.length===0?(
+            <div style={{background:"#1E293B",border:"1.5px solid #334155",borderRadius:14,padding:"32px 14px",textAlign:"center"}}>
+              <span style={{fontSize:32}}>🖼️</span>
+              <p style={{color:"#475569",fontSize:13,marginTop:8}}>Noch keine Fotos hochgeladen</p>
+            </div>
+          ):(
+            <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8}}>
+              {photos.map(p=>(
+                <div key={p.id} onClick={()=>setLightbox(p)} style={{borderRadius:12,overflow:"hidden",cursor:"pointer",background:"#1E293B",border:"1.5px solid #EC489922"}}>
+                  <img src={p.url} alt={p.caption||""} style={{width:"100%",height:130,objectFit:"cover",display:"block"}}/>
+                  {p.caption&&<div style={{padding:"6px 8px",fontSize:11,color:"#94A3B8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.caption}</div>}
+                </div>
+              ))}
+            </div>
+          )
+        ):(
+
+        /* Liste */
+        loading?(
           <div style={{display:"flex",flexDirection:"column",gap:10}}>
             {[1,2,3].map(i=>(
               <div key={i} style={{background:"#1E293B",border:"1.5px solid #334155",borderRadius:14,height:72,opacity:.4}}/>
@@ -755,7 +795,7 @@ function ClubstreamApp({profile,onBack}) {
               );
             })}
           </div>
-        )}
+        ))}
 
         {/* Pending-Hinweis */}
         {pending>0&&(
