@@ -1696,6 +1696,33 @@ function SettingsApp({profile,onBack}) {
   const [toast,setToast]   = useState(null);
   const showToast=(msg,type="success")=>{ setToast({msg,type}); setTimeout(()=>setToast(null),2800); };
 
+  const [betriebOpen,setBetriebOpen] = useState(()=>{
+    try { return JSON.parse(localStorage.getItem("betrieb_sections")||'{"booking":true,"courts":true,"jobs":false}'); }
+    catch { return {booking:true,courts:true,jobs:false}; }
+  });
+  const toggleSection=(key)=>setBetriebOpen(prev=>{
+    const next={...prev,[key]:!prev[key]};
+    localStorage.setItem("betrieb_sections",JSON.stringify(next));
+    return next;
+  });
+  const BetriebSection=({sectionKey,icon,label,children})=>(
+    <div style={{marginBottom:4}}>
+      <button onClick={()=>toggleSection(sectionKey)}
+        style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"12px 16px",
+          background:"#1E293B",border:"1.5px solid #334155",borderRadius:betriebOpen[sectionKey]?"10px 10px 0 0":"10px",
+          cursor:"pointer",color:"#F1F5F9",textAlign:"left"}}>
+        <span style={{fontSize:16}}>{icon}</span>
+        <span style={{flex:1,fontWeight:700,fontSize:14}}>{label}</span>
+        <span style={{fontSize:12,color:"#64748B"}}>{betriebOpen[sectionKey]?"▲":"▼"}</span>
+      </button>
+      {betriebOpen[sectionKey]&&(
+        <div style={{border:"1.5px solid #334155",borderTop:"none",borderRadius:"0 0 10px 10px",overflow:"hidden"}}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
+
   const tabs=[
     {id:"betrieb",      label:"Betrieb",        icon:"⚙️"},
     {id:"members",      label:"Mitglieder",     icon:"👤"},
@@ -1733,7 +1760,11 @@ function SettingsApp({profile,onBack}) {
             <span style={{width:80}}/>
           </div>
 
-          {tab==="betrieb"      &&<><SettingsBookingTab onToast={showToast}/><SettingsCourtsTab onToast={showToast}/><SettingsJobsTab/></>}
+          {tab==="betrieb"      &&<div style={{padding:"16px"}}>
+            <BetriebSection sectionKey="booking" icon="📅" label="Buchung"><SettingsBookingTab onToast={showToast}/></BetriebSection>
+            <BetriebSection sectionKey="courts"  icon="🎾" label="Plätze"><SettingsCourtsTab  onToast={showToast}/></BetriebSection>
+            <BetriebSection sectionKey="jobs"    icon="⚡" label="Hintergrund"><SettingsJobsTab/></BetriebSection>
+          </div>}
           {tab==="members"      &&<SettingsMembersTab      onToast={showToast}/>}
           {tab==="permissions"  &&<SettingsPermissionsTab  onToast={showToast}/>}
           {tab==="display"      &&<SettingsDisplayTab      onToast={showToast}/>}
@@ -1775,10 +1806,7 @@ function SettingsBookingTab({onToast}) {
 
   return (
     <div style={K.page}>
-      <h1 style={S.pageTitle}>Buchungseinstellungen</h1>
-      <p style={S.pageSub}>Übergreifende Parameter für das Buchungssystem</p>
-
-      <div style={{...S.card,borderLeft:"4px solid #8B5CF6",marginTop:20}}>
+      <div style={{...S.card,borderLeft:"4px solid #8B5CF6",marginTop:4}}>
         <div style={{fontWeight:700,fontSize:15,marginBottom:4}}>Gästegebühr</div>
         <div style={{fontSize:13,color:"#6B7280",marginBottom:16}}>Betrag pro Buchung mit Gastspieler – wird am Jahresende abgerechnet</div>
         <div style={{display:"flex",alignItems:"flex-end",gap:12}}>
@@ -1822,8 +1850,7 @@ function SettingsCourtsTab({onToast}) {
 
   return (
     <div style={K.page}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
-        <div><h1 style={S.pageTitle}>Platzverwaltung</h1><p style={S.pageSub}>Tennisplätze anlegen und bearbeiten</p></div>
+      <div style={{display:"flex",justifyContent:"flex-end",marginBottom:16}}>
         <button style={{...S.primaryBtn,background:"#8B5CF6"}} onClick={openAdd}>+ Hinzufügen</button>
       </div>
 
@@ -3112,10 +3139,6 @@ function SettingsJobsTab() {
 
   return (
     <div style={{padding:"24px 20px",maxWidth:680}}>
-      <div style={{fontWeight:800,fontSize:17,color:"#111827",marginBottom:4}}>Hintergrund-Jobs</div>
-      <p style={{fontSize:13,color:"#6B7280",marginBottom:20,lineHeight:1.6}}>
-        Automatische Prozesse die Daten vom BTV holen und in der Datenbank speichern.
-      </p>
 
       {jobs.map(job=>(
         <div key={job.name} style={{marginBottom:16,padding:"14px 16px",background:"#fff",
