@@ -627,6 +627,7 @@ function ClubstreamApp({profile,onBack}) {
   const [pendingFile,setPendingFile] = useState(null);
   const [pendingCaption,setPendingCaption] = useState("");
   const lbTouchX                     = useRef(null);
+  const lbSwiped                     = useRef(false);
   const kwTouchX                     = useRef(null);
   const fileInputRef                 = useRef(null);
 
@@ -766,9 +767,9 @@ function ClubstreamApp({profile,onBack}) {
         {lbPhotos.length>0&&(
           <div
             style={{position:"fixed",inset:0,background:"#000000EE",zIndex:1000,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:16}}
-            onClick={()=>setLbPhotos([])}
-            onTouchStart={e=>lbTouchX.current=e.touches[0].clientX}
-            onTouchEnd={e=>{const dx=e.changedTouches[0].clientX-(lbTouchX.current||0);if(dx>50&&lbIdx>0)setLbIdx(i=>i-1);else if(dx<-50&&lbIdx<lbPhotos.length-1)setLbIdx(i=>i+1);}}
+            onClick={()=>{if(!lbSwiped.current)setLbPhotos([]);}}
+            onTouchStart={e=>{lbTouchX.current=e.touches[0].clientX;lbSwiped.current=false;}}
+            onTouchEnd={e=>{const dx=e.changedTouches[0].clientX-(lbTouchX.current||0);if(Math.abs(dx)>30){lbSwiped.current=true;if(dx>0&&lbIdx>0)setLbIdx(i=>i-1);else if(dx<0&&lbIdx<lbPhotos.length-1)setLbIdx(i=>i+1);}}}
           >
             <img src={lbPhotos[lbIdx]?.image_url||lbPhotos[lbIdx]?.url} alt={lbPhotos[lbIdx]?.caption||""}
               style={{maxWidth:"100%",maxHeight:"78vh",borderRadius:10,objectFit:"contain"}}
