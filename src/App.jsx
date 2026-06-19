@@ -716,9 +716,13 @@ function ClubstreamApp({profile,onBack}) {
               const label = CS_LABELS[item.type]||item.type;
               return (
                 <div key={item.id}
-                  style={{background:"#1E293B",border:`1.5px solid ${color}33`,borderRadius:14,padding:"12px 14px",cursor:"pointer"}}
+                  style={{background:"#1E293B",border:`1.5px solid ${color}33`,borderRadius:14,overflow:"hidden",cursor:"pointer"}}
                   onClick={()=>setDetail(item)}
                 >
+                  {item.image_url&&(
+                    <img src={item.image_url} alt="" style={{width:"100%",height:160,objectFit:"cover",display:"block"}}/>
+                  )}
+                  <div style={{padding:"12px 14px"}}>
                   <div style={{display:"flex",alignItems:"flex-start",gap:10}}>
                     <span style={{fontSize:20,lineHeight:1.2,flexShrink:0}}>{icon}</span>
                     <div style={{flex:1,minWidth:0}}>
@@ -746,6 +750,7 @@ function ClubstreamApp({profile,onBack}) {
                       {item.event_location&&<span style={{color:"#64748B",fontWeight:400}}> · 📍 {item.event_location}</span>}
                     </div>
                   )}
+                  </div>
                 </div>
               );
             })}
