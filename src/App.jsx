@@ -621,7 +621,10 @@ function ClubstreamApp({profile,onBack}) {
   const [typeFilter,setTypeFilter] = useState(null);
   const [lightbox,setLightbox]   = useState(null);
   const [photoIdx,setPhotoIdx]   = useState(0);
+  const [uploading,setUploading] = useState(false);
+  const [uploadErr,setUploadErr] = useState(null);
   const touchStartX              = useRef(null);
+  const fileInputRef             = useRef(null);
 
   useEffect(()=>{
     setLoading(true);
@@ -645,9 +648,31 @@ function ClubstreamApp({profile,onBack}) {
 
   if(detail) return <ClubstreamDetail item={detail} onBack={()=>setDetail(null)}/>;
 
+  const uploadPhoto = async (file) => {
+    setUploading(true); setUploadErr(null);
+    try {
+      const ext  = file.name.split(".").pop();
+      const path = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const {error:upErr} = await sb.storage.from("club-photos").upload(path, file, {contentType: file.type});
+      if(upErr) throw upErr;
+      const {data:{publicUrl}} = sb.storage.from("club-photos").getPublicUrl(path);
+      const {error:insErr} = await sb.from("club_photos").insert({image_url: publicUrl, user_id: profile.id});
+      if(insErr) throw insErr;
+      const {data:newPhotos} = await sb.from("club_photos").select("id,url,image_url,caption,created_at").order("created_at",{ascending:false}).limit(200);
+      setPhotos(newPhotos||[]);
+      setPhotoIdx(0);
+    } catch(e) { setUploadErr(e.message||"Fehler beim Upload"); }
+    setUploading(false);
+  };
+
   // Typen die tatsächlich in den Daten vorkommen, für Filter-Pills
   const availableTypes = [...new Set(items.map(i=>i.type))];
-  const filtered = (typeFilter && typeFilter!=="__fotos__") ? items.filter(i=>i.type===typeFilter) : items;
+  const allPhotos = photos.filter(p=>p.image_url||p.url);
+  const filtered = typeFilter && typeFilter!=="__fotos__"
+    ? items.filter(i=>i.type===typeFilter)
+    : typeFilter===null
+      ? [...items, ...allPhotos.map(p=>({...p,_isPhoto:true,published_at:p.created_at}))].sort((a,b)=>new Date(b.published_at)-new Date(a.published_at))
+      : items;
 
   return (
     <div style={H.wrap}>
@@ -781,6 +806,13 @@ function ClubstreamApp({profile,onBack}) {
                     </div>
                   ))}
                 </div>
+                {/* Upload */}
+                <input ref={fileInputRef} type="file" accept="image/*" style={{display:"none"}} onChange={e=>{if(e.target.files[0])uploadPhoto(e.target.files[0]);}}/>
+                {uploadErr&&<div style={{marginTop:8,fontSize:12,color:"#EF4444",textAlign:"center"}}>{uploadErr}</div>}
+                <button onClick={()=>fileInputRef.current.click()} disabled={uploading}
+                  style={{marginTop:14,width:"100%",padding:"10px",borderRadius:12,border:"1.5px dashed #EC489966",background:"#EC489908",color:"#F472B6",fontSize:13,fontWeight:700,cursor:uploading?"wait":"pointer"}}>
+                  {uploading?"⏳ Wird hochgeladen…":"📷 Foto hochladen"}
+                </button>
               </div>
             );
           })()
@@ -801,6 +833,22 @@ function ClubstreamApp({profile,onBack}) {
         ):(
           <div style={{display:"flex",flexDirection:"column",gap:10}}>
             {filtered.map(item=>{
+              if(item._isPhoto) {
+                const src = item.image_url||item.url;
+                return (
+                  <div key={item.id} style={{background:"#1E293B",border:"1.5px solid #EC489933",borderRadius:14,overflow:"hidden",cursor:"pointer"}} onClick={()=>setLightbox(item)}>
+                    {src&&<img src={src} alt={item.caption||""} style={{width:"100%",height:200,objectFit:"cover",display:"block"}}/>}
+                    <div style={{padding:"10px 14px",display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{fontSize:18}}>🖼️</span>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:10,fontWeight:700,color:"#EC4899",textTransform:"uppercase",letterSpacing:.7,marginBottom:2}}>Foto</div>
+                        {item.caption&&<div style={{fontSize:13,color:"#CBD5E1",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.caption}</div>}
+                      </div>
+                      <div style={{fontSize:11,color:"#475569",flexShrink:0}}>{csTimeAgo(item.created_at)}</div>
+                    </div>
+                  </div>
+                );
+              }
               const color = CS_COLORS[item.type]||"#94A3B8";
               const icon  = CS_ICONS[item.type]||"📰";
               const label = CS_LABELS[item.type]||item.type;
@@ -809,7 +857,7 @@ function ClubstreamApp({profile,onBack}) {
                   style={{background:"#1E293B",border:`1.5px solid ${color}33`,borderRadius:14,overflow:"hidden",cursor:"pointer"}}
                   onClick={()=>setDetail(item)}
                 >
-                  {item.image_url&&(
+                  {item.image_url&&!item._isPhoto&&(
                     <img src={item.image_url} alt="" style={{width:"100%",height:160,objectFit:"cover",display:"block"}}/>
                   )}
                   <div style={{padding:"12px 14px"}}>
