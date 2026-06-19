@@ -1,4 +1,3 @@
-// v2
 import { useState, useEffect, useCallback, Fragment } from "react";
 import { createClient } from "@supabase/supabase-js";
 
@@ -355,7 +354,7 @@ function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassen
         <div style={H.header}>
           <TennisBall size={52}/>
           <h1 style={H.title}>Tennis Herrieden</h1>
-          <p style={H.greeting}>Hallo, {profile.name} 👋 [{profile.role}]</p>
+          <p style={H.greeting}>Hallo, {profile.name} 👋</p>
         </div>
 
         {/* ── Widgets ── */}
