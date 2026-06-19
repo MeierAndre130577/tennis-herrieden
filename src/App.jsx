@@ -58,6 +58,7 @@ function SharedDisplayEdit() {
 // ═══════════════════════════════════════════════════════════════════════════
 export default function App() {
   const shareParam = useState(()=>new URLSearchParams(window.location.search).get("share"))[0];
+  const isRecovery = useState(()=>window.location.hash.includes("type=recovery"))[0];
   const [shareValid, setShareValid] = useState(null); // null=prüft, true/false
   const [session,setSession]   = useState(undefined);
   const [profile,setProfile]   = useState(null);
@@ -93,6 +94,7 @@ export default function App() {
   if(shareParam && shareValid===null) return <Loading msg="Prüfe Link…"/>;
   if(shareParam && shareValid===true) return <SharedDisplayEdit/>;
   if(session===undefined) return <Loading msg="Verbinde mit Datenbank…"/>;
+  if(isRecovery || (session && isRecovery)) return <ResetPasswordScreen/>;
   if(!session) return <LoginScreen/>;
   if(!profile) return <Loading msg="Lade Profil…"/>;
 
@@ -3851,6 +3853,29 @@ function AdminView({data,allBookings,guestFee,onSaveGuestFee,onAddCourt,onUpdate
         <button style={{...S.primaryBtn,width:"100%",background:"#22C55E",color:"#fff",marginBottom:8}} onClick={()=>{onMarkPaid(confirmPay.userId);setConfirmPay(null);}}>✓ Als bezahlt markieren</button>
         <button style={{...S.ghostBtn,width:"100%"}} onClick={()=>setConfirmPay(null)}>Abbrechen</button>
       </div></div>)}
+    </div>
+  );
+}
+
+function ResetPasswordScreen() {
+  const [password,setPassword]=useState("");const [msg,setMsg]=useState(null);const [loading,setLoading]=useState(false);
+  const handle=async()=>{
+    setLoading(true);setMsg(null);
+    const {error}=await sb.auth.updateUser({password});
+    if(error)setMsg({text:error.message,type:"error"});
+    else{ setMsg({text:"Passwort gespeichert! Du wirst angemeldet…",type:"ok"}); setTimeout(()=>window.location.replace("/"),1500); }
+    setLoading(false);
+  };
+  return (
+    <div style={S.loginWrap}>
+      <div style={S.loginCard}>
+        <div style={{textAlign:"center",marginBottom:28}}><img src="/logo.png" alt="Tennis Herrieden" style={{width:64,height:64,objectFit:"contain",margin:"0 auto",display:"block"}}/><h1 style={{fontSize:22,fontWeight:800,letterSpacing:-.5,marginTop:12}}>Neues Passwort</h1></div>
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          <input type="password" placeholder="Neues Passwort" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handle()} style={S.input}/>
+          {msg&&<div style={{padding:"10px 12px",borderRadius:8,fontSize:13,background:msg.type==="error"?"#FEE2E2":"#DCFCE7",color:msg.type==="error"?"#991B1B":"#166534"}}>{msg.text}</div>}
+          <button style={{...S.primaryBtn,marginTop:4,opacity:loading?.6:1}} onClick={handle} disabled={loading}>{loading?"…":"Passwort speichern"}</button>
+        </div>
+      </div>
     </div>
   );
 }
