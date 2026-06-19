@@ -355,6 +355,14 @@ function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassen
           <TennisBall size={52}/>
           <h1 style={H.title}>Tennis Herrieden</h1>
           <p style={H.greeting}>Hallo, {profile.name} 👋</p>
+          {(()=>{
+            const badges={admin:{icon:"👑",label:"Administrator",color:"#8B5CF6",bg:"#8B5CF618"},member2:{icon:"⭐",label:"Mitglied Plus",color:"#3B82F6",bg:"#3B82F618"},member:{icon:"🎾",label:"Mitglied",color:"#22C55E",bg:"#22C55E18"},pending:{icon:"⏳",label:"Ausstehend",color:"#F59E0B",bg:"#F59E0B18"}};
+            const b=badges[profile.role]||badges.pending;
+            return <div style={{display:"inline-flex",alignItems:"center",gap:5,marginTop:6,padding:"3px 10px",borderRadius:20,background:b.bg,border:`1px solid ${b.color}44`}}>
+              <span style={{fontSize:12}}>{b.icon}</span>
+              <span style={{fontSize:11,fontWeight:700,color:b.color,letterSpacing:.4}}>{b.label}</span>
+            </div>;
+          })()}
         </div>
 
         {/* ── Widgets ── */}
