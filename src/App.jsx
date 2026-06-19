@@ -108,7 +108,8 @@ export default function App() {
   const [shareValid, setShareValid] = useState(null); // null=prüft, true/false
   const [session,setSession]       = useState(undefined);
   const [profile,setProfile]       = useState(null);
-  const [permissions,setPerms]     = useState(DEFAULT_PERMISSIONS);
+  const [permissions,setPerms]         = useState(DEFAULT_PERMISSIONS);
+  const [contentTypePerms,setContentTypePerms] = useState(DEFAULT_CONTENT_TYPE_PERMISSIONS);
   const [screen,setScreen]         = useState("home");
   const [showLogin,setShowLogin]   = useState(false);
 
@@ -138,6 +139,8 @@ export default function App() {
   useEffect(()=>{
     sb.from("settings").select("value").eq("key","role_permissions").single()
       .then(({data})=>{ try{ if(data?.value) setPerms({...DEFAULT_PERMISSIONS,...JSON.parse(data.value)}); }catch(_){} });
+    sb.from("settings").select("value").eq("key","content_type_permissions").single()
+      .then(({data})=>{ try{ if(data?.value) setContentTypePerms({...DEFAULT_CONTENT_TYPE_PERMISSIONS,...JSON.parse(data.value)}); }catch(_){} });
   },[]);
 
   useEffect(()=>{
@@ -164,7 +167,7 @@ export default function App() {
     const pubModules = MODULES.filter(m=>canDoPublic(m.id));
     if(pubModules.length===0) return <LoginScreen/>;
     // Öffentlich zugängliche Screens ohne Login
-    if(screen==="clubstream" && canDoPublic("clubstream")) return <ClubstreamApp profile={guestProfile} onBack={()=>setScreen("home")} onLogin={()=>setShowLogin(true)}/>;
+    if(screen==="clubstream" && canDoPublic("clubstream")) return <ClubstreamApp profile={guestProfile} onBack={()=>setScreen("home")} onLogin={()=>setShowLogin(true)} contentTypePerms={contentTypePerms}/>;
     if(screen==="btv"        && canDoPublic("btv"))        return <BtvLinksScreen onBack={()=>setScreen("home")}/>;
     if(screen==="heimspiel"  && canDoPublic("heimspiel"))  return <HeimspielwocheScreen onBack={()=>setScreen("home")} profile={guestProfile}/>;
     return <HomeScreen profile={guestProfile} canDo={canDoPublic} isGuest
@@ -179,7 +182,7 @@ export default function App() {
   if(screen==="kasse"      && canDo("kasse"))         return <KasseApp       profile={profile} perms={permissions} onBack={()=>setScreen("home")}/>;
   if(screen==="settings"   && canDo("einstellungen")) return <SettingsApp    profile={profile} onBack={()=>setScreen("home")}/>;
   if(screen==="kassenbuch" && canDo("kassenbuch")) return <KassenbuchApp  profile={profile} onBack={()=>setScreen("home")}/>;
-  if(screen==="clubstream" && canDo("clubstream")) return <ClubstreamApp  profile={profile} onBack={()=>setScreen("home")}/>;
+  if(screen==="clubstream" && canDo("clubstream")) return <ClubstreamApp  profile={profile} onBack={()=>setScreen("home")} contentTypePerms={contentTypePerms}/>;
   if(screen==="btv"        && canDo("btv"))        return <BtvLinksScreen onBack={()=>setScreen("home")}/>;
   if(screen==="heimspiel"  && canDo("heimspiel"))  return <HeimspielwocheScreen onBack={()=>setScreen("home")} profile={profile}/>;
   return <HomeScreen profile={profile} canDo={canDo}
@@ -554,6 +557,7 @@ const H={
 const CS_ICONS  = {club_news:"📢",important_notice:"⚠️",social_post:"📱",event:"📅",match_result:"🎾",court_notice:"🏟️",discussion:"💬",document:"📄",training_notice:"🏃",team_news:"👥",external_article:"🔗"};
 const CS_LABELS = {club_news:"Vereinsnews",important_notice:"Wichtig",social_post:"Social",event:"Termin",match_result:"Ergebnis",court_notice:"Platz",discussion:"Diskussion",document:"Dokument",training_notice:"Training",team_news:"Mannschaft",external_article:"Artikel"};
 const CS_COLORS = {club_news:"#3B82F6",important_notice:"#EF4444",social_post:"#6B7280",event:"#8B5CF6",match_result:"#22C55E",court_notice:"#F97316",discussion:"#6366F1",document:"#64748B",training_notice:"#06B6D4",team_news:"#EAB308",external_article:"#94A3B8"};
+const DEFAULT_CONTENT_TYPE_PERMISSIONS = Object.fromEntries(Object.keys(CS_ICONS).map(k=>[k,[]]));
 
 function csTimeAgo(s) {
   if(!s) return "";
@@ -658,7 +662,7 @@ function ClubstreamDetail({item,onBack}) {
   );
 }
 
-function ClubstreamApp({profile,onBack}) {
+function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_TYPE_PERMISSIONS}) {
   const [items,setItems]         = useState([]);
   const [photos,setPhotos]       = useState([]);
   const [pending,setPending]     = useState(0);
@@ -737,8 +741,11 @@ function ClubstreamApp({profile,onBack}) {
     return `KW ${kw} / ${tmp.getFullYear()}`;
   };
 
+  const canSeeType = (type) => profile.role==="admin" || (contentTypePerms[type]||[]).includes(profile.role);
+  const visibleItems = items.filter(i=>canSeeType(i.type));
+
   // Typen die tatsächlich in den Daten vorkommen, für Filter-Pills
-  const availableTypes = [...new Set(items.map(i=>i.type))];
+  const availableTypes = [...new Set(visibleItems.map(i=>i.type))];
   const allPhotos = photos.filter(p=>p.image_url||p.url);
   const kwGroups = (()=>{
     const map = {}; const order = [];
@@ -748,10 +755,10 @@ function ClubstreamApp({profile,onBack}) {
   // Pro KW nur eine Karte in Alle (neueste pro Woche als Repräsentant)
   const kwCards = kwGroups.map(g=>({...g.photos[0], _isPhoto:true, _kwLabel:g.label, _kwPhotos:g.photos, published_at:g.photos[0].created_at}));
   const filtered = typeFilter && typeFilter!=="__fotos__"
-    ? items.filter(i=>i.type===typeFilter)
+    ? visibleItems.filter(i=>i.type===typeFilter)
     : typeFilter===null
-      ? [...items, ...kwCards].sort((a,b)=>new Date(b.published_at)-new Date(a.published_at))
-      : items;
+      ? [...visibleItems, ...kwCards].sort((a,b)=>new Date(b.published_at)-new Date(a.published_at))
+      : visibleItems;
 
   return (
     <div style={H.wrap}>
@@ -1968,12 +1975,15 @@ function SettingsMembersTab({onToast}) {
 
 // ── SETTINGS: BERECHTIGUNGEN ──────────────────────────────────────────────
 function SettingsPermissionsTab({onToast}) {
-  const [perms, setPerms] = useState(DEFAULT_PERMISSIONS);
-  const [saving, setSaving] = useState(false);
+  const [perms, setPerms]               = useState(DEFAULT_PERMISSIONS);
+  const [ctPerms, setCtPerms]           = useState(DEFAULT_CONTENT_TYPE_PERMISSIONS);
+  const [saving, setSaving]             = useState(false);
 
   useEffect(()=>{
     sb.from("settings").select("value").eq("key","role_permissions").single()
       .then(({data})=>{ try{ if(data?.value) setPerms({...DEFAULT_PERMISSIONS,...JSON.parse(data.value)}); }catch(_){} });
+    sb.from("settings").select("value").eq("key","content_type_permissions").single()
+      .then(({data})=>{ try{ if(data?.value) setCtPerms({...DEFAULT_CONTENT_TYPE_PERMISSIONS,...JSON.parse(data.value)}); }catch(_){} });
   },[]);
 
   const toggle=(module,role)=>{
@@ -1984,64 +1994,78 @@ function SettingsPermissionsTab({onToast}) {
     });
   };
 
+  const toggleCt=(type,role)=>{
+    setCtPerms(prev=>{
+      const cur = prev[type]||[];
+      const next = cur.includes(role) ? cur.filter(r=>r!==role) : [...cur,role];
+      return {...prev,[type]:next};
+    });
+  };
+
   const save=async()=>{
     setSaving(true);
-    const {error}=await sb.from("settings").upsert({key:"role_permissions",value:JSON.stringify(perms)},{onConflict:"key"});
+    const [r1,r2] = await Promise.all([
+      sb.from("settings").upsert({key:"role_permissions",value:JSON.stringify(perms)},{onConflict:"key"}),
+      sb.from("settings").upsert({key:"content_type_permissions",value:JSON.stringify(ctPerms)},{onConflict:"key"}),
+    ]);
     setSaving(false);
-    if(error) onToast("Fehler beim Speichern","error");
+    if(r1.error||r2.error) onToast("Fehler beim Speichern","error");
     else onToast("Berechtigungen gespeichert ✓");
   };
 
   const roleColors={public:"#94A3B8",pending:"#F59E0B",known:"#F59E0B",member:"#22C55E",member2:"#3B82F6",admin:"#8B5CF6"};
   const roleLabels={public:"Öffentlich",pending:"Ausstehend",known:"Bekannt",member:"Mitglied",member2:"Mitglied+",admin:"Admin"};
 
+  const PermTable = ({title, rows, getValue, onToggle, rowLabel}) => (
+    <div style={{overflowX:"auto",marginTop:20}}>
+      <div style={{fontSize:11,fontWeight:700,color:"#94A3B8",textTransform:"uppercase",letterSpacing:.7,marginBottom:6}}>{title}</div>
+      <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+        <thead>
+          <tr>
+            <th style={{textAlign:"left",padding:"8px 10px",color:"#94A3B8",fontWeight:700,fontSize:11,textTransform:"uppercase",letterSpacing:.7}}>{rowLabel}</th>
+            {PERM_ROLES.map(r=>(
+              <th key={r} style={{padding:"6px 8px",color:roleColors[r],fontWeight:700,fontSize:10,textTransform:"uppercase",letterSpacing:.5,textAlign:"center",whiteSpace:"nowrap"}}>
+                {roleLabels[r]}
+              </th>
+            ))}
+            <th style={{padding:"6px 8px",color:"#8B5CF6",fontWeight:700,fontSize:10,textTransform:"uppercase",letterSpacing:.5,textAlign:"center"}}>Admin</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(({id,icon,label},i)=>(
+            <tr key={id} style={{background:i%2===0?"#1E293B":"#162032"}}>
+              <td style={{padding:"10px 10px",fontWeight:600,color:"#F1F5F9",whiteSpace:"nowrap"}}>
+                <span style={{marginRight:5}}>{icon}</span>{label}
+              </td>
+              {PERM_ROLES.map(role=>(
+                <td key={role} style={{textAlign:"center",padding:"10px 8px"}}>
+                  <input type="checkbox" checked={getValue(id,role)} onChange={()=>onToggle(id,role)}
+                    style={{width:15,height:15,accentColor:roleColors[role],cursor:"pointer"}}/>
+                </td>
+              ))}
+              <td style={{textAlign:"center",padding:"10px 8px"}}>
+                <input type="checkbox" checked disabled style={{width:15,height:15,accentColor:"#8B5CF6"}}/>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  const ctRows = Object.keys(CS_ICONS).map(k=>({id:k, icon:CS_ICONS[k], label:CS_LABELS[k]}));
+
   return (
     <div style={K.page}>
       <h1 style={S.pageTitle}>Berechtigungen</h1>
-      <p style={S.pageSub}>Welche Rollen dürfen welche Module nutzen? Admin hat immer Zugriff.</p>
+      <p style={S.pageSub}>Welche Rollen dürfen welche Module / Inhaltstypen sehen? Admin hat immer Zugriff.</p>
 
-      {[
-        {title:"Hauptmodule",    mods:MODULES},
-        {title:"Spezielle Berechtigungen", mods:SPECIAL_MODULES},
-      ].map(({title,mods})=>(
-        <div key={title} style={{overflowX:"auto",marginTop:20}}>
-          <div style={{fontSize:11,fontWeight:700,color:"#94A3B8",textTransform:"uppercase",letterSpacing:.7,marginBottom:6}}>{title}</div>
-          <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-            <thead>
-              <tr>
-                <th style={{textAlign:"left",padding:"8px 10px",color:"#94A3B8",fontWeight:700,fontSize:11,textTransform:"uppercase",letterSpacing:.7}}>Modul</th>
-                {PERM_ROLES.map(r=>(
-                  <th key={r} style={{padding:"6px 8px",color:roleColors[r],fontWeight:700,fontSize:10,textTransform:"uppercase",letterSpacing:.5,textAlign:"center",whiteSpace:"nowrap"}}>
-                    {roleLabels[r]}
-                  </th>
-                ))}
-                <th style={{padding:"6px 8px",color:"#8B5CF6",fontWeight:700,fontSize:10,textTransform:"uppercase",letterSpacing:.5,textAlign:"center"}}>Admin</th>
-              </tr>
-            </thead>
-            <tbody>
-              {mods.map((mod,i)=>(
-                <tr key={mod.id} style={{background:i%2===0?"#1E293B":"#162032"}}>
-                  <td style={{padding:"10px 10px",fontWeight:600,color:"#F1F5F9",whiteSpace:"nowrap"}}>
-                    <span style={{marginRight:5}}>{mod.icon}</span>{mod.label}
-                  </td>
-                  {PERM_ROLES.map(role=>{
-                    const checked = (perms[mod.id]||[]).includes(role);
-                    return (
-                      <td key={role} style={{textAlign:"center",padding:"10px 8px"}}>
-                        <input type="checkbox" checked={checked} onChange={()=>toggle(mod.id,role)}
-                          style={{width:15,height:15,accentColor:roleColors[role],cursor:"pointer"}}/>
-                      </td>
-                    );
-                  })}
-                  <td style={{textAlign:"center",padding:"10px 8px"}}>
-                    <input type="checkbox" checked disabled style={{width:15,height:15,accentColor:"#8B5CF6"}}/>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ))}
+      <PermTable title="Hauptmodule" rows={MODULES} rowLabel="Modul"
+        getValue={(id,role)=>(perms[id]||[]).includes(role)} onToggle={toggle}/>
+      <PermTable title="Spezielle Berechtigungen" rows={SPECIAL_MODULES} rowLabel="Modul"
+        getValue={(id,role)=>(perms[id]||[]).includes(role)} onToggle={toggle}/>
+      <PermTable title="Clubstream · Inhaltstypen" rows={ctRows} rowLabel="Typ"
+        getValue={(id,role)=>(ctPerms[id]||[]).includes(role)} onToggle={toggleCt}/>
 
       <div style={{marginTop:24,textAlign:"right"}}>
         <button onClick={save} disabled={saving}
