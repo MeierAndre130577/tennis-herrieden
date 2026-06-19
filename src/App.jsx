@@ -1692,18 +1692,16 @@ function KasseQuickModal({onLog,onClose}) {
 // SETTINGS APP
 // ═══════════════════════════════════════════════════════════════════════════
 function SettingsApp({profile,onBack}) {
-  const [tab,setTab]       = useState("booking");
+  const [tab,setTab]       = useState("betrieb");
   const [toast,setToast]   = useState(null);
   const showToast=(msg,type="success")=>{ setToast({msg,type}); setTimeout(()=>setToast(null),2800); };
 
   const tabs=[
-    {id:"booking",      label:"Buchung",        icon:"📅"},
-    {id:"courts",       label:"Plätze",         icon:"🎾"},
+    {id:"betrieb",      label:"Betrieb",        icon:"⚙️"},
     {id:"members",      label:"Mitglieder",     icon:"👤"},
     {id:"permissions",  label:"Berechtigungen", icon:"🔐"},
     {id:"display",      label:"Display",        icon:"🖥️"},
     {id:"mannschaften", label:"Mannschaften",   icon:"🏆"},
-    {id:"jobs",         label:"Hintergrund",    icon:"⚡"},
   ];
 
   return (
@@ -1735,13 +1733,11 @@ function SettingsApp({profile,onBack}) {
             <span style={{width:80}}/>
           </div>
 
-          {tab==="booking"      &&<SettingsBookingTab      onToast={showToast}/>}
-          {tab==="courts"       &&<SettingsCourtsTab       onToast={showToast}/>}
+          {tab==="betrieb"      &&<><SettingsBookingTab onToast={showToast}/><SettingsCourtsTab onToast={showToast}/><SettingsJobsTab/></>}
           {tab==="members"      &&<SettingsMembersTab      onToast={showToast}/>}
           {tab==="permissions"  &&<SettingsPermissionsTab  onToast={showToast}/>}
           {tab==="display"      &&<SettingsDisplayTab      onToast={showToast}/>}
           {tab==="mannschaften" &&<SettingsMannschaftenTab onToast={showToast}/>}
-          {tab==="jobs"         &&<SettingsJobsTab/>}
         </main>
 
         <nav className="cfg-bottom-nav" style={{display:"none",position:"fixed",bottom:0,left:0,right:0,background:"#0F172A",borderTop:"1px solid #1E293B",zIndex:100,padding:"8px 0",paddingBottom:"env(safe-area-inset-bottom)",overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
