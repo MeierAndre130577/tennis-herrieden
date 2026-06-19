@@ -747,7 +747,7 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
 
   // Typen die tatsächlich in den Daten vorkommen, für Filter-Pills
   const availableTypes = [...new Set(visibleItems.map(i=>i.type))];
-  const allPhotos = canSeePhotos ? photos.filter(p=>p.image_url||p.url) : [];
+  const allPhotos = canSeePhotos ? photos.filter(p=>{const u=p.image_url||p.url||""; return u&&!u.includes("irszeiamvwyrntyauury");}) : [];
   const kwGroups = (()=>{
     const map = {}; const order = [];
     allPhotos.forEach(p=>{ const k=getKWLabel(p.created_at); if(!map[k]){map[k]=[];order.push(k);} map[k].push(p); });
