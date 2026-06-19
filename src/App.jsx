@@ -756,7 +756,18 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
   // Pro KW nur eine Karte in Alle (neueste pro Woche als Repräsentant)
   const kwCards = kwGroups.map(g=>({...g.photos[0], _isPhoto:true, _kwLabel:g.label, _kwPhotos:g.photos, published_at:g.photos[0].created_at}));
   const filtered = typeFilter && typeFilter!=="__fotos__"
-    ? visibleItems.filter(i=>i.type===typeFilter)
+    ? typeFilter==="event"
+      ? (()=>{
+          const now = new Date();
+          const ev = visibleItems.filter(i=>i.type==="event");
+          const future = ev.filter(i=>new Date(i.event_start||i.published_at)>=now)
+            .sort((a,b)=>new Date(a.event_start||a.published_at)-new Date(b.event_start||b.published_at));
+          const past = ev.filter(i=>new Date(i.event_start||i.published_at)<now)
+            .sort((a,b)=>new Date(a.event_start||a.published_at)-new Date(b.event_start||b.published_at))
+            .map(i=>({...i,_isPast:true}));
+          return [...future,...past];
+        })()
+      : visibleItems.filter(i=>i.type===typeFilter)
     : typeFilter===null
       ? [...visibleItems, ...kwCards].sort((a,b)=>new Date(b.published_at)-new Date(a.published_at))
       : visibleItems;
@@ -984,7 +995,7 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
               const label = CS_LABELS[item.type]||item.type;
               return (
                 <div key={item.id}
-                  style={{background:"#1E293B",border:`1.5px solid ${color}33`,borderRadius:14,overflow:"hidden",cursor:"pointer"}}
+                  style={{background:"#1E293B",border:`1.5px solid ${color}33`,borderRadius:14,overflow:"hidden",cursor:"pointer",opacity:item._isPast?0.45:1,filter:item._isPast?"grayscale(60%)":"none"}}
                   onClick={()=>setDetail(item)}
                 >
                   {item.image_url&&!item._isPhoto&&(
