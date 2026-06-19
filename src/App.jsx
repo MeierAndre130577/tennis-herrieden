@@ -12,7 +12,24 @@ const DE_MONTH = ["Jan","Feb","Mär","Apr","Mai","Jun","Jul","Aug","Sep","Okt","
 const COURT_COLORS = ["#22C55E","#EF4444","#3B82F6","#F59E0B","#8B5CF6","#EC4899","#14B8A6","#F97316"];
 const BOOKING_TYPE_COLORS = { regular:"#6B7280", training:"#3B82F6", match:"#EF4444" };
 const BOOKING_TYPE_MAP = { regular:{icon:"🎾",color:"#22C55E"}, training:{icon:"🏋️",color:"#3B82F6"}, match:{icon:"🏆",color:"#EF4444"} };
-const ROLE_LABELS = { admin:"Administrator", member2:"Mitglied Plus", member:"Mitglied" };
+const ROLE_LABELS = { admin:"Administrator", member2:"Mitglied Plus", member:"Mitglied", pending:"Ausstehend" };
+const ROLES = ["pending","member","member2","admin"];
+const MODULES = [
+  {id:"booking",   label:"Platzbuchung",  icon:"📅"},
+  {id:"kasse",     label:"Getränke",      icon:"🧾"},
+  {id:"kassenbuch",label:"Kassenbuch",    icon:"💰"},
+  {id:"clubstream",label:"Clubstream",    icon:"📰"},
+  {id:"btv",       label:"BTV Links",     icon:"🔗"},
+  {id:"heimspiel", label:"Heimspielwoche",icon:"🏠"},
+];
+const DEFAULT_PERMISSIONS = {
+  booking:    ["member","member2","admin"],
+  kasse:      ["member","member2","admin"],
+  kassenbuch: ["admin"],
+  clubstream: ["pending","member","member2","admin"],
+  btv:        ["pending","member","member2","admin"],
+  heimspiel:  ["pending","member","member2","admin"],
+};
 const KASSE_EMOJIS = ["🍺","🥤","🍎","💧","🍊","☕","🧃","🍵","🥛","🍋","🫖","🧋","🍷","🥂","🫙"];
 
 function fmt(d)      { return d.toISOString().slice(0,10); }
@@ -60,9 +77,10 @@ export default function App() {
   const shareParam = useState(()=>new URLSearchParams(window.location.search).get("share"))[0];
   const isRecovery = useState(()=>window.location.hash.includes("type=recovery"))[0];
   const [shareValid, setShareValid] = useState(null); // null=prüft, true/false
-  const [session,setSession]   = useState(undefined);
-  const [profile,setProfile]   = useState(null);
-  const [screen,setScreen]     = useState("home"); // "home" | "booking" | "kasse" | "settings" | "kassenbuch" | "clubstream" | "btv" | "heimspiel"
+  const [session,setSession]       = useState(undefined);
+  const [profile,setProfile]       = useState(null);
+  const [permissions,setPerms]     = useState(DEFAULT_PERMISSIONS);
+  const [screen,setScreen]         = useState("home");
 
   useEffect(()=>{
     if (!shareParam) { setShareValid(false); return; }
@@ -89,7 +107,15 @@ export default function App() {
   useEffect(()=>{
     if(!session){ setProfile(null); return; }
     sb.from("profiles").select("*").eq("id",session.user.id).single().then(({data})=>setProfile(data));
+    sb.from("settings").select("value").eq("key","role_permissions").single()
+      .then(({data})=>{ try{ if(data?.value) setPerms({...DEFAULT_PERMISSIONS,...JSON.parse(data.value)}); }catch(_){} });
   },[session]);
+
+  const canDo = (module) => {
+    const role = profile?.role || "pending";
+    if(role === "admin") return true;
+    return (permissions[module]||[]).includes(role);
+  };
 
   if(shareParam && shareValid===null) return <Loading msg="Prüfe Link…"/>;
   if(shareParam && shareValid===true) return <SharedDisplayEdit/>;
@@ -98,14 +124,18 @@ export default function App() {
   if(!session) return <LoginScreen/>;
   if(!profile) return <Loading msg="Lade Profil…"/>;
 
-  if(screen==="booking")     return <BookingApp     profile={profile} onBack={()=>setScreen("home")}/>;
-  if(screen==="kasse")       return <KasseApp       profile={profile} onBack={()=>setScreen("home")}/>;
-  if(screen==="settings")    return <SettingsApp    profile={profile} onBack={()=>setScreen("home")}/>;
-  if(screen==="kassenbuch")  return <KassenbuchApp  profile={profile} onBack={()=>setScreen("home")}/>;
-  if(screen==="clubstream")  return <ClubstreamApp  profile={profile} onBack={()=>setScreen("home")}/>;
-  if(screen==="btv")         return <BtvLinksScreen onBack={()=>setScreen("home")}/>;
-  if(screen==="heimspiel")   return <HeimspielwocheScreen onBack={()=>setScreen("home")} profile={profile}/>;
-  return <HomeScreen profile={profile} onGoBooking={()=>setScreen("booking")} onGoKasse={()=>setScreen("kasse")} onGoSettings={()=>setScreen("settings")} onGoKassenbuch={()=>setScreen("kassenbuch")} onGoClubstream={()=>setScreen("clubstream")} onGoBtv={()=>setScreen("btv")} onGoHeimspiele={()=>setScreen("heimspiel")}/>;
+  if(screen==="booking"    && canDo("booking"))    return <BookingApp     profile={profile} onBack={()=>setScreen("home")}/>;
+  if(screen==="kasse"      && canDo("kasse"))      return <KasseApp       profile={profile} onBack={()=>setScreen("home")}/>;
+  if(screen==="settings"   && profile.role==="admin") return <SettingsApp profile={profile} onBack={()=>setScreen("home")}/>;
+  if(screen==="kassenbuch" && canDo("kassenbuch")) return <KassenbuchApp  profile={profile} onBack={()=>setScreen("home")}/>;
+  if(screen==="clubstream" && canDo("clubstream")) return <ClubstreamApp  profile={profile} onBack={()=>setScreen("home")}/>;
+  if(screen==="btv"        && canDo("btv"))        return <BtvLinksScreen onBack={()=>setScreen("home")}/>;
+  if(screen==="heimspiel"  && canDo("heimspiel"))  return <HeimspielwocheScreen onBack={()=>setScreen("home")} profile={profile}/>;
+  return <HomeScreen profile={profile} canDo={canDo}
+    onGoBooking={()=>setScreen("booking")} onGoKasse={()=>setScreen("kasse")}
+    onGoSettings={()=>setScreen("settings")} onGoKassenbuch={()=>setScreen("kassenbuch")}
+    onGoClubstream={()=>setScreen("clubstream")} onGoBtv={()=>setScreen("btv")}
+    onGoHeimspiele={()=>setScreen("heimspiel")}/>;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -274,7 +304,7 @@ function BtvLinksScreen({onBack}) {
 // ═══════════════════════════════════════════════════════════════════════════
 // HOME SCREEN
 // ═══════════════════════════════════════════════════════════════════════════
-function HomeScreen({profile,onGoBooking,onGoKasse,onGoSettings,onGoKassenbuch,onGoClubstream,onGoBtv,onGoHeimspiele}) {
+function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassenbuch,onGoClubstream,onGoBtv,onGoHeimspiele}) {
   const [nextBookings,setNextBookings] = useState([]);
   const [openLog,setOpenLog]           = useState([]);
   const [openTotal,setOpenTotal]       = useState(0);
@@ -323,7 +353,7 @@ function HomeScreen({profile,onGoBooking,onGoKasse,onGoSettings,onGoKassenbuch,o
         <div style={{display:"flex",flexDirection:"column",gap:12}}>
 
           {/* Next bookings */}
-          <div style={H.widget} onClick={onGoBooking}>
+          {canDo("booking")&&<div style={H.widget} onClick={onGoBooking}>
             <div style={H.widgetLabel}>📅 Nächste Buchungen</div>
             {nextBookings.length===0
               ? <div style={{fontSize:13,color:"#475569",padding:"6px 0"}}>Keine bevorstehenden Buchungen</div>
@@ -349,10 +379,10 @@ function HomeScreen({profile,onGoBooking,onGoKasse,onGoSettings,onGoKassenbuch,o
                   );
                 })
             }
-          </div>
+          </div>}
 
           {/* Clubstream */}
-          <div style={{...H.widgetCompact, borderColor:"#22C55E55", background:"#0F1F10"}}
+          {canDo("clubstream")&&<div style={{...H.widgetCompact, borderColor:"#22C55E55", background:"#0F1F10"}}
                onClick={async()=>{
                  const { data:{ session } } = await sb.auth.getSession();
                  const base = "https://clubstream-hub.vercel.app";
@@ -370,10 +400,10 @@ function HomeScreen({profile,onGoBooking,onGoKasse,onGoSettings,onGoKassenbuch,o
               </div>
               <span style={{color:"#4ADE80",fontSize:16}}>→</span>
             </div>
-          </div>
+          </div>}
 
           {/* BTV Links */}
-          <div style={{...H.widgetCompact, borderColor:"#3B82F655", background:"#0F172A"}} onClick={onGoBtv}>
+          {canDo("btv")&&<div style={{...H.widgetCompact, borderColor:"#3B82F655", background:"#0F172A"}} onClick={onGoBtv}>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
               <span style={{fontSize:18}}>🔗</span>
               <div style={{flex:1}}>
@@ -382,10 +412,10 @@ function HomeScreen({profile,onGoBooking,onGoKasse,onGoSettings,onGoKassenbuch,o
               </div>
               <span style={{color:"#93C5FD",fontSize:16}}>→</span>
             </div>
-          </div>
+          </div>}
 
           {/* Heimspielwoche */}
-          <div style={{...H.widgetCompact, borderColor:"#F59E0B55", background:"#1A130A"}} onClick={onGoHeimspiele}>
+          {canDo("heimspiel")&&<div style={{...H.widgetCompact, borderColor:"#F59E0B55", background:"#1A130A"}} onClick={onGoHeimspiele}>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
               <span style={{fontSize:18}}>🏠</span>
               <div style={{flex:1}}>
@@ -396,10 +426,10 @@ function HomeScreen({profile,onGoBooking,onGoKasse,onGoSettings,onGoKassenbuch,o
               </div>
               <span style={{color:"#FCD34D",fontSize:16}}>→</span>
             </div>
-          </div>
+          </div>}
 
           {/* Open drinks – compact */}
-          <div style={{...H.widgetCompact,...(openLog.length>0?H.widgetWarn:H.widgetOk)}} onClick={onGoKasse}>
+          {canDo("kasse")&&<div style={{...H.widgetCompact,...(openLog.length>0?H.widgetWarn:H.widgetOk)}} onClick={onGoKasse}>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
               <span style={{fontSize:18}}>🧾</span>
               <div style={{flex:1}}>
@@ -411,12 +441,12 @@ function HomeScreen({profile,onGoBooking,onGoKasse,onGoSettings,onGoKassenbuch,o
               </div>
               <span style={{fontSize:12,color:openLog.length>0?"#D97706":"#475569"}}>→</span>
             </div>
-          </div>
+          </div>}
         </div>
 
         {/* ── Nav tiles ── */}
         <div style={H.navGrid}>
-          {profile.role==="admin"&&(
+          {canDo("kassenbuch")&&(
             <button style={{...H.navTile,borderColor:"#22C55E33",gridColumn:"1 / -1"}} onClick={onGoKassenbuch}>
               <span style={{fontSize:28}}>💰</span>
               <span style={H.navTileLabel}>Kassenbuch</span>
@@ -1368,12 +1398,13 @@ function SettingsApp({profile,onBack}) {
   const showToast=(msg,type="success")=>{ setToast({msg,type}); setTimeout(()=>setToast(null),2800); };
 
   const tabs=[
-    {id:"booking",      label:"Buchung",      icon:"📅"},
-    {id:"courts",       label:"Plätze",       icon:"🎾"},
-    {id:"members",      label:"Mitglieder",   icon:"👤"},
-    {id:"display",      label:"Display",      icon:"🖥️"},
-    {id:"mannschaften", label:"Mannschaften", icon:"🏆"},
-    {id:"jobs",         label:"Hintergrund",  icon:"⚡"},
+    {id:"booking",      label:"Buchung",        icon:"📅"},
+    {id:"courts",       label:"Plätze",         icon:"🎾"},
+    {id:"members",      label:"Mitglieder",     icon:"👤"},
+    {id:"permissions",  label:"Berechtigungen", icon:"🔐"},
+    {id:"display",      label:"Display",        icon:"🖥️"},
+    {id:"mannschaften", label:"Mannschaften",   icon:"🏆"},
+    {id:"jobs",         label:"Hintergrund",    icon:"⚡"},
   ];
 
   return (
@@ -1408,6 +1439,7 @@ function SettingsApp({profile,onBack}) {
           {tab==="booking"      &&<SettingsBookingTab      onToast={showToast}/>}
           {tab==="courts"       &&<SettingsCourtsTab       onToast={showToast}/>}
           {tab==="members"      &&<SettingsMembersTab      onToast={showToast}/>}
+          {tab==="permissions"  &&<SettingsPermissionsTab  onToast={showToast}/>}
           {tab==="display"      &&<SettingsDisplayTab      onToast={showToast}/>}
           {tab==="mannschaften" &&<SettingsMannschaftenTab onToast={showToast}/>}
           {tab==="jobs"         &&<SettingsJobsTab/>}
@@ -1567,8 +1599,9 @@ function SettingsMembersTab({onToast}) {
               <div style={{fontWeight:700,fontSize:14}}>{m.name}</div>
               <div style={{fontSize:11,color:"#6B7280",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.email||""}</div>
             </div>
-            <select value={m.role||"member"} disabled={saving===m.id} onChange={e=>changeRole(m.id,e.target.value)}
-              style={{border:"1.5px solid #E5E7EB",borderRadius:7,padding:"5px 8px",fontSize:13,fontWeight:600,cursor:"pointer",background:"#fff",color:"#374151"}}>
+            <select value={m.role||"pending"} disabled={saving===m.id} onChange={e=>changeRole(m.id,e.target.value)}
+              style={{border:`1.5px solid ${m.role==="pending"?"#F59E0B":"#E5E7EB"}`,borderRadius:7,padding:"5px 8px",fontSize:13,fontWeight:600,cursor:"pointer",background:m.role==="pending"?"#FEF3C7":"#fff",color:m.role==="pending"?"#92400E":"#374151"}}>
+              <option value="pending">⏳ Ausstehend</option>
               <option value="member">Mitglied</option>
               <option value="member2">Mitglied Plus</option>
               <option value="admin">Administrator</option>
@@ -1576,6 +1609,88 @@ function SettingsMembersTab({onToast}) {
             <button style={{...S.cancelBtn,padding:"5px 9px",fontSize:13}} onClick={()=>deleteMember(m.id,m.name)}>✕</button>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// ── SETTINGS: BERECHTIGUNGEN ──────────────────────────────────────────────
+function SettingsPermissionsTab({onToast}) {
+  const [perms, setPerms] = useState(DEFAULT_PERMISSIONS);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(()=>{
+    sb.from("settings").select("value").eq("key","role_permissions").single()
+      .then(({data})=>{ try{ if(data?.value) setPerms({...DEFAULT_PERMISSIONS,...JSON.parse(data.value)}); }catch(_){} });
+  },[]);
+
+  const toggle=(module,role)=>{
+    setPerms(prev=>{
+      const cur = prev[module]||[];
+      const next = cur.includes(role) ? cur.filter(r=>r!==role) : [...cur,role];
+      return {...prev,[module]:next};
+    });
+  };
+
+  const save=async()=>{
+    setSaving(true);
+    const {error}=await sb.from("settings").upsert({key:"role_permissions",value:JSON.stringify(perms)},{onConflict:"key"});
+    setSaving(false);
+    if(error) onToast("Fehler beim Speichern","error");
+    else onToast("Berechtigungen gespeichert ✓");
+  };
+
+  const roleColors={pending:"#F59E0B",member:"#22C55E",member2:"#3B82F6",admin:"#8B5CF6"};
+
+  return (
+    <div style={K.page}>
+      <h1 style={S.pageTitle}>Berechtigungen</h1>
+      <p style={S.pageSub}>Welche Rollen dürfen welche Module nutzen?</p>
+
+      <div style={{overflowX:"auto",marginTop:20}}>
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+          <thead>
+            <tr>
+              <th style={{textAlign:"left",padding:"8px 12px",color:"#94A3B8",fontWeight:700,fontSize:11,textTransform:"uppercase",letterSpacing:.7}}>Modul</th>
+              {ROLES.map(r=>(
+                <th key={r} style={{padding:"8px 10px",color:roleColors[r],fontWeight:700,fontSize:11,textTransform:"uppercase",letterSpacing:.7,textAlign:"center",whiteSpace:"nowrap"}}>
+                  {ROLE_LABELS[r]}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {MODULES.map((mod,i)=>(
+              <tr key={mod.id} style={{background:i%2===0?"#1E293B":"#162032",borderRadius:8}}>
+                <td style={{padding:"10px 12px",fontWeight:600,color:"#F1F5F9"}}>
+                  <span style={{marginRight:6}}>{mod.icon}</span>{mod.label}
+                </td>
+                {ROLES.map(role=>{
+                  const isAdmin = role==="admin";
+                  const checked = isAdmin || (perms[mod.id]||[]).includes(role);
+                  return (
+                    <td key={role} style={{textAlign:"center",padding:"10px 10px"}}>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        disabled={isAdmin}
+                        onChange={()=>toggle(mod.id,role)}
+                        style={{width:16,height:16,accentColor:roleColors[role],cursor:isAdmin?"default":"pointer"}}
+                      />
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div style={{marginTop:24,textAlign:"right"}}>
+        <button onClick={save} disabled={saving}
+          style={{background:"#22C55E",color:"#fff",border:"none",borderRadius:8,padding:"10px 24px",fontWeight:700,fontSize:14,cursor:"pointer",opacity:saving?.6:1}}>
+          {saving?"Wird gespeichert…":"Speichern"}
+        </button>
       </div>
     </div>
   );
@@ -3791,7 +3906,7 @@ function AdminView({data,allBookings,guestFee,onSaveGuestFee,onAddCourt,onUpdate
         {supaUsers.map(u=>(<div key={u.id} style={{...S.card,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
           <div style={{display:"flex",alignItems:"center",gap:12}}><Av name={u.name}/><div><div style={{fontWeight:700,fontSize:14}}>{u.name}</div><div style={{fontSize:12,color:"#6B7280",marginTop:2}}>{u.email||"–"}</div><span style={{fontSize:11,padding:"2px 8px",borderRadius:20,background:"#F3F4F6",color:"#374151",fontWeight:600,marginTop:4,display:"inline-block"}}>{ROLE_LABELS[u.role]}</span></div></div>
           <div style={{display:"flex",gap:8,alignItems:"center",flexShrink:0}}>
-            <select value={u.role} onChange={e=>updateRole(u.id,e.target.value)} style={{...S.input,width:"auto",padding:"6px 10px",fontSize:12}}><option value="member">Mitglied</option><option value="member2">Mitglied Plus</option><option value="admin">Administrator</option></select>
+            <select value={u.role} onChange={e=>updateRole(u.id,e.target.value)} style={{...S.input,width:"auto",padding:"6px 10px",fontSize:12,borderColor:u.role==="pending"?"#F59E0B":"#334155"}}><option value="pending">Ausstehend</option><option value="member">Mitglied</option><option value="member2">Mitglied Plus</option><option value="admin">Administrator</option></select>
             <button style={S.cancelBtn} onClick={()=>{if(window.confirm(`${u.name} wirklich löschen?`))deleteUser(u.id);}}>Löschen</button>
           </div>
         </div>))}
