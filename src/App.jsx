@@ -557,7 +557,7 @@ const H={
 const CS_ICONS  = {club_news:"📢",important_notice:"⚠️",social_post:"📱",event:"📅",match_result:"🎾",court_notice:"🏟️",discussion:"💬",document:"📄",training_notice:"🏃",team_news:"👥",external_article:"🔗"};
 const CS_LABELS = {club_news:"Vereinsnews",important_notice:"Wichtig",social_post:"Social",event:"Termin",match_result:"Ergebnis",court_notice:"Platz",discussion:"Diskussion",document:"Dokument",training_notice:"Training",team_news:"Mannschaft",external_article:"Artikel"};
 const CS_COLORS = {club_news:"#3B82F6",important_notice:"#EF4444",social_post:"#6B7280",event:"#8B5CF6",match_result:"#22C55E",court_notice:"#F97316",discussion:"#6366F1",document:"#64748B",training_notice:"#06B6D4",team_news:"#EAB308",external_article:"#94A3B8"};
-const DEFAULT_CONTENT_TYPE_PERMISSIONS = Object.fromEntries(Object.keys(CS_ICONS).map(k=>[k,[]]));
+const DEFAULT_CONTENT_TYPE_PERMISSIONS = {photos:[], ...Object.fromEntries(Object.keys(CS_ICONS).map(k=>[k,[]]))};
 
 function csTimeAgo(s) {
   if(!s) return "";
@@ -742,11 +742,12 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
   };
 
   const canSeeType = (type) => profile.role==="admin" || (contentTypePerms[type]||[]).includes(profile.role);
+  const canSeePhotos = canSeeType("photos");
   const visibleItems = items.filter(i=>canSeeType(i.type));
 
   // Typen die tatsächlich in den Daten vorkommen, für Filter-Pills
   const availableTypes = [...new Set(visibleItems.map(i=>i.type))];
-  const allPhotos = photos.filter(p=>p.image_url||p.url);
+  const allPhotos = canSeePhotos ? photos.filter(p=>p.image_url||p.url) : [];
   const kwGroups = (()=>{
     const map = {}; const order = [];
     allPhotos.forEach(p=>{ const k=getKWLabel(p.created_at); if(!map[k]){map[k]=[];order.push(k);} map[k].push(p); });
@@ -810,7 +811,7 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
                 </button>
               );
             })}
-            {photos.filter(p=>p.image_url||p.url).length>0&&(
+            {canSeePhotos&&photos.filter(p=>p.image_url||p.url).length>0&&(
               <button
                 onClick={()=>setTypeFilter(typeFilter==="__fotos__"?null:"__fotos__")}
                 style={{flexShrink:0,fontSize:11,fontWeight:700,padding:"4px 12px",borderRadius:20,border:"1.5px solid #EC489944",cursor:"pointer",background:typeFilter==="__fotos__"?"#EC489933":"transparent",color:typeFilter==="__fotos__"?"#F472B6":"#64748B"}}
@@ -2053,7 +2054,10 @@ function SettingsPermissionsTab({onToast}) {
     </div>
   );
 
-  const ctRows = Object.keys(CS_ICONS).map(k=>({id:k, icon:CS_ICONS[k], label:CS_LABELS[k]}));
+  const ctRows = [
+    {id:"photos", icon:"🖼️", label:"Fotos"},
+    ...Object.keys(CS_ICONS).map(k=>({id:k, icon:CS_ICONS[k], label:CS_LABELS[k]})),
+  ];
 
   return (
     <div style={K.page}>
