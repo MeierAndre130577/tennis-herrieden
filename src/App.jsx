@@ -658,7 +658,7 @@ function ClubstreamApp({profile,onBack}) {
           {profile.role==="admin"&&(
             <button onClick={async()=>{
               const {data:{session}}=await sb.auth.getSession();
-              const base="https://clubstream-hub.vercel.app";
+              const base="https://clubstream-hub.vercel.app/admin";
               const url=session?.access_token
                 ?`${base}/#access_token=${session.access_token}&refresh_token=${session.refresh_token}&token_type=bearer`
                 :base;
