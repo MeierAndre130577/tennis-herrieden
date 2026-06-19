@@ -634,7 +634,7 @@ function ClubstreamApp({profile,onBack}) {
         .order("published_at",{ascending:false})
         .limit(60),
       sb.from("news_items").select("*",{count:"exact",head:true}).eq("status","pending_review").is("deleted_at",null),
-      sb.from("club_photos").select("id,url,caption,created_at").order("created_at",{ascending:false}).limit(200),
+      sb.from("club_photos").select("id,url,image_url,caption,created_at").order("created_at",{ascending:false}).limit(200),
     ]).then(([{data:news,error},{count},{data:pics}])=>{
       if(!error) setItems(news||[]);
       setPending(count||0);
@@ -699,7 +699,7 @@ function ClubstreamApp({profile,onBack}) {
                 </button>
               );
             })}
-            {photos.length>0&&(
+            {photos.filter(p=>p.image_url||p.url).length>0&&(
               <button
                 onClick={()=>setTypeFilter(typeFilter==="__fotos__"?null:"__fotos__")}
                 style={{flexShrink:0,fontSize:11,fontWeight:700,padding:"4px 12px",borderRadius:20,border:"1.5px solid #EC489944",cursor:"pointer",background:typeFilter==="__fotos__"?"#EC489933":"transparent",color:typeFilter==="__fotos__"?"#F472B6":"#64748B"}}
@@ -713,7 +713,7 @@ function ClubstreamApp({profile,onBack}) {
         {/* Foto-Lightbox */}
         {lightbox&&(
           <div onClick={()=>setLightbox(null)} style={{position:"fixed",inset:0,background:"#000000CC",zIndex:1000,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:16}}>
-            <img src={lightbox.url} alt={lightbox.caption||""} style={{maxWidth:"100%",maxHeight:"80vh",borderRadius:10,objectFit:"contain"}} onClick={e=>e.stopPropagation()}/>
+            <img src={lightbox.image_url||lightbox.url} alt={lightbox.caption||""} style={{maxWidth:"100%",maxHeight:"80vh",borderRadius:10,objectFit:"contain"}} onClick={e=>e.stopPropagation()}/>
             {lightbox.caption&&<p style={{color:"#F1F5F9",fontSize:13,marginTop:12,textAlign:"center",maxWidth:400}}>{lightbox.caption}</p>}
             <button onClick={()=>setLightbox(null)} style={{marginTop:16,color:"#94A3B8",fontSize:12,background:"none",border:"none",cursor:"pointer"}}>✕ Schließen</button>
           </div>
@@ -739,7 +739,7 @@ function ClubstreamApp({profile,onBack}) {
                   onTouchEnd={e=>{ const dx=e.changedTouches[0].clientX-(touchStartX.current||0); if(dx>50)prev(); else if(dx<-50)next(); }}
                 >
                   <img
-                    src={cur.url} alt={cur.caption||""}
+                    src={cur.image_url||cur.url} alt={cur.caption||""}
                     style={{width:"100%",height:280,objectFit:"cover",display:"block",transition:"opacity .2s"}}
                     onClick={()=>setLightbox(cur)}
                   />
@@ -777,7 +777,7 @@ function ClubstreamApp({profile,onBack}) {
                     <div key={p.id} onClick={()=>setPhotoIdx(i)}
                       style={{flexShrink:0,width:64,height:64,borderRadius:8,overflow:"hidden",cursor:"pointer",border:`2px solid ${i===photoIdx?"#EC4899":"transparent"}`,opacity:i===photoIdx?1:.6,transition:"all .15s"}}
                     >
-                      <img src={p.url} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+                      <img src={p.image_url||p.url} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
                     </div>
                   ))}
                 </div>
