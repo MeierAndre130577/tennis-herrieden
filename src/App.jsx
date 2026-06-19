@@ -3856,11 +3856,11 @@ function AdminView({data,allBookings,guestFee,onSaveGuestFee,onAddCourt,onUpdate
 }
 
 function LoginScreen() {
-  const [mode,setMode]=useState("login");const [email,setEmail]=useState("");const [password,setPassword]=useState("");const [name,setName]=useState("");const [msg,setMsg]=useState(null);const [loading,setLoading]=useState(false);
+  const [mode,setMode]=useState("login");const [email,setEmail]=useState("");const [password,setPassword]=useState("");const [firstName,setFirstName]=useState("");const [lastName,setLastName]=useState("");const [msg,setMsg]=useState(null);const [loading,setLoading]=useState(false);
   const handle=async()=>{
     setLoading(true);setMsg(null);
     if(mode==="login"){ const {error}=await sb.auth.signInWithPassword({email,password}); if(error)setMsg({text:error.message,type:"error"}); }
-    else if(mode==="register"){ const {error}=await sb.auth.signUp({email,password,options:{data:{name}}}); if(error)setMsg({text:error.message,type:"error"}); else setMsg({text:"Bitte bestätige deine E-Mail, dann kannst du dich anmelden.",type:"ok"}); }
+    else if(mode==="register"){ const name=`${firstName.trim()} ${lastName.trim()}`.trim(); const {error}=await sb.auth.signUp({email,password,options:{data:{name}}}); if(error)setMsg({text:error.message,type:"error"}); else setMsg({text:"Bitte bestätige deine E-Mail, dann kannst du dich anmelden.",type:"ok"}); }
     else { const {error}=await sb.auth.resetPasswordForEmail(email); if(error)setMsg({text:error.message,type:"error"}); else setMsg({text:"Passwort-Reset-Link gesendet.",type:"ok"}); }
     setLoading(false);
   };
@@ -3870,7 +3870,8 @@ function LoginScreen() {
         <div style={{textAlign:"center",marginBottom:28}}><TennisBall size={52}/><h1 style={{fontSize:22,fontWeight:800,letterSpacing:-.5,marginTop:12}}>Tennis Herrieden</h1><p style={{color:"#6B7280",fontSize:13,marginTop:4}}>Tennisplatz-Buchungssystem</p></div>
         <div style={{display:"flex",gap:6,marginBottom:20}}>{[["login","Anmelden"],["register","Registrieren"]].map(([m,l])=>(<button key={m} style={{...S.tabBtn,flex:1,...(mode===m?S.tabBtnActive:{})}} onClick={()=>{setMode(m);setMsg(null);}}>{l}</button>))}</div>
         <div style={{display:"flex",flexDirection:"column",gap:12}}>
-          {mode==="register"&&<input placeholder="Vollständiger Name" value={name} onChange={e=>setName(e.target.value)} style={S.input}/>}
+          {mode==="register"&&<input placeholder="Vorname" value={firstName} onChange={e=>setFirstName(e.target.value)} style={S.input}/>}
+          {mode==="register"&&<input placeholder="Nachname" value={lastName} onChange={e=>setLastName(e.target.value)} style={S.input}/>}
           <input type="email" placeholder="E-Mail" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handle()} style={S.input}/>
           {mode!=="reset"&&<input type="password" placeholder="Passwort" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handle()} style={S.input}/>}
           {msg&&<div style={{padding:"10px 12px",borderRadius:8,fontSize:13,background:msg.type==="error"?"#FEE2E2":"#DCFCE7",color:msg.type==="error"?"#991B1B":"#166534"}}>{msg.text}</div>}
