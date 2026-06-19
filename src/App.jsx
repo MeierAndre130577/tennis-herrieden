@@ -4280,14 +4280,12 @@ function MassBookView({data,user,onMassBook,onCancelMany}) {
 }
 
 function AdminView({data,allBookings,guestFee,onSaveGuestFee,onAddCourt,onUpdateCourt,onDeleteCourt,onDeleteUser,onCancelBooking,onMarkPaid}) {
-  const [tab,setTab]=useState("courts");
-  const [courtForm,setCourtForm]=useState({name:"",surface:"Sand"});
-  const [editCourt,setEditCourt]=useState(null);
+  const [tab,setTab]=useState("guest");
   const [supaUsers,setSupaUsers]=useState([]);
   const [feeInput,setFeeInput]=useState(String(guestFee));
   const [confirmPay,setConfirmPay]=useState(null);
   useEffect(()=>{
-    if(tab!=="members"&&tab!=="guest") return;
+    if(tab!=="guest") return;
     sb.from("profiles").select("*").order("created_at").then(({data})=>setSupaUsers(data||[]));
   },[tab]);
   const updateRole=async(uid,role)=>{ await sb.from("profiles").update({role}).eq("id",uid); setSupaUsers(u=>u.map(x=>x.id===uid?{...x,role}:x)); };
@@ -4305,27 +4303,8 @@ function AdminView({data,allBookings,guestFee,onSaveGuestFee,onAddCourt,onUpdate
     <div style={{padding:"24px 28px"}}>
       <h1 style={S.pageTitle}>Administration</h1>
       <div style={{display:"flex",gap:8,marginBottom:24,flexWrap:"wrap"}}>
-        {[["courts","🎾 Plätze"],["members","👥 Mitglieder"],["guest","💶 Gastspieler"],["bookings","📅 Buchungen"]].map(([id,l])=>(<button key={id} style={{...S.tabBtn,...(tab===id?S.tabBtnActive:{})}} onClick={()=>setTab(id)}>{l}</button>))}
+        {[["guest","💶 Gastspieler"],["bookings","📅 Buchungen"]].map(([id,l])=>(<button key={id} style={{...S.tabBtn,...(tab===id?S.tabBtnActive:{})}} onClick={()=>setTab(id)}>{l}</button>))}
       </div>
-      {tab==="courts"&&(<>
-        <div style={S.card}><h3 style={{fontWeight:700,marginBottom:14}}>Neuen Platz hinzufügen</h3>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><input placeholder="Platzname" value={courtForm.name} onChange={e=>setCourtForm(f=>({...f,name:e.target.value}))} style={S.input}/><select value={courtForm.surface} onChange={e=>setCourtForm(f=>({...f,surface:e.target.value}))} style={S.input}>{["Sand","Hartplatz","Rasen","Teppich","Kunstrasen"].map(s=><option key={s}>{s}</option>)}</select></div>
-          <button style={{...S.primaryBtn,marginTop:12}} onClick={()=>{if(!courtForm.name)return;onAddCourt(courtForm.name,courtForm.surface);setCourtForm({name:"",surface:"Sand"});}}>Anlegen</button></div>
-        <div style={{marginTop:16}}>{data.courts.map((c,i)=>(<div key={c.id} style={{...S.card,borderLeft:`4px solid ${COURT_COLORS[i%COURT_COLORS.length]}`}}>
-          {editCourt?.id===c.id?(<div style={{display:"flex",gap:10,flexWrap:"wrap"}}><input value={editCourt.name} onChange={e=>setEditCourt(f=>({...f,name:e.target.value}))} style={{...S.input,maxWidth:180}}/><select value={editCourt.surface} onChange={e=>setEditCourt(f=>({...f,surface:e.target.value}))} style={{...S.input,maxWidth:140}}>{["Sand","Hartplatz","Rasen","Teppich","Kunstrasen"].map(s=><option key={s}>{s}</option>)}</select><button style={S.primaryBtn} onClick={()=>{onUpdateCourt(c.id,editCourt.name,editCourt.surface);setEditCourt(null);}}>Speichern</button><button style={S.ghostBtn} onClick={()=>setEditCourt(null)}>Abbrechen</button></div>)
-          :(<div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><div style={{fontWeight:700}}>{c.name}</div><div style={{fontSize:12,color:"#6B7280"}}>{c.surface}</div></div><div style={{display:"flex",gap:8}}><button style={{...S.ghostBtn,padding:"6px 12px",fontSize:13}} onClick={()=>setEditCourt({id:c.id,name:c.name,surface:c.surface})}>Bearbeiten</button><button style={S.cancelBtn} onClick={()=>onDeleteCourt(c.id)}>Löschen</button></div></div>)}
-        </div>))}</div>
-      </>)}
-      {tab==="members"&&(<>
-        <div style={{...S.card,background:"#EFF6FF",border:"1px solid #BFDBFE",marginBottom:16}}><div style={{fontWeight:700,marginBottom:6}}>ℹ️ Mitglieder einladen</div><div style={{fontSize:13,color:"#1D4ED8",lineHeight:1.6}}>Mitglieder registrieren sich selbst. Danach kannst du hier Rollen zuweisen oder Mitglieder löschen.</div></div>
-        {supaUsers.map(u=>(<div key={u.id} style={{...S.card,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
-          <div style={{display:"flex",alignItems:"center",gap:12}}><Av name={u.name}/><div><div style={{fontWeight:700,fontSize:14}}>{u.name}</div><div style={{fontSize:12,color:"#6B7280",marginTop:2}}>{u.email||"–"}</div><span style={{fontSize:11,padding:"2px 8px",borderRadius:20,background:"#F3F4F6",color:"#374151",fontWeight:600,marginTop:4,display:"inline-block"}}>{ROLE_LABELS[u.role]}</span></div></div>
-          <div style={{display:"flex",gap:8,alignItems:"center",flexShrink:0}}>
-            <select value={u.role} onChange={e=>updateRole(u.id,e.target.value)} style={{...S.input,width:"auto",padding:"6px 10px",fontSize:12,borderColor:["pending","known"].includes(u.role)?"#F59E0B":"#334155"}}><option value="pending">⏳ Ausstehend</option><option value="known">🤝 Bekannt</option><option value="member">🎾 Mitglied</option><option value="member2">⭐ Mitglied Plus</option><option value="admin">👑 Administrator</option></select>
-            <button style={S.cancelBtn} onClick={()=>{if(window.confirm(`${u.name} wirklich löschen?`))deleteUser(u.id);}}>Löschen</button>
-          </div>
-        </div>))}
-      </>)}
       {tab==="guest"&&(<>
         <div style={{background:"#EFF6FF",border:"1.5px solid #BFDBFE",borderRadius:12,padding:14,marginBottom:16}}>
           <div style={{fontWeight:800,fontSize:13,color:"#1E40AF",marginBottom:10}}>⚙️ Gebühr pro Gastspieler-Buchung</div>
