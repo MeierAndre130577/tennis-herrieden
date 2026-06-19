@@ -619,12 +619,16 @@ function ClubstreamApp({profile,onBack}) {
   const [loading,setLoading]     = useState(true);
   const [detail,setDetail]       = useState(null);
   const [typeFilter,setTypeFilter] = useState(null);
-  const [lightbox,setLightbox]   = useState(null);
-  const [photoIdx,setPhotoIdx]   = useState(0);
-  const [uploading,setUploading] = useState(false);
-  const [uploadErr,setUploadErr] = useState(null);
-  const touchStartX              = useRef(null);
-  const fileInputRef             = useRef(null);
+  const [lbPhotos,setLbPhotos]       = useState([]);
+  const [lbIdx,setLbIdx]             = useState(0);
+  const [kwIdxMap,setKwIdxMap]       = useState({});
+  const [uploading,setUploading]     = useState(false);
+  const [uploadErr,setUploadErr]     = useState(null);
+  const [pendingFile,setPendingFile] = useState(null);
+  const [pendingCaption,setPendingCaption] = useState("");
+  const lbTouchX                     = useRef(null);
+  const kwTouchX                     = useRef(null);
+  const fileInputRef                 = useRef(null);
 
   useEffect(()=>{
     setLoading(true);
@@ -648,7 +652,7 @@ function ClubstreamApp({profile,onBack}) {
 
   if(detail) return <ClubstreamDetail item={detail} onBack={()=>setDetail(null)}/>;
 
-  const uploadPhoto = async (file) => {
+  const uploadPhoto = async (file, caption) => {
     setUploading(true); setUploadErr(null);
     try {
       const ext  = file.name.split(".").pop();
@@ -656,18 +660,31 @@ function ClubstreamApp({profile,onBack}) {
       const {error:upErr} = await sb.storage.from("club-photos").upload(path, file, {contentType: file.type});
       if(upErr) throw upErr;
       const {data:{publicUrl}} = sb.storage.from("club-photos").getPublicUrl(path);
-      const {error:insErr} = await sb.from("club_photos").insert({image_url: publicUrl, user_id: profile.id});
+      const {error:insErr} = await sb.from("club_photos").insert({image_url: publicUrl, caption: caption||null, user_id: profile.id});
       if(insErr) throw insErr;
       const {data:newPhotos} = await sb.from("club_photos").select("id,url,image_url,caption,created_at").order("created_at",{ascending:false}).limit(200);
-      setPhotos(newPhotos||[]);
-      setPhotoIdx(0);
+      setPhotos(newPhotos||[]); setPendingFile(null); setPendingCaption("");
     } catch(e) { setUploadErr(e.message||"Fehler beim Upload"); }
     setUploading(false);
+  };
+
+  const getKWLabel = (dateStr) => {
+    const d = new Date(dateStr);
+    const tmp = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    tmp.setDate(tmp.getDate() + 3 - (tmp.getDay()+6)%7);
+    const w1 = new Date(tmp.getFullYear(),0,4);
+    const kw = 1+Math.round(((tmp-w1)/86400000-3+(w1.getDay()+6)%7)/7);
+    return `KW ${kw} / ${tmp.getFullYear()}`;
   };
 
   // Typen die tatsächlich in den Daten vorkommen, für Filter-Pills
   const availableTypes = [...new Set(items.map(i=>i.type))];
   const allPhotos = photos.filter(p=>p.image_url||p.url);
+  const kwGroups = (()=>{
+    const map = {}; const order = [];
+    allPhotos.forEach(p=>{ const k=getKWLabel(p.created_at); if(!map[k]){map[k]=[];order.push(k);} map[k].push(p); });
+    return order.map(k=>({label:k, photos:map[k]}));
+  })();
   const filtered = typeFilter && typeFilter!=="__fotos__"
     ? items.filter(i=>i.type===typeFilter)
     : typeFilter===null
@@ -735,87 +752,102 @@ function ClubstreamApp({profile,onBack}) {
           </div>
         )}
 
-        {/* Foto-Lightbox */}
-        {lightbox&&(
-          <div onClick={()=>setLightbox(null)} style={{position:"fixed",inset:0,background:"#000000CC",zIndex:1000,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:16}}>
-            <img src={lightbox.image_url||lightbox.url} alt={lightbox.caption||""} style={{maxWidth:"100%",maxHeight:"80vh",borderRadius:10,objectFit:"contain"}} onClick={e=>e.stopPropagation()}/>
-            {lightbox.caption&&<p style={{color:"#F1F5F9",fontSize:13,marginTop:12,textAlign:"center",maxWidth:400}}>{lightbox.caption}</p>}
-            <button onClick={()=>setLightbox(null)} style={{marginTop:16,color:"#94A3B8",fontSize:12,background:"none",border:"none",cursor:"pointer"}}>✕ Schließen</button>
+        {/* Lightbox mit Swipe + Navigation */}
+        {lbPhotos.length>0&&(
+          <div
+            style={{position:"fixed",inset:0,background:"#000000EE",zIndex:1000,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:16}}
+            onClick={()=>setLbPhotos([])}
+            onTouchStart={e=>lbTouchX.current=e.touches[0].clientX}
+            onTouchEnd={e=>{const dx=e.changedTouches[0].clientX-(lbTouchX.current||0);if(dx>50&&lbIdx>0)setLbIdx(i=>i-1);else if(dx<-50&&lbIdx<lbPhotos.length-1)setLbIdx(i=>i+1);}}
+          >
+            <img src={lbPhotos[lbIdx]?.image_url||lbPhotos[lbIdx]?.url} alt={lbPhotos[lbIdx]?.caption||""}
+              style={{maxWidth:"100%",maxHeight:"78vh",borderRadius:10,objectFit:"contain"}}
+              onClick={e=>e.stopPropagation()}/>
+            {lbPhotos[lbIdx]?.caption&&<p style={{color:"#F1F5F9",fontSize:13,marginTop:10,textAlign:"center",maxWidth:400,padding:"0 8px"}}>{lbPhotos[lbIdx].caption}</p>}
+            <div style={{display:"flex",alignItems:"center",gap:16,marginTop:12}}>
+              <button onClick={e=>{e.stopPropagation();setLbIdx(i=>Math.max(0,i-1));}} disabled={lbIdx===0}
+                style={{background:"#ffffff22",border:"none",color:"#fff",fontSize:22,borderRadius:"50%",width:40,height:40,cursor:lbIdx===0?"default":"pointer",opacity:lbIdx===0?.3:1}}>‹</button>
+              <span style={{color:"#94A3B8",fontSize:12}}>{lbIdx+1} / {lbPhotos.length}</span>
+              <button onClick={e=>{e.stopPropagation();setLbIdx(i=>Math.min(lbPhotos.length-1,i+1));}} disabled={lbIdx===lbPhotos.length-1}
+                style={{background:"#ffffff22",border:"none",color:"#fff",fontSize:22,borderRadius:"50%",width:40,height:40,cursor:lbIdx===lbPhotos.length-1?"default":"pointer",opacity:lbIdx===lbPhotos.length-1?.3:1}}>›</button>
+            </div>
+            <button onClick={()=>setLbPhotos([])} style={{marginTop:10,color:"#64748B",fontSize:12,background:"none",border:"none",cursor:"pointer"}}>✕ Schließen</button>
           </div>
         )}
 
-        {/* Foto-Karussell */}
-        {typeFilter==="__fotos__"?(
-          photos.length===0?(
-            <div style={{background:"#1E293B",border:"1.5px solid #334155",borderRadius:14,padding:"32px 14px",textAlign:"center"}}>
-              <span style={{fontSize:32}}>🖼️</span>
-              <p style={{color:"#475569",fontSize:13,marginTop:8}}>Noch keine Fotos hochgeladen</p>
-            </div>
-          ):(()=>{
-            const cur = photos[photoIdx] || photos[0];
-            const prev = ()=>setPhotoIdx(i=>Math.max(0,i-1));
-            const next = ()=>setPhotoIdx(i=>Math.min(photos.length-1,i+1));
-            return (
-              <div>
-                {/* Großes Foto */}
-                <div
-                  style={{position:"relative",borderRadius:16,overflow:"hidden",background:"#0F172A",border:"1.5px solid #EC489933"}}
-                  onTouchStart={e=>{ touchStartX.current=e.touches[0].clientX; }}
-                  onTouchEnd={e=>{ const dx=e.changedTouches[0].clientX-(touchStartX.current||0); if(dx>50)prev(); else if(dx<-50)next(); }}
-                >
-                  <img
-                    src={cur.image_url||cur.url} alt={cur.caption||""}
-                    style={{width:"100%",height:280,objectFit:"cover",display:"block",transition:"opacity .2s"}}
-                    onClick={()=>setLightbox(cur)}
-                  />
-                  {/* Pfeile */}
-                  {photoIdx>0&&(
-                    <button onClick={prev} style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",background:"#00000088",border:"none",color:"#fff",fontSize:20,borderRadius:"50%",width:36,height:36,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>‹</button>
-                  )}
-                  {photoIdx<photos.length-1&&(
-                    <button onClick={next} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"#00000088",border:"none",color:"#fff",fontSize:20,borderRadius:"50%",width:36,height:36,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>›</button>
-                  )}
-                  {/* Zähler */}
-                  <div style={{position:"absolute",bottom:10,right:12,background:"#00000088",borderRadius:20,padding:"2px 8px",fontSize:11,color:"#fff",fontWeight:700}}>
-                    {photoIdx+1} / {photos.length}
-                  </div>
-                </div>
-                {/* Caption */}
-                {cur.caption&&(
-                  <div style={{marginTop:8,fontSize:13,color:"#94A3B8",textAlign:"center",padding:"0 4px"}}>{cur.caption}</div>
-                )}
-                {/* Datum */}
-                <div style={{marginTop:4,fontSize:11,color:"#475569",textAlign:"center"}}>
-                  {new Date(cur.created_at).toLocaleDateString("de-DE",{day:"numeric",month:"long",year:"numeric"})}
-                </div>
-                {/* Punkte-Navigation */}
-                <div style={{display:"flex",justifyContent:"center",gap:5,marginTop:12,flexWrap:"wrap"}}>
-                  {photos.map((_,i)=>(
-                    <button key={i} onClick={()=>setPhotoIdx(i)}
-                      style={{width:i===photoIdx?20:8,height:8,borderRadius:4,background:i===photoIdx?"#EC4899":"#334155",border:"none",cursor:"pointer",padding:0,transition:"width .2s"}}
-                    />
-                  ))}
-                </div>
-                {/* Thumbnail-Streifen */}
-                <div style={{display:"flex",gap:6,overflowX:"auto",marginTop:12,paddingBottom:4}}>
-                  {photos.map((p,i)=>(
-                    <div key={p.id} onClick={()=>setPhotoIdx(i)}
-                      style={{flexShrink:0,width:64,height:64,borderRadius:8,overflow:"hidden",cursor:"pointer",border:`2px solid ${i===photoIdx?"#EC4899":"transparent"}`,opacity:i===photoIdx?1:.6,transition:"all .15s"}}
-                    >
-                      <img src={p.image_url||p.url} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
-                    </div>
-                  ))}
-                </div>
-                {/* Upload */}
-                <input ref={fileInputRef} type="file" accept="image/*" style={{display:"none"}} onChange={e=>{if(e.target.files[0])uploadPhoto(e.target.files[0]);}}/>
-                {uploadErr&&<div style={{marginTop:8,fontSize:12,color:"#EF4444",textAlign:"center"}}>{uploadErr}</div>}
-                <button onClick={()=>fileInputRef.current.click()} disabled={uploading}
-                  style={{marginTop:14,width:"100%",padding:"10px",borderRadius:12,border:"1.5px dashed #EC489966",background:"#EC489908",color:"#F472B6",fontSize:13,fontWeight:700,cursor:uploading?"wait":"pointer"}}>
-                  {uploading?"⏳ Wird hochgeladen…":"📷 Foto hochladen"}
+        {/* Upload-Modal mit Caption */}
+        {pendingFile&&(
+          <div style={{position:"fixed",inset:0,background:"#000000CC",zIndex:999,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+            <div style={{background:"#1E293B",borderRadius:16,padding:20,width:"100%",maxWidth:380,border:"1.5px solid #EC489944"}} onClick={e=>e.stopPropagation()}>
+              <img src={URL.createObjectURL(pendingFile)} alt="" style={{width:"100%",height:200,objectFit:"cover",borderRadius:10,display:"block",marginBottom:14}}/>
+              <input
+                value={pendingCaption} onChange={e=>setPendingCaption(e.target.value)}
+                placeholder="Kommentar zum Foto (optional)"
+                style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid #334155",background:"#0F172A",color:"#F1F5F9",fontSize:13,boxSizing:"border-box",marginBottom:10}}
+              />
+              {uploadErr&&<div style={{fontSize:12,color:"#EF4444",marginBottom:8}}>{uploadErr}</div>}
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={()=>{setPendingFile(null);setPendingCaption("");setUploadErr(null);}}
+                  style={{flex:1,padding:"10px",borderRadius:10,border:"1.5px solid #334155",background:"transparent",color:"#94A3B8",fontSize:13,cursor:"pointer"}}>
+                  Abbrechen
+                </button>
+                <button onClick={()=>uploadPhoto(pendingFile,pendingCaption)} disabled={uploading}
+                  style={{flex:2,padding:"10px",borderRadius:10,border:"none",background:"#EC4899",color:"#fff",fontSize:13,fontWeight:700,cursor:uploading?"wait":"pointer"}}>
+                  {uploading?"⏳ Hochladen…":"📤 Hochladen"}
                 </button>
               </div>
-            );
-          })()
+            </div>
+          </div>
+        )}
+
+        {/* Fotos nach KW gruppiert */}
+        {typeFilter==="__fotos__"?(
+          <div style={{display:"flex",flexDirection:"column",gap:20}}>
+            {kwGroups.length===0&&(
+              <div style={{background:"#1E293B",border:"1.5px solid #334155",borderRadius:14,padding:"32px 14px",textAlign:"center"}}>
+                <span style={{fontSize:32}}>🖼️</span>
+                <p style={{color:"#475569",fontSize:13,marginTop:8}}>Noch keine Fotos hochgeladen</p>
+              </div>
+            )}
+            {kwGroups.map(({label,photos:kphotos})=>{
+              const idx = kwIdxMap[label]||0;
+              const cur = kphotos[idx];
+              const prev = ()=>setKwIdxMap(m=>({...m,[label]:Math.max(0,(m[label]||0)-1)}));
+              const next = ()=>setKwIdxMap(m=>({...m,[label]:Math.min(kphotos.length-1,(m[label]||0)+1)}));
+              return (
+                <div key={label}>
+                  <div style={{fontSize:12,fontWeight:700,color:"#EC4899",textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>
+                    🗓 {label} · {kphotos.length} {kphotos.length===1?"Foto":"Fotos"}
+                  </div>
+                  <div style={{position:"relative",borderRadius:14,overflow:"hidden",background:"#0F172A",border:"1.5px solid #EC489933"}}
+                    onTouchStart={e=>kwTouchX.current=e.touches[0].clientX}
+                    onTouchEnd={e=>{const dx=e.changedTouches[0].clientX-(kwTouchX.current||0);if(dx>50)prev();else if(dx<-50)next();}}>
+                    <img src={cur.image_url||cur.url} alt={cur.caption||""}
+                      style={{width:"100%",height:240,objectFit:"cover",display:"block",cursor:"pointer"}}
+                      onClick={()=>{setLbPhotos(kphotos);setLbIdx(idx);}}/>
+                    {idx>0&&<button onClick={prev} style={{position:"absolute",left:8,top:"50%",transform:"translateY(-50%)",background:"#00000088",border:"none",color:"#fff",fontSize:20,borderRadius:"50%",width:34,height:34,cursor:"pointer"}}>‹</button>}
+                    {idx<kphotos.length-1&&<button onClick={next} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"#00000088",border:"none",color:"#fff",fontSize:20,borderRadius:"50%",width:34,height:34,cursor:"pointer"}}>›</button>}
+                    <div style={{position:"absolute",bottom:8,right:10,background:"#00000088",borderRadius:20,padding:"2px 8px",fontSize:11,color:"#fff",fontWeight:700}}>{idx+1}/{kphotos.length}</div>
+                  </div>
+                  {cur.caption&&<div style={{marginTop:6,fontSize:13,color:"#94A3B8",padding:"0 2px"}}>{cur.caption}</div>}
+                  <div style={{marginTop:3,fontSize:11,color:"#475569"}}>{new Date(cur.created_at).toLocaleDateString("de-DE",{day:"numeric",month:"long",year:"numeric"})}</div>
+                  <div style={{display:"flex",gap:4,marginTop:8,overflowX:"auto",paddingBottom:2}}>
+                    {kphotos.map((p,i)=>(
+                      <div key={p.id} onClick={()=>setKwIdxMap(m=>({...m,[label]:i}))}
+                        style={{flexShrink:0,width:52,height:52,borderRadius:6,overflow:"hidden",cursor:"pointer",border:`2px solid ${i===idx?"#EC4899":"transparent"}`,opacity:i===idx?1:.55,transition:"all .15s"}}>
+                        <img src={p.image_url||p.url} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+            <input ref={fileInputRef} type="file" accept="image/*" style={{display:"none"}} onChange={e=>{if(e.target.files[0]){setPendingFile(e.target.files[0]);e.target.value="";}}}/>
+            <button onClick={()=>fileInputRef.current.click()}
+              style={{width:"100%",padding:"12px",borderRadius:12,border:"1.5px dashed #EC489966",background:"#EC489908",color:"#F472B6",fontSize:13,fontWeight:700,cursor:"pointer"}}>
+              📷 Foto hochladen
+            </button>
+          </div>
         ):(
 
         /* Liste */
@@ -836,7 +868,7 @@ function ClubstreamApp({profile,onBack}) {
               if(item._isPhoto) {
                 const src = item.image_url||item.url;
                 return (
-                  <div key={item.id} style={{background:"#1E293B",border:"1.5px solid #EC489933",borderRadius:14,overflow:"hidden",cursor:"pointer"}} onClick={()=>setLightbox(item)}>
+                  <div key={item.id} style={{background:"#1E293B",border:"1.5px solid #EC489933",borderRadius:14,overflow:"hidden",cursor:"pointer"}} onClick={()=>{setLbPhotos([item]);setLbIdx(0);}}>
                     {src&&<img src={src} alt={item.caption||""} style={{width:"100%",height:200,objectFit:"cover",display:"block"}}/>}
                     <div style={{padding:"10px 14px",display:"flex",alignItems:"center",gap:8}}>
                       <span style={{fontSize:18}}>🖼️</span>
