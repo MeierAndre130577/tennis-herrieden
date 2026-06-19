@@ -391,15 +391,7 @@ function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassen
 
           {/* Clubstream */}
           {canDo("clubstream")&&<div style={{...H.widgetCompact, borderColor:"#22C55E55", background:"#0F1F10"}}
-               onClick={async()=>{
-                 const { data:{ session } } = await sb.auth.getSession();
-                 const base = "https://clubstream-hub.vercel.app";
-                 if(session?.access_token){
-                   window.open(`${base}/#access_token=${session.access_token}&refresh_token=${session.refresh_token}&token_type=bearer`,"_blank");
-                 } else {
-                   window.open(base,"_blank");
-                 }
-               }}>
+               onClick={onGoClubstream}>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
               <span style={{fontSize:18}}>📰</span>
               <div style={{flex:1}}>
