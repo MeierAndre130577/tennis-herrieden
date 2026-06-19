@@ -15,20 +15,28 @@ const BOOKING_TYPE_MAP = { regular:{icon:"🎾",color:"#22C55E"}, training:{icon
 const ROLE_LABELS = { admin:"Administrator", member2:"Mitglied Plus", member:"Mitglied", pending:"Ausstehend" };
 const ROLES = ["pending","member","member2","admin"];
 const MODULES = [
-  {id:"booking",   label:"Platzbuchung",  icon:"📅"},
-  {id:"kasse",     label:"Getränke",      icon:"🧾"},
-  {id:"kassenbuch",label:"Kassenbuch",    icon:"💰"},
-  {id:"clubstream",label:"Clubstream",    icon:"📰"},
-  {id:"btv",       label:"BTV Links",     icon:"🔗"},
-  {id:"heimspiel", label:"Heimspielwoche",icon:"🏠"},
+  {id:"booking",       label:"Platzbuchung",         icon:"📅"},
+  {id:"kasse",         label:"Getränke",             icon:"🧾"},
+  {id:"kassenbuch",    label:"Kassenbuch",           icon:"💰"},
+  {id:"clubstream",    label:"Clubstream",           icon:"📰"},
+  {id:"btv",           label:"BTV Links",            icon:"🔗"},
+  {id:"heimspiel",     label:"Heimspielwoche",       icon:"🏠"},
+];
+const SPECIAL_MODULES = [
+  {id:"einstellungen", label:"Einstellungen",        icon:"⚙️"},
+  {id:"massenbuchung", label:"Massenbuchung",        icon:"📆"},
+  {id:"kasse_alle",    label:"Kasse: Alle Einträge", icon:"👁️"},
 ];
 const DEFAULT_PERMISSIONS = {
-  booking:    ["member","member2","admin"],
-  kasse:      ["member","member2","admin"],
-  kassenbuch: ["admin"],
-  clubstream: ["pending","member","member2","admin"],
-  btv:        ["pending","member","member2","admin"],
-  heimspiel:  ["pending","member","member2","admin"],
+  booking:       ["member","member2","admin"],
+  kasse:         ["member","member2","admin"],
+  kassenbuch:    ["admin"],
+  clubstream:    ["pending","member","member2","admin"],
+  btv:           ["pending","member","member2","admin"],
+  heimspiel:     ["pending","member","member2","admin"],
+  einstellungen: ["admin"],
+  massenbuchung: ["member2","admin"],
+  kasse_alle:    ["admin"],
 };
 const KASSE_EMOJIS = ["🍺","🥤","🍎","💧","🍊","☕","🧃","🍵","🥛","🍋","🫖","🧋","🍷","🥂","🫙"];
 
@@ -124,9 +132,9 @@ export default function App() {
   if(!session) return <LoginScreen/>;
   if(!profile) return <Loading msg="Lade Profil…"/>;
 
-  if(screen==="booking"    && canDo("booking"))    return <BookingApp     profile={profile} onBack={()=>setScreen("home")}/>;
-  if(screen==="kasse"      && canDo("kasse"))      return <KasseApp       profile={profile} onBack={()=>setScreen("home")}/>;
-  if(screen==="settings"   && profile.role==="admin") return <SettingsApp profile={profile} onBack={()=>setScreen("home")}/>;
+  if(screen==="booking"    && canDo("booking"))       return <BookingApp     profile={profile} perms={permissions} onBack={()=>setScreen("home")}/>;
+  if(screen==="kasse"      && canDo("kasse"))         return <KasseApp       profile={profile} perms={permissions} onBack={()=>setScreen("home")}/>;
+  if(screen==="settings"   && canDo("einstellungen")) return <SettingsApp    profile={profile} onBack={()=>setScreen("home")}/>;
   if(screen==="kassenbuch" && canDo("kassenbuch")) return <KassenbuchApp  profile={profile} onBack={()=>setScreen("home")}/>;
   if(screen==="clubstream" && canDo("clubstream")) return <ClubstreamApp  profile={profile} onBack={()=>setScreen("home")}/>;
   if(screen==="btv"        && canDo("btv"))        return <BtvLinksScreen onBack={()=>setScreen("home")}/>;
@@ -453,7 +461,7 @@ function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassen
               <span style={H.navTileSub}>Einnahmen & Ausgaben</span>
             </button>
           )}
-          {profile.role==="admin"&&(
+          {canDo("einstellungen")&&(
             <button style={{...H.navTile,borderColor:"#8B5CF633",gridColumn:"1 / -1"}} onClick={onGoSettings}>
               <span style={{fontSize:28}}>⚙️</span>
               <span style={H.navTileLabel}>Einstellungen</span>
@@ -760,7 +768,7 @@ function ClubstreamApp({profile,onBack}) {
 // ═══════════════════════════════════════════════════════════════════════════
 // BOOKING APP  (existing logic, wrapped with a back button)
 // ═══════════════════════════════════════════════════════════════════════════
-function BookingApp({profile,onBack}) {
+function BookingApp({profile,perms={},onBack}) {
   const [courts,setCourts]     = useState([]);
   const [bookings,setBookings] = useState([]);
   const [guestFee,setGuestFee] = useState(5.00);
@@ -792,7 +800,8 @@ function BookingApp({profile,onBack}) {
     return ()=>sb.removeChannel(ch);
   },[loadBookings]);
 
-  const canMassBook=profile.role==="admin"||profile.role==="member2";
+  const localCanDo=(m)=>{ if(profile.role==="admin")return true; return ({...DEFAULT_PERMISSIONS,...perms}[m]||[]).includes(profile.role); };
+  const canMassBook=localCanDo("massenbuchung");
   const adaptedBookings=bookings.map(b=>({...b,courtId:b.court_id,userId:b.user_id,userName:b.user_name}));
   const adaptedData={bookings:adaptedBookings,courts};
 
@@ -882,13 +891,14 @@ function BookingApp({profile,onBack}) {
 // ═══════════════════════════════════════════════════════════════════════════
 // KASSE APP
 // ═══════════════════════════════════════════════════════════════════════════
-function KasseApp({profile,onBack}) {
+function KasseApp({profile,perms={},onBack}) {
   const [tab,setTab]       = useState("drinks");
   const [favs,setFavs]     = useState([]);
   const [log,setLog]       = useState([]);
   const [toast,setToast]   = useState(null);
 
-  const isAdmin = profile.role==="admin";
+  const localCanDo=(m)=>{ if(profile.role==="admin")return true; return ({...DEFAULT_PERMISSIONS,...perms}[m]||[]).includes(profile.role); };
+  const isAdmin = localCanDo("kasse_alle");
   const showToast=(msg,type="success")=>{ setToast({msg,type}); setTimeout(()=>setToast(null),2800); };
 
   const loadFavs = useCallback(async()=>{
@@ -1718,44 +1728,50 @@ function SettingsPermissionsTab({onToast}) {
       <h1 style={S.pageTitle}>Berechtigungen</h1>
       <p style={S.pageSub}>Welche Rollen dürfen welche Module nutzen?</p>
 
-      <div style={{overflowX:"auto",marginTop:20}}>
-        <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
-          <thead>
-            <tr>
-              <th style={{textAlign:"left",padding:"8px 12px",color:"#94A3B8",fontWeight:700,fontSize:11,textTransform:"uppercase",letterSpacing:.7}}>Modul</th>
-              {ROLES.map(r=>(
-                <th key={r} style={{padding:"8px 10px",color:roleColors[r],fontWeight:700,fontSize:11,textTransform:"uppercase",letterSpacing:.7,textAlign:"center",whiteSpace:"nowrap"}}>
-                  {ROLE_LABELS[r]}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {MODULES.map((mod,i)=>(
-              <tr key={mod.id} style={{background:i%2===0?"#1E293B":"#162032",borderRadius:8}}>
-                <td style={{padding:"10px 12px",fontWeight:600,color:"#F1F5F9"}}>
-                  <span style={{marginRight:6}}>{mod.icon}</span>{mod.label}
-                </td>
-                {ROLES.map(role=>{
-                  const isAdmin = role==="admin";
-                  const checked = isAdmin || (perms[mod.id]||[]).includes(role);
-                  return (
-                    <td key={role} style={{textAlign:"center",padding:"10px 10px"}}>
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        disabled={isAdmin}
-                        onChange={()=>toggle(mod.id,role)}
-                        style={{width:16,height:16,accentColor:roleColors[role],cursor:isAdmin?"default":"pointer"}}
-                      />
-                    </td>
-                  );
-                })}
+      {[
+        {title:"Hauptmodule",    mods:MODULES},
+        {title:"Spezielle Berechtigungen", mods:SPECIAL_MODULES},
+      ].map(({title,mods})=>(
+        <div key={title} style={{overflowX:"auto",marginTop:20}}>
+          <div style={{fontSize:11,fontWeight:700,color:"#94A3B8",textTransform:"uppercase",letterSpacing:.7,marginBottom:6}}>{title}</div>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+            <thead>
+              <tr>
+                <th style={{textAlign:"left",padding:"8px 12px",color:"#94A3B8",fontWeight:700,fontSize:11,textTransform:"uppercase",letterSpacing:.7}}>Modul</th>
+                {ROLES.map(r=>(
+                  <th key={r} style={{padding:"8px 10px",color:roleColors[r],fontWeight:700,fontSize:11,textTransform:"uppercase",letterSpacing:.7,textAlign:"center",whiteSpace:"nowrap"}}>
+                    {ROLE_LABELS[r]}
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {mods.map((mod,i)=>(
+                <tr key={mod.id} style={{background:i%2===0?"#1E293B":"#162032"}}>
+                  <td style={{padding:"10px 12px",fontWeight:600,color:"#F1F5F9"}}>
+                    <span style={{marginRight:6}}>{mod.icon}</span>{mod.label}
+                  </td>
+                  {ROLES.map(role=>{
+                    const isAdminRole = role==="admin";
+                    const checked = isAdminRole || (perms[mod.id]||[]).includes(role);
+                    return (
+                      <td key={role} style={{textAlign:"center",padding:"10px 10px"}}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          disabled={isAdminRole}
+                          onChange={()=>toggle(mod.id,role)}
+                          style={{width:16,height:16,accentColor:roleColors[role],cursor:isAdminRole?"default":"pointer"}}
+                        />
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ))}
 
       <div style={{marginTop:24,textAlign:"right"}}>
         <button onClick={save} disabled={saving}
