@@ -1737,7 +1737,9 @@ function SettingsApp({profile,onBack}) {
           </div>
 
           {tab==="betrieb"&&<div style={{padding:"16px"}}>
-            <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>
+            <h1 style={S.pageTitle}>Betrieb</h1>
+            <p style={S.pageSub}>Buchung, Platzverwaltung und Hintergrund-Jobs</p>
+            <div style={{display:"flex",gap:6,marginTop:20,flexWrap:"wrap"}}>
               {[{id:"booking",icon:"📅",label:"Buchung"},{id:"courts",icon:"🎾",label:"Plätze"},{id:"jobs",icon:"⚡",label:"Hintergrund"}].map(t=>(
                 <button key={t.id} onClick={()=>setBetriebTabP(t.id)}
                   style={{flexShrink:0,fontSize:11,fontWeight:700,padding:"4px 12px",borderRadius:20,
@@ -1749,9 +1751,11 @@ function SettingsApp({profile,onBack}) {
                 </button>
               ))}
             </div>
-            {betriebTab==="booking"&&<SettingsBookingTab onToast={showToast}/>}
-            {betriebTab==="courts" &&<SettingsCourtsTab  onToast={showToast}/>}
-            {betriebTab==="jobs"   &&<SettingsJobsTab/>}
+            <div style={{marginTop:20}}>
+              {betriebTab==="booking"&&<SettingsBookingTab onToast={showToast}/>}
+              {betriebTab==="courts" &&<SettingsCourtsTab  onToast={showToast}/>}
+              {betriebTab==="jobs"   &&<SettingsJobsTab/>}
+            </div>
           </div>}
           {tab==="members"      &&<SettingsMembersTab      onToast={showToast}/>}
           {tab==="permissions"  &&<SettingsPermissionsTab  onToast={showToast}/>}
