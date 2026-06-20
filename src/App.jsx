@@ -3699,20 +3699,23 @@ function SettingsDisplayTab({onToast}) {
         {/* ── TAGESBELEGUNGSPLAN ── */}
         {activeTab==="schedule"&&(
           <div>
-            <div style={{marginBottom:14}}>
-              <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>VEREINSNUMMER (BTV)</div>
-              <input value={vereinsnr} onChange={e=>setVernr(e.target.value)} style={{...S.input,width:"100%"}}/>
-            </div>
-            <div style={{marginBottom:14}}>
-              <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>SAISON</div>
-              <input value={saison} onChange={e=>setSaison(e.target.value)} style={{...S.input,width:"100%"}}/>
-            </div>
+            <p style={{fontSize:12,color:"#9CA3AF"}}>Zeigt die heutigen Platzbuchungen in Echtzeit.</p>
           </div>
         )}
 
         {/* ── HEIMSPIELMODUS ── */}
         {activeTab==="heimspiel"&&(
           <div>
+            <div style={{display:"flex",gap:10,marginBottom:14}}>
+              <div style={{flex:1}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>VEREINSNUMMER (BTV)</div>
+                <input value={vereinsnr} onChange={e=>setVernr(e.target.value)} style={{...S.input,width:"100%"}}/>
+              </div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>SAISON</div>
+                <input value={saison} onChange={e=>setSaison(e.target.value)} style={{...S.input,width:"100%"}}/>
+              </div>
+            </div>
             {/* ── Master-Schalter: Auto-Fetch ── */}
             <div onClick={toggleFetchEnabled}
               style={{display:"flex",alignItems:"center",justifyContent:"space-between",
