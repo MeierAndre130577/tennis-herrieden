@@ -1736,7 +1736,7 @@ function SettingsApp({profile,onBack}) {
             <span style={{width:80}}/>
           </div>
 
-          {tab==="betrieb"&&<div style={{padding:"16px"}}>
+          {tab==="betrieb"&&<div style={K.page}>
             <h1 style={S.pageTitle}>Betrieb</h1>
             <p style={S.pageSub}>Buchung, Platzverwaltung und Hintergrund-Jobs</p>
             <div style={{display:"flex",gap:6,marginTop:20,flexWrap:"wrap"}}>
