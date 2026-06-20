@@ -7,7 +7,7 @@
   },
   "headers": [
     {
-      "source": "/(index.html|sw.js)",
+      "source": "/(index.html|sw.js|display.html|display2.html)",
       "headers": [
         { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
         { "key": "Pragma",        "value": "no-cache" },
