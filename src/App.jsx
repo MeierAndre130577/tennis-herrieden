@@ -3201,6 +3201,8 @@ function SettingsDisplayTab({onToast}) {
   const [schedSchedule,  setSchedSchedule]  = useState({from:"",to:""});
   const [schedHeim,      setSchedHeim]      = useState({from:"",to:""});
   const [schedBild,      setSchedBild]      = useState({from:"",to:""});
+  const [schedFotos,     setSchedFotos]     = useState({from:"",to:""});
+  const [zeitModus,      setZeitModus]      = useState("schedule");
   const [matchCache,     setMatchCache]     = useState(null); // btv_match_cache
   const [revertKey,      setRevertKey]      = useState(0);
   const [fetchEnabled,   setFetchEnabled]   = useState(true); // btv_fetch_enabled
@@ -3218,7 +3220,7 @@ function SettingsDisplayTab({onToast}) {
       .in("key",["display_mode","display_theme","display_vereinsnummer","display_saison",
                  "display_mannschaft","display_gegner","display_match_url",
                  "display_bild_url","github_pat",
-                 "display_sched_schedule","display_sched_heimspiel","display_sched_bild",
+                 "display_sched_schedule","display_sched_heimspiel","display_sched_bild","display_sched_fotos",
                  "btv_match_cache","btv_fetch_enabled",
                  "display_affe_minuten","display_affe_sekunden","display_affe_modes"])
       .then(({data})=>{
@@ -3236,6 +3238,7 @@ function SettingsDisplayTab({onToast}) {
         try { if(map.display_sched_schedule)  setSchedSchedule(JSON.parse(map.display_sched_schedule)); } catch(_){}
         try { if(map.display_sched_heimspiel) setSchedHeim(JSON.parse(map.display_sched_heimspiel)); } catch(_){}
         try { if(map.display_sched_bild)      setSchedBild(JSON.parse(map.display_sched_bild)); } catch(_){}
+        try { if(map.display_sched_fotos)     setSchedFotos(JSON.parse(map.display_sched_fotos)); } catch(_){}
         try { if(map.btv_match_cache)         setMatchCache(JSON.parse(map.btv_match_cache)); } catch(_){}
         if(map.btv_fetch_enabled !== undefined) setFetchEnabled(map.btv_fetch_enabled !== "false");
         if(map.display_foto_interval)          setFotosInterval(Number(map.display_foto_interval)||8);
@@ -3251,6 +3254,7 @@ function SettingsDisplayTab({onToast}) {
       {label:"Tagesbelegungsplan", ...schedSchedule},
       {label:"Heimspielmodus",     ...schedHeim},
       {label:"Bildanzeige",        ...schedBild},
+      {label:"Fotos-Slideshow",    ...schedFotos},
     ].filter(s => s.from && s.to);
     for(let i=0;i<list.length;i++) for(let j=i+1;j<list.length;j++) {
       const a=list[i], b=list[j];
@@ -3301,6 +3305,7 @@ function SettingsDisplayTab({onToast}) {
       {key:"display_sched_schedule",  value:JSON.stringify(schedSchedule)},
       {key:"display_sched_heimspiel", value:JSON.stringify(schedHeim)},
       {key:"display_sched_bild",      value:JSON.stringify(schedBild)},
+      {key:"display_sched_fotos",     value:JSON.stringify(schedFotos)},
       {key:"display_foto_interval",   value:String(fotosInterval)},
       {key:"display_affe_minuten",    value:String(affeMinuten)},
       {key:"display_affe_sekunden",   value:String(affeSekunden)},
@@ -3507,21 +3512,60 @@ function SettingsDisplayTab({onToast}) {
       <div style={{paddingTop:20,paddingBottom:8}}>
 
         {/* ── EINSTELLUNGEN: Anzeigemodus ── */}
-        {activeTab==="einstellungen"&&subTab==="modus"&&(
-          <div>
-            <p style={{fontSize:12,color:"#6B7280",marginBottom:12}}>Wähle, welcher Modus auf dem Display angezeigt wird.</p>
-            <div style={{display:"flex",flexDirection:"column",gap:8}}>
-              {[
-                {id:"schedule",  label:"📅 Tagesbelegungsplan"},
-                {id:"heimspiel", label:"🏆 Heimspielmodus"},
-                {id:"bild",      label:"🖼️ Bildanzeige"},
-                {id:"fotos",     label:"📸 Fotos-Slideshow"},
-              ].map(m=>(
-                <ModeRow key={m.id} modeId={m.id} label={m.label}/>
-              ))}
+        {activeTab==="einstellungen"&&subTab==="modus"&&(()=>{
+          const MODES = [
+            {id:"schedule",  icon:"📅", label:"Tagesbelegung",  sched:schedSchedule, setSched:setSchedSchedule},
+            {id:"heimspiel", icon:"🏆", label:"Heimspiel",      sched:schedHeim,     setSched:setSchedHeim},
+            {id:"bild",      icon:"🖼️", label:"Bildanzeige",    sched:schedBild,     setSched:setSchedBild},
+            {id:"fotos",     icon:"📸", label:"Fotos-Slideshow",sched:schedFotos,    setSched:setSchedFotos},
+          ];
+          const fmt = s => new Date(s).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+          const now = new Date();
+          const selM = MODES.find(m=>m.id===zeitModus);
+          return (
+            <div>
+              {/* Aktiver Modus */}
+              <p style={{fontSize:12,color:"#6B7280",marginBottom:10}}>Wähle, welcher Modus aktuell auf dem Display angezeigt wird.</p>
+              <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
+                {MODES.map(m=>(
+                  <ModeRow key={m.id} modeId={m.id} label={`${m.icon} ${m.label}`}/>
+                ))}
+              </div>
+
+              {/* Zeitschaltung */}
+              <div style={{borderTop:"1px solid #E5E7EB",paddingTop:16,marginBottom:10}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:4}}>⏰ ZEITSCHALTUNG</div>
+                <p style={{fontSize:12,color:"#9CA3AF",marginBottom:12}}>Aktiviere einen Modus automatisch für einen bestimmten Zeitraum.</p>
+              </div>
+
+              {/* Übersicht */}
+              <div style={{display:"flex",flexDirection:"column",gap:4,marginBottom:14}}>
+                {MODES.map(m=>{
+                  const isSet = m.sched.from && m.sched.to;
+                  const isNow = isSet && now >= new Date(m.sched.from) && now <= new Date(m.sched.to);
+                  return (
+                    <div key={m.id} onClick={()=>setZeitModus(m.id)}
+                      style={{display:"flex",alignItems:"center",gap:8,padding:"8px 11px",borderRadius:8,
+                        cursor:"pointer",
+                        background:zeitModus===m.id?"#EFF6FF":"#F9FAFB",
+                        border:`1.5px solid ${zeitModus===m.id?"#93C5FD":"#E5E7EB"}`}}>
+                      <span style={{fontSize:14}}>{m.icon}</span>
+                      <span style={{width:110,fontSize:12,fontWeight:600,color:"#374151"}}>{m.label}</span>
+                      {isNow&&<span style={{fontSize:10,background:"#DCFCE7",color:"#16A34A",
+                        padding:"1px 7px",borderRadius:10,fontWeight:700,flexShrink:0}}>AKTIV</span>}
+                      <span style={{flex:1,fontSize:11,color:isSet?"#374151":"#9CA3AF",textAlign:"right"}}>
+                        {isSet ? `${fmt(m.sched.from)} – ${fmt(m.sched.to)}` : "nicht gesetzt"}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* ZeitSchaltung des gewählten Modus */}
+              {selM&&<ZeitSchaltung sched={selM.sched} setSched={selM.setSched}/>}
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ── EINSTELLUNGEN: Farbschema ── */}
         {activeTab==="einstellungen"&&subTab==="farbschema"&&(
@@ -3595,7 +3639,6 @@ function SettingsDisplayTab({onToast}) {
         {/* ── TAGESBELEGUNGSPLAN ── */}
         {activeTab==="schedule"&&(
           <div>
-            <ZeitSchaltung sched={schedSchedule} setSched={setSchedSchedule}/>
             <div style={{marginBottom:14}}>
               <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>VEREINSNUMMER (BTV)</div>
               <input value={vereinsnr} onChange={e=>setVernr(e.target.value)} style={{...S.input,width:"100%"}}/>
@@ -3610,7 +3653,6 @@ function SettingsDisplayTab({onToast}) {
         {/* ── HEIMSPIELMODUS ── */}
         {activeTab==="heimspiel"&&(
           <div>
-            <ZeitSchaltung sched={schedHeim} setSched={setSchedHeim}/>
             {/* ── Master-Schalter: Auto-Fetch ── */}
             <div onClick={toggleFetchEnabled}
               style={{display:"flex",alignItems:"center",justifyContent:"space-between",
@@ -3771,7 +3813,6 @@ function SettingsDisplayTab({onToast}) {
         {/* ── BILDANZEIGE ── */}
         {activeTab==="bild"&&(
           <div>
-            <ZeitSchaltung sched={schedBild} setSched={setSchedBild}/>
             {/* Hinweis für KI-Bildgenerierung */}
             <div style={{marginBottom:14,padding:"10px 12px",background:"#F8FAFC",
               border:"1px solid #E2E8F0",borderRadius:8,fontSize:11,color:"#6B7280",lineHeight:1.6}}>
