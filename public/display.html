@@ -894,14 +894,12 @@ function startSettingsPolling(mode, theme, vereinsnr, saison, mannschaft, gegner
   setInterval(async () => {
     const { data } = await sb.from("settings").select("*")
       .in("key", ["display_mode","display_theme","display_vereinsnummer","display_saison",
-                  "display_mannschaft","display_gegner",
-                  "display_sched_schedule","display_sched_heimspiel","display_sched_bild"]);
+                  "display_mannschaft","display_gegner","display_time_entries"]);
     const s = Object.fromEntries((data || []).map(r => [r.key, r.value]));
     const nowP = new Date();
-    const ps = (key) => { try { return JSON.parse(s[key]||"{}"); } catch(_){ return {}; } };
-    const sm = { schedule: ps("display_sched_schedule"), heimspiel: ps("display_sched_heimspiel"), bild: ps("display_sched_bild") };
-    const sa = Object.entries(sm).find(([,sc]) => sc.from && sc.to && nowP >= new Date(sc.from) && nowP <= new Date(sc.to));
-    const resolvedMode = sa ? sa[0] : (s.display_mode || "schedule");
+    const timeEntries = (() => { try { return JSON.parse(s.display_time_entries||"[]"); } catch(_){ return []; } })();
+    const activeEntry = timeEntries.find(e => e.from && e.to && nowP >= new Date(e.from) && nowP <= new Date(e.to));
+    const resolvedMode = activeEntry ? activeEntry.mode : (s.display_mode || "schedule");
     if (
       resolvedMode !== mode     ||
       (s.display_theme         || "dark")     !== theme    ||
@@ -1459,7 +1457,7 @@ function scheduleMidnightReload() {
   const _settingsFetch = sb.from("settings").select("*")
     .in("key", ["display_mode","display_theme","display_vereinsnummer","display_saison",
                 "display_bild_url","display_mannschaft","display_gegner",
-                "display_sched_schedule","display_sched_heimspiel","display_sched_bild",
+                "display_time_entries",
                 "display_foto_interval",
                 "display_affe_minuten","display_affe_sekunden","display_affe_modes"]);
   const _timeout = new Promise(resolve => setTimeout(() => resolve({ data: null }), 5000));
@@ -1468,16 +1466,9 @@ function scheduleMidnightReload() {
 
   // Zeitschaltung: prüfen ob ein Modus gerade aktiv ist
   const now = new Date();
-  const parseSchedule = (key) => { try { return JSON.parse(settings[key]||"{}"); } catch(_){ return {}; } };
-  const schedMap = {
-    schedule:  parseSchedule("display_sched_schedule"),
-    heimspiel: parseSchedule("display_sched_heimspiel"),
-    bild:      parseSchedule("display_sched_bild"),
-  };
-  const schedActive = Object.entries(schedMap).find(([,s]) =>
-    s.from && s.to && now >= new Date(s.from) && now <= new Date(s.to)
-  );
-  const displayMode  = schedActive ? schedActive[0] : (settings.display_mode || "schedule");
+  const timeEntries = (() => { try { return JSON.parse(settings.display_time_entries||"[]"); } catch(_){ return []; } })();
+  const activeEntry = timeEntries.find(e => e.from && e.to && now >= new Date(e.from) && now <= new Date(e.to));
+  const displayMode  = activeEntry ? activeEntry.mode : (settings.display_mode || "schedule");
   const displayTheme = settings.display_theme         || "dark";
   const vereinsnr    = settings.display_vereinsnummer || "06085";
   const saison       = settings.display_saison        || "2026";

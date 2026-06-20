@@ -3198,11 +3198,8 @@ function SettingsDisplayTab({onToast}) {
   const [matchUrl,       setMatchUrl]       = useState("");
   const [bildUrl,        setBildUrl]        = useState("");
   const [githubPat,      setGithubPat]      = useState("");
-  const [schedSchedule,  setSchedSchedule]  = useState({from:"",to:""});
-  const [schedHeim,      setSchedHeim]      = useState({from:"",to:""});
-  const [schedBild,      setSchedBild]      = useState({from:"",to:""});
-  const [schedFotos,     setSchedFotos]     = useState({from:"",to:""});
-  const [zeitModus,      setZeitModus]      = useState("schedule");
+  const [timeEntries,    setTimeEntries]    = useState([]);
+  const [newEntry,       setNewEntry]       = useState({mode:"schedule",fromDate:"",fromTime:"08:00",toDate:"",toTime:"20:00"});
   const [matchCache,     setMatchCache]     = useState(null); // btv_match_cache
   const [revertKey,      setRevertKey]      = useState(0);
   const [fetchEnabled,   setFetchEnabled]   = useState(true); // btv_fetch_enabled
@@ -3220,7 +3217,7 @@ function SettingsDisplayTab({onToast}) {
       .in("key",["display_mode","display_theme","display_vereinsnummer","display_saison",
                  "display_mannschaft","display_gegner","display_match_url",
                  "display_bild_url","github_pat",
-                 "display_sched_schedule","display_sched_heimspiel","display_sched_bild","display_sched_fotos",
+                 "display_time_entries",
                  "btv_match_cache","btv_fetch_enabled",
                  "display_affe_minuten","display_affe_sekunden","display_affe_modes"])
       .then(({data})=>{
@@ -3235,10 +3232,7 @@ function SettingsDisplayTab({onToast}) {
         if(map.display_match_url)      setMatchUrl(map.display_match_url);
         if(map.display_bild_url)       setBildUrl(map.display_bild_url);
         if(map.github_pat)             setGithubPat(map.github_pat);
-        try { if(map.display_sched_schedule)  setSchedSchedule(JSON.parse(map.display_sched_schedule)); } catch(_){}
-        try { if(map.display_sched_heimspiel) setSchedHeim(JSON.parse(map.display_sched_heimspiel)); } catch(_){}
-        try { if(map.display_sched_bild)      setSchedBild(JSON.parse(map.display_sched_bild)); } catch(_){}
-        try { if(map.display_sched_fotos)     setSchedFotos(JSON.parse(map.display_sched_fotos)); } catch(_){}
+        try { if(map.display_time_entries) setTimeEntries(JSON.parse(map.display_time_entries)); } catch(_){}
         try { if(map.btv_match_cache)         setMatchCache(JSON.parse(map.btv_match_cache)); } catch(_){}
         if(map.btv_fetch_enabled !== undefined) setFetchEnabled(map.btv_fetch_enabled !== "false");
         if(map.display_foto_interval)          setFotosInterval(Number(map.display_foto_interval)||8);
@@ -3250,18 +3244,13 @@ function SettingsDisplayTab({onToast}) {
 
   const checkOverlap = () => {
     const fmt = s => new Date(s).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
-    const list = [
-      {label:"Tagesbelegungsplan", ...schedSchedule},
-      {label:"Heimspielmodus",     ...schedHeim},
-      {label:"Bildanzeige",        ...schedBild},
-      {label:"Fotos-Slideshow",    ...schedFotos},
-    ].filter(s => s.from && s.to);
-    for(let i=0;i<list.length;i++) for(let j=i+1;j<list.length;j++) {
-      const a=list[i], b=list[j];
+    const valid = timeEntries.filter(e=>e.from&&e.to);
+    for(let i=0;i<valid.length;i++) for(let j=i+1;j<valid.length;j++) {
+      const a=valid[i], b=valid[j];
       if(new Date(a.from)<new Date(b.to) && new Date(b.from)<new Date(a.to)) {
-        const overlapStart = new Date(a.from) > new Date(b.from) ? a.from : b.from;
-        const overlapEnd   = new Date(a.to)   < new Date(b.to)   ? a.to   : b.to;
-        return `Zeitüberschneidung: „${a.label}" (${fmt(a.from)}–${fmt(a.to)}) und „${b.label}" (${fmt(b.from)}–${fmt(b.to)}) überlappen sich von ${fmt(overlapStart)} bis ${fmt(overlapEnd)}`;
+        const overlapStart = new Date(a.from)>new Date(b.from)?a.from:b.from;
+        const overlapEnd   = new Date(a.to)<new Date(b.to)?a.to:b.to;
+        return `Zeitüberschneidung: „${a.mode}" (${fmt(a.from)}–${fmt(a.to)}) und „${b.mode}" (${fmt(b.from)}–${fmt(b.to)}) überlappen sich von ${fmt(overlapStart)} bis ${fmt(overlapEnd)}`;
       }
     }
     return null;
@@ -3302,10 +3291,7 @@ function SettingsDisplayTab({onToast}) {
       {key:"display_gegner",          value:gegner},
       {key:"display_match_url",       value:matchUrl},
       {key:"github_pat",              value:githubPat},
-      {key:"display_sched_schedule",  value:JSON.stringify(schedSchedule)},
-      {key:"display_sched_heimspiel", value:JSON.stringify(schedHeim)},
-      {key:"display_sched_bild",      value:JSON.stringify(schedBild)},
-      {key:"display_sched_fotos",     value:JSON.stringify(schedFotos)},
+      {key:"display_time_entries",     value:JSON.stringify(timeEntries)},
       {key:"display_foto_interval",   value:String(fotosInterval)},
       {key:"display_affe_minuten",    value:String(affeMinuten)},
       {key:"display_affe_sekunden",   value:String(affeSekunden)},
@@ -3514,55 +3500,129 @@ function SettingsDisplayTab({onToast}) {
         {/* ── EINSTELLUNGEN: Anzeigemodus ── */}
         {activeTab==="einstellungen"&&subTab==="modus"&&(()=>{
           const MODES = [
-            {id:"schedule",  icon:"📅", label:"Tagesbelegung",  sched:schedSchedule, setSched:setSchedSchedule},
-            {id:"heimspiel", icon:"🏆", label:"Heimspiel",      sched:schedHeim,     setSched:setSchedHeim},
-            {id:"bild",      icon:"🖼️", label:"Bildanzeige",    sched:schedBild,     setSched:setSchedBild},
-            {id:"fotos",     icon:"📸", label:"Fotos-Slideshow",sched:schedFotos,    setSched:setSchedFotos},
+            {id:"schedule",  icon:"📅", label:"Tagesbelegung"},
+            {id:"heimspiel", icon:"🏆", label:"Heimspiel"},
+            {id:"bild",      icon:"🖼️", label:"Bildanzeige"},
+            {id:"fotos",     icon:"📸", label:"Fotos-Slideshow"},
           ];
-          const fmt = s => new Date(s).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+          const modeMap = Object.fromEntries(MODES.map(m=>[m.id,m]));
+          const fmt = s => new Date(s).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"})+" Uhr";
           const now = new Date();
-          const selM = MODES.find(m=>m.id===zeitModus);
+          const entryStatus = e => {
+            if(!e.from||!e.to) return "invalid";
+            if(now < new Date(e.from)) return "future";
+            if(now > new Date(e.to))   return "past";
+            return "active";
+          };
+          const today    = new Date().toISOString().slice(0,10);
+          const tomorrow = new Date(Date.now()+86400000).toISOString().slice(0,10);
+          const addEntry = () => {
+            if(!newEntry.fromDate||!newEntry.fromTime||!newEntry.toDate||!newEntry.toTime) return;
+            const from = `${newEntry.fromDate}T${newEntry.fromTime}`;
+            const to   = `${newEntry.toDate}T${newEntry.toTime}`;
+            if(new Date(from)>=new Date(to)) return;
+            setTimeEntries(prev=>[...prev,{id:Date.now(),mode:newEntry.mode,from,to}]);
+            setNewEntry(n=>({...n,fromDate:"",toDate:""}));
+          };
           return (
             <div>
               {/* Aktiver Modus */}
               <p style={{fontSize:12,color:"#6B7280",marginBottom:10}}>Wähle, welcher Modus aktuell auf dem Display angezeigt wird.</p>
-              <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
-                {MODES.map(m=>(
-                  <ModeRow key={m.id} modeId={m.id} label={`${m.icon} ${m.label}`}/>
-                ))}
+              <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:24}}>
+                {MODES.map(m=><ModeRow key={m.id} modeId={m.id} label={`${m.icon} ${m.label}`}/>)}
               </div>
 
               {/* Zeitschaltung */}
-              <div style={{borderTop:"1px solid #E5E7EB",paddingTop:16,marginBottom:10}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:4}}>⏰ ZEITSCHALTUNG</div>
-                <p style={{fontSize:12,color:"#9CA3AF",marginBottom:12}}>Aktiviere einen Modus automatisch für einen bestimmten Zeitraum.</p>
-              </div>
+              <div style={{borderTop:"1px solid #E5E7EB",paddingTop:16,marginBottom:14}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:2}}>⏰ ZEITSCHALTUNG</div>
+                <p style={{fontSize:12,color:"#9CA3AF",marginBottom:14}}>Schalte ein Display automatisch für einen bestimmten Zeitraum ein. Mehrere Einträge möglich.</p>
 
-              {/* Übersicht */}
-              <div style={{display:"flex",flexDirection:"column",gap:4,marginBottom:14}}>
-                {MODES.map(m=>{
-                  const isSet = m.sched.from && m.sched.to;
-                  const isNow = isSet && now >= new Date(m.sched.from) && now <= new Date(m.sched.to);
-                  return (
-                    <div key={m.id} onClick={()=>setZeitModus(m.id)}
-                      style={{display:"flex",alignItems:"center",gap:8,padding:"8px 11px",borderRadius:8,
-                        cursor:"pointer",
-                        background:zeitModus===m.id?"#EFF6FF":"#F9FAFB",
-                        border:`1.5px solid ${zeitModus===m.id?"#93C5FD":"#E5E7EB"}`}}>
-                      <span style={{fontSize:14}}>{m.icon}</span>
-                      <span style={{width:110,fontSize:12,fontWeight:600,color:"#374151"}}>{m.label}</span>
-                      {isNow&&<span style={{fontSize:10,background:"#DCFCE7",color:"#16A34A",
-                        padding:"1px 7px",borderRadius:10,fontWeight:700,flexShrink:0}}>AKTIV</span>}
-                      <span style={{flex:1,fontSize:11,color:isSet?"#374151":"#9CA3AF",textAlign:"right"}}>
-                        {isSet ? `${fmt(m.sched.from)} – ${fmt(m.sched.to)}` : "nicht gesetzt"}
-                      </span>
+                {/* Formular */}
+                <div style={{background:"#F8FAFC",border:"1px solid #E2E8F0",borderRadius:10,padding:"14px",marginBottom:14}}>
+                  <div style={{marginBottom:10}}>
+                    <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>DISPLAY</div>
+                    <select value={newEntry.mode} onChange={e=>setNewEntry(n=>({...n,mode:e.target.value}))}
+                      style={{...S.input,width:"100%"}}>
+                      {MODES.map(m=><option key={m.id} value={m.id}>{m.icon} {m.label}</option>)}
+                    </select>
+                  </div>
+                  <div style={{display:"flex",gap:10,marginBottom:8}}>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>VON</div>
+                      <div style={{display:"flex",gap:4}}>
+                        <input type="date" value={newEntry.fromDate}
+                          onChange={e=>setNewEntry(n=>({...n,fromDate:e.target.value}))}
+                          style={{...S.input,flex:1,minWidth:0}}/>
+                        <input type="time" value={newEntry.fromTime}
+                          onChange={e=>setNewEntry(n=>({...n,fromTime:e.target.value}))}
+                          style={{...S.input,width:78,flexShrink:0}}/>
+                      </div>
                     </div>
-                  );
-                })}
-              </div>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>BIS</div>
+                      <div style={{display:"flex",gap:4}}>
+                        <input type="date" value={newEntry.toDate}
+                          onChange={e=>setNewEntry(n=>({...n,toDate:e.target.value}))}
+                          style={{...S.input,flex:1,minWidth:0}}/>
+                        <input type="time" value={newEntry.toTime}
+                          onChange={e=>setNewEntry(n=>({...n,toTime:e.target.value}))}
+                          style={{...S.input,width:78,flexShrink:0}}/>
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{display:"flex",gap:5,marginBottom:12,alignItems:"center"}}>
+                    <span style={{fontSize:11,color:"#9CA3AF"}}>Schnell:</span>
+                    {[{l:"Heute",d:today},{l:"Morgen",d:tomorrow}].map(p=>(
+                      <button key={p.l} onClick={()=>setNewEntry(n=>({...n,fromDate:p.d,toDate:p.d}))}
+                        style={{fontSize:11,padding:"2px 9px",borderRadius:12,border:"1px solid #D1D5DB",
+                          background:"#fff",cursor:"pointer",color:"#374151"}}>
+                        {p.l}
+                      </button>
+                    ))}
+                  </div>
+                  <button onClick={addEntry}
+                    style={{...S.primaryBtn,width:"100%",opacity:(!newEntry.fromDate||!newEntry.toDate)?0.5:1}}>
+                    + Eintrag hinzufügen
+                  </button>
+                </div>
 
-              {/* ZeitSchaltung des gewählten Modus */}
-              {selM&&<ZeitSchaltung sched={selM.sched} setSched={selM.setSched}/>}
+                {/* Eintrags-Liste */}
+                {timeEntries.length===0
+                  ? <div style={{fontSize:12,color:"#9CA3AF",textAlign:"center",padding:"18px 0"}}>Noch keine Einträge gesetzt</div>
+                  : <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                      {[...timeEntries].sort((a,b)=>new Date(a.from)-new Date(b.from)).map(e=>{
+                        const st = entryStatus(e);
+                        const m  = modeMap[e.mode];
+                        const badge = st==="active"
+                          ? {bg:"#DCFCE7",color:"#16A34A",text:"AKTIV"}
+                          : st==="future"
+                            ? {bg:"#EFF6FF",color:"#3B82F6",text:"KOMMT"}
+                            : {bg:"#F3F4F6",color:"#9CA3AF",text:"ABGELAUFEN"};
+                        return (
+                          <div key={e.id} style={{display:"flex",alignItems:"center",gap:8,
+                            padding:"9px 12px",borderRadius:8,
+                            background:st==="active"?"#F0FDF4":st==="past"?"#F9FAFB":"#FAFBFF",
+                            border:`1px solid ${st==="active"?"#86EFAC":st==="past"?"#E5E7EB":"#DBEAFE"}`}}>
+                            <span style={{fontSize:15}}>{m?.icon}</span>
+                            <span style={{fontSize:12,fontWeight:700,width:92,flexShrink:0,
+                              color:st==="past"?"#9CA3AF":"#374151"}}>{m?.label}</span>
+                            <span style={{fontSize:10,fontWeight:700,padding:"1px 7px",borderRadius:10,
+                              flexShrink:0,background:badge.bg,color:badge.color}}>
+                              {badge.text}
+                            </span>
+                            <span style={{flex:1,fontSize:11,color:st==="past"?"#9CA3AF":"#64748B",
+                              textAlign:"right",lineHeight:1.4}}>
+                              {fmt(e.from)}<br/><span style={{color:"#94A3B8"}}>→</span> {fmt(e.to)}
+                            </span>
+                            <button onClick={()=>setTimeEntries(prev=>prev.filter(x=>x.id!==e.id))}
+                              style={{fontSize:13,color:"#EF4444",background:"none",border:"none",
+                                cursor:"pointer",padding:"2px 4px",flexShrink:0}}>✕</button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                }
+              </div>
             </div>
           );
         })()}
