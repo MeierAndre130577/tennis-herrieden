@@ -3188,7 +3188,7 @@ function SettingsJobsTab() {
 
 function SettingsDisplayTab({onToast}) {
   const [activeTab,      setActiveTab]      = useState("schedule");
-  const [subTab,         setSubTab]         = useState("farbschema");
+  const [subTab,         setSubTab]         = useState("modus");
   const [mode,           setMode]           = useState("schedule"); // toggle-aktiver Modus
   const [theme,          setTheme]          = useState("dark");
   const [vereinsnr,      setVernr]          = useState("6085");
@@ -3441,20 +3441,21 @@ function SettingsDisplayTab({onToast}) {
 
   const SUB_TABS = {
     einstellungen: [
+      {id:"modus",      label:"Anzeigemodus"},
       {id:"farbschema", label:"Farbschema"},
       {id:"easteregg",  label:"🐒 Easter Egg"},
     ],
   };
 
-  const ModeRow = ({modeId}) => (
+  const ModeRow = ({modeId, label}) => (
     <div onClick={()=>setMode(modeId)}
       style={{display:"flex",alignItems:"center",justifyContent:"space-between",
-        padding:"12px 14px",borderRadius:10,marginBottom:20,cursor:"pointer",
+        padding:"12px 14px",borderRadius:10,marginBottom:0,cursor:"pointer",
         background:mode===modeId?"#F5F3FF":"#F9FAFB",
         border:`1.5px solid ${mode===modeId?"#8B5CF6":"#E5E7EB"}`}}>
       <div>
         <div style={{fontWeight:700,fontSize:13,color:mode===modeId?"#7C3AED":"#374151"}}>
-          Auf Display anzeigen
+          {label || "Auf Display anzeigen"}
         </div>
         <div style={{fontSize:11,color:"#6B7280",marginTop:2}}>
           {mode===modeId ? "✓ Aktuell aktiver Modus" : "Klicken zum Aktivieren"}
@@ -3504,6 +3505,23 @@ function SettingsDisplayTab({onToast}) {
 
       {/* Tab-Inhalt */}
       <div style={{paddingTop:20,paddingBottom:8}}>
+
+        {/* ── EINSTELLUNGEN: Anzeigemodus ── */}
+        {activeTab==="einstellungen"&&subTab==="modus"&&(
+          <div>
+            <p style={{fontSize:12,color:"#6B7280",marginBottom:12}}>Wähle, welcher Modus auf dem Display angezeigt wird.</p>
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {[
+                {id:"schedule",  label:"📅 Tagesbelegungsplan"},
+                {id:"heimspiel", label:"🏆 Heimspielmodus"},
+                {id:"bild",      label:"🖼️ Bildanzeige"},
+                {id:"fotos",     label:"📸 Fotos-Slideshow"},
+              ].map(m=>(
+                <ModeRow key={m.id} modeId={m.id} label={m.label}/>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ── EINSTELLUNGEN: Farbschema ── */}
         {activeTab==="einstellungen"&&subTab==="farbschema"&&(
@@ -3577,7 +3595,6 @@ function SettingsDisplayTab({onToast}) {
         {/* ── TAGESBELEGUNGSPLAN ── */}
         {activeTab==="schedule"&&(
           <div>
-            <ModeRow modeId="schedule"/>
             <ZeitSchaltung sched={schedSchedule} setSched={setSchedSchedule}/>
             <div style={{marginBottom:14}}>
               <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>VEREINSNUMMER (BTV)</div>
@@ -3593,7 +3610,6 @@ function SettingsDisplayTab({onToast}) {
         {/* ── HEIMSPIELMODUS ── */}
         {activeTab==="heimspiel"&&(
           <div>
-            <ModeRow modeId="heimspiel"/>
             <ZeitSchaltung sched={schedHeim} setSched={setSchedHeim}/>
             {/* ── Master-Schalter: Auto-Fetch ── */}
             <div onClick={toggleFetchEnabled}
@@ -3755,7 +3771,6 @@ function SettingsDisplayTab({onToast}) {
         {/* ── BILDANZEIGE ── */}
         {activeTab==="bild"&&(
           <div>
-            <ModeRow modeId="bild"/>
             <ZeitSchaltung sched={schedBild} setSched={setSchedBild}/>
             {/* Hinweis für KI-Bildgenerierung */}
             <div style={{marginBottom:14,padding:"10px 12px",background:"#F8FAFC",
@@ -3786,7 +3801,6 @@ function SettingsDisplayTab({onToast}) {
         {/* ── FOTOS ── */}
         {activeTab==="fotos"&&(
           <div>
-            <ModeRow modeId="fotos"/>
             <div style={{padding:"14px",background:"#F8FAFC",border:"1px solid #E2E8F0",
               borderRadius:8,fontSize:12,color:"#6B7280",lineHeight:1.6,marginBottom:16}}>
               <div style={{fontWeight:700,color:"#374151",marginBottom:4}}>📸 Fotos der aktuellen Woche</div>
