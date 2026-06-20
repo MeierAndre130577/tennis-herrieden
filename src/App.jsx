@@ -1222,11 +1222,10 @@ function KasseApp({profile,perms={},onBack}) {
   // ── Log drink (qty entries) ──
   const logDrink=async(name,price,emoji,qty=1)=>{
     const rows=Array.from({length:qty},()=>({user_id:profile.id,drink_name:name,price,emoji,qty:1,date:today(),paid:false}));
-    const {error}=await sb.from("kasse_log").insert(rows);
-    if(error){ showToast(`Fehler: ${error.message}`,"error"); return; }
+    const {data,error}=await sb.from("kasse_log").insert(rows).select("id");
+    if(error){ showToast(`Fehler: ${error.message}`,"error"); return null; }
     await loadLog();
-    const label=qty>1?`${qty}× ${name}`:name;
-    showToast(`${emoji} ${label} notiert!`);
+    return data?.[0]?.id||null;
   };
 
   // ── Mark paid ──
@@ -1246,9 +1245,9 @@ function KasseApp({profile,perms={},onBack}) {
   const myTotal = myOpen.reduce((s,l)=>s+l.price,0);
 
   const tabs=[
-    {id:"drinks",  label:"Getränke",      icon:"🥤"},
-    {id:"log",     label:"Meine Notizen", icon:"📋"},
-    {id:"settings",label:"Einstellungen", icon:"⚙️"},
+    {id:"drinks",  label:"Getränke", icon:"🥤"},
+    {id:"log",     label:"Mein Tab", icon:"📋", badge:myOpen.length||0},
+    {id:"settings",label:"Verwalten",icon:"⚙️"},
     ...(isAdmin?[{id:"admin",label:"Übersicht",icon:"👁️"}]:[]),
   ];
 
@@ -1293,15 +1292,19 @@ function KasseApp({profile,perms={},onBack}) {
             }
           </div>
 
-          {tab==="drinks"  &&<KasseDrinksTab  favs={favs} onLogDrink={logDrink} onGoSettings={()=>setTab("settings")}/>}
-          {tab==="log"     &&<KasseLogTab     myLog={myLog} myOpen={myOpen} myTotal={myTotal} onMarkPaid={()=>markPaid(profile.id)} onDeleteEntry={deleteEntry} onLogDrink={logDrink}/>}
+          {tab==="drinks"  &&<KasseDrinksTab  favs={favs} onLogDrink={logDrink} onDeleteEntry={deleteEntry} onGoSettings={()=>setTab("settings")}/>}
+          {tab==="log"     &&<KasseLogTab     myLog={myLog} myOpen={myOpen} myTotal={myTotal} onMarkPaid={()=>markPaid(profile.id)} onDeleteEntry={deleteEntry}/>}
           {tab==="settings"&&<KasseSettingsTab favs={favs} onAddFav={addFav} onUpdateFav={updateFav} onDeleteFav={deleteFav}/>}
           {tab==="admin"&&isAdmin&&<KasseAdminTab log={log} onMarkPaid={markPaid}/>}
         </main>
 
         <nav className="k-bottom-nav" style={{display:"none",position:"fixed",bottom:0,left:0,right:0,background:"#0F172A",borderTop:"1px solid #1E293B",zIndex:100,justifyContent:"space-around",padding:"8px 0",paddingBottom:"env(safe-area-inset-bottom)"}}>
           <button onClick={onBack} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,background:"none",border:"none",cursor:"pointer",padding:"6px 12px",borderRadius:8,color:"#64748B"}}><span style={{fontSize:22}}>🏠</span><span style={{fontSize:10,fontWeight:600}}>Start</span></button>
-          {tabs.map(t=>(<button key={t.id} onClick={()=>setTab(t.id)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,background:"none",border:"none",cursor:"pointer",padding:"6px 12px",borderRadius:8,color:tab===t.id?"#4ADE80":"#64748B"}}><span style={{fontSize:22}}>{t.icon}</span><span style={{fontSize:10,fontWeight:600}}>{t.label.split(" ")[0]}</span></button>))}
+          {tabs.map(t=>(<button key={t.id} onClick={()=>setTab(t.id)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,background:"none",border:"none",cursor:"pointer",padding:"6px 12px",borderRadius:8,color:tab===t.id?"#4ADE80":"#64748B",position:"relative"}}>
+            <span style={{fontSize:22}}>{t.icon}</span>
+            {t.badge>0&&<span style={{position:"absolute",top:2,right:6,background:"#EF4444",borderRadius:10,fontSize:9,fontWeight:700,color:"#fff",padding:"1px 5px",minWidth:14,textAlign:"center"}}>{t.badge}</span>}
+            <span style={{fontSize:10,fontWeight:600}}>{t.label.split(" ")[0]}</span>
+          </button>))}
         </nav>
 
         {toast&&<div style={{...S.toast,background:toast.type==="error"?"#EF4444":"#10B981"}}>{toast.msg}</div>}
@@ -1311,93 +1314,80 @@ function KasseApp({profile,perms={},onBack}) {
 }
 
 // ── DRINKS TAB ────────────────────────────────────────────────────────────
-function KasseDrinksTab({favs,onLogDrink,onGoSettings}) {
+function KasseDrinksTab({favs,onLogDrink,onDeleteEntry,onGoSettings}) {
   const [quickModal,setQuickModal] = useState(false);
   const [confirmed,setConfirmed]   = useState(null);
-  const [pending,setPending]       = useState(null);
-  const [qtys,setQtys]             = useState({});
+  const [undoEntry,setUndoEntry]   = useState(null);
+  const undoTimer = React.useRef(null);
 
-  const getQty=(id)=>qtys[id]||1;
-  const setQty=(id,val)=>setQtys(prev=>({...prev,[id]:Math.max(1,val)}));
+  const handleTap=async(f)=>{
+    if(confirmed===f.id) return;
+    const id = await onLogDrink(f.name,f.price,f.emoji,1);
+    if(!id) return;
+    setConfirmed(f.id);
+    setUndoEntry({id,name:f.name,emoji:f.emoji});
+    if(undoTimer.current) clearTimeout(undoTimer.current);
+    undoTimer.current=setTimeout(()=>{ setConfirmed(null); setUndoEntry(null); },3000);
+  };
 
-  const handleTap=(f)=>setPending(f.id);
-  const handleConfirm=(f)=>{
-    const q=getQty(f.id);
-    onLogDrink(f.name,f.price,f.emoji,q);
-    setPending(null); setConfirmed(f.id);
-    setQtys(prev=>({...prev,[f.id]:1}));
-    setTimeout(()=>setConfirmed(null),1200);
+  const handleUndo=()=>{
+    if(undoTimer.current) clearTimeout(undoTimer.current);
+    if(undoEntry) onDeleteEntry(undoEntry.id);
+    setUndoEntry(null); setConfirmed(null);
   };
 
   return (
     <div style={K.page}>
-      <div style={{marginBottom:20}}>
+      <div style={{marginBottom:16}}>
         <h1 style={S.pageTitle}>Getränke</h1>
-        <p style={S.pageSub}>Tippe zum Notieren · wird in „Meine Notizen" gelistet</p>
+        <p style={S.pageSub}>Einmal antippen — wird sofort eingetragen</p>
       </div>
+
+      {undoEntry&&(
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",
+          background:"#1E293B",borderRadius:10,padding:"10px 14px",marginBottom:16}}>
+          <span style={{color:"#E2E8F0",fontSize:13}}>{undoEntry.emoji} {undoEntry.name} eingetragen</span>
+          <button onClick={handleUndo}
+            style={{background:"none",border:"none",color:"#4ADE80",fontWeight:700,fontSize:13,cursor:"pointer",padding:0}}>
+            Rückgängig
+          </button>
+        </div>
+      )}
 
       {favs.length===0?(
         <div style={{...S.card,textAlign:"center",padding:"40px 20px",borderStyle:"dashed"}}>
           <div style={{fontSize:40,marginBottom:12}}>🥤</div>
-          <div style={{fontWeight:700,marginBottom:6}}>Noch keine Favoriten</div>
-          <div style={{fontSize:13,color:"#9CA3AF",marginBottom:16}}>Hinterlege deine Lieblingsgetränke unter Einstellungen.</div>
-          <button style={S.primaryBtn} onClick={onGoSettings}>Favoriten einrichten →</button>
+          <div style={{fontWeight:700,marginBottom:6}}>Noch keine Getränke</div>
+          <div style={{fontSize:13,color:"#9CA3AF",marginBottom:16}}>Lege deine Getränke unter „Verwalten" an.</div>
+          <button style={S.primaryBtn} onClick={onGoSettings}>Getränke anlegen →</button>
         </div>
       ):(
         <div style={K.drinkGrid}>
-          {/* Anderes – immer zuerst */}
-          <div style={{...K.drinkTile,borderStyle:"dashed",borderColor:"#D1D5DB",background:"#FAFAFA",cursor:"pointer"}} onClick={()=>setQuickModal(true)}>
-            <span style={{fontSize:38,lineHeight:1,color:"#9CA3AF"}}>＋</span>
-            <span style={{fontWeight:700,fontSize:13,color:"#9CA3AF",marginTop:4}}>Anderes</span>
-            <span style={{fontSize:12,color:"#D1D5DB",fontWeight:500}}>Einmalig</span>
-            <div style={{...K.qtyRow,visibility:"hidden"}}><button style={K.qtyBtn}>−</button><span style={K.qtyVal}>1</span><button style={K.qtyBtn}>+</button></div>
-            <button style={{...K.notierBtn,background:"#F3F4F6",color:"#9CA3AF"}}>Notieren</button>
-          </div>
-
           {favs.map(f=>{
             const done=confirmed===f.id;
-            const isPend=pending===f.id;
-            const q=getQty(f.id);
             return (
-              <div key={f.id} style={{...K.drinkTile,...(done?K.drinkTileDone:isPend?K.drinkTilePend:{})}}>
-                <span style={{fontSize:38,lineHeight:1}}>{done?"✓":f.emoji}</span>
-                <span style={{fontWeight:700,fontSize:13,color:done?"#4ADE80":isPend?"#92400E":"#111827",marginTop:4}}>{f.name}</span>
-                <span style={{fontSize:14,fontWeight:800,color:done?"#4ADE80":isPend?"#D97706":"#22C55E"}}>
-                  {q>1?`${q}× ${eur(f.price)}`:eur(f.price)}
-                </span>
-                {isPend?(
-                  <>
-                    <div style={{fontSize:11,color:"#92400E",fontWeight:700,marginTop:4,textAlign:"center"}}>Wirklich notieren?</div>
-                    <div style={{display:"flex",gap:5,width:"100%",marginTop:4}}>
-                      <button style={{...K.notierBtn,flex:1,background:"#22C55E",color:"#fff"}} onClick={()=>handleConfirm(f)}>✓ Ja</button>
-                      <button style={{...K.notierBtn,flex:1,background:"#F3F4F6",color:"#6B7280"}} onClick={()=>setPending(null)}>✕ Nein</button>
-                    </div>
-                  </>
-                ):(
-                  <>
-                    <div style={K.qtyRow} onClick={e=>e.stopPropagation()}>
-                      <button style={K.qtyBtn} onClick={()=>setQty(f.id,q-1)}>−</button>
-                      <span style={K.qtyVal}>{q}</span>
-                      <button style={K.qtyBtn} onClick={()=>setQty(f.id,q+1)}>+</button>
-                    </div>
-                    <button style={{...K.notierBtn,...(done?{background:"#4ADE80",color:"#fff"}:{})}} onClick={()=>handleTap(f)}>
-                      {done?"✓ Notiert":q>1?`${q}× notieren`:"Notieren"}
-                    </button>
-                  </>
-                )}
+              <div key={f.id} onClick={()=>handleTap(f)}
+                style={{...K.drinkTile,...(done?K.drinkTileDone:{}),cursor:"pointer",userSelect:"none"}}>
+                <span style={{fontSize:40,lineHeight:1}}>{done?"✓":f.emoji}</span>
+                <span style={{fontWeight:700,fontSize:13,color:done?"#16A34A":"#111827",marginTop:6}}>{f.name}</span>
+                <span style={{fontSize:13,fontWeight:700,color:done?"#16A34A":"#22C55E"}}>{eur(f.price)}</span>
               </div>
             );
           })}
+          <div style={{...K.drinkTile,borderStyle:"dashed",borderColor:"#D1D5DB",background:"#FAFAFA",cursor:"pointer",justifyContent:"center"}}
+            onClick={()=>setQuickModal(true)}>
+            <span style={{fontSize:28,color:"#CBD5E1"}}>+</span>
+            <span style={{fontSize:12,color:"#9CA3AF",marginTop:4}}>Weiteres</span>
+          </div>
         </div>
       )}
-      {quickModal&&<KasseQuickModal onLog={(n,p,e,q)=>{onLogDrink(n,p,e,q);setQuickModal(false);}} onClose={()=>setQuickModal(false)}/>}
+      {quickModal&&<KasseQuickModal onLog={async(n,p,e,q)=>{await onLogDrink(n,p,e,q);setQuickModal(false);}} onClose={()=>setQuickModal(false)}/>}
     </div>
   );
 }
 
 // ── LOG TAB ────────────────────────────────────────────────────────────────
-function KasseLogTab({myLog,myOpen,myTotal,onMarkPaid,onDeleteEntry,onLogDrink}) {
-  const [quickModal,setQuickModal]   = useState(false);
+function KasseLogTab({myLog,myOpen,myTotal,onMarkPaid,onDeleteEntry}) {
   const [showPaid,setShowPaid]       = useState(false);
   const [showConfirm,setShowConfirm] = useState(false);
 
@@ -1408,9 +1398,9 @@ function KasseLogTab({myLog,myOpen,myTotal,onMarkPaid,onDeleteEntry,onLogDrink})
 
   return (
     <div style={K.page}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
-        <div><h1 style={S.pageTitle}>Meine Notizen</h1><p style={S.pageSub}>Noch nicht bezahlt</p></div>
-        <button style={S.primaryBtn} onClick={()=>setQuickModal(true)}>+ Eintragen</button>
+      <div style={{marginBottom:20}}>
+        <h1 style={S.pageTitle}>Mein Tab</h1>
+        <p style={S.pageSub}>Deine offenen Getränke</p>
       </div>
 
       {myOpen.length>0&&(
@@ -1418,9 +1408,9 @@ function KasseLogTab({myLog,myOpen,myTotal,onMarkPaid,onDeleteEntry,onLogDrink})
           <div>
             <div style={{fontSize:11,fontWeight:700,color:"#94A3B8"}}>OFFEN</div>
             <div style={{fontSize:28,fontWeight:800,color:"#F59E0B"}}>{eur(myTotal)}</div>
-            <div style={{fontSize:12,color:"#64748B"}}>{myOpen.length} Getränke</div>
+            <div style={{fontSize:12,color:"#64748B"}}>{myOpen.length} {myOpen.length===1?"Getränk":"Getränke"}</div>
           </div>
-          <button style={K.payBtn} onClick={()=>setShowConfirm(true)}>✓ Als bezahlt<br/>markieren</button>
+          <button style={K.payBtn} onClick={()=>setShowConfirm(true)}>✓ Bezahlen</button>
         </div>
       )}
 
@@ -1463,8 +1453,6 @@ function KasseLogTab({myLog,myOpen,myTotal,onMarkPaid,onDeleteEntry,onLogDrink})
         </div>
       )}
 
-      {quickModal&&<KasseQuickModal onLog={(n,p,e,q)=>{onLogDrink(n,p,e,q);setQuickModal(false);}} onClose={()=>setQuickModal(false)}/>}
-
       {showConfirm&&(
         <div style={S.overlay} onClick={()=>setShowConfirm(false)}>
           <div style={S.modal} onClick={e=>e.stopPropagation()}>
@@ -1504,7 +1492,7 @@ function KasseSettingsTab({favs,onAddFav,onUpdateFav,onDeleteFav}) {
   return (
     <div style={K.page}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
-        <div><h1 style={S.pageTitle}>Meine Favoriten</h1><p style={S.pageSub}>Erscheinen als Schnell-Kacheln unter Getränke</p></div>
+        <div><h1 style={S.pageTitle}>Getränke verwalten</h1><p style={S.pageSub}>Erscheinen als Kacheln unter Getränke</p></div>
         <button style={S.primaryBtn} onClick={openAdd}>+ Hinzufügen</button>
       </div>
 
@@ -4567,13 +4555,8 @@ const K={
   summaryBar: {background:"#0F172A",borderRadius:12,padding:"16px 20px",marginBottom:24,display:"flex",justifyContent:"space-between",alignItems:"center"},
   payBtn:     {padding:"10px 16px",background:"#F59E0B",color:"#0F172A",border:"none",borderRadius:8,fontWeight:800,cursor:"pointer",fontSize:13,lineHeight:1.4,textAlign:"center"},
   drinkGrid:  {display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:12},
-  drinkTile:  {background:"#fff",border:"1.5px solid #E5E7EB",borderRadius:14,padding:"18px 10px 12px",display:"flex",flexDirection:"column",alignItems:"center",gap:5,textAlign:"center",boxShadow:"0 1px 4px rgba(0,0,0,.06)",transition:"all .15s"},
+  drinkTile:  {background:"#fff",border:"1.5px solid #E5E7EB",borderRadius:14,padding:"22px 10px 16px",display:"flex",flexDirection:"column",alignItems:"center",gap:5,textAlign:"center",boxShadow:"0 1px 4px rgba(0,0,0,.06)",transition:"all .15s"},
   drinkTileDone:{background:"#DCFCE7",borderColor:"#22C55E"},
-  drinkTilePend:{background:"#FFFBEB",borderColor:"#F59E0B"},
-  qtyRow:     {display:"flex",alignItems:"center",border:"1.5px solid #E5E7EB",borderRadius:8,overflow:"hidden",marginTop:4,width:"100%"},
-  qtyBtn:     {flex:"0 0 30px",height:28,border:"none",background:"#F9FAFB",color:"#374151",fontSize:16,fontWeight:700,cursor:"pointer"},
-  qtyVal:     {flex:1,textAlign:"center",fontWeight:800,fontSize:14,color:"#111827"},
-  notierBtn:  {marginTop:4,width:"100%",padding:"8px 0",background:"#0F172A",color:"#4ADE80",border:"none",borderRadius:8,fontWeight:700,cursor:"pointer",fontSize:12},
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
