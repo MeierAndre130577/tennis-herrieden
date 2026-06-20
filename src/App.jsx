@@ -1315,13 +1315,20 @@ function KasseApp({profile,perms={},onBack}) {
 
 // ── DRINKS TAB ────────────────────────────────────────────────────────────
 function KasseDrinksTab({favs,onLogDrink,onDeleteEntry,onGoSettings}) {
-  const [quickModal,setQuickModal] = useState(false);
-  const [confirmed,setConfirmed]   = useState(null);
-  const [undoEntry,setUndoEntry]   = useState(null);
+  const [quickModal,setQuickModal]   = useState(false);
+  const [confirmed,setConfirmed]     = useState(null);
+  const [undoEntry,setUndoEntry]     = useState(null);
+  const [confirmDrink,setConfirmDrink] = useState(null);
   const undoTimer = useRef(null);
 
-  const handleTap=async(f)=>{
+  const handleTap=(f)=>{
     if(confirmed===f.id) return;
+    setConfirmDrink(f);
+  };
+
+  const handleConfirm=async()=>{
+    const f=confirmDrink;
+    setConfirmDrink(null);
     const id = await onLogDrink(f.name,f.price,f.emoji,1);
     if(!id) return;
     setConfirmed(f.id);
@@ -1340,7 +1347,7 @@ function KasseDrinksTab({favs,onLogDrink,onDeleteEntry,onGoSettings}) {
     <div style={K.page}>
       <div style={{marginBottom:16}}>
         <h1 style={S.pageTitle}>Getränke</h1>
-        <p style={S.pageSub}>Einmal antippen — wird sofort eingetragen</p>
+        <p style={S.pageSub}>Getränk antippen und bestätigen</p>
       </div>
 
       {undoEntry&&(
@@ -1381,6 +1388,26 @@ function KasseDrinksTab({favs,onLogDrink,onDeleteEntry,onGoSettings}) {
           </div>
         </div>
       )}
+
+      {confirmDrink&&(
+        <div style={S.overlay} onClick={()=>setConfirmDrink(null)}>
+          <div style={S.modal} onClick={e=>e.stopPropagation()}>
+            <div style={S.modalHeader}>
+              <div style={S.modalTitle}>Getränk notieren</div>
+              <button style={S.closeBtn} onClick={()=>setConfirmDrink(null)}>✕</button>
+            </div>
+            <div style={{textAlign:"center",padding:"20px 0 24px"}}>
+              <div style={{fontSize:56,lineHeight:1,marginBottom:10}}>{confirmDrink.emoji}</div>
+              <div style={{fontWeight:800,fontSize:20,color:"#111827",marginBottom:4}}>{confirmDrink.name}</div>
+              <div style={{fontSize:28,fontWeight:800,color:"#22C55E"}}>{eur(confirmDrink.price)}</div>
+            </div>
+            <button style={{...S.primaryBtn,width:"100%",background:"#22C55E",color:"#fff",marginBottom:8,fontSize:15,padding:"14px"}}
+              onClick={handleConfirm}>✓ Ja, notieren</button>
+            <button style={{...S.ghostBtn,width:"100%"}} onClick={()=>setConfirmDrink(null)}>Abbrechen</button>
+          </div>
+        </div>
+      )}
+
       {quickModal&&<KasseQuickModal onLog={async(n,p,e,q)=>{await onLogDrink(n,p,e,q);setQuickModal(false);}} onClose={()=>setQuickModal(false)}/>}
     </div>
   );
