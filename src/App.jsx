@@ -2821,8 +2821,8 @@ function SettingsMannschaftenTab({onToast}) {
   };
 
   return (
-    <div style={{padding:"0 0 32px"}}>
-      <h2 style={S.pageTitle}>Mannschaften</h2>
+    <div style={K.page}>
+      <h1 style={S.pageTitle}>Mannschaften</h1>
       <p style={S.pageSub}>Staffel-Konfiguration für Heimspielplan und BTV-Links</p>
 
       <div style={S.card}>
