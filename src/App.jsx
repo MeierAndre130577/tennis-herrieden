@@ -3470,18 +3470,17 @@ function SettingsDisplayTab({onToast}) {
       <p style={S.pageSub}>Steuert, was auf dem Kiosk-Display angezeigt wird</p>
 
       {/* Tab-Navigation */}
-      <div style={{display:"flex",marginTop:20,borderBottom:"2px solid #E5E7EB",overflowX:"auto"}}>
+      <div style={{display:"flex",gap:6,marginTop:20,flexWrap:"wrap"}}>
         {TABS.map(t=>(
           <button key={t.id} onClick={()=>setActiveTab(t.id)}
-            style={{padding:"10px 14px",border:"none",background:"none",cursor:"pointer",
-              borderBottom:activeTab===t.id?"2px solid #8B5CF6":"2px solid transparent",
-              marginBottom:-2,fontSize:12,fontWeight:activeTab===t.id?700:400,
-              color:activeTab===t.id?"#7C3AED":"#6B7280",
-              display:"flex",alignItems:"center",gap:5,whiteSpace:"nowrap"}}>
+            style={{flexShrink:0,fontSize:11,fontWeight:700,padding:"4px 12px",borderRadius:20,
+              border:"1.5px solid #334155",cursor:"pointer",
+              background:activeTab===t.id?"#334155":"transparent",
+              color:activeTab===t.id?"#F1F5F9":"#64748B",
+              display:"flex",alignItems:"center",gap:5}}>
             <span>{t.icon}</span>{t.label}
             {t.id!=="farbschema"&&mode===t.id&&(
-              <span style={{width:6,height:6,borderRadius:"50%",
-                background:"#8B5CF6",display:"inline-block"}}/>
+              <span style={{width:6,height:6,borderRadius:"50%",background:"#8B5CF6",display:"inline-block"}}/>
             )}
           </button>
         ))}
