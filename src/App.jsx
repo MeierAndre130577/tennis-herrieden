@@ -1222,7 +1222,8 @@ function KasseApp({profile,perms={},onBack}) {
   // ── Log drink (qty entries) ──
   const logDrink=async(name,price,emoji,qty=1)=>{
     const rows=Array.from({length:qty},()=>({user_id:profile.id,drink_name:name,price,emoji,qty:1,date:today(),paid:false}));
-    await sb.from("kasse_log").insert(rows);
+    const {error}=await sb.from("kasse_log").insert(rows);
+    if(error){ showToast(`Fehler: ${error.message}`,"error"); return; }
     await loadLog();
     const label=qty>1?`${qty}× ${name}`:name;
     showToast(`${emoji} ${label} notiert!`);

@@ -91,9 +91,11 @@ create policy "Anon update settings"        on public.settings for update using 
 create table if not exists public.kasse_log (
   id          uuid primary key default gen_random_uuid(),
   user_id     uuid,
-  user_name   text,
-  items       jsonb,
-  total       numeric(10,2),
+  drink_name  text,
+  price       numeric(10,2),
+  emoji       text,
+  qty         integer default 1,
+  date        date default current_date,
   paid        boolean default false,
   created_at  timestamptz default now()
 );
