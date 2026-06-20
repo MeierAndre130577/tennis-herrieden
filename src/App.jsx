@@ -3196,6 +3196,7 @@ function SettingsJobsTab() {
 
 function SettingsDisplayTab({onToast}) {
   const [activeTab,      setActiveTab]      = useState("schedule");
+  const [subTab,         setSubTab]         = useState("farbschema");
   const [mode,           setMode]           = useState("schedule"); // toggle-aktiver Modus
   const [theme,          setTheme]          = useState("dark");
   const [vereinsnr,      setVernr]          = useState("6085");
@@ -3439,12 +3440,19 @@ function SettingsDisplayTab({onToast}) {
   ];
 
   const TABS = [
-    {id:"farbschema", icon:"⚙️", label:"Einstellungen"},
-    {id:"schedule",   icon:"📅", label:"Tagesbelegung"},
-    {id:"heimspiel",  icon:"🏆", label:"Heimspiel"},
-    {id:"bild",       icon:"🖼️", label:"Bildanzeige"},
-    {id:"fotos",      icon:"📸", label:"Fotos"},
+    {id:"einstellungen", icon:"⚙️", label:"Einstellungen"},
+    {id:"schedule",      icon:"📅", label:"Tagesbelegung"},
+    {id:"heimspiel",     icon:"🏆", label:"Heimspiel"},
+    {id:"bild",          icon:"🖼️", label:"Bildanzeige"},
+    {id:"fotos",         icon:"📸", label:"Fotos"},
   ];
+
+  const SUB_TABS = {
+    einstellungen: [
+      {id:"farbschema", label:"Farbschema"},
+      {id:"easteregg",  label:"🐒 Easter Egg"},
+    ],
+  };
 
   const ModeRow = ({modeId}) => (
     <div onClick={()=>setMode(modeId)}
@@ -3469,7 +3477,7 @@ function SettingsDisplayTab({onToast}) {
       <h1 style={S.pageTitle}>Display-Einstellungen</h1>
       <p style={S.pageSub}>Steuert, was auf dem Kiosk-Display angezeigt wird</p>
 
-      {/* Tab-Navigation */}
+      {/* Tab-Navigation Level 1 */}
       <div style={{display:"flex",gap:6,marginTop:20,flexWrap:"wrap"}}>
         {TABS.map(t=>(
           <button key={t.id} onClick={()=>setActiveTab(t.id)}
@@ -3479,24 +3487,36 @@ function SettingsDisplayTab({onToast}) {
               color:activeTab===t.id?"#F1F5F9":"#64748B",
               display:"flex",alignItems:"center",gap:5}}>
             <span>{t.icon}</span>{t.label}
-            {t.id!=="farbschema"&&mode===t.id&&(
+            {t.id!=="einstellungen"&&mode===t.id&&(
               <span style={{width:6,height:6,borderRadius:"50%",background:"#8B5CF6",display:"inline-block"}}/>
             )}
           </button>
         ))}
       </div>
 
+      {/* Tab-Navigation Level 2 */}
+      {SUB_TABS[activeTab]&&(
+        <div style={{display:"flex",gap:6,marginTop:10,flexWrap:"wrap"}}>
+          {SUB_TABS[activeTab].map(s=>(
+            <button key={s.id} onClick={()=>setSubTab(s.id)}
+              style={{flexShrink:0,fontSize:11,fontWeight:700,padding:"3px 10px",borderRadius:20,
+                border:"1.5px solid #1E293B",cursor:"pointer",
+                background:subTab===s.id?"#1E293B":"transparent",
+                color:subTab===s.id?"#CBD5E1":"#475569",
+                display:"flex",alignItems:"center",gap:5}}>
+              {s.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Tab-Inhalt */}
       <div style={{paddingTop:20,paddingBottom:8}}>
 
-        {/* ── EINSTELLUNGEN (Farbschema + Affe) ── */}
-        {activeTab==="farbschema"&&(
+        {/* ── EINSTELLUNGEN: Farbschema ── */}
+        {activeTab==="einstellungen"&&subTab==="farbschema"&&(
           <div>
-            {/* Farbschema */}
-            <div style={{fontSize:11,fontWeight:700,color:"#6B7280",textTransform:"uppercase",letterSpacing:.7,marginBottom:10}}>Farbschema</div>
-            <p style={{fontSize:12,color:"#6B7280",marginBottom:12}}>
-              Gilt übergreifend für alle Anzeigemodi.
-            </p>
+            <p style={{fontSize:12,color:"#6B7280",marginBottom:12}}>Gilt übergreifend für alle Anzeigemodi.</p>
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
               {themes.map(t=>(
                 <button key={t.id} onClick={()=>setTheme(t.id)}
@@ -3516,47 +3536,48 @@ function SettingsDisplayTab({onToast}) {
                 </button>
               ))}
             </div>
+          </div>
+        )}
 
-            {/* Tennisaffe */}
-            <div style={{borderTop:"1.5px solid #E5E7EB",marginTop:24,paddingTop:20}}>
-              <div style={{fontSize:11,fontWeight:700,color:"#6B7280",textTransform:"uppercase",letterSpacing:.7,marginBottom:12}}>🐒 Easter Egg – Tennisaffe</div>
-              <div style={{display:"flex",gap:12,marginBottom:16}}>
-                <div style={{flex:1}}>
-                  <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>TAKT (MINUTEN)</div>
-                  <select value={affeMinuten} onChange={e=>setAffeMinuten(Number(e.target.value))}
-                    style={{...S.input,width:"100%"}}>
-                    <option value={1}>Jede Minute (:01, :02, …)</option>
-                    <option value={5}>Alle 5 Min (:00, :05, :10, …)</option>
-                    <option value={10}>Alle 10 Min (:00, :10, :20, …)</option>
-                  </select>
-                </div>
-                <div style={{flex:1}}>
-                  <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>DAUER (SEKUNDEN)</div>
-                  <input type="number" min="5" max="60" value={affeSekunden}
-                    onChange={e=>setAffeSekunden(Math.max(5,Number(e.target.value)))}
-                    style={{...S.input,width:"100%"}}/>
-                </div>
+        {/* ── EINSTELLUNGEN: Easter Egg ── */}
+        {activeTab==="einstellungen"&&subTab==="easteregg"&&(
+          <div>
+            <div style={{display:"flex",gap:12,marginBottom:16}}>
+              <div style={{flex:1}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>TAKT (MINUTEN)</div>
+                <select value={affeMinuten} onChange={e=>setAffeMinuten(Number(e.target.value))}
+                  style={{...S.input,width:"100%"}}>
+                  <option value={1}>Jede Minute (:01, :02, …)</option>
+                  <option value={5}>Alle 5 Min (:00, :05, :10, …)</option>
+                  <option value={10}>Alle 10 Min (:00, :10, :20, …)</option>
+                </select>
               </div>
-              <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:8}}>AUF WELCHEN DISPLAYS ERSCHEINT DER AFFE?</div>
-              <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                {[
-                  {id:"schedule",  label:"Tagesbelegungsplan", icon:"📅"},
-                  {id:"heimspiel", label:"Heimspielmodus",     icon:"🏆"},
-                  {id:"bild",      label:"Bildanzeige",        icon:"🖼️"},
-                  {id:"fotos",     label:"Fotos-Slideshow",    icon:"📸"},
-                ].map(m=>{
-                  const on = affeModes.includes(m.id);
-                  return (
-                    <div key={m.id} onClick={()=>setAffeModes(prev=>on?prev.filter(x=>x!==m.id):[...prev,m.id])}
-                      style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:8,cursor:"pointer",
-                        background:on?"#F5F3FF":"#F9FAFB",border:`1.5px solid ${on?"#8B5CF6":"#E5E7EB"}`}}>
-                      <span style={{fontSize:16}}>{m.icon}</span>
-                      <span style={{flex:1,fontSize:13,fontWeight:600,color:on?"#7C3AED":"#374151"}}>{m.label}</span>
-                      <span style={{fontSize:16}}>{on?"✓":""}</span>
-                    </div>
-                  );
-                })}
+              <div style={{flex:1}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>DAUER (SEKUNDEN)</div>
+                <input type="number" min="5" max="60" value={affeSekunden}
+                  onChange={e=>setAffeSekunden(Math.max(5,Number(e.target.value)))}
+                  style={{...S.input,width:"100%"}}/>
               </div>
+            </div>
+            <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:8}}>AUF WELCHEN DISPLAYS ERSCHEINT DER AFFE?</div>
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {[
+                {id:"schedule",  label:"Tagesbelegungsplan", icon:"📅"},
+                {id:"heimspiel", label:"Heimspielmodus",     icon:"🏆"},
+                {id:"bild",      label:"Bildanzeige",        icon:"🖼️"},
+                {id:"fotos",     label:"Fotos-Slideshow",    icon:"📸"},
+              ].map(m=>{
+                const on = affeModes.includes(m.id);
+                return (
+                  <div key={m.id} onClick={()=>setAffeModes(prev=>on?prev.filter(x=>x!==m.id):[...prev,m.id])}
+                    style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:8,cursor:"pointer",
+                      background:on?"#F5F3FF":"#F9FAFB",border:`1.5px solid ${on?"#8B5CF6":"#E5E7EB"}`}}>
+                    <span style={{fontSize:16}}>{m.icon}</span>
+                    <span style={{flex:1,fontSize:13,fontWeight:600,color:on?"#7C3AED":"#374151"}}>{m.label}</span>
+                    <span style={{fontSize:16}}>{on?"✓":""}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
