@@ -1696,32 +1696,8 @@ function SettingsApp({profile,onBack}) {
   const [toast,setToast]   = useState(null);
   const showToast=(msg,type="success")=>{ setToast({msg,type}); setTimeout(()=>setToast(null),2800); };
 
-  const [betriebOpen,setBetriebOpen] = useState(()=>{
-    try { return JSON.parse(localStorage.getItem("betrieb_sections")||'{"booking":true,"courts":true,"jobs":false}'); }
-    catch { return {booking:true,courts:true,jobs:false}; }
-  });
-  const toggleSection=(key)=>setBetriebOpen(prev=>{
-    const next={...prev,[key]:!prev[key]};
-    localStorage.setItem("betrieb_sections",JSON.stringify(next));
-    return next;
-  });
-  const BetriebSection=({sectionKey,icon,label,children})=>(
-    <div style={{marginBottom:4}}>
-      <button onClick={()=>toggleSection(sectionKey)}
-        style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"12px 16px",
-          background:"#1E293B",border:"1.5px solid #334155",borderRadius:betriebOpen[sectionKey]?"10px 10px 0 0":"10px",
-          cursor:"pointer",color:"#F1F5F9",textAlign:"left"}}>
-        <span style={{fontSize:16}}>{icon}</span>
-        <span style={{flex:1,fontWeight:700,fontSize:14}}>{label}</span>
-        <span style={{fontSize:12,color:"#64748B"}}>{betriebOpen[sectionKey]?"▲":"▼"}</span>
-      </button>
-      {betriebOpen[sectionKey]&&(
-        <div style={{border:"1.5px solid #334155",borderTop:"none",borderRadius:"0 0 10px 10px",overflow:"hidden"}}>
-          {children}
-        </div>
-      )}
-    </div>
-  );
+  const [betriebTab,setBetriebTab] = useState(()=>localStorage.getItem("betrieb_tab")||"booking");
+  const setBetriebTabP=(k)=>{ setBetriebTab(k); localStorage.setItem("betrieb_tab",k); };
 
   const tabs=[
     {id:"betrieb",      label:"Betrieb",        icon:"⚙️"},
@@ -1760,10 +1736,22 @@ function SettingsApp({profile,onBack}) {
             <span style={{width:80}}/>
           </div>
 
-          {tab==="betrieb"      &&<div style={{padding:"16px"}}>
-            <BetriebSection sectionKey="booking" icon="📅" label="Buchung"><SettingsBookingTab onToast={showToast}/></BetriebSection>
-            <BetriebSection sectionKey="courts"  icon="🎾" label="Plätze"><SettingsCourtsTab  onToast={showToast}/></BetriebSection>
-            <BetriebSection sectionKey="jobs"    icon="⚡" label="Hintergrund"><SettingsJobsTab/></BetriebSection>
+          {tab==="betrieb"&&<div style={{padding:"16px"}}>
+            <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>
+              {[{id:"booking",icon:"📅",label:"Buchung"},{id:"courts",icon:"🎾",label:"Plätze"},{id:"jobs",icon:"⚡",label:"Hintergrund"}].map(t=>(
+                <button key={t.id} onClick={()=>setBetriebTabP(t.id)}
+                  style={{flexShrink:0,fontSize:11,fontWeight:700,padding:"4px 12px",borderRadius:20,
+                    border:"1.5px solid #334155",cursor:"pointer",
+                    background:betriebTab===t.id?"#334155":"transparent",
+                    color:betriebTab===t.id?"#F1F5F9":"#64748B",
+                    display:"flex",alignItems:"center",gap:5}}>
+                  <span>{t.icon}</span>{t.label}
+                </button>
+              ))}
+            </div>
+            {betriebTab==="booking"&&<SettingsBookingTab onToast={showToast}/>}
+            {betriebTab==="courts" &&<SettingsCourtsTab  onToast={showToast}/>}
+            {betriebTab==="jobs"   &&<SettingsJobsTab/>}
           </div>}
           {tab==="members"      &&<SettingsMembersTab      onToast={showToast}/>}
           {tab==="permissions"  &&<SettingsPermissionsTab  onToast={showToast}/>}
