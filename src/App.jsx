@@ -1318,7 +1318,7 @@ function KasseDrinksTab({favs,onLogDrink,onDeleteEntry,onGoSettings}) {
   const [quickModal,setQuickModal] = useState(false);
   const [confirmed,setConfirmed]   = useState(null);
   const [undoEntry,setUndoEntry]   = useState(null);
-  const undoTimer = React.useRef(null);
+  const undoTimer = useRef(null);
 
   const handleTap=async(f)=>{
     if(confirmed===f.id) return;
