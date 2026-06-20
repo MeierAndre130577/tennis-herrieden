@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-const SUPABASE_URL  = import.meta.env.VITE_SUPABASE_URL  || "https://irszeiamvwyrntyauury.supabase.co";
-const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlyc3plaWFtdnd5cm50eWF1dXJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2Mzc1MjcsImV4cCI6MjA5NjIxMzUyN30.ryxib1E5E2cfkwfXj6i2EnmD56tyCtz_39u7Bpw7qSc";
+const SUPABASE_URL  = import.meta.env.VITE_SUPABASE_URL  || "https://mzagislctxshpgqzniqg.supabase.co";
+const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im16YWdpc2xjdHhzaHBncXpuaXFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4MjExMjYsImV4cCI6MjA5NzM5NzEyNn0.217jpWia-5WGHKQ7A1Qr2xNcV2CMXaLl3GbhM9cUdGM";
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
 
 const SLOTS = ["08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00"];
