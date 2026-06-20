@@ -1925,8 +1925,8 @@ function SettingsMembersTab({onToast}) {
 
   const toggleSort=(col)=>setSort(prev=>prev.col===col?{col,dir:prev.dir*-1}:{col,dir:1});
 
-  const RC={pending:{bg:"#FEF3C7",color:"#92400E",border:"#F59E0B"},member:{bg:"#DCFCE7",color:"#166534",border:"#22C55E"},member2:{bg:"#DBEAFE",color:"#1E40AF",border:"#3B82F6"},admin:{bg:"#F3E8FF",color:"#6B21A8",border:"#8B5CF6"}};
-  const rc=(role)=>RC[role]||RC.member;
+  const RC={pending:{bg:"#FEF3C7",color:"#92400E",border:"#F59E0B"},known:{bg:"#FFF7ED",color:"#C2410C",border:"#FB923C"},member:{bg:"#DCFCE7",color:"#166534",border:"#22C55E"},member2:{bg:"#DBEAFE",color:"#1E40AF",border:"#3B82F6"},admin:{bg:"#F3E8FF",color:"#6B21A8",border:"#8B5CF6"}};
+  const rc=(role)=>RC[role]||{bg:"#F3F4F6",color:"#6B7280",border:"#D1D5DB"};
 
   const Arrow=({col})=>sort.col!==col?<span style={{color:"#D1D5DB"}}>⇅</span>:<span style={{color:"#6B7280"}}>{sort.dir===1?"↑":"↓"}</span>;
   const Th=({col,label,w})=>(
@@ -1946,7 +1946,7 @@ function SettingsMembersTab({onToast}) {
         <input placeholder="Name oder E-Mail suchen…" value={search} onChange={e=>setSearch(e.target.value)}
           style={{...S.input,flex:1,minWidth:160,maxWidth:280}}/>
         <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-          {["all","pending","member","member2","admin"].map(r=>(
+          {["all","pending","known","member","member2","admin"].map(r=>(
             <button key={r} onClick={()=>setRoleFilter(r)}
               style={{padding:"6px 12px",borderRadius:20,border:`1.5px solid ${roleFilter===r?"#374151":"#E5E7EB"}`,background:roleFilter===r?"#374151":"#fff",color:roleFilter===r?"#fff":"#374151",fontSize:12,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}}>
               {ROLE_FILTER_LABELS[r]}{r!=="all"&&<span style={{marginLeft:4,opacity:.65}}>({members.filter(m=>m.role===r).length})</span>}

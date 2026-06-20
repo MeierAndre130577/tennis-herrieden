@@ -8,7 +8,7 @@ create table if not exists public.profiles (
   id          uuid primary key references auth.users(id) on delete cascade,
   name        text,
   email       text,
-  role        text not null default 'pending',
+  role        text not null default 'pending' check (role in ('pending','known','member','member2','admin')),
   created_at  timestamptz default now()
 );
 alter table public.profiles enable row level security;
