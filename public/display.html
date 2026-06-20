@@ -306,9 +306,9 @@
     #app {
       display: flex;
       flex-direction: column;
-      height: 100vh;
-      padding: 20px 28px 16px;
-      gap: 16px;
+      height: 100dvh;
+      padding: clamp(8px,1.5vh,20px) clamp(10px,2vw,24px) clamp(6px,1vh,14px);
+      gap: clamp(4px,0.8vh,12px);
     }
 
     /* ── HEADER ── */
@@ -322,37 +322,39 @@
     .logo-area {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: clamp(8px,1.2vw,14px);
     }
 
-    .logo-area svg { flex-shrink: 0; }
+    .logo-area svg {
+      flex-shrink: 0;
+      width: clamp(28px,3.5vw,44px);
+      height: clamp(28px,3.5vw,44px);
+    }
 
     .logo-title {
-      font-size: 26px;
+      font-size: clamp(14px,1.8vw,26px);
       font-weight: 800;
       letter-spacing: -0.5px;
       color: var(--fg);
     }
 
     .logo-sub {
-      font-size: 13px;
+      font-size: clamp(9px,1vw,13px);
       color: var(--slate);
-      margin-top: 2px;
+      margin-top: 1px;
     }
 
-    .header-right {
-      text-align: right;
-    }
+    .header-right { text-align: right; }
 
     #date-display {
-      font-size: 22px;
-      font-weight: 800;
+      font-size: clamp(11px,1.4vw,20px);
+      font-weight: 700;
       color: var(--green);
       letter-spacing: -0.3px;
     }
 
     #time-display {
-      font-size: 42px;
+      font-size: clamp(26px,4vw,52px);
       font-weight: 800;
       color: var(--fg);
       letter-spacing: -1px;
@@ -360,32 +362,10 @@
       margin-top: 2px;
     }
 
-    /* ── STATUS BAR ── */
-    #status-bar {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 12px;
-      color: var(--slate);
-      flex-shrink: 0;
-    }
-
-    .dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--green);
-      animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50%       { opacity: 0.3; }
-    }
-
     /* ── GRID WRAPPER ── */
     #grid-wrap {
       flex: 1;
+      min-height: 0;
       overflow: hidden;
       display: flex;
       flex-direction: column;
@@ -399,9 +379,11 @@
       table-layout: fixed;
     }
 
+    .cal-table thead tr { height: auto; }
+
     .cal-table th {
       background: var(--bg2);
-      padding: 10px 8px;
+      padding: clamp(4px,0.7vh,10px) clamp(4px,0.5vw,8px);
       text-align: center;
       font-weight: 800;
       border-bottom: 2px solid var(--bg);
@@ -411,71 +393,74 @@
     }
 
     .th-time {
-      width: 68px;
-      font-size: 12px;
+      width: clamp(42px,5.5vw,68px);
+      font-size: clamp(9px,1vw,12px);
       color: var(--slate);
     }
 
     .th-court {
-      font-size: 15px;
+      font-size: clamp(11px,1.4vw,15px);
       color: var(--fg);
       border-left: 3px solid transparent;
     }
 
     .th-court .surface {
-      font-size: 11px;
+      font-size: clamp(9px,0.9vw,11px);
       color: var(--slate);
       font-weight: 600;
       margin-top: 2px;
     }
 
+    .cal-table tbody tr { height: 1px; } /* gleichmäßige Verteilung */
+
     .cal-table td {
       border-top: 1px solid var(--border);
       padding: 0;
       vertical-align: middle;
+      height: inherit;
     }
 
     .td-time {
       text-align: right;
-      padding: 0 12px 0 0;
-      font-size: 13px;
+      padding: 0 clamp(4px,0.6vw,12px) 0 0;
+      font-size: clamp(10px,1.2vw,13px);
       color: var(--slate);
       font-weight: 600;
       white-space: nowrap;
     }
 
     .td-slot {
-      padding: 3px 4px;
+      padding: 2px 3px;
       border-left: 1px solid var(--border);
     }
 
     .slot-btn {
       width: 100%;
       height: 100%;
-      min-height: 36px;
-      border-radius: 6px;
+      min-height: clamp(26px,4vh,40px);
+      border-radius: clamp(4px,0.5vw,8px);
       border: 1.5px solid transparent;
       background: var(--bg2);
       color: var(--slate);
       font-family: inherit;
-      font-size: 13px;
+      font-size: clamp(10px,1.2vw,14px);
       font-weight: 600;
       cursor: default;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 5px;
+      gap: clamp(3px,0.4vw,6px);
       overflow: hidden;
       white-space: nowrap;
       text-overflow: ellipsis;
-      padding: 0 8px;
+      padding: 0 clamp(4px,0.5vw,8px);
     }
 
     .slot-free {
       background: var(--slot-free-bg);
       color: var(--slot-free-fg);
       border-color: var(--slot-free-bd);
-      font-size: 11px;
+      font-size: clamp(9px,1vw,11px);
     }
 
     .slot-past {
@@ -489,32 +474,61 @@
     .slot-training { background: var(--slot-train-bg);  border-color: var(--slot-train-bd);  color: var(--slot-train-fg);  }
     .slot-match    { background: var(--slot-match-bg);  border-color: var(--slot-match-bd);  color: var(--slot-match-fg);  }
 
-    /* current-time row highlight */
     .row-current .td-time {
       color: var(--green);
       font-weight: 800;
     }
 
-    /* ── LEGEND ── */
+    /* ── FOOTER (Status + Legende) ── */
+    #footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    #status-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: clamp(9px,0.9vw,12px);
+      color: var(--slate);
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse 2s infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.3; }
+    }
+
     #legend {
       display: flex;
-      gap: 20px;
+      gap: clamp(10px,1.5vw,20px);
       align-items: center;
-      flex-shrink: 0;
       flex-wrap: wrap;
     }
 
     .legend-item {
       display: flex;
       align-items: center;
-      gap: 6px;
-      font-size: 12px;
+      gap: 5px;
+      font-size: clamp(9px,0.9vw,12px);
       color: var(--slate);
     }
 
     .legend-dot {
-      width: 12px;
-      height: 12px;
+      width: clamp(8px,1vw,12px);
+      height: clamp(8px,1vw,12px);
       border-radius: 3px;
       flex-shrink: 0;
     }
@@ -544,6 +558,25 @@
     }
 
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── HOCHFORMAT ── */
+    @media (orientation: portrait) {
+      .logo-area svg { display: none; }
+      .logo-sub { display: none; }
+      .th-court .surface { display: none; }
+      .logo-title { font-size: clamp(13px,4vw,22px); }
+      #date-display { font-size: clamp(10px,2.8vw,16px); }
+      #time-display { font-size: clamp(22px,7vw,46px); }
+      .slot-btn { font-size: clamp(9px,2.2vw,13px); }
+      .td-time { font-size: clamp(9px,2vw,12px); }
+      .th-court { font-size: clamp(9px,2.5vw,14px); }
+    }
+
+    /* ── SEHR KLEINER BILDSCHIRM ── */
+    @media (max-height: 450px) {
+      .logo-sub { display: none; }
+      #legend { display: none; }
+    }
   </style>
 </head>
 <body>
@@ -619,7 +652,7 @@ setTimeout(function() {
 <div id="app" style="display:none">
   <header>
     <div class="logo-area">
-      <svg width="44" height="44" viewBox="0 0 32 32" fill="none">
+      <svg viewBox="0 0 32 32" fill="none">
         <circle cx="16" cy="16" r="15" stroke="#22C55E" stroke-width="2"/>
         <ellipse cx="16" cy="16" rx="5" ry="14" stroke="#22C55E" stroke-width="1.5"/>
         <line x1="1" y1="16" x2="31" y2="16" stroke="#22C55E" stroke-width="1.5"/>
@@ -635,11 +668,6 @@ setTimeout(function() {
     </div>
   </header>
 
-  <div id="status-bar">
-    <div class="dot"></div>
-    <span id="status-text">Verbunden · wird automatisch aktualisiert</span>
-  </div>
-
   <div id="grid-wrap">
     <table class="cal-table" id="cal-table">
       <thead id="cal-head"></thead>
@@ -647,12 +675,18 @@ setTimeout(function() {
     </table>
   </div>
 
-  <div id="legend">
-    <div class="legend-item"><div class="legend-dot" style="background:var(--slot-reg-fg)"></div>Gebucht</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--slot-guest-fg)"></div>Mit Gastspieler</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--slot-train-fg)"></div>Training</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--slot-match-fg)"></div>Spieltag</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--slot-free-bg);border:1px solid var(--slot-free-bd)"></div>Frei</div>
+  <div id="footer">
+    <div id="status-bar">
+      <div class="dot"></div>
+      <span id="status-text">Verbunden</span>
+    </div>
+    <div id="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:var(--slot-reg-fg)"></div>Gebucht</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--slot-guest-fg)"></div>Mit Gastspieler</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--slot-train-fg)"></div>Training</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--slot-match-fg)"></div>Spieltag</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--slot-free-bg);border:1px solid var(--slot-free-bd)"></div>Frei</div>
+    </div>
   </div>
 </div>
 
@@ -795,13 +829,6 @@ function render() {
 
   body.innerHTML = bodyHtml;
 
-  if (cur) {
-    const rows = body.querySelectorAll("tr");
-    const idx  = SLOTS.indexOf(cur);
-    if (idx >= 0 && rows[idx]) {
-      rows[idx].scrollIntoView({ block: "center", behavior: "smooth" });
-    }
-  }
 }
 
 // ── LOAD DATA ─────────────────────────────────────────────────────────────
