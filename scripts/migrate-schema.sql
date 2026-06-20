@@ -8,7 +8,7 @@ create table if not exists public.profiles (
   id          uuid primary key references auth.users(id) on delete cascade,
   name        text,
   email       text,
-  role        text not null default 'member',
+  role        text not null default 'pending',
   created_at  timestamptz default now()
 );
 alter table public.profiles enable row level security;
@@ -26,7 +26,7 @@ create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
   insert into public.profiles (id, name, email, role)
-  values (new.id, coalesce(new.raw_user_meta_data->>'name', split_part(new.email,'@',1)), new.email, 'member');
+  values (new.id, coalesce(new.raw_user_meta_data->>'name', split_part(new.email,'@',1)), new.email, 'pending');
   return new;
 end;
 $$;
