@@ -2306,35 +2306,53 @@ function RubberModal({rubber, homePlayers, awayPlayers, onSave, onClose}) {
         {/* Sätze */}
         {[0,1,2].map(i=>{
           const isTb = i===2;
-          const max  = isTb ? 10 : 7;
           const sw   = setWinner(sets[i].home, sets[i].away, isTb);
           return (
             <div key={i} style={{marginBottom:14,padding:"10px 12px",borderRadius:10,
               background:isTb?"#F8FAFC":"#fff",
               border:`1.5px solid ${sw==="home"?"#BBF7D0":sw==="away"?"#FECACA":"#E5E7EB"}`}}>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-                <span style={{fontSize:11,fontWeight:700,color:"#374151"}}>
-                  {isTb?"3. Satz (opt.)":`${i+1}. Satz`}
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:isTb?8:10}}>
+                <span style={{fontSize:11,fontWeight:700,color:isTb?"#9CA3AF":"#374151"}}>
+                  {isTb?"3. Satz · Super-Tiebreak (opt.)":`${i+1}. Satz`}
                 </span>
-                <span style={{fontSize:20,fontWeight:800,fontFamily:"monospace",
+                <span style={{fontSize:18,fontWeight:800,fontFamily:"monospace",
                   color:sw==="home"?"#059669":sw==="away"?"#DC2626":"#9CA3AF"}}>
                   {sets[i].home!==""||sets[i].away!==""
-                    ? `${sets[i].home||0}:${sets[i].away||0}`
-                    : "–:–"}
+                    ? `${sets[i].home}:${sets[i].away}` : "–:–"}
                 </span>
               </div>
-              <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                <div>
-                  <div style={{fontSize:10,fontWeight:700,color:"#1D4ED8",marginBottom:4}}>HEIM</div>
-                  <NumBtns max={max} val={sets[i].home} color="#1D4ED8"
-                    onChange={v=>updSet(i,"home",v)}/>
+              {isTb ? (
+                <div style={{display:"flex",alignItems:"center",gap:10,justifyContent:"center"}}>
+                  <div style={{textAlign:"center"}}>
+                    <div style={{fontSize:10,fontWeight:700,color:"#1D4ED8",marginBottom:4}}>HEIM</div>
+                    <input type="number" min={0} value={sets[i].home}
+                      onChange={e=>updSet(i,"home",e.target.value)}
+                      style={{width:60,textAlign:"center",fontSize:22,fontWeight:800,
+                        border:"1.5px solid #E5E7EB",borderRadius:8,padding:"6px 0",background:"#F8FAFC"}}/>
+                  </div>
+                  <span style={{fontSize:22,color:"#D1D5DB",fontWeight:700,marginTop:18}}>:</span>
+                  <div style={{textAlign:"center"}}>
+                    <div style={{fontSize:10,fontWeight:700,color:"#6B7280",marginBottom:4}}>GAST</div>
+                    <input type="number" min={0} value={sets[i].away}
+                      onChange={e=>updSet(i,"away",e.target.value)}
+                      style={{width:60,textAlign:"center",fontSize:22,fontWeight:800,
+                        border:"1.5px solid #E5E7EB",borderRadius:8,padding:"6px 0",background:"#F8FAFC"}}/>
+                  </div>
                 </div>
-                <div>
-                  <div style={{fontSize:10,fontWeight:700,color:"#6B7280",marginBottom:4}}>GAST</div>
-                  <NumBtns max={max} val={sets[i].away} color="#6B7280"
-                    onChange={v=>updSet(i,"away",v)}/>
+              ) : (
+                <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  <div>
+                    <div style={{fontSize:10,fontWeight:700,color:"#1D4ED8",marginBottom:4}}>HEIM</div>
+                    <NumBtns max={7} val={sets[i].home} color="#1D4ED8"
+                      onChange={v=>updSet(i,"home",v)}/>
+                  </div>
+                  <div>
+                    <div style={{fontSize:10,fontWeight:700,color:"#6B7280",marginBottom:4}}>GAST</div>
+                    <NumBtns max={7} val={sets[i].away} color="#6B7280"
+                      onChange={v=>updSet(i,"away",v)}/>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           );
         })}
@@ -2388,8 +2406,6 @@ function HeimspieleEdit({onToast, onSaved, reloadKey, hideShare=false}) {
   const [league,    setLeague]    = useState("");
   const [matchDate, setMatchDate] = useState("");
   const [matchTime, setMatchTime] = useState("");
-  const [homeScore, setHomeScore] = useState(0);
-  const [awayScore, setAwayScore] = useState(0);
   const [rubbers,   setRubbers]   = useState(DEFAULT_RUBBERS("6er"));
   const [homeLogo,  setHomeLogo]  = useState(null);
   const [awayLogo,  setAwayLogo]  = useState(null);
@@ -2406,8 +2422,6 @@ function HeimspieleEdit({onToast, onSaved, reloadKey, hideShare=false}) {
     setLeague(m.league || "");
     setMatchDate(m.matchDate || "");
     setMatchTime((m.time || "").replace(/\s*Uhr$/i, "").trim());
-    setHomeScore(m.homeScore ?? 0);
-    setAwayScore(m.awayScore ?? 0);
     const rubs = m.rubbers?.length > 0 ? m.rubbers.map(r=>({...r})) : [];
     const det = rubs.length > 0
       ? (rubs.filter(r=>r.id.startsWith("E")).length <= 4 ? "4er" : "6er")
@@ -2452,11 +2466,6 @@ function HeimspieleEdit({onToast, onSaved, reloadKey, hideShare=false}) {
     setFormat(newFmt);
     setDirty(true);
   };
-  const recalcScore = () => {
-    setHomeScore(rubbers.filter(r=>r.result==="win").length);
-    setAwayScore(rubbers.filter(r=>r.result==="loss").length);
-    setDirty(true);
-  };
   const save = async () => {
     setSaving(true);
     const now = new Date().toISOString();
@@ -2467,7 +2476,8 @@ function HeimspieleEdit({onToast, onSaved, reloadKey, hideShare=false}) {
       homeTeam, awayTeam, league, status: autoStatus,
       matchDate: matchDate||null, time: matchTime ? matchTime+" Uhr" : null,
       homeLogo: homeLogo||null, awayLogo: awayLogo||null,
-      homeScore: Number(homeScore), awayScore: Number(awayScore),
+      homeScore: rubbers.filter(r=>r.result==="win").length,
+      awayScore: rubbers.filter(r=>r.result==="loss").length,
       rubbers, _source:"manual", _savedAt: now,
     };
     const {error} = await sb.from("settings")
@@ -2611,18 +2621,11 @@ function HeimspieleEdit({onToast, onSaved, reloadKey, hideShare=false}) {
             {statusLabel(currentStatus)}
           </span>
           <div style={{display:"flex",alignItems:"center",gap:4}}>
-            <input type="number" min={0} max={9} value={homeScore}
-              onChange={e=>{setHomeScore(e.target.value);setDirty(true);}}
-              style={{width:34,textAlign:"center",fontSize:18,fontWeight:800,
-                border:"1.5px solid #E5E7EB",borderRadius:5,padding:"2px 0"}}/>
+            <span style={{fontSize:22,fontWeight:800,color:"#111827",fontFamily:"monospace",
+              minWidth:20,textAlign:"center"}}>{rubbers.filter(r=>r.result==="win").length}</span>
             <span style={{fontSize:16,color:"#9CA3AF",fontWeight:700}}>:</span>
-            <input type="number" min={0} max={9} value={awayScore}
-              onChange={e=>{setAwayScore(e.target.value);setDirty(true);}}
-              style={{width:34,textAlign:"center",fontSize:18,fontWeight:800,
-                border:"1.5px solid #E5E7EB",borderRadius:5,padding:"2px 0"}}/>
-            <button onClick={recalcScore} title="Aus Rubbers berechnen"
-              style={{background:"none",border:"1px solid #E5E7EB",borderRadius:4,
-                padding:"3px 6px",fontSize:11,cursor:"pointer",color:"#6B7280"}}>↻</button>
+            <span style={{fontSize:22,fontWeight:800,color:"#111827",fontFamily:"monospace",
+              minWidth:20,textAlign:"center"}}>{rubbers.filter(r=>r.result==="loss").length}</span>
           </div>
         </div>
       </div>
