@@ -213,7 +213,7 @@
     #heimspiel-app {
       display: none;
       grid-template-rows: auto 1fr auto;
-      height: 100vh;
+      height: 100dvh;
       padding: 2vh 2.5vw 1.5vh;
       gap: 1.5vh;
     }
@@ -588,6 +588,36 @@
       .slot-btn { font-size: clamp(9px,2.2vw,13px); }
       .td-time { font-size: clamp(9px,2vw,12px); }
       .th-court { font-size: clamp(9px,2.5vw,14px); }
+
+      /* ── HEIMSPIEL HOCHFORMAT ── */
+      /* Logos: in Portrait ist vw die schmale Seite → vh-basiert skalieren */
+      .hs-logo {
+        height: clamp(40px, min(6vw, 7vh), 96px);
+        width:  clamp(40px, min(6vw, 7vh), 96px);
+      }
+      /* Teamnamen: vw-basiert, aber Minimum höher damit lesbar */
+      .hs-team-name  { font-size: clamp(16px, 4.5vw, 52px); }
+      /* Score-Zahl: vh-basiert damit sie auf großen Portrait-Screens groß bleibt */
+      .hs-score-big  { font-size: clamp(52px, 11vh, 140px); }
+      /* Scoreboard-Mitte genug Platz geben */
+      .hs-score-center { min-width: 22vw; }
+      /* Liga + Teamname im Header */
+      .hs-league { font-size: clamp(10px, 1.8vw, 16px); }
+      .hs-team   { font-size: clamp(15px, 3.5vw, 30px); }
+      /* Rubber-Karten: Schrift auf vw umstellen (breit = vw in Portrait) */
+      .hs-rubber-num    { font-size: clamp(11px, 2.8vw, 20px); min-width: clamp(22px, 5.5vw, 38px); }
+      .hs-rubber-home   { font-size: clamp(12px, 3vw, 22px); }
+      .hs-rubber-away   { font-size: clamp(10px, 2.4vw, 18px); }
+      .hs-rubber-score  { font-size: clamp(12px, 3vw, 22px); }
+      .hs-rubber-result {
+        width:  clamp(22px, 5vw, 38px);
+        height: clamp(22px, 5vw, 38px);
+        font-size: clamp(10px, 2.5vw, 17px);
+      }
+      /* Rubber-Grid: bei sehr schmalen Screens (Handy) auf 1 Spalte */
+      @media (max-width: 480px) {
+        .hs-rubbers-grid { grid-template-columns: 1fr !important; }
+      }
     }
 
     /* ── SEHR KLEINER BILDSCHIRM ── */
