@@ -3231,17 +3231,45 @@ function SettingsMannschaftenTab({onToast}) {
 
 // ── SETTINGS: HINTERGRUND-JOBS ────────────────────────────────────────────
 function SettingsJobsTab() {
-  const [data, setData] = useState({});
+  const [data, setData]         = useState({});
+  const [githubPat, setGithubPat] = useState("");
+  const [spielplanStatus, setSpielplanStatus] = useState(null); // null | "running" | "ok" | "error"
 
   useEffect(()=>{
-    const keys = ["btv_club_teams","btv_players"];
+    const keys = ["btv_club_teams","btv_players","github_pat"];
     sb.from("settings").select("key,value").in("key", keys).then(({data:rows})=>{
       if (!rows) return;
       const m = {};
       rows.forEach(r=>{ try { m[r.key] = typeof r.value==="string" ? JSON.parse(r.value) : r.value; } catch(_){ m[r.key]=r.value; } });
+      if (m.github_pat) setGithubPat(m.github_pat);
       setData(m);
     });
   },[]);
+
+  const triggerSpielplan = async () => {
+    if(!githubPat) { alert("Kein GitHub PAT hinterlegt – bitte unter Display-Einstellungen speichern."); return; }
+    setSpielplanStatus("running");
+    try {
+      const res = await fetch(
+        "https://api.github.com/repos/MeierAndre130577/tennis-herrieden/actions/workflows/btv-fetch.yml/dispatches",
+        { method:"POST",
+          headers:{Authorization:`Bearer ${githubPat}`,Accept:"application/vnd.github+json","Content-Type":"application/json"},
+          body: JSON.stringify({ref:"main", inputs:{teams_only:"true"}}) }
+      );
+      if(res.status===204){
+        setSpielplanStatus("ok");
+        setTimeout(()=>setSpielplanStatus(null), 8000);
+      } else {
+        const txt = await res.text();
+        console.error("GitHub Dispatch Fehler:", txt);
+        setSpielplanStatus("error");
+        setTimeout(()=>setSpielplanStatus(null), 6000);
+      }
+    } catch(e) {
+      setSpielplanStatus("error");
+      setTimeout(()=>setSpielplanStatus(null), 6000);
+    }
+  };
 
   const fmt = iso => {
     if (!iso) return null;
@@ -3326,6 +3354,31 @@ function SettingsJobsTab() {
                     border:"1px solid #E5E7EB"}}>{k}</span>
                 ))}
               </div>
+
+              {/* Manuell holen – nur für BTV Spielplan */}
+              {job.name==="BTV Spielplan" && (
+                <div style={{marginTop:10}}>
+                  <button onClick={triggerSpielplan} disabled={spielplanStatus==="running"}
+                    style={{fontSize:12,fontWeight:700,padding:"6px 14px",borderRadius:8,cursor:"pointer",
+                      border:"1.5px solid #059669",
+                      background: spielplanStatus==="running"?"#F0FDF4":"#059669",
+                      color: spielplanStatus==="running"?"#059669":"#fff",
+                      opacity: spielplanStatus==="running"?0.7:1,
+                      transition:"all .15s"}}>
+                    {spielplanStatus==="running" ? "⏳ Läuft…" : "▶ Jetzt holen"}
+                  </button>
+                  {spielplanStatus==="ok" && (
+                    <span style={{marginLeft:10,fontSize:12,color:"#059669",fontWeight:600}}>
+                      ✅ Gestartet – dauert ~3 Min.
+                    </span>
+                  )}
+                  {spielplanStatus==="error" && (
+                    <span style={{marginLeft:10,fontSize:12,color:"#DC2626",fontWeight:600}}>
+                      ⚠ Fehler – PAT prüfen
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
