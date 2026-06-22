@@ -255,13 +255,16 @@ export default function App() {
 // USER WIDGET — Theme & Layout
 // ═══════════════════════════════════════════════════════════════════════════
 const THEMES = [
-  { id:"dark",  label:"Dark",        bg:"#0F172A", card:"#1E293B", cls:""           },
-  { id:"light", label:"Hell",        bg:"#F1F5F9", card:"#FFFFFF", cls:"theme-light" },
-  { id:"clay",  label:"Tennisplatz", bg:"#2E0C03", card:"#4A1A08", cls:"theme-clay"  },
+  { id:"dark",            label:"Dark",          bg:"#0F172A", card:"#1E293B", cls:""                      },
+  { id:"light",           label:"Hell",          bg:"#F1F5F9", card:"#FFFFFF", cls:"theme-light"           },
+  { id:"frenchopen",      label:"French Open",   bg:"#1A0700", card:"#2D1005", cls:"theme-frenchopen"      },
+  { id:"australianopen",  label:"Australian Open",bg:"#021018", card:"#082535", cls:"theme-australianopen" },
+  { id:"usopen",          label:"US Open",       bg:"#020B1A", card:"#0A1E3D", cls:"theme-usopen"         },
+  { id:"wimbledon",       label:"Wimbledon",     bg:"#021209", card:"#0A2B17", cls:"theme-wimbledon"       },
 ];
 
 function applyTheme(id) {
-  document.documentElement.classList.remove("theme-light","theme-clay");
+  document.documentElement.classList.remove("theme-light","theme-frenchopen","theme-australianopen","theme-usopen","theme-wimbledon");
   const t = THEMES.find(t=>t.id===id);
   if(t?.cls) document.documentElement.classList.add(t.cls);
   localStorage.setItem("app-theme", id);
@@ -273,6 +276,8 @@ function UserWidget({profile}) {
   const [forceMobile, setForceMobile] = useState(()=>document.documentElement.classList.contains("force-mobile"));
   const isDesktop                   = window.innerWidth >= 768;
   const initials = profile?.name?.split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase() || "🎨";
+
+  useEffect(()=>{ applyTheme(theme); }, []);
 
   const handleTheme = (id) => { setTheme(id); applyTheme(id); };
   const handleLayout = () => {

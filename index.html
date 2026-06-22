@@ -38,17 +38,53 @@
         --text-on-accent: #FFFFFF;
         --glow-color:     #22C55E0A;
       }
-      /* ── DESIGN TOKENS: Tennisplatz (Clay) ── */
-      :root.theme-clay {
-        --bg-page:        #2E0C03;
-        --bg-card:        #4A1A08;
-        --bg-border:      #7A3318;
-        --bg-input:       #220900;
-        --text-primary:   #FFF0E0;
+      /* ── DESIGN TOKENS: French Open (Roland Garros) ── */
+      :root.theme-frenchopen {
+        --bg-page:        #1A0700;
+        --bg-card:        #2D1005;
+        --bg-border:      #C1440E;
+        --bg-input:       #0F0300;
+        --text-primary:   #FFF0E5;
         --text-secondary: #D4956A;
-        --text-muted:     #9A6040;
+        --text-muted:     #8A5040;
         --text-on-accent: #FFFFFF;
-        --glow-color:     #E8600014;
+        --glow-color:     #C1440E18;
+      }
+      /* ── DESIGN TOKENS: Australian Open ── */
+      :root.theme-australianopen {
+        --bg-page:        #021018;
+        --bg-card:        #082535;
+        --bg-border:      #0087C2;
+        --bg-input:       #01080F;
+        --text-primary:   #EFF8FF;
+        --text-secondary: #B3D234;
+        --text-muted:     #4A8FB5;
+        --text-on-accent: #FFFFFF;
+        --glow-color:     #0087C218;
+      }
+      /* ── DESIGN TOKENS: US Open ── */
+      :root.theme-usopen {
+        --bg-page:        #020B1A;
+        --bg-card:        #0A1E3D;
+        --bg-border:      #4472C4;
+        --bg-input:       #010511;
+        --text-primary:   #EFF4FF;
+        --text-secondary: #F7C335;
+        --text-muted:     #4A6BA5;
+        --text-on-accent: #FFFFFF;
+        --glow-color:     #4472C418;
+      }
+      /* ── DESIGN TOKENS: Wimbledon (Grün/Lila) ── */
+      :root.theme-wimbledon {
+        --bg-page:        #021209;
+        --bg-card:        #0A2B17;
+        --bg-border:      #006747;
+        --bg-input:       #010A04;
+        --text-primary:   #F0FFF8;
+        --text-secondary: #9B8EC4;
+        --text-muted:     #4D8A6A;
+        --text-on-accent: #FFFFFF;
+        --glow-color:     #00674718;
       }
       * { margin:0; padding:0; box-sizing:border-box; }
       body { font-family: 'DM Sans', sans-serif; background: var(--bg-page); }
@@ -117,8 +153,8 @@
     <script>
       (function(){
         const t=localStorage.getItem("app-theme");
-        if(t==="light") document.documentElement.classList.add("theme-light");
-        if(t==="clay")  document.documentElement.classList.add("theme-clay");
+        const map={"light":"theme-light","frenchopen":"theme-frenchopen","australianopen":"theme-australianopen","usopen":"theme-usopen","wimbledon":"theme-wimbledon"};
+        if(map[t]) document.documentElement.classList.add(map[t]);
       })();
     </script>
     <script type="module" src="/src/main.jsx"></script>
