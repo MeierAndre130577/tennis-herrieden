@@ -5,6 +5,63 @@ const SUPABASE_URL  = import.meta.env.VITE_SUPABASE_URL  || "";
 const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON || "";
 const sb = SUPABASE_URL ? createClient(SUPABASE_URL, SUPABASE_ANON) : null;
 
+// ── DESIGN TOKENS ─────────────────────────────────────────────────────────────
+// Strukturelle Farben → CSS Custom Properties (aus index.html, theme-switchable)
+// State-Farben → feste Hex-Werte (gleich in Dark & Light)
+const T = {
+  // Hintergründe (via CSS var → automatisch theme-aware)
+  bgPage:   "var(--bg-page)",
+  bgCard:   "var(--bg-card)",
+  bgBorder: "var(--bg-border)",
+  bgInput:  "var(--bg-input)",
+  // Text (via CSS var)
+  textPrimary:   "var(--text-primary)",
+  textSecondary: "var(--text-secondary)",
+  textMuted:     "var(--text-muted)",
+  // Zustände (feste Hex — gleich in Dark & Light)
+  success: "#22C55E",
+  error:   "#EF4444",
+  warning: "#F59E0B",
+  info:    "#3B82F6",
+  purple:  "#8B5CF6",
+  orange:  "#F97316",
+  // Border-Radien
+  rSm:   8,
+  rMd:   12,
+  rLg:   16,
+  rPill: 20,
+  // Schriftgrößen
+  fzH2:    20,
+  fzH3:    16,
+  fzBody:  14,
+  fzSm:    12,
+  fzLabel: 11,
+  fzBadge: 10,
+  // Padding-Presets
+  pCard:    "16px",
+  pCompact: "12px 14px",
+  pBadge:   "4px 10px",
+  pBtn:     "7px 16px",
+};
+// Theme umschalten: document.documentElement.classList.toggle('theme-light')
+const accentBorder = (color) => `1.5px solid ${color}44`;
+// Filter-Tab Stil-Generator: einheitlich für alle Screens
+// color = Akzentfarbe (hex), active = boolean, solid = aktiv als Vollton (default: semi-transparent)
+const ftab = (active, color = "#94A3B8", solid = false) => ({
+  flexShrink: 0,
+  fontSize: T.fzLabel,
+  fontWeight: 700,
+  padding: T.pBtn,
+  borderRadius: T.rPill,
+  border: active ? `1.5px solid ${color}` : `1.5px solid ${color}44`,
+  background: active ? (solid ? color : color + "28") : "transparent",
+  color: active ? (solid ? "#fff" : color) : T.textMuted,
+  cursor: "pointer",
+  transition: "all .15s",
+  whiteSpace: "nowrap",
+});
+// ──────────────────────────────────────────────────────────────────────────────
+
 const SLOTS = ["08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00"];
 const DE_DAYS  = ["Mo","Di","Mi","Do","Fr","Sa","So"];
 const DE_FULL  = ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"];
@@ -178,18 +235,108 @@ export default function App() {
   }
   if(!profile) return <Loading msg="Lade Profil…"/>;
 
-  if(screen==="booking"    && canDo("booking"))       return <BookingApp     profile={profile} perms={permissions} onBack={()=>setScreen("home")}/>;
-  if(screen==="kasse"      && canDo("kasse"))         return <KasseApp       profile={profile} perms={permissions} onBack={()=>setScreen("home")}/>;
-  if(screen==="settings"   && canDo("einstellungen")) return <SettingsApp    profile={profile} onBack={()=>setScreen("home")}/>;
-  if(screen==="kassenbuch" && canDo("kassenbuch")) return <KassenbuchApp  profile={profile} onBack={()=>setScreen("home")}/>;
-  if(screen==="clubstream" && canDo("clubstream")) return <ClubstreamApp  profile={profile} onBack={()=>setScreen("home")} contentTypePerms={contentTypePerms}/>;
-  if(screen==="btv"        && canDo("btv"))        return <BtvLinksScreen onBack={()=>setScreen("home")}/>;
-  if(screen==="heimspiel"  && canDo("heimspiel"))  return <HeimspielwocheScreen onBack={()=>setScreen("home")} profile={profile}/>;
-  return <HomeScreen profile={profile} canDo={canDo}
+  let el;
+  if(screen==="booking"    && canDo("booking"))       el=<BookingApp     profile={profile} perms={permissions} onBack={()=>setScreen("home")}/>;
+  else if(screen==="kasse"      && canDo("kasse"))         el=<KasseApp       profile={profile} perms={permissions} onBack={()=>setScreen("home")}/>;
+  else if(screen==="settings"   && canDo("einstellungen")) el=<SettingsApp    profile={profile} onBack={()=>setScreen("home")}/>;
+  else if(screen==="kassenbuch" && canDo("kassenbuch"))    el=<KassenbuchApp  profile={profile} onBack={()=>setScreen("home")}/>;
+  else if(screen==="clubstream" && canDo("clubstream"))    el=<ClubstreamApp  profile={profile} onBack={()=>setScreen("home")} contentTypePerms={contentTypePerms}/>;
+  else if(screen==="btv"        && canDo("btv"))           el=<BtvLinksScreen onBack={()=>setScreen("home")}/>;
+  else if(screen==="heimspiel"  && canDo("heimspiel"))     el=<HeimspielwocheScreen onBack={()=>setScreen("home")} profile={profile}/>;
+  else el=<HomeScreen profile={profile} canDo={canDo}
     onGoBooking={()=>setScreen("booking")} onGoKasse={()=>setScreen("kasse")}
     onGoSettings={()=>setScreen("settings")} onGoKassenbuch={()=>setScreen("kassenbuch")}
     onGoClubstream={()=>setScreen("clubstream")} onGoBtv={()=>setScreen("btv")}
     onGoHeimspiele={()=>setScreen("heimspiel")}/>;
+  return <>{el}<UserWidget profile={profile}/></>;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// USER WIDGET — Theme & Layout
+// ═══════════════════════════════════════════════════════════════════════════
+const THEMES = [
+  { id:"dark",  label:"Dark",        bg:"#0F172A", card:"#1E293B", cls:""           },
+  { id:"light", label:"Hell",        bg:"#F1F5F9", card:"#FFFFFF", cls:"theme-light" },
+  { id:"clay",  label:"Tennisplatz", bg:"#2E0C03", card:"#4A1A08", cls:"theme-clay"  },
+];
+
+function applyTheme(id) {
+  document.documentElement.classList.remove("theme-light","theme-clay");
+  const t = THEMES.find(t=>t.id===id);
+  if(t?.cls) document.documentElement.classList.add(t.cls);
+  localStorage.setItem("app-theme", id);
+}
+
+function UserWidget({profile}) {
+  const [open, setOpen]             = useState(false);
+  const [theme, setTheme]           = useState(()=>localStorage.getItem("app-theme")||"dark");
+  const [forceMobile, setForceMobile] = useState(()=>document.documentElement.classList.contains("force-mobile"));
+  const isDesktop                   = window.innerWidth >= 768;
+  const initials = profile?.name?.split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase() || "🎨";
+
+  const handleTheme = (id) => { setTheme(id); applyTheme(id); };
+  const handleLayout = () => {
+    const next = !forceMobile;
+    setForceMobile(next);
+    document.documentElement.classList.toggle("force-mobile", next);
+  };
+
+  return (
+    <>
+      {open&&<div style={{position:"fixed",inset:0,zIndex:9990}} onClick={()=>setOpen(false)}/>}
+      <div style={{position:"fixed",bottom:24,right:20,zIndex:9999,display:"flex",flexDirection:"column",alignItems:"flex-end",gap:8}}>
+        {open&&(
+          <div style={{background:T.bgCard,border:`1px solid ${T.bgBorder}`,borderRadius:T.rLg,padding:16,width:220,boxShadow:"0 8px 32px rgba(0,0,0,.5)"}}>
+            {profile?.name&&<div style={{fontSize:12,fontWeight:700,color:T.textMuted,marginBottom:12,paddingBottom:10,borderBottom:`1px solid ${T.bgBorder}`}}>👤 {profile.name}</div>}
+
+            <div style={{fontSize:10,fontWeight:700,color:T.textMuted,textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>Design</div>
+            <div style={{display:"flex",flexDirection:"column",gap:5,marginBottom:14}}>
+              {THEMES.map(t=>(
+                <button key={t.id} onClick={()=>handleTheme(t.id)} style={{
+                  display:"flex",alignItems:"center",gap:10,padding:"8px 10px",
+                  borderRadius:T.rSm,cursor:"pointer",textAlign:"left",width:"100%",
+                  border:theme===t.id?`1.5px solid ${T.success}`:`1px solid ${T.bgBorder}`,
+                  background:theme===t.id?T.success+"18":"transparent",
+                }}>
+                  <div style={{width:32,height:20,borderRadius:4,overflow:"hidden",display:"flex",flexShrink:0,border:`1px solid ${T.bgBorder}`}}>
+                    <div style={{flex:1,background:t.bg}}/>
+                    <div style={{width:10,background:t.card}}/>
+                  </div>
+                  <span style={{fontSize:13,fontWeight:600,color:T.textPrimary,flex:1}}>{t.label}</span>
+                  {theme===t.id&&<span style={{fontSize:11,color:T.success}}>✓</span>}
+                </button>
+              ))}
+            </div>
+
+            {isDesktop&&(
+              <div style={{borderTop:`1px solid ${T.bgBorder}`,paddingTop:12}}>
+                <div style={{fontSize:10,fontWeight:700,color:T.textMuted,textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>Ansicht</div>
+                <button onClick={handleLayout} style={{
+                  width:"100%",padding:"8px 10px",borderRadius:T.rSm,cursor:"pointer",
+                  border:`1px solid ${T.bgBorder}`,background:"transparent",
+                  color:T.textSecondary,fontSize:13,fontWeight:600,
+                  display:"flex",alignItems:"center",gap:8,
+                }}>
+                  <span>{forceMobile?"📱":"🖥️"}</span>
+                  <span style={{flex:1,textAlign:"left"}}>{forceMobile?"Mobile Ansicht":"System-Ansicht"}</span>
+                  {forceMobile&&<span style={{fontSize:10,color:T.warning}}>temp.</span>}
+                </button>
+                {forceMobile&&<div style={{fontSize:10,color:T.textMuted,marginTop:4,paddingLeft:2}}>Wird beim Neuladen zurückgesetzt</div>}
+              </div>
+            )}
+          </div>
+        )}
+        <button onClick={()=>setOpen(o=>!o)} style={{
+          width:40,height:40,borderRadius:"50%",background:T.success,border:"none",
+          color:"#fff",fontWeight:800,fontSize:14,cursor:"pointer",
+          boxShadow:"0 2px 12px rgba(0,0,0,.4)",letterSpacing:-.5,
+          display:"flex",alignItems:"center",justifyContent:"center",
+        }}>
+          {initials}
+        </button>
+      </div>
+    </>
+  );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -268,26 +415,30 @@ function HeimspielwocheScreen({onBack, profile}) {
   return (
     <div style={H.wrap}>
       <div style={H.glow}/>
-      <div style={H.inner}>
-        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
-          <button onClick={onBack} style={{background:"none",border:"none",color:"#94A3B8",fontSize:22,cursor:"pointer",padding:"0 4px"}}>←</button>
-          <h2 style={{color:"#F8FAFC",fontSize:20,fontWeight:800,margin:0}}>📅 Spielwoche</h2>
+      <div style={H.inner} className="h-inner">
+        {/* Header-Card */}
+        <div style={{background:T.bgCard,padding:"16px 20px 20px",borderRadius:T.rLg,border:`1px solid ${T.bgBorder}`}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <button style={H.backBtn} onClick={onBack}>←</button>
+          </div>
+          <div style={{...H.header,paddingTop:12}}>
+            <h1 style={{...H.title,fontSize:22}}>📅 Spielwoche</h1>
+            <p style={H.greeting}>Heim- & Auswärtsspiele der nächsten 7 Tage</p>
+          </div>
         </div>
 
-        {/* Filter-Tabs */}
-        <div style={{display:"flex",gap:6,marginBottom:14}}>
+        <div className="h-cols">
+        {/* Filter-Card */}
+        <div className="h-filter" style={{background:T.bgCard,padding:"12px 20px",border:`1px solid ${T.bgBorder}`,borderRadius:T.rLg,display:"flex",gap:6,overflowX:"auto"}}>
           {TABS.map(t=>(
             <button key={t.key} onClick={()=>setFilter(t.key)}
-              style={{fontSize:12,fontWeight:700,padding:"5px 12px",borderRadius:20,cursor:"pointer",
-                border:`1.5px solid ${filter===t.key?"#F59E0B":"#334155"}`,
-                background: filter===t.key?"#F59E0B":"transparent",
-                color: filter===t.key?"#0F172A":"#94A3B8",
-                transition:"all .15s"}}>
+              style={ftab(filter===t.key, T.warning, true)}>
               {t.label}
             </button>
           ))}
         </div>
 
+        <div className="h-content">
         {isAdmin && scrapedAt && (()=>{
           const age = (Date.now() - new Date(scrapedAt)) / 86400000;
           const stale = age > 1.5;
@@ -316,40 +467,39 @@ function HeimspielwocheScreen({onBack, profile}) {
         <div style={{display:"flex",flexDirection:"column",gap:16}}>
           {groups.map(({date,games})=>(
             <div key={date}>
-              <div style={{fontSize:12,fontWeight:700,color:"#FCD34D",textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>
+              <div style={{fontSize:T.fzLabel,fontWeight:700,color:T.warning,textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>
                 {fmtGameDate(date)}
               </div>
               <div style={{display:"flex",flexDirection:"column",gap:8}}>
                 {games.map((g,i)=>{
-                  const accentColor = g.isHome ? "#F59E0B" : "#3B82F6";
-                  const accentBg    = g.isHome ? "#F59E0B18" : "#3B82F618";
+                  const accentColor = g.isHome ? T.warning : T.info;
                   return (
-                    <div key={i} style={{background:"#1E293B",border:`1.5px solid ${accentColor}44`,borderRadius:12,padding:"12px 14px"}}>
+                    <div key={i} style={{background:T.bgCard,border:accentBorder(accentColor),borderRadius:T.rMd,padding:T.pCompact}}>
                       {/* Kopfzeile: Team + Heim/Auswärts-Badge */}
                       <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:7}}>
-                        <span style={{fontSize:10,fontWeight:800,color:accentColor,background:accentBg,
-                          borderRadius:20,padding:"2px 8px",letterSpacing:.5,flexShrink:0}}>
+                        <span style={{fontSize:T.fzBadge,fontWeight:800,color:accentColor,background:accentColor+"22",
+                          borderRadius:T.rPill,padding:T.pBadge,letterSpacing:.5,flexShrink:0}}>
                           {g.isHome ? "🏠 HEIM" : "✈️ AUSWÄRTS"}
                         </span>
-                        <span style={{fontSize:11,fontWeight:700,color:"#94A3B8",textTransform:"uppercase",letterSpacing:.6,
+                        <span style={{fontSize:T.fzLabel,fontWeight:700,color:T.textSecondary,textTransform:"uppercase",letterSpacing:.6,
                           overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                           {g.team}
                         </span>
                         {ligaMap[g.team] && (
-                          <span style={{fontSize:10,color:"#64748B",fontStyle:"italic",flexShrink:0}}>{ligaMap[g.team]}</span>
+                          <span style={{fontSize:T.fzBadge,color:T.textMuted,fontStyle:"italic",flexShrink:0}}>{ligaMap[g.team]}</span>
                         )}
                       </div>
                       {/* Spielinfo */}
                       <div style={{display:"flex",alignItems:"center",gap:10}}>
                         {g.opponentLogo && (
-                          <img src={g.opponentLogo} alt="" style={{width:38,height:38,objectFit:"contain",borderRadius:4,background:"#F8FAFC18",padding:2,flexShrink:0}}
+                          <img src={g.opponentLogo} alt="" style={{width:38,height:38,objectFit:"contain",borderRadius:T.rSm,background:"#F8FAFC18",padding:2,flexShrink:0}}
                             onError={e=>{e.target.style.display="none"}}/>
                         )}
                         <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontSize:14,fontWeight:700,color:"#E2E8F0",lineHeight:1.3}}>
+                          <div style={{fontSize:T.fzBody,fontWeight:700,color:T.textPrimary,lineHeight:1.3}}>
                             {g.isHome ? "vs." : "@"} {g.opponent}
                           </div>
-                          {g.time && <div style={{fontSize:12,color:"#FCD34D",marginTop:2}}>⏰ {g.time} Uhr</div>}
+                          {g.time && <div style={{fontSize:T.fzSm,color:T.warning,marginTop:2}}>⏰ {g.time} Uhr</div>}
                         </div>
                       </div>
                     </div>
@@ -359,6 +509,8 @@ function HeimspielwocheScreen({onBack, profile}) {
             </div>
           ))}
         </div>
+        </div>{/* h-content */}
+        </div>{/* h-cols */}
       </div>
     </div>
   );
@@ -376,19 +528,26 @@ function BtvLinksScreen({onBack}) {
   return (
     <div style={H.wrap}>
       <div style={H.glow}/>
-      <div style={H.inner}>
-        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
-          <button onClick={onBack} style={{background:"none",border:"none",color:"#94A3B8",fontSize:22,cursor:"pointer",padding:"0 4px"}}>←</button>
-          <h2 style={{color:"#F8FAFC",fontSize:20,fontWeight:800,margin:0}}>BTV Links</h2>
+      <div style={H.inner} className="h-inner">
+        {/* Header-Card */}
+        <div style={{background:T.bgCard,padding:"16px 20px 20px",borderRadius:T.rLg,border:`1px solid ${T.bgBorder}`}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <button style={H.backBtn} onClick={onBack}>←</button>
+          </div>
+          <div style={{...H.header,paddingTop:12}}>
+            <h1 style={{...H.title,fontSize:22}}>🔗 BTV Links</h1>
+            <p style={H.greeting}>Direktlinks zu den BTV-Seiten der Mannschaften</p>
+          </div>
         </div>
+
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
           {teams.filter(t=>t.url).map((t,i)=>(
             <div key={i} onClick={()=>window.open(t.url,"_blank")}
               style={{display:"flex",alignItems:"center",justifyContent:"space-between",
-                background:"#1E293B",border:"1.5px solid #334155",borderRadius:12,
+                background:T.bgCard,border:accentBorder(T.info),borderRadius:T.rMd,
                 padding:"14px 16px",cursor:"pointer"}}>
-              <span style={{fontSize:14,fontWeight:600,color:"#E2E8F0"}}>{t.name}</span>
-              <span style={{fontSize:13,color:"#3B82F6"}}>BTV →</span>
+              <span style={{fontSize:T.fzBody,fontWeight:600,color:T.textPrimary}}>{t.name}</span>
+              <span style={{fontSize:T.fzSm,color:T.info}}>BTV →</span>
             </div>
           ))}
         </div>
@@ -439,7 +598,7 @@ function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassen
   return (
     <div style={H.wrap}>
       <div style={H.glow}/>
-      <div style={H.inner}>
+      <div style={H.inner} className="h-inner">
         {/* Header */}
         <div style={H.header}>
           <TennisBall size={52}/>
@@ -491,7 +650,7 @@ function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassen
           </div>}
 
           {/* Clubstream */}
-          {canDo("clubstream")&&<div style={{...H.widgetCompact, borderColor:"#22C55E55", background:"#0F1F10"}}
+          {canDo("clubstream")&&<div style={{...H.widgetCompact, borderColor:`${T.success}55`}}
                onClick={onGoClubstream}>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
               <span style={{fontSize:18}}>📰</span>
@@ -504,7 +663,7 @@ function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassen
           </div>}
 
           {/* BTV Links */}
-          {canDo("btv")&&<div style={{...H.widgetCompact, borderColor:"#3B82F655", background:"#0F172A"}} onClick={onGoBtv}>
+          {canDo("btv")&&<div style={{...H.widgetCompact, borderColor:`${T.info}55`}} onClick={onGoBtv}>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
               <span style={{fontSize:18}}>🔗</span>
               <div style={{flex:1}}>
@@ -516,7 +675,7 @@ function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassen
           </div>}
 
           {/* Spielwoche */}
-          {canDo("heimspiel")&&<div style={{...H.widgetCompact, borderColor:"#F59E0B55", background:"#1A130A"}} onClick={onGoHeimspiele}>
+          {canDo("heimspiel")&&<div style={{...H.widgetCompact, borderColor:`${T.warning}55`}} onClick={onGoHeimspiele}>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
               <span style={{fontSize:18}}>📅</span>
               <div style={{flex:1}}>
@@ -574,26 +733,38 @@ function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassen
 }
 
 const H={
-  wrap:         {minHeight:"100vh",background:"#0F172A",fontFamily:"'DM Sans',system-ui,sans-serif",display:"flex",flexDirection:"column",alignItems:"center",position:"relative",overflowX:"hidden"},
+  wrap:         {minHeight:"100vh",background:T.bgPage,fontFamily:"'DM Sans',system-ui,sans-serif",display:"flex",flexDirection:"column",alignItems:"center",position:"relative",overflowX:"hidden"},
   glow:         {position:"absolute",top:0,left:"50%",transform:"translateX(-50%)",width:600,height:300,background:"radial-gradient(ellipse at 50% 0%, #22C55E14, transparent 70%)",pointerEvents:"none"},
-  inner:        {width:"100%",maxWidth:480,padding:"52px 20px 32px",display:"flex",flexDirection:"column",gap:20},
+  inner:        {width:"100%",maxWidth:480,padding:"52px 0 32px",display:"flex",flexDirection:"column",gap:16},
   header:       {textAlign:"center",paddingTop:16},
-  title:        {fontSize:26,fontWeight:800,color:"#F8FAFC",letterSpacing:-.8,margin:"12px 0 4px"},
-  greeting:     {color:"#475569",fontSize:14,margin:0},
-  widget:       {background:"#1E293B",border:"1.5px solid #334155",borderRadius:14,padding:"12px 14px",cursor:"pointer",display:"flex",flexDirection:"column",gap:0},
-  widgetCompact:{background:"#1E293B",border:"1.5px solid #334155",borderRadius:12,padding:"12px 16px",cursor:"pointer"},
-  widgetWarn:   {borderColor:"#F59E0B55",background:"#1C1810"},
-  widgetOk:     {borderColor:"#22C55E33"},
-  widgetLabel:  {fontSize:11,fontWeight:700,color:"#94A3B8",textTransform:"uppercase",letterSpacing:.8,marginBottom:6},
-  widgetLink:   {fontSize:12,color:"#475569",marginTop:10,textAlign:"right"},
+  title:        {fontSize:T.fzH2+6,fontWeight:800,color:T.textPrimary,letterSpacing:-.8,margin:"12px 0 4px"},
+  greeting:     {color:T.textMuted,fontSize:T.fzBody,margin:0},
+  widget:       {background:T.bgCard,border:`1.5px solid ${T.bgBorder}`,borderRadius:T.rMd,padding:T.pCard,cursor:"pointer",display:"flex",flexDirection:"column",gap:0},
+  widgetCompact:{background:T.bgCard,border:`1.5px solid ${T.bgBorder}`,borderRadius:T.rMd,padding:T.pCompact,cursor:"pointer"},
+  widgetWarn:   {borderColor:`${T.warning}55`,background:T.bgCard},
+  widgetOk:     {borderColor:`${T.success}33`},
+  widgetLabel:  {fontSize:T.fzLabel,fontWeight:700,color:T.textSecondary,textTransform:"uppercase",letterSpacing:.8,marginBottom:6},
+  widgetLink:   {fontSize:T.fzSm,color:T.textMuted,marginTop:10,textAlign:"right"},
   bookingRow:   {display:"flex",alignItems:"center",gap:10,marginBottom:4},
-  bookingDot:   {width:34,height:34,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0},
+  bookingDot:   {width:34,height:34,borderRadius:T.rSm,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0},
   navGrid:      {display:"grid",gridTemplateColumns:"1fr 1fr",gap:10},
-  navTile:      {background:"#1E293B",border:"1.5px solid #334155",borderRadius:12,padding:"18px 12px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:6},
-  navTileLabel: {fontSize:14,fontWeight:700,color:"#94A3B8"},
-  navTileSub:   {fontSize:11,color:"#475569"},
-  logoutBtn:    {background:"none",border:"1px solid #1E293B",borderRadius:6,color:"#334155",cursor:"pointer",fontSize:12,padding:"6px 16px"},
+  navTile:      {background:T.bgCard,border:`1.5px solid ${T.bgBorder}`,borderRadius:T.rMd,padding:"18px 12px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:6},
+  navTileLabel: {fontSize:T.fzBody,fontWeight:700,color:T.textSecondary},
+  navTileSub:   {fontSize:T.fzLabel,color:T.textMuted},
+  logoutBtn:    {background:"none",border:`1px solid ${T.bgBorder}`,borderRadius:T.rSm,color:T.textMuted,cursor:"pointer",fontSize:T.fzSm,padding:T.pBtn},
+  backBtn:      {background:"none",border:"none",color:T.textSecondary,fontSize:22,cursor:"pointer",padding:"0 4px",lineHeight:1,flexShrink:0},
 };
+
+// Einheitlicher Screen-Header mit Back-Button + Titel
+function ScreenHeader({onBack, title, children}) {
+  return (
+    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+      <button onClick={onBack} style={H.backBtn}>←</button>
+      <h2 style={{color:T.textPrimary,fontSize:T.fzH2,fontWeight:800,margin:0,flex:1}}>{title}</h2>
+      {children}
+    </div>
+  );
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CLUBSTREAM APP  (admin-only, reads from news_items in same Supabase project)
@@ -631,10 +802,10 @@ function ClubstreamDetail({item,onBack}) {
   const bodyText = csStripHtml(item.content) || item.summary || "";
   return (
     <div style={H.wrap}>
-      <div style={H.inner}>
-        <button style={{...H.logoutBtn,alignSelf:"flex-start"}} onClick={onBack}>← Zurück zum Feed</button>
+      <div style={H.inner} className="h-inner">
+        <ScreenHeader onBack={onBack} title="Beitrag"/>
 
-        <div style={{background:"#1E293B",border:`1.5px solid ${color}44`,borderRadius:14,padding:"16px 14px",display:"flex",flexDirection:"column",gap:10}}>
+        <div style={{background:T.bgCard,border:`1.5px solid ${color}44`,borderRadius:14,padding:"16px 14px",display:"flex",flexDirection:"column",gap:10}}>
           {/* Typ-Badge */}
           <div style={{display:"flex",alignItems:"center",gap:8}}>
             <span style={{fontSize:22}}>{icon}</span>
@@ -700,7 +871,6 @@ function ClubstreamDetail({item,onBack}) {
           <p style={{fontSize:11,color:"#475569",margin:0,borderTop:"1px solid #334155",paddingTop:8}}>{csTimeAgo(item.published_at)}</p>
         </div>
 
-        <button style={H.logoutBtn} onClick={onBack}>← Zurück zum Feed</button>
       </div>
     </div>
   );
@@ -818,64 +988,61 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
 
   return (
     <div style={H.wrap}>
-      <div style={H.inner}>
-        {/* Topbar */}
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <button style={H.logoutBtn} onClick={onBack}>← Startseite</button>
-          <div style={{flex:1}}/>
-          {pending>0&&(
-            <span style={{fontSize:11,fontWeight:700,color:"#F59E0B",background:"#F59E0B18",border:"1px solid #F59E0B44",borderRadius:20,padding:"3px 10px"}}>
-              ⏳ {pending} ausstehend
-            </span>
-          )}
-          {profile.role==="admin"&&(
-            <button onClick={async()=>{
-              const {data:{session}}=await sb.auth.getSession();
-              const base="https://clubstream-hub.vercel.app/admin";
-              const url=session?.access_token
-                ?`${base}/#access_token=${session.access_token}&refresh_token=${session.refresh_token}&token_type=bearer`
-                :base;
-              window.open(url,"_blank");
-            }} style={{fontSize:11,fontWeight:700,padding:"4px 12px",borderRadius:20,border:"1px solid #8B5CF644",background:"#8B5CF618",color:"#A78BFA",cursor:"pointer"}}>
-              ⚙️ Admin
-            </button>
-          )}
+      <div style={H.inner} className="h-inner">
+        {/* Header-Card */}
+        <div style={{background:T.bgCard,padding:"16px 20px 20px",borderRadius:T.rLg,border:`1px solid ${T.bgBorder}`}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <button style={H.backBtn} onClick={onBack}>←</button>
+            <div style={{flex:1}}/>
+            {pending>0&&(
+              <span style={{fontSize:11,fontWeight:700,color:"#F59E0B",background:"#F59E0B18",border:"1px solid #F59E0B44",borderRadius:20,padding:"3px 10px"}}>
+                ⏳ {pending} ausstehend
+              </span>
+            )}
+            {profile.role==="admin"&&(
+              <button onClick={async()=>{
+                const {data:{session}}=await sb.auth.getSession();
+                const base="https://clubstream-hub.vercel.app/admin";
+                const url=session?.access_token
+                  ?`${base}/#access_token=${session.access_token}&refresh_token=${session.refresh_token}&token_type=bearer`
+                  :base;
+                window.open(url,"_blank");
+              }} style={{fontSize:11,fontWeight:700,padding:"4px 12px",borderRadius:20,border:"1px solid #8B5CF644",background:"#8B5CF618",color:"#A78BFA",cursor:"pointer"}}>
+                ⚙️ Admin
+              </button>
+            )}
+          </div>
+          <div style={{...H.header,paddingTop:12}}>
+            <h1 style={{...H.title,fontSize:22}}>📰 Clubstream</h1>
+            <p style={H.greeting}>SG Herrieden · News & Vereinsmeldungen</p>
+          </div>
         </div>
 
-        <div style={{...H.header,paddingTop:8}}>
-          <h1 style={{...H.title,fontSize:22}}>📰 Clubstream</h1>
-          <p style={H.greeting}>SG Herrieden · News & Vereinsmeldungen</p>
-        </div>
-
-        {/* Filter-Pills */}
+        <div className="h-cols">
+        {/* Filter-Card */}
         {!loading&&(
-          <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:2}}>
-            <button
-              onClick={()=>setTypeFilter(null)}
-              style={{flexShrink:0,fontSize:11,fontWeight:700,padding:"4px 12px",borderRadius:20,border:"1.5px solid #334155",cursor:"pointer",background:typeFilter===null?"#334155":"transparent",color:typeFilter===null?"#F1F5F9":"#64748B"}}
-            >Alle</button>
+          <div className="h-filter" style={{background:T.bgCard,padding:"12px 20px",border:`1px solid ${T.bgBorder}`,borderRadius:T.rLg,display:"flex",gap:6,overflowX:"auto"}}>
+            <button onClick={()=>setTypeFilter(null)} style={ftab(typeFilter===null, T.textSecondary, true)}>
+              Alle
+            </button>
             {availableTypes.map(t=>{
-              const active = typeFilter===t;
-              const color  = CS_COLORS[t]||"#94A3B8";
+              const color = CS_COLORS[t]||"#94A3B8";
               return (
-                <button key={t}
-                  onClick={()=>setTypeFilter(active?null:t)}
-                  style={{flexShrink:0,fontSize:11,fontWeight:700,padding:"4px 12px",borderRadius:20,border:`1.5px solid ${color}44`,cursor:"pointer",background:active?color+"33":"transparent",color:active?color:"#64748B"}}
-                >
+                <button key={t} onClick={()=>setTypeFilter(typeFilter===t?null:t)}
+                  style={ftab(typeFilter===t, color)}>
                   {CS_ICONS[t]} {CS_LABELS[t]||t}
                 </button>
               );
             })}
             {canSeePhotos&&photos.filter(p=>p.image_url||p.url).length>0&&(
-              <button
-                onClick={()=>setTypeFilter(typeFilter==="__fotos__"?null:"__fotos__")}
-                style={{flexShrink:0,fontSize:11,fontWeight:700,padding:"4px 12px",borderRadius:20,border:"1.5px solid #EC489944",cursor:"pointer",background:typeFilter==="__fotos__"?"#EC489933":"transparent",color:typeFilter==="__fotos__"?"#F472B6":"#64748B"}}
-              >
+              <button onClick={()=>setTypeFilter(typeFilter==="__fotos__"?null:"__fotos__")}
+                style={ftab(typeFilter==="__fotos__","#EC4899")}>
                 🖼️ Fotos ({photos.length})
               </button>
             )}
           </div>
         )}
+        <div className="h-content">
 
         {/* Lightbox mit Swipe + Navigation */}
         {lbPhotos.length>0&&(
@@ -985,13 +1152,13 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
         loading?(
           <div style={{display:"flex",flexDirection:"column",gap:10}}>
             {[1,2,3].map(i=>(
-              <div key={i} style={{background:"#1E293B",border:"1.5px solid #334155",borderRadius:14,height:72,opacity:.4}}/>
+              <div key={i} style={{background:T.bgCard,border:`1.5px solid ${T.bgBorder}`,borderRadius:T.rMd,height:72,opacity:.4}}/>
             ))}
           </div>
         ):filtered.length===0?(
-          <div style={{background:"#1E293B",border:"1.5px solid #334155",borderRadius:14,padding:"32px 14px",textAlign:"center"}}>
+          <div style={{background:T.bgCard,border:`1.5px solid ${T.bgBorder}`,borderRadius:T.rMd,padding:"32px 14px",textAlign:"center"}}>
             <span style={{fontSize:32}}>📭</span>
-            <p style={{color:"#475569",fontSize:13,marginTop:8}}>{typeFilter?"Keine Beiträge in dieser Kategorie":"Noch keine veröffentlichten News"}</p>
+            <p style={{color:T.textMuted,fontSize:T.fzBody,marginTop:8}}>{typeFilter?"Keine Beiträge in dieser Kategorie":"Noch keine veröffentlichten News"}</p>
           </div>
         ):(
           <div style={{display:"flex",flexDirection:"column",gap:10}}>
@@ -1004,7 +1171,7 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
                 const goPrev = e=>{ e.stopPropagation(); setAllIdxMap(m=>({...m,[item._kwLabel]:Math.max(0,(m[item._kwLabel]||0)-1)})); };
                 const goNext = e=>{ e.stopPropagation(); setAllIdxMap(m=>({...m,[item._kwLabel]:Math.min(kwPhotos.length-1,(m[item._kwLabel]||0)+1)})); };
                 return (
-                  <div key={item._kwLabel||item.id} style={{background:"#1E293B",border:"1.5px solid #EC489933",borderRadius:14,overflow:"hidden"}}>
+                  <div key={item._kwLabel||item.id} style={{background:T.bgCard,border:"1.5px solid #EC489933",borderRadius:T.rMd,overflow:"hidden"}}>
                     {/* Bild mit Swipe */}
                     <div style={{position:"relative"}}
                       onTouchStart={e=>{allTouchX.current=e.touches[0].clientX;allSwiped.current=false;}}
@@ -1039,7 +1206,7 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
               const label = CS_LABELS[item.type]||item.type;
               return (
                 <div key={item.id}
-                  style={{background:"#1E293B",border:`1.5px solid ${color}33`,borderRadius:14,overflow:"hidden",cursor:"pointer",opacity:item._isPast?0.45:1,filter:item._isPast?"grayscale(60%)":"none"}}
+                  style={{background:T.bgCard,border:`1.5px solid ${color}33`,borderRadius:T.rMd,overflow:"hidden",cursor:"pointer",opacity:item._isPast?0.45:1,filter:item._isPast?"grayscale(60%)":"none"}}
                   onClick={()=>setDetail(item)}
                 >
                   {item.image_url&&!item._isPhoto&&(
@@ -1054,13 +1221,13 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
                         {item.is_pinned&&<span style={{fontSize:10,color:"#EAB308"}}>📌</span>}
                         {item.priority==="urgent"&&<span style={{fontSize:10,color:"#EF4444",fontWeight:700}}>DRINGEND</span>}
                       </div>
-                      <div style={{fontWeight:700,fontSize:14,color:"#F1F5F9",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.title}</div>
-                      {item.summary&&<div style={{fontSize:12,color:"#64748B",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.summary}</div>}
+                      <div style={{fontWeight:700,fontSize:T.fzBody,color:T.textPrimary,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.title}</div>
+                      {item.summary&&<div style={{fontSize:T.fzSm,color:T.textMuted,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.summary}</div>}
                     </div>
-                    <div style={{fontSize:11,color:"#475569",flexShrink:0,marginTop:2}}>{csTimeAgo(item.published_at)}</div>
+                    <div style={{fontSize:T.fzLabel,color:T.textMuted,flexShrink:0,marginTop:2}}>{csTimeAgo(item.published_at)}</div>
                   </div>
                   {item.type==="match_result"&&item.result_home!=null&&(
-                    <div style={{marginTop:8,padding:"6px 10px",background:"#0F172A",borderRadius:8,textAlign:"center"}}>
+                    <div style={{marginTop:8,padding:"6px 10px",background:T.bgPage,borderRadius:T.rSm,textAlign:"center"}}>
                       <span style={{fontSize:18,fontWeight:900,color:item.result_home>item.result_away?"#22C55E":"#EF4444"}}>
                         {item.result_home} : {item.result_away}
                       </span>
@@ -1082,17 +1249,16 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
 
         {/* Pending-Hinweis */}
         {pending>0&&(
-          <div style={{background:"#1C1810",border:"1.5px solid #F59E0B44",borderRadius:12,padding:"12px 16px",textAlign:"center"}}>
-            <p style={{fontSize:13,color:"#F59E0B",margin:0}}>
+          <div style={{background:T.bgCard,border:accentBorder(T.warning),borderRadius:T.rMd,padding:T.pCompact,textAlign:"center"}}>
+            <p style={{fontSize:T.fzBody,color:T.warning,margin:0}}>
               ⚠️ <strong>{pending}</strong> {pending===1?"Beitrag wartet":"Beiträge warten"} auf Freigabe
             </p>
-            <p style={{fontSize:11,color:"#92400E",margin:"4px 0 0"}}>Im Clubstream Hub unter /admin/approval freigeben</p>
+            <p style={{fontSize:T.fzLabel,color:T.textMuted,margin:"4px 0 0"}}>Im Clubstream Hub unter /admin/approval freigeben</p>
           </div>
         )}
+        </div>{/* h-content */}
+        </div>{/* h-cols */}
 
-        <div style={{textAlign:"center",paddingBottom:8}}>
-          <button style={H.logoutBtn} onClick={onBack}>← Zurück zur Startseite</button>
-        </div>
       </div>
     </div>
   );
@@ -1106,8 +1272,6 @@ function BookingApp({profile,perms={},onBack}) {
   const [bookings,setBookings] = useState([]);
   const [guestFee,setGuestFee] = useState(5.00);
   const [view,setView]         = useState("calendar");
-  const [calMode,setCalMode]   = useState("week");
-  const [weekBase,setWeekBase] = useState(new Date());
   const [dayBase,setDayBase]   = useState(today());
   const [selCourt,setSelCourt] = useState(null);
   const [toast,setToast]       = useState(null);
@@ -1173,51 +1337,50 @@ function BookingApp({profile,perms={},onBack}) {
   const saveGuestFee=async(fee)=>{ await sb.from("settings").upsert({key:"guest_fee",value:String(fee)},{onConflict:"key"}); setGuestFee(fee); showToast(`Gebühr auf ${eur(fee)} gesetzt ✓`); };
   const deleteUser=async(uid)=>{ await sb.from("bookings").delete().eq("user_id",uid); await sb.from("profiles").delete().eq("id",uid); showToast("Gelöscht."); };
 
-  const days=getWeekDays(weekBase);
   const navItems=[
-    {id:"back",   icon:"🏠",label:"Startseite"},
-    {id:"calendar",icon:"📅",label:"Buchungskalender"},
-    {id:"myBookings",icon:"📋",label:"Meine Buchungen"},
-    ...(canMassBook?[{id:"massbook",icon:"📆",label:"Massenbuchung"}]:[]),
-    ...(profile.role==="admin"?[{id:"admin",icon:"⚙️",label:"Administration"}]:[]),
+    {id:"calendar",  icon:"📅",label:"Kalender"},
+    {id:"myBookings",icon:"📋",label:"Meine"},
+    ...(canMassBook?[{id:"massbook",icon:"📆",label:"Serien"}]:[]),
+    ...(profile.role==="admin"?[{id:"admin",icon:"⚙️",label:"Admin"}]:[]),
   ];
 
-  const handleNav=(id)=>{ if(id==="back"){ onBack(); return; } setView(id); };
-
   return (
-    <>
-      <style>{`
-        @media(max-width:767px){.desktop-sidebar{display:none!important}.mobile-bottom-nav{display:flex!important}.mobile-top-bar{display:flex!important}.app-main{padding-bottom:72px!important}}
-        @media(min-width:768px){.desktop-sidebar{display:flex!important}.mobile-bottom-nav{display:none!important}.mobile-top-bar{display:none!important}}
-      `}</style>
-      <div style={S.shell}>
-        <aside className="desktop-sidebar" style={{...S.sidebar,display:"none"}}>
-          <div style={S.logo}><TennisBall size={28}/><span style={S.logoText}>Tennis Herrieden</span></div>
-          <nav style={S.nav}>
-            {navItems.map(item=>(<button key={item.id} style={{...S.navBtn,...(view===item.id?S.navBtnActive:{})}} onClick={()=>handleNav(item.id)}><span style={{fontSize:16}}>{item.icon}</span><span>{item.label}</span></button>))}
-          </nav>
-          <div style={S.sidebarBottom}>
-            <div style={S.userChip}><Av name={profile.name}/><div><div style={{fontWeight:700,fontSize:13}}>{profile.name}</div><div style={{fontSize:11,color:"#6B7280"}}>{ROLE_LABELS[profile.role]}</div></div></div>
-            <button style={S.logoutBtn} onClick={()=>sb.auth.signOut()}>Abmelden</button>
+    <div style={H.wrap}>
+      <div style={H.inner} className="h-inner">
+        {/* Header-Card */}
+        <div style={{background:T.bgCard,padding:"16px 20px 20px",borderRadius:T.rLg,border:`1px solid ${T.bgBorder}`}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <button style={H.backBtn} onClick={onBack}>←</button>
           </div>
-        </aside>
-        <main className="app-main" style={S.main}>
-          <div className="mobile-top-bar" style={{display:"none",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",background:"#0F172A",position:"sticky",top:0,zIndex:50}}>
-            <div style={{display:"flex",alignItems:"center",gap:8}}><TennisBall size={22}/><span style={{color:"#fff",fontWeight:800,fontSize:15}}>Tennis Herrieden</span></div>
-            <div style={{display:"flex",alignItems:"center",gap:8}}><Av name={profile.name}/><button style={{background:"none",border:"1px solid #334155",borderRadius:6,color:"#94A3B8",cursor:"pointer",fontSize:12,padding:"5px 10px"}} onClick={()=>sb.auth.signOut()}>Abmelden</button></div>
+          <div style={{...H.header,paddingTop:12}}>
+            <h1 style={{...H.title,fontSize:22}}>📅 Buchung</h1>
+            <p style={H.greeting}>Plätze buchen · Reservierungen verwalten</p>
           </div>
-          {view==="calendar"&&<CalendarView data={adaptedData} user={profile} calMode={calMode} setCalMode={setCalMode} days={days} weekBase={weekBase} setWeekBase={setWeekBase} dayBase={dayBase} setDayBase={setDayBase} selCourt={selCourt||courts[0]?.id} setSelCourt={setSelCourt} onSlotClick={(courtId,date,slot,existing)=>setModal({type:"slot",courtId,date,slot,existing})}/>}
-          {view==="myBookings"&&<MyBookings data={adaptedData} user={profile} onCancel={cancel} guestFee={guestFee} onMarkPaid={()=>markGuestPaid(profile.id)}/>}
-          {view==="massbook"&&canMassBook&&<MassBookView data={adaptedData} user={profile} onMassBook={massBook} onCancelMany={cancelMany}/>}
-          {view==="admin"&&profile.role==="admin"&&<AdminView data={adaptedData} allBookings={bookings} guestFee={guestFee} onSaveGuestFee={saveGuestFee} onAddCourt={addCourt} onUpdateCourt={updateCourt} onDeleteCourt={deleteCourt} onDeleteUser={deleteUser} onCancelBooking={cancel} onMarkPaid={markGuestPaid}/>}
-        </main>
-        <nav className="mobile-bottom-nav" style={{display:"none",position:"fixed",bottom:0,left:0,right:0,background:"#0F172A",borderTop:"1px solid #1E293B",zIndex:100,justifyContent:"space-around",padding:"8px 0",paddingBottom:"env(safe-area-inset-bottom)"}}>
-          {navItems.map(item=>(<button key={item.id} onClick={()=>handleNav(item.id)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,background:"none",border:"none",cursor:"pointer",padding:"6px 12px",borderRadius:8,color:view===item.id?"#4ADE80":"#64748B"}}><span style={{fontSize:22}}>{item.icon}</span><span style={{fontSize:10,fontWeight:600}}>{item.label.split(" ")[0]}</span></button>))}
-        </nav>
+        </div>
+
+        <div className="h-cols">
+        {/* Filter-Card */}
+        <div className="h-filter" style={{background:T.bgCard,padding:"12px 20px",border:`1px solid ${T.bgBorder}`,borderRadius:T.rLg,display:"flex",gap:6,overflowX:"auto"}}>
+          {navItems.map(item=>(
+            <button key={item.id} onClick={()=>setView(item.id)}
+              style={ftab(view===item.id, T.info, true)}>
+              {item.icon} {item.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="h-content">
+        {view==="calendar"  &&<CalendarView data={adaptedData} user={profile} dayBase={dayBase} setDayBase={setDayBase} selCourt={selCourt||courts[0]?.id} setSelCourt={setSelCourt} onSlotClick={(courtId,date,slot,existing)=>setModal({type:"slot",courtId,date,slot,existing})}/>}
+        {view==="myBookings"&&<MyBookings data={adaptedData} user={profile} onCancel={cancel} guestFee={guestFee} onMarkPaid={()=>markGuestPaid(profile.id)}/>}
+        {view==="massbook"  &&canMassBook&&<MassBookView data={adaptedData} user={profile} onMassBook={massBook} onCancelMany={cancelMany}/>}
+        {view==="admin"     &&profile.role==="admin"&&<AdminView data={adaptedData} allBookings={bookings} guestFee={guestFee} onSaveGuestFee={saveGuestFee} onAddCourt={addCourt} onUpdateCourt={updateCourt} onDeleteCourt={deleteCourt} onDeleteUser={deleteUser} onCancelBooking={cancel} onMarkPaid={markGuestPaid}/>}
+
         {modal?.type==="slot"&&<SlotModal modal={modal} data={adaptedData} user={profile} guestFee={guestFee} onBook={bookSingle} onCancel={cancel} onClose={()=>setModal(null)}/>}
         {toast&&<div style={{...S.toast,background:toast.type==="error"?"#EF4444":"#10B981"}}>{toast.msg}</div>}
+        </div>{/* h-content */}
+        </div>{/* h-cols */}
       </div>
-    </>
+    </div>
   );
 }
 
@@ -1296,64 +1459,48 @@ function KasseApp({profile,perms={},onBack}) {
   ];
 
   return (
-    <>
-      <style>{`
-        @media(max-width:767px){.k-sidebar{display:none!important}.k-bottom-nav{display:flex!important}.k-top-bar{display:flex!important}.k-main{padding-bottom:72px!important}}
-        @media(min-width:768px){.k-sidebar{display:flex!important}.k-bottom-nav{display:none!important}.k-top-bar{display:none!important}}
-      `}</style>
-      <div style={S.shell}>
-        <aside className="k-sidebar" style={{...K.sidebar,display:"none"}}>
-          <button style={K.backBtn} onClick={onBack}>← Startseite</button>
-          <div style={K.logo}>
-            <div style={{fontSize:24}}>🧾</div>
-            <div style={{fontWeight:800,color:"#F8FAFC",fontSize:15}}>Kasse</div>
+    <div style={H.wrap}>
+      <div style={H.inner} className="h-inner">
+        {/* Header-Card */}
+        <div style={{background:T.bgCard,padding:"16px 20px 20px",borderRadius:T.rLg,border:`1px solid ${T.bgBorder}`}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <button style={H.backBtn} onClick={onBack}>←</button>
+            <div style={{flex:1}}/>
+            {myOpen.length>0&&(
+              <span style={{fontSize:11,fontWeight:700,color:"#F59E0B",background:"#F59E0B18",border:"1px solid #F59E0B44",borderRadius:20,padding:"3px 10px"}}>
+                ⚠️ {eur(myTotal)} offen
+              </span>
+            )}
           </div>
-          {myOpen.length>0&&(
-            <div style={K.openChip}>
-              <div style={{fontSize:10,color:"#D97706",fontWeight:700}}>OFFEN</div>
-              <div style={{fontWeight:800,fontSize:20,color:"#F59E0B"}}>{eur(myTotal)}</div>
-              <div style={{fontSize:10,color:"#92400E"}}>{myOpen.length} Getränke</div>
-            </div>
-          )}
-          <nav style={{marginTop:12}}>
-            {tabs.map(t=>(<button key={t.id} style={{...S.navBtn,...(tab===t.id?S.navBtnActive:{})}} onClick={()=>setTab(t.id)}><span style={{fontSize:15}}>{t.icon}</span><span>{t.label}</span></button>))}
-          </nav>
-          <div style={S.sidebarBottom}>
-            <div style={S.userChip}><Av name={profile.name}/><div><div style={{fontWeight:700,fontSize:13}}>{profile.name}</div><div style={{fontSize:11,color:"#6B7280"}}>{ROLE_LABELS[profile.role]}</div></div></div>
-            <button style={S.logoutBtn} onClick={()=>sb.auth.signOut()}>Abmelden</button>
+          <div style={{...H.header,paddingTop:12}}>
+            <h1 style={{...H.title,fontSize:22}}>🧾 Getränke</h1>
+            <p style={H.greeting}>Getränke buchen · offene Beträge verwalten</p>
           </div>
-        </aside>
+        </div>
 
-        <main className="k-main" style={S.main}>
-          <div className="k-top-bar" style={{display:"none",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",background:"#0F172A",position:"sticky",top:0,zIndex:50}}>
-            <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <button style={{background:"none",border:"none",color:"#94A3B8",cursor:"pointer",fontSize:13,fontWeight:600,padding:0}} onClick={onBack}>← Startseite</button>
-            </div>
-            <span style={{color:"#fff",fontWeight:800,fontSize:15}}>🧾 Kasse</span>
-            {myOpen.length>0
-              ? <span style={{fontSize:13,fontWeight:700,color:"#F59E0B"}}>{eur(myTotal)}</span>
-              : <span style={{fontSize:13,color:"#475569"}}>{profile.name}</span>
-            }
-          </div>
+        <div className="h-cols">
+        {/* Filter-Card */}
+        <div className="h-filter" style={{background:T.bgCard,padding:"12px 20px",border:`1px solid ${T.bgBorder}`,borderRadius:T.rLg,display:"flex",gap:6,overflowX:"auto"}}>
+          {tabs.map(t=>(
+            <button key={t.id} onClick={()=>setTab(t.id)}
+              style={{...ftab(tab===t.id, T.success, true),position:"relative"}}>
+              {t.icon} {t.label}
+              {t.badge>0&&<span style={{position:"absolute",top:-4,right:-4,background:"#EF4444",borderRadius:10,fontSize:9,fontWeight:700,color:"#fff",padding:"1px 5px",minWidth:14,textAlign:"center"}}>{t.badge}</span>}
+            </button>
+          ))}
+        </div>
 
-          {tab==="drinks"  &&<KasseDrinksTab  favs={favs} onLogDrink={logDrink} onDeleteEntry={deleteEntry} onGoSettings={()=>setTab("settings")}/>}
-          {tab==="log"     &&<KasseLogTab     myLog={myLog} myOpen={myOpen} myTotal={myTotal} onMarkPaid={()=>markPaid(profile.id)} onDeleteEntry={deleteEntry}/>}
-          {tab==="settings"&&<KasseSettingsTab favs={favs} onAddFav={addFav} onUpdateFav={updateFav} onDeleteFav={deleteFav}/>}
-          {tab==="admin"&&isAdmin&&<KasseAdminTab log={log} onMarkPaid={markPaid}/>}
-        </main>
-
-        <nav className="k-bottom-nav" style={{display:"none",position:"fixed",bottom:0,left:0,right:0,background:"#0F172A",borderTop:"1px solid #1E293B",zIndex:100,justifyContent:"space-around",padding:"8px 0",paddingBottom:"env(safe-area-inset-bottom)"}}>
-          <button onClick={onBack} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,background:"none",border:"none",cursor:"pointer",padding:"6px 12px",borderRadius:8,color:"#64748B"}}><span style={{fontSize:22}}>🏠</span><span style={{fontSize:10,fontWeight:600}}>Start</span></button>
-          {tabs.map(t=>(<button key={t.id} onClick={()=>setTab(t.id)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,background:"none",border:"none",cursor:"pointer",padding:"6px 12px",borderRadius:8,color:tab===t.id?"#4ADE80":"#64748B",position:"relative"}}>
-            <span style={{fontSize:22}}>{t.icon}</span>
-            {t.badge>0&&<span style={{position:"absolute",top:2,right:6,background:"#EF4444",borderRadius:10,fontSize:9,fontWeight:700,color:"#fff",padding:"1px 5px",minWidth:14,textAlign:"center"}}>{t.badge}</span>}
-            <span style={{fontSize:10,fontWeight:600}}>{t.label.split(" ")[0]}</span>
-          </button>))}
-        </nav>
+        <div className="h-content">
+        {tab==="drinks"  &&<KasseDrinksTab  favs={favs} onLogDrink={logDrink} onDeleteEntry={deleteEntry} onGoSettings={()=>setTab("settings")}/>}
+        {tab==="log"     &&<KasseLogTab     myLog={myLog} myOpen={myOpen} myTotal={myTotal} onMarkPaid={()=>markPaid(profile.id)} onDeleteEntry={deleteEntry}/>}
+        {tab==="settings"&&<KasseSettingsTab favs={favs} onAddFav={addFav} onUpdateFav={updateFav} onDeleteFav={deleteFav}/>}
+        {tab==="admin"&&isAdmin&&<KasseAdminTab log={log} onMarkPaid={markPaid}/>}
+        </div>{/* h-content */}
+        </div>{/* h-cols */}
 
         {toast&&<div style={{...S.toast,background:toast.type==="error"?"#EF4444":"#10B981"}}>{toast.msg}</div>}
       </div>
-    </>
+    </div>
   );
 }
 
@@ -1760,79 +1907,64 @@ function SettingsApp({profile,onBack}) {
   const setBetriebTabP=(k)=>{ setBetriebTab(k); localStorage.setItem("betrieb_tab",k); };
 
   const tabs=[
-    {id:"betrieb",      label:"Betrieb",        icon:"⚙️"},
-    {id:"members",      label:"Mitglieder",     icon:"👤"},
-    {id:"permissions",  label:"Berechtigungen", icon:"🔐"},
-    {id:"display",      label:"Display",        icon:"🖥️"},
-    {id:"mannschaften", label:"Mannschaften",   icon:"🏆"},
+    {id:"betrieb",      label:"Betrieb",    icon:"⚙️"},
+    {id:"members",      label:"Mitglieder", icon:"👤"},
+    {id:"permissions",  label:"Rechte",     icon:"🔐"},
+    {id:"display",      label:"Display",    icon:"🖥️"},
+    {id:"mannschaften", label:"Teams",      icon:"🏆"},
   ];
 
   return (
-    <>
-      <style>{`
-        @media(max-width:767px){.cfg-sidebar{display:none!important}.cfg-bottom-nav{display:flex!important}.cfg-top-bar{display:flex!important}.cfg-main{padding-bottom:72px!important}}
-        @media(min-width:768px){.cfg-sidebar{display:flex!important}.cfg-bottom-nav{display:none!important}.cfg-top-bar{display:none!important}}
-      `}</style>
-      <div style={S.shell}>
-        <aside className="cfg-sidebar" style={{...K.sidebar,display:"none"}}>
-          <button style={K.backBtn} onClick={onBack}>← Startseite</button>
-          <div style={K.logo}>
-            <div style={{fontSize:24}}>⚙️</div>
-            <div style={{fontWeight:800,color:"#F8FAFC",fontSize:15}}>Einstellungen</div>
+    <div style={H.wrap}>
+      <div style={H.inner} className="h-inner">
+        {/* Header-Card */}
+        <div style={{background:T.bgCard,padding:"16px 20px 20px",borderRadius:T.rLg,border:`1px solid ${T.bgBorder}`}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <button style={H.backBtn} onClick={onBack}>←</button>
           </div>
-          <nav style={{marginTop:12}}>
-            {tabs.map(t=>(<button key={t.id} style={{...S.navBtn,...(tab===t.id?S.navBtnActive:{})}} onClick={()=>setTab(t.id)}><span style={{fontSize:15}}>{t.icon}</span><span>{t.label}</span></button>))}
-          </nav>
-          <div style={S.sidebarBottom}>
-            <div style={S.userChip}><Av name={profile.name}/><div><div style={{fontWeight:700,fontSize:13}}>{profile.name}</div><div style={{fontSize:11,color:"#6B7280"}}>{ROLE_LABELS[profile.role]}</div></div></div>
-            <button style={S.logoutBtn} onClick={()=>sb.auth.signOut()}>Abmelden</button>
+          <div style={{...H.header,paddingTop:12}}>
+            <h1 style={{...H.title,fontSize:22}}>⚙️ Einstellungen</h1>
+            <p style={H.greeting}>Betrieb · Mitglieder · Berechtigungen</p>
           </div>
-        </aside>
+        </div>
 
-        <main className="cfg-main" style={S.main}>
-          <div className="cfg-top-bar" style={{display:"none",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",background:"#0F172A",position:"sticky",top:0,zIndex:50}}>
-            <button style={{background:"none",border:"none",color:"#94A3B8",cursor:"pointer",fontSize:13,fontWeight:600,padding:0}} onClick={onBack}>← Startseite</button>
-            <span style={{color:"#fff",fontWeight:800,fontSize:15}}>⚙️ Einstellungen</span>
-            <span style={{width:80}}/>
-          </div>
+        <div className="h-cols">
+        {/* Filter-Card */}
+        <div className="h-filter" style={{background:T.bgCard,padding:"12px 20px",border:`1px solid ${T.bgBorder}`,borderRadius:T.rLg,display:"flex",gap:6,overflowX:"auto"}}>
+          {tabs.map(t=>(
+            <button key={t.id} onClick={()=>setTab(t.id)}
+              style={ftab(tab===t.id, T.purple, true)}>
+              {t.icon} {t.label}
+            </button>
+          ))}
+        </div>
 
-          {tab==="betrieb"&&<div style={K.page}>
-            <h1 style={S.pageTitle}>Betrieb</h1>
-            <p style={S.pageSub}>Buchung, Platzverwaltung und Hintergrund-Jobs</p>
-            <div style={{display:"flex",gap:6,marginTop:20,flexWrap:"wrap"}}>
+        <div className="h-content">
+        {tab==="betrieb"&&(
+          <>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
               {[{id:"booking",icon:"📅",label:"Buchung"},{id:"courts",icon:"🎾",label:"Plätze"},{id:"jobs",icon:"⚡",label:"Hintergrund"}].map(t=>(
                 <button key={t.id} onClick={()=>setBetriebTabP(t.id)}
-                  style={{flexShrink:0,fontSize:11,fontWeight:700,padding:"4px 12px",borderRadius:20,
-                    border:"1.5px solid #334155",cursor:"pointer",
-                    background:betriebTab===t.id?"#334155":"transparent",
-                    color:betriebTab===t.id?"#F1F5F9":"#64748B",
-                    display:"flex",alignItems:"center",gap:5}}>
-                  <span>{t.icon}</span>{t.label}
+                  style={ftab(betriebTab===t.id, T.purple)}>
+                  {t.icon} {t.label}
                 </button>
               ))}
             </div>
-            <div style={{marginTop:20}}>
-              {betriebTab==="booking"&&<SettingsBookingTab onToast={showToast}/>}
-              {betriebTab==="courts" &&<SettingsCourtsTab  onToast={showToast}/>}
-              {betriebTab==="jobs"   &&<SettingsJobsTab/>}
-            </div>
-          </div>}
-          {tab==="members"      &&<SettingsMembersTab      onToast={showToast}/>}
-          {tab==="permissions"  &&<SettingsPermissionsTab  onToast={showToast}/>}
-          {tab==="display"      &&<SettingsDisplayTab      onToast={showToast}/>}
-          {tab==="mannschaften" &&<SettingsMannschaftenTab onToast={showToast}/>}
-        </main>
-
-        <nav className="cfg-bottom-nav" style={{display:"none",position:"fixed",bottom:0,left:0,right:0,background:"#0F172A",borderTop:"1px solid #1E293B",zIndex:100,padding:"8px 0",paddingBottom:"env(safe-area-inset-bottom)",overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
-          <div style={{display:"flex",minWidth:"max-content",padding:"0 4px"}}>
-            <button onClick={onBack} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,background:"none",border:"none",cursor:"pointer",padding:"6px 12px",borderRadius:8,color:"#64748B",flexShrink:0}}><span style={{fontSize:22}}>🏠</span><span style={{fontSize:10,fontWeight:600}}>Start</span></button>
-            {tabs.map(t=>(<button key={t.id} onClick={()=>setTab(t.id)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,background:"none",border:"none",cursor:"pointer",padding:"6px 12px",borderRadius:8,color:tab===t.id?"#8B5CF6":"#64748B",flexShrink:0}}><span style={{fontSize:22}}>{t.icon}</span><span style={{fontSize:10,fontWeight:600}}>{t.label.split(" ")[0]}</span></button>))}
-          </div>
-        </nav>
+            {betriebTab==="booking"&&<SettingsBookingTab onToast={showToast}/>}
+            {betriebTab==="courts" &&<SettingsCourtsTab  onToast={showToast}/>}
+            {betriebTab==="jobs"   &&<SettingsJobsTab/>}
+          </>
+        )}
+        {tab==="members"      &&<SettingsMembersTab      onToast={showToast}/>}
+        {tab==="permissions"  &&<SettingsPermissionsTab  onToast={showToast}/>}
+        {tab==="display"      &&<SettingsDisplayTab      onToast={showToast}/>}
+        {tab==="mannschaften" &&<SettingsMannschaftenTab onToast={showToast}/>}
+        </div>{/* h-content */}
+        </div>{/* h-cols */}
 
         {toast&&<div style={{...S.toast,background:toast.type==="error"?"#EF4444":"#10B981"}}>{toast.msg}</div>}
       </div>
-    </>
+    </div>
   );
 }
 
@@ -4062,106 +4194,90 @@ function SlotModal({modal,data,user,guestFee,onBook,onCancel,onClose}) {
   );
 }
 
-function CalendarView({data,user,calMode,setCalMode,days,weekBase,setWeekBase,dayBase,setDayBase,selCourt,setSelCourt,onSlotClick}) {
+function CalendarView({data,user,dayBase,setDayBase,selCourt,setSelCourt,onSlotClick}) {
   const todayStr=today();
-  const prevWeek=()=>{const d=new Date(weekBase);d.setDate(d.getDate()-7);setWeekBase(d);};
-  const nextWeek=()=>{const d=new Date(weekBase);d.setDate(d.getDate()+7);setWeekBase(d);};
-  return (
-    <div style={{padding:"24px 28px"}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:12}}>
-        <div><h1 style={S.pageTitle}>Buchungskalender</h1><p style={S.pageSub}>Klicke auf einen freien Slot zum Buchen</p></div>
-        <div style={{display:"flex",gap:6}}>{[["week","📅 Woche"],["day","🗓 Tag"]].map(([m,l])=>(<button key={m} style={{...S.tabBtn,...(calMode===m?S.tabBtnActive:{})}} onClick={()=>setCalMode(m)}>{l}</button>))}</div>
-      </div>
-      {calMode==="week"&&(<>
-        <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>{data.courts.map((c,i)=>(<button key={c.id} style={{...S.courtTab,...(selCourt===c.id?{background:COURT_COLORS[i%COURT_COLORS.length],color:"#fff",borderColor:COURT_COLORS[i%COURT_COLORS.length]}:{})}} onClick={()=>setSelCourt(c.id)}>{c.name}<br/><span style={{fontSize:10,opacity:.8}}>{c.surface}</span></button>))}</div>
-        <div style={S.weekNav}>
-          <button style={S.weekBtn} onClick={prevWeek}>← Vorwoche</button>
-          <span style={{fontWeight:600,fontSize:14}}>{fmtDate(days[0])} – {fmtDate(days[6])}</span>
-          <button style={S.weekBtn} onClick={nextWeek}>Nächste Woche →</button>
-          <button style={{...S.weekBtn,marginLeft:8}} onClick={()=>setWeekBase(new Date())}>Heute</button>
-        </div>
-        <WeekGrid data={data} user={user} days={days} selCourt={selCourt} todayStr={todayStr} onSlotClick={onSlotClick}/>
-      </>)}
-      {calMode==="day"&&(<>
-        <div style={S.weekNav}>
-          <button style={S.weekBtn} onClick={()=>setDayBase(addDays(dayBase,-1))}>← Vorheriger Tag</button>
-          <span style={{fontWeight:600,fontSize:14}}>{DE_FULL[dayOfWeek(dayBase)]}, {fmtDate(new Date(dayBase+"T12:00:00"))}</span>
-          <button style={S.weekBtn} onClick={()=>setDayBase(addDays(dayBase,1))}>Nächster Tag →</button>
-          <button style={{...S.weekBtn,marginLeft:8}} onClick={()=>setDayBase(today())}>Heute</button>
-        </div>
-        <DayGrid data={data} user={user} date={dayBase} todayStr={todayStr} onSlotClick={onSlotClick}/>
-      </>)}
-      <div style={{display:"flex",gap:20,marginTop:12,flexWrap:"wrap"}}>
-        {[["#22C55E","Eigene Buchung"],["#16A34A","Mit Gastspieler"],["#6B7280","Belegt"],["#3B82F6","Training"],["#EF4444","Spieltag"],["#F9FAFB","Verfügbar"]].map(([col,label])=>(<div key={label} style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:13,height:13,borderRadius:3,background:col,border:"1px solid #E5E7EB"}}></div><span style={{fontSize:12,color:"#6B7280"}}>{label}</span></div>))}
-      </div>
-    </div>
-  );
-}
+  const isToday=dayBase===todayStr;
+  const isTomorrow=dayBase===addDays(todayStr,1);
+  const d=new Date(dayBase+"T12:00:00");
+  const dateLabel=isToday?"Heute":isTomorrow?"Morgen":`${DE_DAYS[dayOfWeek(dayBase)]}, ${d.getDate()}. ${DE_MONTH[d.getMonth()]}`;
+  const isPastDay=dayBase<todayStr;
 
-function WeekGrid({data,user,days,selCourt,todayStr,onSlotClick}) {
-  const ci=data.courts.findIndex(c=>c.id===selCourt);
-  const color=COURT_COLORS[ci%COURT_COLORS.length]||"#22C55E";
   return (
-    <div style={{overflowX:"auto"}}>
-      <table style={S.calTable}>
-        <thead><tr><th style={S.thTime}></th>
-          {days.map((d,i)=>{const isToday=fmt(d)===todayStr;return(<th key={i} style={{...S.thDay,...(isToday?S.thDayToday:{})}}><div style={{fontSize:11,color:isToday?"#22C55E":"#9CA3AF"}}>{DE_DAYS[i]}</div><div style={{fontSize:16,fontWeight:800}}>{d.getDate()}</div></th>);})}
-        </tr></thead>
-        <tbody>{SLOTS.map(slot=>(<tr key={slot}><td style={S.tdTime}>{slot}</td>
-          {days.map((d,di)=>{
-            const dateStr=fmt(d);
-            const booking=data.bookings.find(b=>b.courtId===selCourt&&b.date===dateStr&&b.slot===slot);
-            const isOwn=booking?.userId===user.id;const isPast=dateStr<todayStr;
-            const bType=booking?.type||"regular";const bColor=BOOKING_TYPE_COLORS[bType];
-            const slotColor=isOwn?(booking?.with_guest?"#16A34A":color):bColor;
-            return (<td key={di} style={S.tdSlot}><button disabled={isPast&&!booking} onClick={()=>onSlotClick(selCourt,dateStr,slot,booking||null)}
-              style={{...S.slotBtn,...(booking?{background:slotColor+"22",borderColor:slotColor,color:slotColor,fontWeight:700}:{}),...(isPast&&!booking?S.slotPast:{})}}>
-              {booking?(()=>{
-                const bType=booking?.type||"regular";
-                const icon=bType==="training"?"🏋️":bType==="match"?"🏆":booking.with_guest?"👥":"";
-                let label;
-                if(bType==="training"||bType==="match"){
-                  label=booking.label||( bType==="training"?"Training":"Spieltag");
-                } else {
-                  label=isOwn?"✓ Du":booking.userName.split(" ")[0];
-                }
-                return `${icon} ${label}`.trim();
-              })():(isPast?"—":"Frei")}</button></td>);
-          })}</tr>))}</tbody>
-      </table>
-    </div>
-  );
-}
+    <div style={{display:"flex",flexDirection:"column",gap:8}}>
 
-function DayGrid({data,user,date,todayStr,onSlotClick}) {
-  const isPastDay=date<todayStr;
-  return (
-    <div style={{overflowX:"auto"}}>
-      <table style={S.calTable}>
-        <thead><tr><th style={S.thTime}>Uhrzeit</th>
-          {data.courts.map((c,i)=>(<th key={c.id} style={{...S.thDay,borderLeft:`3px solid ${COURT_COLORS[i%COURT_COLORS.length]}`}}><div style={{fontSize:11,color:COURT_COLORS[i%COURT_COLORS.length],fontWeight:700}}>{c.name}</div><div style={{fontSize:11,color:"#9CA3AF"}}>{c.surface}</div></th>))}
-        </tr></thead>
-        <tbody>{SLOTS.map(slot=>(<tr key={slot}><td style={S.tdTime}>{slot}</td>
-          {data.courts.map((c,ci)=>{
-            const booking=data.bookings.find(b=>b.courtId===c.id&&b.date===date&&b.slot===slot);
-            const isOwn=booking?.userId===user.id;const color=COURT_COLORS[ci%COURT_COLORS.length];
-            const bType=booking?.type||"regular";const bColor=BOOKING_TYPE_COLORS[bType];
-            const slotColor=isOwn?(booking?.with_guest?"#16A34A":color):bColor;
-            return (<td key={c.id} style={{...S.tdSlot,borderLeft:`2px solid ${color}22`}}><button disabled={isPastDay&&!booking} onClick={()=>onSlotClick(c.id,date,slot,booking||null)}
-              style={{...S.slotBtn,...(booking?{background:slotColor+"22",borderColor:slotColor,color:slotColor,fontWeight:700}:{}),...(isPastDay&&!booking?S.slotPast:{})}}>
-              {booking?(()=>{
-                const bType=booking?.type||"regular";
-                const icon=bType==="training"?"🏋️":bType==="match"?"🏆":booking.with_guest?"👥":"";
-                let label;
-                if(bType==="training"||bType==="match"){
-                  label=booking.label||(bType==="training"?"Training":"Spieltag");
-                } else {
-                  label=isOwn?"✓ Du":booking.userName.split(" ")[0];
-                }
-                return `${icon} ${label}`.trim();
-              })():(isPastDay?"—":"Frei")}</button></td>);
-          })}</tr>))}</tbody>
-      </table>
+      {/* Platz-Tabs */}
+      {data.courts.length>1&&(
+        <div style={{display:"flex",gap:6,overflowX:"auto",scrollbarWidth:"none",paddingBottom:2}}>
+          {data.courts.map((c,i)=>(
+            <button key={c.id} onClick={()=>setSelCourt(c.id)}
+              style={ftab(selCourt===c.id, COURT_COLORS[i%COURT_COLORS.length], true)}>
+              {c.name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Datum-Navigation */}
+      <div style={{display:"flex",alignItems:"center",background:T.bgCard,borderRadius:T.rMd,border:`1px solid ${T.bgBorder}`,padding:"10px 14px"}}>
+        <button onClick={()=>setDayBase(addDays(dayBase,-1))}
+          style={{background:"none",border:"none",color:T.textSecondary,fontSize:22,cursor:"pointer",padding:"0 8px",lineHeight:1}}>‹</button>
+        <div style={{flex:1,textAlign:"center"}}>
+          <div style={{fontWeight:800,fontSize:15,color:isToday?T.success:T.textPrimary}}>{dateLabel}</div>
+          {!isToday&&<div style={{fontSize:11,color:T.textMuted,marginTop:2}}>{fmtDate(d)}</div>}
+        </div>
+        <button onClick={()=>setDayBase(addDays(dayBase,1))}
+          style={{background:"none",border:"none",color:T.textSecondary,fontSize:22,cursor:"pointer",padding:"0 8px",lineHeight:1}}>›</button>
+      </div>
+
+      {!isToday&&(
+        <button onClick={()=>setDayBase(todayStr)}
+          style={{alignSelf:"center",background:"none",border:`1px solid ${T.bgBorder}`,borderRadius:T.rPill,color:T.textMuted,cursor:"pointer",fontSize:11,padding:"4px 14px"}}>
+          Zurück zu Heute
+        </button>
+      )}
+
+      {/* Slot-Liste */}
+      <div style={{display:"flex",flexDirection:"column",gap:4}}>
+        {SLOTS.map(slot=>{
+          const ci=data.courts.findIndex(c=>c.id===selCourt);
+          const courtColor=COURT_COLORS[ci%COURT_COLORS.length]||T.success;
+          const booking=data.bookings.find(b=>b.courtId===selCourt&&b.date===dayBase&&b.slot===slot);
+          const isOwn=booking?.userId===user.id;
+          const isPast=isPastDay;
+          const disabled=isPast&&!booking;
+          const bType=booking?.type||"regular";
+
+          let bg,border,timeColor,label,labelColor,icon="";
+          if(!booking&&isPast){
+            bg="transparent"; border=`1px solid ${T.bgBorder}33`;
+            timeColor=T.textMuted; label="—"; labelColor=T.textMuted;
+          } else if(!booking){
+            bg=T.bgCard; border=`1px solid ${T.bgBorder}`;
+            timeColor=T.textPrimary; label="Frei"; labelColor=T.success;
+          } else if(isOwn){
+            bg=courtColor+"1A"; border=`1.5px solid ${courtColor}`;
+            timeColor=courtColor; label=booking.with_guest?"✓ Du + Gast":"✓ Du"; labelColor=courtColor;
+          } else {
+            bg=T.bgCard; border=`1px solid ${T.bgBorder}`;
+            timeColor=T.textMuted;
+            icon=bType==="training"?"🏋️":bType==="match"?"🏆":booking.with_guest?"👥":"";
+            const name=booking.userName?.split(" ")[0]||"?";
+            label=`${icon} ${name}`.trim(); labelColor=T.textSecondary;
+          }
+
+          return (
+            <button key={slot} disabled={disabled}
+              onClick={()=>!disabled&&onSlotClick(selCourt,dayBase,slot,booking||null)}
+              style={{display:"flex",alignItems:"center",gap:10,background:bg,border,borderRadius:T.rMd,
+                padding:"13px 16px",cursor:disabled?"default":"pointer",opacity:disabled?.3:1,
+                width:"100%",textAlign:"left",transition:"opacity .1s"}}>
+              <span style={{fontSize:14,fontWeight:800,color:timeColor,flexShrink:0,minWidth:44}}>{slot}</span>
+              <span style={{fontSize:11,color:T.textMuted,flexShrink:0}}>1 Std.</span>
+              <span style={{flex:1,fontSize:13,fontWeight:600,color:labelColor,textAlign:"right"}}>{label}</span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -4621,7 +4737,7 @@ function Lbl({children}){return <div style={{fontSize:12,fontWeight:700,color:"#
 
 const K={
   sidebar:    {width:210,background:"#0F172A",display:"flex",flexDirection:"column",padding:"16px 0",flexShrink:0},
-  backBtn:    {margin:"0 12px 14px",padding:"6px 12px",background:"none",border:"1px solid #334155",borderRadius:7,color:"#94A3B8",cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left"},
+  backBtn:    {margin:"0 12px 14px",padding:"6px 12px",background:"none",border:`1px solid ${T.bgBorder}`,borderRadius:7,color:T.textSecondary,cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left"},
   logo:       {padding:"0 16px 14px",borderBottom:"1px solid #1E293B",marginBottom:12,display:"flex",flexDirection:"column",gap:4},
   openChip:   {margin:"0 12px 8px",background:"#1E293B",border:"1px solid #F59E0B44",borderRadius:10,padding:"10px 12px",textAlign:"center"},
   page:       {padding:"28px 32px",maxWidth:860},
@@ -4766,8 +4882,8 @@ function KassenbuchApp({profile, onBack}) {
     wrap:    {minHeight:"100vh",background:"#0F172A",fontFamily:"'DM Sans',system-ui,sans-serif",color:"#F1F5F9",display:"flex",flexDirection:"column",alignItems:"center"},
     inner:   {width:"100%",maxWidth:480,padding:"52px 20px 40px",display:"flex",flexDirection:"column",gap:14},
     header:  {display:"flex",alignItems:"center",gap:10,paddingBottom:4},
-    backBtn: {background:"none",border:"1px solid #334155",borderRadius:8,color:"#94A3B8",cursor:"pointer",fontSize:13,padding:"6px 12px",display:"flex",alignItems:"center",gap:5},
-    title:   {fontSize:20,fontWeight:800,letterSpacing:-.5,flex:1},
+    backBtn: {background:"none",border:`1px solid ${T.bgBorder}`,borderRadius:8,color:T.textSecondary,cursor:"pointer",fontSize:13,padding:"6px 12px",display:"flex",alignItems:"center",gap:5},
+    title:   {fontSize:20,fontWeight:800,letterSpacing:-.5,flex:1,color:T.textPrimary},
     addBtn:  {background:"#22C55E",color:"#052e16",border:"none",borderRadius:8,padding:"7px 14px",fontWeight:700,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",gap:5},
     balCard: {background:"#1E293B",border:"1.5px solid #334155",borderRadius:14,padding:"16px 18px"},
     balLabel:{fontSize:11,fontWeight:700,color:"#475569",textTransform:"uppercase",letterSpacing:.8,marginBottom:4},
@@ -4814,11 +4930,13 @@ function KassenbuchApp({profile, onBack}) {
 
   // ── Formular: Startbetrag ──────────────────────────────────────────────
   if(view==="inventur") return (
-    <div style={KB.wrap}>
-      <div style={KB.inner}>
-        <div style={KB.header}>
-          <button style={KB.backBtn} onClick={()=>setView("list")}>← Zurück</button>
-          <span style={KB.title}>Inventur</span>
+    <div style={H.wrap}>
+      <div style={H.inner} className="h-inner">
+        <div style={{background:T.bgCard,padding:"16px 20px 16px",borderRadius:T.rLg,border:`1px solid ${T.bgBorder}`}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <button style={H.backBtn} onClick={()=>setView("list")}>←</button>
+            <span style={{fontSize:T.fzH2,fontWeight:800,color:T.textPrimary}}>Inventur</span>
+          </div>
         </div>
         <div style={KB.formCard}>
           <p style={{fontSize:14,color:"#64748B",margin:0}}>
@@ -4849,11 +4967,13 @@ function KassenbuchApp({profile, onBack}) {
   );
 
   if(view==="editstart") return (
-    <div style={KB.wrap}>
-      <div style={KB.inner}>
-        <div style={KB.header}>
-          <button style={KB.backBtn} onClick={()=>setView("list")}>← Zurück</button>
-          <span style={KB.title}>Startbetrag</span>
+    <div style={H.wrap}>
+      <div style={H.inner} className="h-inner">
+        <div style={{background:T.bgCard,padding:"16px 20px 16px",borderRadius:T.rLg,border:`1px solid ${T.bgBorder}`}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <button style={H.backBtn} onClick={()=>setView("list")}>←</button>
+            <span style={{fontSize:T.fzH2,fontWeight:800,color:T.textPrimary}}>Startbetrag</span>
+          </div>
         </div>
         <div style={KB.formCard}>
           <p style={{fontSize:14,color:"#64748B",margin:0}}>Der Startbetrag ist der Kassenbestand vor der ersten Buchung. Alle Buchungen werden dazu addiert bzw. subtrahiert.</p>
@@ -4870,11 +4990,13 @@ function KassenbuchApp({profile, onBack}) {
 
   // ── Formular: Buchung hinzufügen ───────────────────────────────────────
   if(view==="add") return (
-    <div style={KB.wrap}>
-      <div style={KB.inner}>
-        <div style={KB.header}>
-          <button style={KB.backBtn} onClick={()=>setView("list")}>← Zurück</button>
-          <span style={KB.title}>Buchung eintragen</span>
+    <div style={H.wrap}>
+      <div style={H.inner} className="h-inner">
+        <div style={{background:T.bgCard,padding:"16px 20px 16px",borderRadius:T.rLg,border:`1px solid ${T.bgBorder}`}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <button style={H.backBtn} onClick={()=>setView("list")}>←</button>
+            <span style={{fontSize:T.fzH2,fontWeight:800,color:T.textPrimary}}>Buchung eintragen</span>
+          </div>
         </div>
         <div style={KB.formCard}>
           <div>
@@ -4911,16 +5033,20 @@ function KassenbuchApp({profile, onBack}) {
 
   // ── Hauptansicht ───────────────────────────────────────────────────────
   return (
-    <div style={KB.wrap} onClick={()=>setShowStartMenu(false)}>
-      <div style={KB.inner}>
+    <div style={H.wrap} onClick={()=>setShowStartMenu(false)}>
+      <div style={H.inner} className="h-inner">
 
-        {/* Header */}
-        <div style={KB.header}>
-          <button style={KB.backBtn} onClick={onBack}>← Zurück</button>
-          <span style={KB.title}>💰 Kassenbuch</span>
-          <button style={KB.addBtn} onClick={()=>{ setFAmount(""); setFDesc(""); setFDate(today()); setFType("in"); setView("add"); }}>
-            + Neu
-          </button>
+        {/* Header-Card */}
+        <div style={{background:T.bgCard,padding:"16px 20px 20px",borderRadius:T.rLg,border:`1px solid ${T.bgBorder}`}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <button style={H.backBtn} onClick={onBack}>←</button>
+            <div style={{flex:1}}/>
+            <button style={KB.addBtn} onClick={()=>{ setFAmount(""); setFDesc(""); setFDate(today()); setFType("in"); setView("add"); }}>+ Neu</button>
+          </div>
+          <div style={{...H.header,paddingTop:12}}>
+            <h1 style={{...H.title,fontSize:22}}>💰 Kassenbuch</h1>
+            <p style={H.greeting}>Einnahmen & Ausgaben verwalten</p>
+          </div>
         </div>
 
         {/* Saldo-Karte */}

@@ -13,10 +13,114 @@
     <link rel="apple-touch-icon" href="/icon.png"/>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>* { margin:0; padding:0; box-sizing:border-box; } body { font-family: 'DM Sans', sans-serif; }</style>
+    <style>
+      /* ── DESIGN TOKENS: Dark (Standard) ── */
+      :root {
+        --bg-page:        #0F172A;
+        --bg-card:        #1E293B;
+        --bg-border:      #334155;
+        --bg-input:       #0F172A;
+        --text-primary:   #F1F5F9;
+        --text-secondary: #94A3B8;
+        --text-muted:     #64748B;
+        --text-on-accent: #F1F5F9;
+        --glow-color:     #22C55E14;
+      }
+      /* ── DESIGN TOKENS: Hell ── */
+      :root.theme-light {
+        --bg-page:        #F1F5F9;
+        --bg-card:        #FFFFFF;
+        --bg-border:      #E2E8F0;
+        --bg-input:       #F8FAFC;
+        --text-primary:   #0F172A;
+        --text-secondary: #475569;
+        --text-muted:     #94A3B8;
+        --text-on-accent: #FFFFFF;
+        --glow-color:     #22C55E0A;
+      }
+      /* ── DESIGN TOKENS: Tennisplatz (Clay) ── */
+      :root.theme-clay {
+        --bg-page:        #2E0C03;
+        --bg-card:        #4A1A08;
+        --bg-border:      #7A3318;
+        --bg-input:       #220900;
+        --text-primary:   #FFF0E0;
+        --text-secondary: #D4956A;
+        --text-muted:     #9A6040;
+        --text-on-accent: #FFFFFF;
+        --glow-color:     #E8600014;
+      }
+      * { margin:0; padding:0; box-sizing:border-box; }
+      body { font-family: 'DM Sans', sans-serif; background: var(--bg-page); }
+
+      /* ── DESKTOP LAYOUT (≥768px) ── */
+      @media(min-width:768px) {
+        .h-inner {
+          max-width: 1400px !important;
+          padding: 40px 48px 48px !important;
+        }
+        .h-cols {
+          display: flex !important;
+          gap: 24px;
+          align-items: flex-start;
+        }
+        .h-filter {
+          width: 220px !important;
+          flex-shrink: 0 !important;
+          flex-direction: column !important;
+          position: sticky !important;
+          top: 24px !important;
+          margin: 0 !important;
+          overflow-x: visible !important;
+        }
+        .h-content {
+          flex: 1 !important;
+          min-width: 0 !important;
+          display: flex !important;
+          flex-direction: column !important;
+          gap: 16px !important;
+        }
+      }
+      /* ── MOBILE: Filter-Tabs ohne Scrollbalken ── */
+      @media(max-width:767px) {
+        .h-inner { gap: 10px !important; }
+        .h-filter { scrollbar-width: none !important; }
+        .h-filter::-webkit-scrollbar { display: none !important; }
+      }
+      /* ── DEV: Force Mobile ── */
+      html.force-mobile .h-inner {
+        max-width: 480px !important;
+        padding: 52px 0 32px !important;
+        gap: 10px !important;
+      }
+      html.force-mobile .h-cols {
+        display: block !important;
+        gap: 0 !important;
+      }
+      html.force-mobile .h-filter {
+        width: auto !important; position: static !important;
+        flex-direction: row !important; overflow-x: auto !important;
+        margin: 0 !important;
+        scrollbar-width: none !important;
+      }
+      html.force-mobile .h-filter::-webkit-scrollbar { display: none !important; }
+      html.force-mobile .h-content {
+        flex: none !important;
+        width: 100% !important;
+        display: block !important;
+        min-width: 0 !important;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      (function(){
+        const t=localStorage.getItem("app-theme");
+        if(t==="light") document.documentElement.classList.add("theme-light");
+        if(t==="clay")  document.documentElement.classList.add("theme-clay");
+      })();
+    </script>
     <script type="module" src="/src/main.jsx"></script>
     <script>
       if ('serviceWorker' in navigator) {
