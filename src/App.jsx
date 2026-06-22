@@ -2920,7 +2920,7 @@ function SettingsJobsTab() {
   const [data, setData] = useState({});
 
   useEffect(()=>{
-    const keys = ["btv_auto_snapshot","btv_club_teams","btv_players","btv_fetch_error"];
+    const keys = ["btv_club_teams","btv_players"];
     sb.from("settings").select("key,value").in("key", keys).then(({data:rows})=>{
       if (!rows) return;
       const m = {};
@@ -2936,25 +2936,10 @@ function SettingsJobsTab() {
            d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}) + " Uhr";
   };
 
-  const lastMatch  = data.btv_auto_snapshot?._savedAt;
   const lastPlan   = data.btv_club_teams?.scrapedAt;
   const lastMelde  = data.btv_players?.scrapedAt;
-  const fetchErr   = data.btv_fetch_error;
 
   const jobs = [
-    {
-      icon: "⚡",
-      name: "BTV Ergebnisse",
-      trigger: "Automatisch",
-      schedule: "Alle 30 Minuten (nur während Heimspiel)",
-      desc: "Scrapet Einzel-Ergebnisse vom BTV-Widget während eines laufenden Heimspiels. Startet 1 Stunde vor Spielbeginn und läuft bis zu 10 Stunden danach.",
-      lastRun: lastMatch,
-      error: fetchErr ? `Letzter Fehler: ${fetchErr.message||JSON.stringify(fetchErr).slice(0,80)}` : null,
-      saves: ["btv_auto_snapshot","btv_match_cache"],
-      color: "#6366F1",
-      bg: "#EEF2FF",
-      border: "#C7D2FE",
-    },
     {
       icon: "📅",
       name: "BTV Spielplan",
@@ -3210,64 +3195,31 @@ function SettingsDisplayTab({onToast}) {
   const quickFetch = async () => {
     if(!selStaffel || !selGegner) return;
     const staffelCfg = teamsConfig.find(t => t.name === selStaffel);
-    if(!staffelCfg) return;
-    // Felder setzen und speichern
-    const newMannschaft = staffelCfg.teamName || mannschaft;
-    const newMatchUrl   = staffelCfg.url      || matchUrl;
-    setMannschaft(newMannschaft);
-    setGegner(selGegner);
-    setMatchUrl(newMatchUrl);
-    await sb.from("settings").upsert([
-      {key:"display_mannschaft", value:newMannschaft},
-      {key:"display_gegner",     value:selGegner},
-      {key:"display_match_url",  value:newMatchUrl},
-    ],{onConflict:"key"});
-    // Fetch auslösen
-    if(!githubPat){ onToast("Kein GitHub PAT hinterlegt","error"); return; }
-    setFetchStatus("running");
-    try {
-      const res = await fetch(
-        "https://api.github.com/repos/MeierAndre130577/tennis-herrieden/actions/workflows/btv-fetch.yml/dispatches",
-        { method:"POST",
-          headers:{Authorization:`Bearer ${githubPat}`,Accept:"application/vnd.github+json","Content-Type":"application/json"},
-          body: JSON.stringify({ref:"main"}) }
-      );
-      if(res.status===204){
-        setFetchStatus("ok");
-        onToast(`✅ Fetch gestartet: ${newMannschaft} vs. ${selGegner}`);
-        setTimeout(async()=>{
-          const {data}=await sb.from("settings").select("value").eq("key","btv_match_cache").single();
-          if(data?.value) try { setMatchCache(JSON.parse(data.value)); setRevertKey(k=>k+1); } catch(_){}
-          setFetchStatus(null);
-        },35000);
-      } else {
-        setFetchStatus("error");
-        onToast(`Fehler ${res.status}`,"error");
-        setTimeout(()=>setFetchStatus(null),6000);
-      }
-    } catch(e){
-      setFetchStatus("error");
-      onToast(`Netzwerkfehler: ${e.message}`,"error");
-      setTimeout(()=>setFetchStatus(null),6000);
-    }
-  };
-
-  const revertToBtv = async () => {
-    if (!matchCache?._btv) return;
-    const btv = matchCache._btv;
-    const newCache = {
-      ...matchCache,
-      matchDate: btv.matchDate ?? matchCache.matchDate,
-      time:      btv.time      ?? matchCache.time,
-      league:    btv.league    ?? matchCache.league,
-      homeLogo:  btv.homeLogo  ?? matchCache.homeLogo,
-      awayLogo:  btv.awayLogo  ?? matchCache.awayLogo,
-      _source: "auto",
+    const grp = clubTeams?.groups?.find(g => g.name === selStaffel);
+    const game = grp?.homeGames?.find(g => g.opponent === selGegner);
+    const homeTeam = staffelCfg?.teamName || selStaffel;
+    const payload = {
+      homeTeam,
+      awayTeam:  selGegner,
+      league:    grp?.liga || staffelCfg?.liga || "",
+      matchDate: game?.date  || null,
+      time:      game?.time  ? game.time + " Uhr" : null,
+      homeLogo:  game?.homeLogo      || null,
+      awayLogo:  game?.opponentLogo  || null,
+      homeScore: 0, awayScore: 0,
+      rubbers:   DEFAULT_RUBBERS("6er"),
+      status:    "upcoming",
+      _source:   "manual",
+      _savedAt:  new Date().toISOString(),
     };
-    await sb.from("settings").upsert({key:"btv_match_cache", value: JSON.stringify(newCache)});
-    setMatchCache(newCache);
-    setRevertKey(k => k + 1);
-    onToast("✅ BTV-Stand wiederhergestellt");
+    const {error} = await sb.from("settings")
+      .upsert([{key:"btv_match_cache", value:JSON.stringify(payload)}],{onConflict:"key"});
+    if(error){ onToast(`Fehler: ${error.message}`,"error"); return; }
+    setMatchCache(payload);
+    setRevertKey(k=>k+1);
+    setFetchStatus("ok");
+    onToast(`✅ ${homeTeam} vs. ${selGegner} geladen`);
+    setTimeout(()=>setFetchStatus(null), 3000);
   };
 
   const themes=[
@@ -3560,84 +3512,12 @@ function SettingsDisplayTab({onToast}) {
         {/* ── HEIMSPIELMODUS ── */}
         {activeTab==="heimspiel"&&(
           <div>
-            <div style={{display:"flex",gap:10,marginBottom:14}}>
-              <div style={{flex:1}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>VEREINSNUMMER (BTV)</div>
-                <input value={vereinsnr} onChange={e=>setVernr(e.target.value)} style={{...S.input,width:"100%"}}/>
-              </div>
-              <div style={{flex:1}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>SAISON</div>
-                <input value={saison} onChange={e=>setSaison(e.target.value)} style={{...S.input,width:"100%"}}/>
-              </div>
-            </div>
-            {/* ── Master-Schalter: Auto-Fetch ── */}
-            <div onClick={toggleFetchEnabled}
-              style={{display:"flex",alignItems:"center",justifyContent:"space-between",
-                cursor:"pointer",marginBottom:16,padding:"10px 14px",borderRadius:8,
-                background:fetchEnabled?"#F0FDF4":"#FEF2F2",
-                border:`1px solid ${fetchEnabled?"#BBF7D0":"#FECACA"}`}}>
-              <div>
-                <div style={{fontSize:12,fontWeight:700,color:fetchEnabled?"#166534":"#991B1B"}}>
-                  {fetchEnabled?"🟢 Automatischer BTV-Fetch aktiv":"🔴 Automatischer BTV-Fetch deaktiviert"}
-                </div>
-                <div style={{fontSize:10,color:fetchEnabled?"#15803D":"#B91C1C",marginTop:2}}>
-                  {fetchEnabled
-                    ? "GitHub Actions holt alle 10 Min. Daten vom BTV-Widget"
-                    : "Kein automatischer Fetch – nur manuell über den Button unten"}
-                </div>
-              </div>
-              <ToggleSwitch on={fetchEnabled} onToggle={toggleFetchEnabled}/>
-            </div>
-
-            {/* ── Fetch-Fenster Anzeige ── */}
-            {(()=>{
-              const md = matchCache?.matchDate;
-              const mt = (matchCache?.time||"").replace(/\s*Uhr/i,"").trim();
-              let fenster;
-              if (!md && !mt) {
-                fenster = { text:"kein Fetch geplant", color:"#6B7280", bg:"#F3F4F6" };
-              } else if (md && mt) {
-                const [h,m] = mt.split(":").map(Number);
-                const match = new Date(`${md}T${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:00`);
-                const winStart = new Date(match.getTime() - 1*60*60*1000);
-                const winEnd   = new Date(match.getTime() + 10*60*60*1000);
-                const fmt = d => d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
-                const fmtD = d => d.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit",year:"numeric"});
-                const endStr = winEnd.getDate()!==match.getDate() ? `${fmt(winEnd)} Uhr (${fmtD(winEnd)})` : `${fmt(winEnd)} Uhr`;
-                fenster = { text:`${fmtD(match)} · ${fmt(winStart)} – ${endStr}`, color:"#1D4ED8", bg:"#EFF6FF" };
-              } else if (md && !mt) {
-                fenster = { text:`${new Date(md+"T12:00:00").toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit",year:"numeric"})} · kein Fetch (keine Uhrzeit)`, color:"#92400E", bg:"#FFFBEB" };
-              } else {
-                fenster = { text:"kein Datum bekannt", color:"#6B7280", bg:"#F3F4F6" };
-              }
-              return (
-                <div style={{marginBottom:14,padding:"7px 12px",borderRadius:6,
-                  background:fenster.bg,display:"flex",alignItems:"center",gap:8}}>
-                  <span style={{fontSize:10,fontWeight:700,color:"#9CA3AF",whiteSpace:"nowrap"}}>FETCH-FENSTER</span>
-                  <span style={{fontSize:11,fontWeight:600,color:fenster.color}}>{fenster.text}</span>
-                </div>
-              );
-            })()}
-
-            {/* GitHub PAT */}
-            <div style={{marginBottom:14,padding:"10px 12px",background:"#FFFBEB",borderRadius:8,border:"1px solid #FDE68A"}}>
-              <div style={{fontSize:11,fontWeight:700,color:"#92400E",marginBottom:5}}>
-                GITHUB TOKEN (PAT) 🔑 <span style={{fontWeight:400,color:"#B45309"}}>einmalig hinterlegen</span>
-              </div>
-              <input type="password" value={githubPat} onChange={e=>setGithubPat(e.target.value)}
-                placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
-                style={{...S.input,width:"100%",fontSize:12,fontFamily:"monospace"}}/>
-              <div style={{fontSize:10,color:"#B45309",marginTop:4}}>
-                GitHub → Settings → Developer settings → Personal access tokens → Classic → Scope: <strong>workflow</strong>
-              </div>
-            </div>
-
-            {/* ── Schnellauswahl via Dropdowns ── */}
-            {teamsConfig.length>0&&clubTeams?.groups?.length>0&&(
+            {/* Schnellauswahl */}
+            {teamsConfig.length>0&&clubTeams?.groups?.length>0?(
               <div style={{marginBottom:16,padding:"12px 14px",background:"#F0FDF4",
                 border:"1px solid #BBF7D0",borderRadius:8}}>
                 <div style={{fontSize:11,fontWeight:700,color:"#166534",marginBottom:10}}>
-                  ⚡ SCHNELLAUSWAHL
+                  ⚡ SPIEL LADEN
                 </div>
                 <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"flex-end"}}>
                   <div style={{flex:"1 1 160px"}}>
@@ -3652,12 +3532,11 @@ function SettingsDisplayTab({onToast}) {
                     </select>
                   </div>
                   <div style={{flex:"1 1 180px"}}>
-                    <div style={{fontSize:10,color:"#166534",fontWeight:600,marginBottom:3}}>Gegner (Heimspiele)</div>
+                    <div style={{fontSize:10,color:"#166534",fontWeight:600,marginBottom:3}}>Gegner</div>
                     <select value={selGegner} onChange={e=>setSelGegner(e.target.value)}
                       disabled={!selStaffel}
                       style={{width:"100%",padding:"7px 8px",border:"1px solid #BBF7D0",
-                        borderRadius:6,fontSize:12,background:"#fff",
-                        opacity:selStaffel?1:0.5}}>
+                        borderRadius:6,fontSize:12,background:"#fff",opacity:selStaffel?1:0.5}}>
                       <option value="">— auswählen —</option>
                       {(()=>{
                         const grp = clubTeams.groups.find(g=>g.name===selStaffel);
@@ -3669,57 +3548,19 @@ function SettingsDisplayTab({onToast}) {
                       })()}
                     </select>
                   </div>
-                  <button onClick={quickFetch}
-                    disabled={!selStaffel||!selGegner||fetchStatus==="running"}
+                  <button onClick={quickFetch} disabled={!selStaffel||!selGegner}
                     style={{padding:"7px 14px",fontSize:12,fontWeight:700,borderRadius:6,border:"none",
-                      cursor:(!selStaffel||!selGegner||fetchStatus==="running")?"not-allowed":"pointer",
-                      background:fetchStatus==="ok"?"#059669":fetchStatus==="error"?"#DC2626":"#15803D",
+                      cursor:(!selStaffel||!selGegner)?"not-allowed":"pointer",
+                      background:fetchStatus==="ok"?"#059669":"#15803D",
                       color:"#fff",opacity:(!selStaffel||!selGegner)?0.5:1,whiteSpace:"nowrap"}}>
-                    {fetchStatus==="running"?"⏳ Startet…":fetchStatus==="ok"?"✅ Gestartet!":fetchStatus==="error"?"❌ Fehler":"▶ Fetch starten"}
+                    {fetchStatus==="ok"?"✅ Geladen!":"📋 Spiel laden"}
                   </button>
                 </div>
               </div>
-            )}
-
-            {/* Staffel-URL */}
-            <div style={{marginBottom:14}}>
-              <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>STAFFEL-URL (BTV)</div>
-              <input value={matchUrl} onChange={e=>setMatchUrl(e.target.value)}
-                placeholder="https://www.btv.de/de/spielbetrieb/tabelle-spielplan.html?groupid=…"
-                style={{...S.input,width:"100%",fontSize:12}}/>
-              <div style={{fontSize:11,color:"#9CA3AF",marginTop:4}}>Einmal pro Mannschaft – bleibt dauerhaft gleich</div>
-            </div>
-
-            {/* Heimmannschaft */}
-            <div style={{marginBottom:14}}>
-              <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>HEIMMANNSCHAFT</div>
-              <input value={mannschaft} onChange={e=>setMannschaft(e.target.value)}
-                placeholder="z.B. SG TSV/DJK Herrieden" style={{...S.input,width:"100%"}}/>
-              <div style={{fontSize:11,color:"#9CA3AF",marginTop:4}}>Genau so wie auf btv.de angegeben</div>
-            </div>
-
-            {/* Gastmannschaft */}
-            <div style={{marginBottom:14}}>
-              <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>
-                GASTMANNSCHAFT <span style={{fontWeight:400,color:"#EF4444"}}>↺ vor jedem Spiel aktualisieren</span>
-              </div>
-              <input value={gegner} onChange={e=>setGegner(e.target.value)}
-                placeholder="z.B. TC Rothenburg" style={{...S.input,width:"100%"}}/>
-            </div>
-
-            {/* Fetch-Button */}
-            {mannschaft&&gegner&&(
-              <div style={{background:"#EFF6FF",border:"1px solid #BFDBFE",borderRadius:8,
-                padding:"10px 12px",fontSize:12,color:"#1E40AF",marginBottom:4}}>
-                ✅ <strong>{mannschaft}</strong> vs. <strong>{gegner}</strong>
-                {matchUrl&&<div style={{marginTop:4,wordBreak:"break-all",opacity:0.7,fontSize:11}}>
-                  🔗 {matchUrl.slice(0,70)}{matchUrl.length>70?"…":""}
-                </div>}
-                {matchCache?._savedAt&&(
-                  <div style={{marginTop:6,fontSize:10,color:"#6B7280",fontStyle:"italic"}}>
-                    Letzter Fetch: {new Date(matchCache._savedAt).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})} Uhr
-                  </div>
-                )}
+            ):(
+              <div style={{marginBottom:16,padding:"10px 12px",background:"#FEF3C7",
+                border:"1px solid #FDE68A",borderRadius:8,fontSize:12,color:"#92400E"}}>
+                ℹ️ BTV Spielplan noch nicht geladen — unter <strong>Mannschaften → Spielplan laden</strong> einmalig starten.
               </div>
             )}
 
