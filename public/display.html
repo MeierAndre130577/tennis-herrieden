@@ -914,7 +914,7 @@ function startSettingsPolling(mode, theme, vereinsnr, saison, mannschaft, gegner
 }
 
 // ── HEIMSPIEL ─────────────────────────────────────────────────────────────
-const RESULT_LABEL = { win:"W", loss:"N", open:"?" };
+const RESULT_LABEL = { win:"S", loss:"N", open:"?" };
 // Nachname + Vorname-Initial: "Schumann, Torsten / Bschorer, Leon" → "Schumann T. / Bschorer L."
 function parseMeldPos(name) {
   const m = (name||"").match(/^\[(\d+)\]\s+(.+)$/);
