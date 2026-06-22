@@ -21,7 +21,7 @@ const MODULES = [
   {id:"kassenbuch",    label:"Kassenbuch",           icon:"💰"},
   {id:"clubstream",    label:"Clubstream",           icon:"📰"},
   {id:"btv",           label:"BTV Links",            icon:"🔗"},
-  {id:"heimspiel",     label:"Heimspielwoche",       icon:"🏠"},
+  {id:"heimspiel",     label:"Spielwoche",            icon:"📅"},
 ];
 const SPECIAL_MODULES = [
   {id:"einstellungen", label:"Einstellungen",        icon:"⚙️"},
@@ -196,14 +196,14 @@ export default function App() {
 // HEIMSPIELWOCHE SCREEN
 // ═══════════════════════════════════════════════════════════════════════════
 function HeimspielwocheScreen({onBack, profile}) {
-  const [groups,setGroups] = useState([]);
-  const [loading,setLoading] = useState(true);
+  const [allGames,setAllGames] = useState([]);
+  const [loading,setLoading]   = useState(true);
   const [scrapedAt,setScrapedAt] = useState(null);
-  const [ligaMap,setLigaMap] = useState({});
+  const [ligaMap,setLigaMap]   = useState({});
+  const [filter,setFilter]     = useState("alle"); // "alle" | "heim" | "auswaerts"
   const isAdmin = profile?.role === "admin";
 
   useEffect(()=>{
-    // Liga aus btv_teams_config laden
     sb.from("settings").select("value").eq("key","btv_teams_config").single()
       .then(({data})=>{
         try {
@@ -220,39 +220,72 @@ function HeimspielwocheScreen({onBack, profile}) {
           setScrapedAt(ct?.scrapedAt || null);
           const now = new Date(); now.setHours(0,0,0,0);
           const end = new Date(now); end.setDate(end.getDate()+7);
-          // Sammle alle Heimspiele in den nächsten 7 Tagen
-          const byDate = {};
+          const list = [];
           (ct?.groups||[]).forEach(g=>{
             (g.homeGames||[]).forEach(game=>{
               if(!game.date) return;
               const d = new Date(game.date+"T12:00:00");
               if(d<now || d>=end) return;
-              if(!byDate[game.date]) byDate[game.date]=[];
-              byDate[game.date].push({ team: g.name||g.teamName, ...game });
+              list.push({ team: g.name||g.teamName, isHome:true, ...game });
+            });
+            (g.awayGames||[]).forEach(game=>{
+              if(!game.date) return;
+              const d = new Date(game.date+"T12:00:00");
+              if(d<now || d>=end) return;
+              list.push({ team: g.name||g.teamName, isHome:false, ...game });
             });
           });
-          // Sortiert nach Datum
-          const sorted = Object.keys(byDate).sort().map(date=>({ date, games: byDate[date] }));
-          setGroups(sorted);
+          setAllGames(list);
         } catch(_){}
         setLoading(false);
       });
   },[]);
 
   const DE_WEEKDAY = ["So","Mo","Di","Mi","Do","Fr","Sa"];
-
   function fmtGameDate(s) {
     const d = new Date(s+"T12:00:00");
     return `${DE_WEEKDAY[d.getDay()]}, ${d.getDate()}. ${DE_MONTH[d.getMonth()]}`;
   }
 
+  const filtered = allGames.filter(g=>
+    filter==="alle" ? true : filter==="heim" ? g.isHome : !g.isHome
+  );
+
+  // Gruppieren nach Datum
+  const byDate = {};
+  filtered.forEach(g=>{
+    if(!byDate[g.date]) byDate[g.date]=[];
+    byDate[g.date].push(g);
+  });
+  const groups = Object.keys(byDate).sort().map(date=>({ date, games: byDate[date] }));
+
+  const TABS = [
+    {key:"alle",    label:"Alle"},
+    {key:"heim",    label:"🏠 Heim"},
+    {key:"auswaerts", label:"✈️ Auswärts"},
+  ];
+
   return (
     <div style={H.wrap}>
       <div style={H.glow}/>
       <div style={H.inner}>
-        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
           <button onClick={onBack} style={{background:"none",border:"none",color:"#94A3B8",fontSize:22,cursor:"pointer",padding:"0 4px"}}>←</button>
-          <h2 style={{color:"#F8FAFC",fontSize:20,fontWeight:800,margin:0}}>🏠 Heimspielwoche</h2>
+          <h2 style={{color:"#F8FAFC",fontSize:20,fontWeight:800,margin:0}}>📅 Spielwoche</h2>
+        </div>
+
+        {/* Filter-Tabs */}
+        <div style={{display:"flex",gap:6,marginBottom:14}}>
+          {TABS.map(t=>(
+            <button key={t.key} onClick={()=>setFilter(t.key)}
+              style={{fontSize:12,fontWeight:700,padding:"5px 12px",borderRadius:20,cursor:"pointer",
+                border:`1.5px solid ${filter===t.key?"#F59E0B":"#334155"}`,
+                background: filter===t.key?"#F59E0B":"transparent",
+                color: filter===t.key?"#0F172A":"#94A3B8",
+                transition:"all .15s"}}>
+              {t.label}
+            </button>
+          ))}
         </div>
 
         {isAdmin && scrapedAt && (()=>{
@@ -276,7 +309,7 @@ function HeimspielwocheScreen({onBack, profile}) {
 
         {!loading && groups.length===0 && (
           <div style={{textAlign:"center",color:"#64748B",padding:32,fontSize:15}}>
-            Keine Heimspiele in den nächsten 7 Tagen
+            Keine {filter==="heim"?"Heim":filter==="auswaerts"?"Auswärts":""}spiele in den nächsten 7 Tagen
           </div>
         )}
 
@@ -287,32 +320,41 @@ function HeimspielwocheScreen({onBack, profile}) {
                 {fmtGameDate(date)}
               </div>
               <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                {games.map((g,i)=>(
-                  <div key={i} style={{background:"#1E293B",border:"1.5px solid #334155",borderRadius:12,padding:"12px 14px"}}>
-                    <div style={{display:"flex",alignItems:"baseline",gap:6,marginBottom:6}}>
-                      <span style={{fontSize:11,fontWeight:700,color:"#94A3B8",textTransform:"uppercase",letterSpacing:.6}}>
-                        {g.team}
-                      </span>
-                      {ligaMap[g.team] && (
-                        <span style={{fontSize:10,color:"#64748B",fontStyle:"italic"}}>{ligaMap[g.team]}</span>
-                      )}
-                    </div>
-                    <div style={{display:"flex",alignItems:"center",gap:10}}>
-                      {g.homeLogo && (
-                        <img src={g.homeLogo} alt="Heim" style={{width:36,height:36,objectFit:"contain",borderRadius:4,background:"#F8FAFC22",padding:2}}
-                          onError={e=>{e.target.style.display="none"}}/>
-                      )}
-                      <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontSize:13,fontWeight:700,color:"#E2E8F0",lineHeight:1.3}}>vs. {g.opponent}</div>
-                        {g.time && <div style={{fontSize:12,color:"#FCD34D",marginTop:2}}>⏰ {g.time} Uhr</div>}
+                {games.map((g,i)=>{
+                  const accentColor = g.isHome ? "#F59E0B" : "#3B82F6";
+                  const accentBg    = g.isHome ? "#F59E0B18" : "#3B82F618";
+                  return (
+                    <div key={i} style={{background:"#1E293B",border:`1.5px solid ${accentColor}44`,borderRadius:12,padding:"12px 14px"}}>
+                      {/* Kopfzeile: Team + Heim/Auswärts-Badge */}
+                      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:7}}>
+                        <span style={{fontSize:10,fontWeight:800,color:accentColor,background:accentBg,
+                          borderRadius:20,padding:"2px 8px",letterSpacing:.5,flexShrink:0}}>
+                          {g.isHome ? "🏠 HEIM" : "✈️ AUSWÄRTS"}
+                        </span>
+                        <span style={{fontSize:11,fontWeight:700,color:"#94A3B8",textTransform:"uppercase",letterSpacing:.6,
+                          overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                          {g.team}
+                        </span>
+                        {ligaMap[g.team] && (
+                          <span style={{fontSize:10,color:"#64748B",fontStyle:"italic",flexShrink:0}}>{ligaMap[g.team]}</span>
+                        )}
                       </div>
-                      {g.opponentLogo && (
-                        <img src={g.opponentLogo} alt="Gast" style={{width:36,height:36,objectFit:"contain",borderRadius:4,background:"#F8FAFC22",padding:2}}
-                          onError={e=>{e.target.style.display="none"}}/>
-                      )}
+                      {/* Spielinfo */}
+                      <div style={{display:"flex",alignItems:"center",gap:10}}>
+                        {g.opponentLogo && (
+                          <img src={g.opponentLogo} alt="" style={{width:38,height:38,objectFit:"contain",borderRadius:4,background:"#F8FAFC18",padding:2,flexShrink:0}}
+                            onError={e=>{e.target.style.display="none"}}/>
+                        )}
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:14,fontWeight:700,color:"#E2E8F0",lineHeight:1.3}}>
+                            {g.isHome ? "vs." : "@"} {g.opponent}
+                          </div>
+                          {g.time && <div style={{fontSize:12,color:"#FCD34D",marginTop:2}}>⏰ {g.time} Uhr</div>}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ))}
@@ -374,7 +416,7 @@ function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassen
     // btv team links
     sb.from("settings").select("value").eq("key","btv_teams_config").single()
       .then(({data})=>{ try { setBtvTeams(JSON.parse(data?.value)||[]); } catch(_){} });
-    // heimspiele diese woche zählen
+    // spiele diese woche zählen (heim + auswärts)
     sb.from("settings").select("value").eq("key","btv_club_teams").single()
       .then(({data})=>{
         try {
@@ -382,11 +424,13 @@ function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassen
           const now = new Date(); now.setHours(0,0,0,0);
           const end = new Date(now); end.setDate(end.getDate()+7);
           let count = 0;
-          (ct?.groups||[]).forEach(g=>(g.homeGames||[]).forEach(game=>{
-            if(!game.date) return;
-            const d = new Date(game.date+"T12:00:00");
-            if(d>=now && d<end) count++;
-          }));
+          (ct?.groups||[]).forEach(g=>{
+            [...(g.homeGames||[]), ...(g.awayGames||[])].forEach(game=>{
+              if(!game.date) return;
+              const d = new Date(game.date+"T12:00:00");
+              if(d>=now && d<end) count++;
+            });
+          });
           setHeimspielCount(count);
         } catch(_){}
       });
@@ -471,14 +515,14 @@ function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassen
             </div>
           </div>}
 
-          {/* Heimspielwoche */}
+          {/* Spielwoche */}
           {canDo("heimspiel")&&<div style={{...H.widgetCompact, borderColor:"#F59E0B55", background:"#1A130A"}} onClick={onGoHeimspiele}>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
-              <span style={{fontSize:18}}>🏠</span>
+              <span style={{fontSize:18}}>📅</span>
               <div style={{flex:1}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#94A3B8",textTransform:"uppercase",letterSpacing:.7}}>Heimspielwoche</div>
+                <div style={{fontSize:11,fontWeight:700,color:"#94A3B8",textTransform:"uppercase",letterSpacing:.7}}>Spielwoche</div>
                 <div style={{fontSize:13,fontWeight:600,color:"#FCD34D"}}>
-                  {heimspielCount>0 ? `${heimspielCount} Heimspiel${heimspielCount!==1?"e":""} in den nächsten 7 Tagen` : "Keine Heimspiele diese Woche"}
+                  {heimspielCount>0 ? `${heimspielCount} Spiel${heimspielCount!==1?"e":""} in den nächsten 7 Tagen` : "Keine Spiele diese Woche"}
                 </div>
               </div>
               <span style={{color:"#FCD34D",fontSize:16}}>→</span>

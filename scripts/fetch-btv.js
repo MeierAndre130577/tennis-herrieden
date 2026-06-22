@@ -758,7 +758,8 @@ async function scrapeClubTeams(browser, { force = false } = {}) {
     const homeGames_raw = await page.evaluate((teamNameArg) => {
       const teamL = teamNameArg.toLowerCase();
       const meetEls = Array.from(document.querySelectorAll('[class*="gbmeet"]'));
-      const games = [];
+      const homeGames = [];
+      const awayGames = [];
       const debug = []; // alle Matches die das Team enthalten
 
       for (const m of meetEls) {
@@ -768,26 +769,36 @@ async function scrapeClubTeams(browser, { force = false } = {}) {
         debug.push(text.slice(0, 120));
 
         // Datum-Zeit-Präfix entfernen: "Sa. 13.06.26, 13:00" o.ä.
-        // Dadurch wird \d+:\d+ nicht fälschlicherweise auf die Uhrzeit getroffen
         const stripped = text.replace(/^(?:[A-Za-zÄÖÜäöüß]{2,3}\.\s*)?\d{1,2}\.\d{2}\.\d{2,4},?\s*\d{1,2}:\d{2}\s*/, "");
         const strippedL = stripped.toLowerCase();
 
-        // Heimteam muss an erster Stelle stehen
-        if (!strippedL.startsWith(teamL)) continue;
+        const teamPos = strippedL.indexOf(teamL);
+        if (teamPos < 0) continue;
+        const isHome = strippedL.startsWith(teamL);
 
-        // Alles nach dem Teamnamen = Scores + Gegner
-        const afterTeam = stripped.slice(teamL.length);
-        const afterTeamClean = afterTeam
-          .replace(/\d+:\d+/g, " ")
-          .replace(/offen|Blanko(-Spielbericht)?|anzeigen|zurückgezogen|ursprünglich.*$/gi, " ")
-          .replace(/\bHP\b/g, " ")
-          .replace(/\s+/g, " ").trim();
-
-        let opponent = afterTeamClean.replace(/^[\s\d:]+/, "").trim();
-        // "1. FC ..." – führende Ziffer als Score-Residue entfernt → aus Original wiederherstellen
-        if (opponent.startsWith(".")) {
-          const fix = afterTeam.match(/(\d)\s*\.\s*[A-ZÄÖÜ]/);
-          if (fix) opponent = fix[1] + opponent;
+        let opponent = "";
+        if (isHome) {
+          // Alles nach dem Teamnamen = Scores + Gegner
+          const afterTeam = stripped.slice(teamL.length);
+          const afterTeamClean = afterTeam
+            .replace(/\d+:\d+/g, " ")
+            .replace(/offen|Blanko(-Spielbericht)?|anzeigen|zurückgezogen|ursprünglich.*$/gi, " ")
+            .replace(/\bHP\b/g, " ")
+            .replace(/\s+/g, " ").trim();
+          opponent = afterTeamClean.replace(/^[\s\d:]+/, "").trim();
+          // "1. FC ..." – führende Ziffer als Score-Residue entfernt → aus Original wiederherstellen
+          if (opponent.startsWith(".")) {
+            const fix = afterTeam.match(/(\d)\s*\.\s*[A-ZÄÖÜ]/);
+            if (fix) opponent = fix[1] + opponent;
+          }
+        } else {
+          // Alles vor dem Teamnamen = Gegner (Heimteam dieser Partie)
+          const beforeTeam = stripped.slice(0, teamPos);
+          opponent = beforeTeam
+            .replace(/\d+:\d+/g, " ")
+            .replace(/offen|Blanko(-Spielbericht)?|anzeigen|zurückgezogen|ursprünglich.*$/gi, " ")
+            .replace(/\bHP\b/g, " ")
+            .replace(/\s+/g, " ").trim();
         }
         if (!opponent || opponent.length < 3 || opponent.length > 60) continue;
 
@@ -824,7 +835,6 @@ async function scrapeClubTeams(browser, { force = false } = {}) {
               fullText = el.textContent.replace(/\s+/g, " ");
               if (/\d{1,2}\.\d{1,2}\.\d{2}/.test(fullText)) break;
             }
-            // Korrekte Position: Element-Text suchen (nicht indexOf teamL)
             const mSnippet = text.slice(0, 25);
             const myPos = mSnippet ? fullText.indexOf(mSnippet) : -1;
             const lookBack = myPos > 0 ? fullText.slice(0, myPos).slice(-400) : "";
@@ -840,15 +850,21 @@ async function scrapeClubTeams(browser, { force = false } = {}) {
           .map(img => img.src || img.getAttribute("src") || img.getAttribute("data-src") || img.getAttribute("data-lazy-src") || "")
           .filter(s => s && (s.startsWith("http") || s.startsWith("//")))
           .map(s => s.startsWith("//") ? "https:" + s : s);
-        const homeLogo    = logoImgs[0] || null;
-        const opponentLogo = logoImgs[1] || null;
 
-        games.push({ opponent, date: matchDate, time: matchTime, homeLogo, opponentLogo });
+        if (isHome) {
+          homeGames.push({ opponent, date: matchDate, time: matchTime,
+            homeLogo: logoImgs[0]||null, opponentLogo: logoImgs[1]||null });
+        } else {
+          // Bei Auswärtsspiel: logoImgs[0] = Heimteam (= Gegner), logoImgs[1] = wir (Gast)
+          awayGames.push({ opponent, date: matchDate, time: matchTime,
+            opponentLogo: logoImgs[0]||null });
+        }
       }
-      return { games, debug };
+      return { homeGames, awayGames, debug };
     }, teamName);
 
-    const homeGames = homeGames_raw.games;
+    const homeGames = homeGames_raw.homeGames;
+    const awayGames = homeGames_raw.awayGames;
     if (homeGames_raw.debug.length) {
       console.log(`  Matches mit "${teamName}" im Text (${homeGames_raw.debug.length}):`);
       homeGames_raw.debug.forEach((t,i) => console.log(`    [${i}] ${t}`));
@@ -856,6 +872,7 @@ async function scrapeClubTeams(browser, { force = false } = {}) {
       console.log(`  ⚠ Kein gbmeet-Element enthält "${teamName}" – Teamname prüfen!`);
     }
     console.log(`  → Heimspiele: ${homeGames.map(g => `${g.opponent}${g.date?" ("+g.date+")":""}`).join(", ") || "(keine)"}`);
+    console.log(`  → Auswärtsspiele: ${awayGames.map(g => `${g.opponent}${g.date?" ("+g.date+")":""}`).join(", ") || "(keine)"}`);
 
     result.push({
       name,
@@ -864,6 +881,7 @@ async function scrapeClubTeams(browser, { force = false } = {}) {
       groupId: groupId || null,
       league: league || null,
       homeGames,
+      awayGames,
     });
 
     await page.close();
