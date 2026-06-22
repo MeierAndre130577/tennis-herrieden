@@ -2158,11 +2158,157 @@ function fmtTs(iso) {
     + " " + d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}) + " Uhr";
 }
 
+function RubberModal({rubber, homePlayers, awayPlayers, onSave, onClose}) {
+  const isD = rubber.id.startsWith("D");
+
+  const parseScore = (score) => {
+    const parts = (score||"").split(" ").filter(s=>s.includes(":")).slice(0,3);
+    return [0,1,2].map(i => {
+      if(parts[i]){ const [h,a]=parts[i].split(":"); return {home:h||"",away:a||""}; }
+      return {home:"",away:""};
+    });
+  };
+
+  const [sets,   setSets]   = useState(parseScore(rubber.score));
+  const [result, setResult] = useState(rubber.result||"open");
+  const [home,   setHome]   = useState(rubber.home||"");
+  const [away,   setAway]   = useState(rubber.away||"");
+  const [home2,  setHome2]  = useState("");
+  const [away2,  setAway2]  = useState("");
+
+  // Für Doppel: home/away enthält "Spieler1 / Spieler2"
+  useState(()=>{
+    if(isD){
+      const hp = (rubber.home||"").split("/").map(s=>s.trim());
+      const ap = (rubber.away||"").split("/").map(s=>s.trim());
+      setHome(hp[0]||""); setHome2(hp[1]||"");
+      setAway(ap[0]||""); setAway2(ap[1]||"");
+    }
+  });
+
+  const buildScore = () =>
+    sets.filter(s=>s.home!==""||s.away!=="").map(s=>`${s.home||0}:${s.away||0}`).join(" ");
+
+  const handleSave = () => {
+    const homeVal = isD ? [home,home2].filter(Boolean).join(" / ") : home;
+    const awayVal = isD ? [away,away2].filter(Boolean).join(" / ") : away;
+    onSave({...rubber, home:homeVal, away:awayVal, score:buildScore(), result});
+  };
+
+  const RESULTS = [
+    {v:"open", label:"Offen",        color:"#6B7280", bg:"#F3F4F6", border:"#E5E7EB"},
+    {v:"live", label:"● Läuft",      color:"#D97706", bg:"#FFFBEB", border:"#FDE68A"},
+    {v:"win",  label:"✓ Heimsieg",   color:"#059669", bg:"#F0FDF4", border:"#BBF7D0"},
+    {v:"loss", label:"✗ Niederlage", color:"#DC2626", bg:"#FEF2F2", border:"#FECACA"},
+  ];
+
+  const selStyle = {width:"100%",fontSize:12,border:"1.5px solid #E5E7EB",borderRadius:6,
+    padding:"5px 6px",boxSizing:"border-box",background:"#fff"};
+
+  const renderPlayerSel = (side, val, setVal, players, placeholder) => {
+    if(players.length>0)
+      return (
+        <select value={val} onChange={e=>setVal(e.target.value)} style={selStyle}>
+          <option value="">— {placeholder} —</option>
+          {players.map((p,i)=><option key={p} value={`[${i+1}] ${p}`}>{i+1}. {p}</option>)}
+        </select>
+      );
+    return <input value={val} onChange={e=>setVal(e.target.value)} placeholder={placeholder} style={selStyle}/>;
+  };
+
+  return (
+    <div style={S.overlay} onClick={onClose}>
+      <div style={{...S.modal,maxWidth:360,width:"92%"}} onClick={e=>e.stopPropagation()}>
+        <div style={S.modalHeader}>
+          <div style={{...S.modalTitle,display:"flex",alignItems:"center",gap:8}}>
+            <span style={{background:"#1D4ED8",color:"#fff",borderRadius:6,padding:"2px 8px",fontSize:13,fontWeight:800}}>{rubber.id}</span>
+            <span>{isD?"Doppel":"Einzel"}</span>
+          </div>
+          <button style={S.closeBtn} onClick={onClose}>✕</button>
+        </div>
+
+        {/* Spieler */}
+        <div style={{marginBottom:14}}>
+          <div style={{fontSize:10,fontWeight:700,color:"#6B7280",marginBottom:6}}>SPIELER</div>
+          <div style={{display:"flex",flexDirection:"column",gap:4}}>
+            <div style={{display:"flex",alignItems:"center",gap:6}}>
+              <span style={{fontSize:10,fontWeight:700,color:"#1D4ED8",width:28}}>Heim</span>
+              {isD?(
+                <div style={{display:"flex",gap:4,flex:1}}>
+                  {renderPlayerSel("home",home,setHome,homePlayers,"H1")}
+                  {renderPlayerSel("home",home2,setHome2,homePlayers,"H2")}
+                </div>
+              ):renderPlayerSel("home",home,setHome,homePlayers,"Heim-Spieler")}
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:6}}>
+              <span style={{fontSize:10,fontWeight:700,color:"#6B7280",width:28}}>Gast</span>
+              {isD?(
+                <div style={{display:"flex",gap:4,flex:1}}>
+                  {renderPlayerSel("away",away,setAway,awayPlayers,"G1")}
+                  {renderPlayerSel("away",away2,setAway2,awayPlayers,"G2")}
+                </div>
+              ):renderPlayerSel("away",away,setAway,awayPlayers,"Gast-Spieler")}
+            </div>
+          </div>
+        </div>
+
+        {/* Sätze */}
+        <div style={{marginBottom:14}}>
+          <div style={{fontSize:10,fontWeight:700,color:"#6B7280",marginBottom:8}}>SATZERGEBNISSE</div>
+          <div style={{display:"flex",gap:4,alignItems:"center",marginBottom:4,paddingLeft:52}}>
+            <span style={{flex:1,textAlign:"center",fontSize:10,fontWeight:700,color:"#1D4ED8"}}>Heim</span>
+            <span style={{width:16}}/>
+            <span style={{flex:1,textAlign:"center",fontSize:10,fontWeight:700,color:"#6B7280"}}>Gast</span>
+          </div>
+          {[0,1,2].map(i=>(
+            <div key={i} style={{display:"flex",alignItems:"center",gap:4,marginBottom:8}}>
+              <span style={{fontSize:11,fontWeight:700,color:"#9CA3AF",width:48,textAlign:"right",paddingRight:4}}>
+                {i+1}. Satz
+              </span>
+              <input type="number" min={0} max={9} value={sets[i].home}
+                onChange={e=>setSets(prev=>prev.map((s,j)=>j===i?{...s,home:e.target.value}:s))}
+                style={{flex:1,textAlign:"center",fontSize:24,fontWeight:800,
+                  border:"1.5px solid #E5E7EB",borderRadius:8,padding:"6px 0",
+                  background:i===2?"#F8FAFC":"#fff"}}/>
+              <span style={{fontSize:20,color:"#D1D5DB",fontWeight:700,lineHeight:1}}>:</span>
+              <input type="number" min={0} max={9} value={sets[i].away}
+                onChange={e=>setSets(prev=>prev.map((s,j)=>j===i?{...s,away:e.target.value}:s))}
+                style={{flex:1,textAlign:"center",fontSize:24,fontWeight:800,
+                  border:"1.5px solid #E5E7EB",borderRadius:8,padding:"6px 0",
+                  background:i===2?"#F8FAFC":"#fff"}}/>
+              {i===2&&<span style={{fontSize:10,color:"#D1D5DB",width:16}}>opt.</span>}
+            </div>
+          ))}
+        </div>
+
+        {/* Status */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16}}>
+          {RESULTS.map(r=>(
+            <button key={r.v} onClick={()=>setResult(r.v)}
+              style={{padding:"11px 0",fontSize:12,fontWeight:700,borderRadius:8,cursor:"pointer",
+                border:`2px solid ${result===r.v?r.border:"#E5E7EB"}`,
+                background:result===r.v?r.bg:"#fff",
+                color:result===r.v?r.color:"#9CA3AF",transition:"all .12s"}}>
+              {r.label}
+            </button>
+          ))}
+        </div>
+
+        <button onClick={handleSave}
+          style={{...S.primaryBtn,width:"100%",background:"#1D4ED8",color:"#fff",fontSize:14,padding:"12px"}}>
+          Übernehmen
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function HeimspieleEdit({onToast, onSaved, reloadKey, hideShare=false}) {
   const [loading,    setLoading]    = useState(true);
   const [saving,     setSaving]     = useState(false);
   const [dirty,      setDirty]      = useState(false);
-  const [savedAt,    setSavedAt]    = useState(null);
+  const [savedAt,      setSavedAt]      = useState(null);
+  const [rubberModal,  setRubberModal]  = useState(null);
 
   // Editierbare Felder
   const [format,    setFormat]    = useState("6er");
@@ -2410,34 +2556,86 @@ function HeimspieleEdit({onToast, onSaved, reloadKey, hideShare=false}) {
         </div>
       </div>
 
-      {/* Rubber-Liste */}
-      <div style={{padding:"10px 12px",display:"flex",flexDirection:"column",gap:6}}>
-        {rubbers.map(r=>(
-          <div key={r.id} style={{background:r.id.startsWith("D")?"#F8FAFC":"#fff",
-            border:`1.5px solid ${r.result==="win"?"#BBF7D0":r.result==="loss"?"#FECACA":r.result==="live"?"#FDE68A":"#E5E7EB"}`,
-            borderRadius:8,padding:"6px 8px"}}>
-            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
-              <span style={{fontSize:11,fontWeight:800,color:"#9CA3AF",minWidth:22}}>{r.id}</span>
-              {renderSide(r,"home",homePlayers)}
-              <span style={{fontSize:10,color:"#D1D5DB"}}>vs</span>
-              {renderSide(r,"away",awayPlayers)}
-            </div>
-            <div style={{display:"flex",gap:6,alignItems:"center",paddingLeft:28}}>
-              <input value={r.score} onChange={e=>updRubber(r.id,"score",e.target.value)}
-                placeholder="6:3 6:2"
-                style={{width:80,fontSize:11,border:"1.5px solid #E5E7EB",borderRadius:5,
-                  padding:"2px 5px",boxSizing:"border-box"}}/>
-              <select value={r.result} onChange={e=>updRubber(r.id,"result",e.target.value)}
-                style={{flex:1,fontSize:11,border:"1.5px solid #E5E7EB",borderRadius:5,
-                  padding:"2px 4px",background:"#fff",fontWeight:600,color:resColor(r.result)}}>
-                {RUBBER_RESULT_OPTS.map(o=>(
-                  <option key={o.v} value={o.v}>{o.label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-        ))}
+      {/* Rubber-Liste — antippen zum Bearbeiten */}
+      <div style={{padding:"10px 12px",display:"flex",flexDirection:"column",gap:5}}>
+        {(()=>{
+          const RC = {win:"#BBF7D0",loss:"#FECACA",live:"#FDE68A",open:"#E5E7EB"};
+          const TC = {win:"#059669",loss:"#DC2626",live:"#D97706",open:"#9CA3AF"};
+          const RL = {win:"✓ Sieg",loss:"✗ Niederlage",live:"● Läuft",open:"Offen"};
+          return rubbers.map(r=>{
+            const isD = r.id.startsWith("D");
+            const borderCol = RC[r.result]||RC.open;
+            const textCol   = TC[r.result]||TC.open;
+            const shortName = v => {
+              if(!v) return "";
+              // Entferne [N] Präfix, kürze auf Nachname
+              const clean = v.replace(/^\[\d+\]\s*/,"");
+              const parts = clean.split(" / ");
+              return parts.map(p=>p.split(" ").pop()).join(" / ");
+            };
+            return (
+              <div key={r.id} onClick={()=>setRubberModal(r)}
+                style={{display:"flex",alignItems:"center",gap:8,
+                  background:isD?"#F8FAFC":"#fff",
+                  border:`2px solid ${borderCol}`,
+                  borderRadius:10,padding:"10px 12px",cursor:"pointer",
+                  transition:"box-shadow .15s",userSelect:"none"}}
+                onMouseEnter={e=>e.currentTarget.style.boxShadow="0 2px 8px rgba(0,0,0,.08)"}
+                onMouseLeave={e=>e.currentTarget.style.boxShadow="none"}>
+                {/* ID Badge */}
+                <span style={{fontSize:12,fontWeight:800,color:"#fff",
+                  background:textCol,borderRadius:5,padding:"2px 7px",
+                  minWidth:28,textAlign:"center",flexShrink:0}}>
+                  {r.id}
+                </span>
+                {/* Spieler */}
+                <div style={{flex:1,minWidth:0}}>
+                  {r.home||r.away ? (
+                    <>
+                      <div style={{fontSize:12,fontWeight:600,color:"#1D4ED8",
+                        overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                        {shortName(r.home)||"—"}
+                      </div>
+                      <div style={{fontSize:11,color:"#6B7280",
+                        overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                        {shortName(r.away)||"—"}
+                      </div>
+                    </>
+                  ):(
+                    <div style={{fontSize:12,color:"#CBD5E1",fontStyle:"italic"}}>Tippen zum Eintragen</div>
+                  )}
+                </div>
+                {/* Score + Status */}
+                <div style={{textAlign:"right",flexShrink:0}}>
+                  {r.score?(
+                    <div style={{fontSize:13,fontWeight:800,color:"#111827",fontFamily:"monospace"}}>
+                      {r.score}
+                    </div>
+                  ):<div style={{fontSize:12,color:"#E5E7EB"}}>–:–</div>}
+                  <div style={{fontSize:10,fontWeight:700,color:textCol,marginTop:1}}>
+                    {RL[r.result]||"Offen"}
+                  </div>
+                </div>
+                <span style={{fontSize:14,color:"#D1D5DB",flexShrink:0}}>›</span>
+              </div>
+            );
+          });
+        })()}
       </div>
+
+      {rubberModal&&(
+        <RubberModal
+          rubber={rubberModal}
+          homePlayers={homePlayers}
+          awayPlayers={awayPlayers}
+          onSave={r=>{
+            setRubbers(prev=>prev.map(x=>x.id===r.id?r:x));
+            setDirty(true);
+            setRubberModal(null);
+          }}
+          onClose={()=>setRubberModal(null)}
+        />
+      )}
 
       {/* Speichern-Button + Teilen */}
       <div style={{padding:"10px 12px",borderTop:"1px solid #E2E8F0",background:"#F8FAFC",
