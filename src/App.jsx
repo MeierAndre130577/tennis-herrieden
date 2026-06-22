@@ -329,6 +329,17 @@ function UserWidget({profile}) {
                 {forceMobile&&<div style={{fontSize:10,color:T.textMuted,marginTop:4,paddingLeft:2}}>Wird beim Neuladen zurückgesetzt</div>}
               </div>
             )}
+
+            <div style={{borderTop:`1px solid ${T.bgBorder}`,paddingTop:12,marginTop:4}}>
+              <button onClick={()=>sb.auth.signOut()} style={{
+                width:"100%",padding:"8px 10px",borderRadius:T.rSm,cursor:"pointer",
+                border:`1px solid #EF444430`,background:"#EF444410",
+                color:"#EF4444",fontSize:13,fontWeight:600,
+                display:"flex",alignItems:"center",justifyContent:"center",gap:8,
+              }}>
+                <span>⏏</span> Abmelden
+              </button>
+            </div>
           </div>
         )}
         <button onClick={()=>setOpen(o=>!o)} style={{
@@ -727,10 +738,6 @@ function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassen
           )}
         </div>
 
-        {/* Logout */}
-        <div style={{textAlign:"center",paddingBottom:8}}>
-          <button style={H.logoutBtn} onClick={()=>sb.auth.signOut()}>Abmelden</button>
-        </div>
       </div>
 
     </div>
@@ -756,7 +763,6 @@ const H={
   navTile:      {background:T.bgCard,border:`1.5px solid ${T.bgBorder}`,borderRadius:T.rMd,padding:"18px 12px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:6},
   navTileLabel: {fontSize:T.fzBody,fontWeight:700,color:T.textSecondary},
   navTileSub:   {fontSize:T.fzLabel,color:T.textMuted},
-  logoutBtn:    {background:"none",border:`1px solid ${T.bgBorder}`,borderRadius:T.rSm,color:T.textMuted,cursor:"pointer",fontSize:T.fzSm,padding:T.pBtn},
   backBtn:      {background:"none",border:"none",color:T.textSecondary,fontSize:22,cursor:"pointer",padding:"0 4px",lineHeight:1,flexShrink:0},
 };
 
@@ -5175,7 +5181,6 @@ const S={
   navBtnActive:{background:"#1E293B",color:"#4ADE80",borderLeft:"3px solid #4ADE80"},
   sidebarBottom:{padding:"16px 20px",borderTop:"1px solid #1E293B"},
   userChip:{display:"flex",alignItems:"center",gap:10,marginBottom:12},
-  logoutBtn:{width:"100%",padding:"8px",background:"none",border:"1px solid #334155",borderRadius:6,color:"#94A3B8",cursor:"pointer",fontSize:12},
   main:{flex:1,overflowY:"auto"},
   pageTitle:{fontSize:23,fontWeight:800,letterSpacing:-.5,margin:0},
   pageSub:{color:"#6B7280",fontSize:13,marginTop:4},
