@@ -780,7 +780,7 @@ function ScreenHeader({onBack, title, children}) {
 // ═══════════════════════════════════════════════════════════════════════════
 // CLUBSTREAM APP  (admin-only, reads from news_items in same Supabase project)
 // ═══════════════════════════════════════════════════════════════════════════
-const CS_ICONS  = {club_news:"📢",important_notice:"⚠️",social_post:"📱",event:"📅",match_result:"🎾",court_notice:"🏟️",discussion:"💬",document:"📄",training_notice:"🏃",team_news:"👥",external_article:"🔗"};
+const CS_ICONS  = {club_news:"📢",important_notice:"⚠️",social_post:"📱",event:"🗓",match_result:"🎾",court_notice:"🏟️",discussion:"💬",document:"📄",training_notice:"🏃",team_news:"👥",external_article:"🔗"};
 const CS_LABELS = {club_news:"Vereinsnews",important_notice:"Wichtig",social_post:"Social",event:"Termin",match_result:"Ergebnis",court_notice:"Platz",discussion:"Diskussion",document:"Dokument",training_notice:"Training",team_news:"Mannschaft",external_article:"Artikel"};
 const CS_COLORS = {club_news:"#3B82F6",important_notice:"#EF4444",social_post:"#6B7280",event:"#8B5CF6",match_result:"#22C55E",court_notice:"#F97316",discussion:"#6366F1",document:"#64748B",training_notice:"#06B6D4",team_news:"#EAB308",external_article:"#94A3B8"};
 const DEFAULT_CONTENT_TYPE_PERMISSIONS = {photos:[], ...Object.fromEntries(Object.keys(CS_ICONS).map(k=>[k,[]]))};
@@ -840,7 +840,7 @@ function ClubstreamDetail({item,onBack}) {
             const eHasTime=item.event_end&&new Date(item.event_end).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit",timeZone:"UTC"})!=="00:00";
             return(
               <p style={{fontSize:13,color:"#8B5CF6",margin:0,fontWeight:600}}>
-                📅 {fmt(item.event_start,sHasTime)}
+                🗓 {fmt(item.event_start,sHasTime)}
                 {item.event_end&&<span style={{color:"#64748B",fontWeight:400}}> – {fmt(item.event_end,eHasTime)}</span>}
               </p>
             );
@@ -1247,7 +1247,7 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
                   )}
                   {item.type==="event"&&item.event_start&&(
                     <div style={{marginTop:6,fontSize:12,color:"#8B5CF6",fontWeight:600}}>
-                      📅 {new Date(item.event_start).toLocaleDateString("de-DE",{weekday:"short",day:"numeric",month:"short",timeZone:"UTC"})}
+                      🗓 {new Date(item.event_start).toLocaleDateString("de-DE",{weekday:"short",day:"numeric",month:"short",timeZone:"UTC"})}
                       {item.event_location&&<span style={{color:"#64748B",fontWeight:400}}> · 📍 {item.event_location}</span>}
                     </div>
                   )}
