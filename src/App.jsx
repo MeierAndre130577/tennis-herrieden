@@ -862,7 +862,7 @@ function ClubstreamDetail({item,onBack}) {
 
           {/* Bild */}
           {item.image_url&&(
-            <img src={item.image_url} alt="" style={{width:"100%",borderRadius:10,maxHeight:260,objectFit:"cover"}}/>
+            <img src={item.image_url} alt="" style={{width:"100%",borderRadius:10,objectFit:"contain"}}/>
           )}
 
           {/* Haupttext */}
