@@ -625,6 +625,231 @@
       .logo-sub { display: none; }
       #legend { display: none; }
     }
+
+    /* ══ SPIELPLAN MODE ══════════════════════════════════════════════════════ */
+    #spielplan-screen {
+      display: none;
+      flex-direction: column;
+      height: 100dvh;
+      padding: clamp(10px,1.5vh,22px) clamp(12px,2vw,28px) clamp(8px,1.2vh,16px);
+      gap: clamp(6px,1vh,14px);
+    }
+
+    /* Header */
+    #sp-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .sp-logo-area {
+      display: flex;
+      align-items: center;
+      gap: clamp(8px,1.2vw,14px);
+    }
+    .sp-logo-area svg {
+      flex-shrink: 0;
+      width: clamp(26px,3vw,42px);
+      height: clamp(26px,3vw,42px);
+    }
+    .sp-title {
+      font-size: clamp(14px,1.8vw,26px);
+      font-weight: 800;
+      color: var(--fg);
+      letter-spacing: -0.4px;
+    }
+    .sp-sub {
+      font-size: clamp(9px,1vw,13px);
+      color: var(--slate);
+      margin-top: 1px;
+    }
+    .sp-header-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 2px;
+    }
+    #sp-date { font-size: clamp(10px,1.2vw,16px); font-weight: 700; color: var(--green); }
+    #sp-time { font-size: clamp(22px,3.5vw,48px); font-weight: 800; color: var(--fg); letter-spacing: -1px; line-height: 1; }
+
+    /* Filter-Badge */
+    #sp-filter-bar {
+      display: flex;
+      align-items: center;
+      gap: clamp(6px,1vw,12px);
+      flex-shrink: 0;
+    }
+    .sp-filter-badge {
+      font-size: clamp(9px,0.95vw,13px);
+      font-weight: 800;
+      letter-spacing: .6px;
+      text-transform: uppercase;
+      padding: clamp(3px,.4vh,6px) clamp(10px,1.2vw,18px);
+      border-radius: 20px;
+      border: 1.5px solid transparent;
+      transition: all .3s;
+    }
+    .sp-filter-badge.active {
+      background: var(--green);
+      color: #0F172A;
+      border-color: var(--green);
+    }
+    .sp-filter-badge.inactive {
+      background: transparent;
+      color: var(--slate);
+      border-color: var(--border);
+    }
+    #sp-update {
+      margin-left: auto;
+      font-size: clamp(8px,.85vw,11px);
+      color: var(--slate);
+      opacity: .6;
+    }
+
+    /* Scroll-Container */
+    #sp-body {
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      position: relative;
+    }
+    #sp-scroll {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: clamp(6px,.9vh,14px);
+    }
+
+    /* KW-Gruppe */
+    .sp-kw-group { flex-shrink: 0; }
+    .sp-kw-label {
+      font-size: clamp(9px,.95vw,13px);
+      font-weight: 800;
+      letter-spacing: .9px;
+      text-transform: uppercase;
+      color: var(--slate);
+      margin-bottom: clamp(4px,.5vh,8px);
+      padding-bottom: clamp(3px,.4vh,6px);
+      border-bottom: 1px solid var(--border);
+    }
+    .sp-kw-label.current { color: var(--green); border-color: var(--green); }
+
+    .sp-games-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(clamp(220px,28vw,400px), 1fr));
+      gap: clamp(4px,.6vw,10px);
+    }
+
+    /* Spielkarte */
+    .sp-game {
+      background: var(--bg2);
+      border-radius: clamp(6px,.7vw,12px);
+      padding: clamp(8px,.9vh,14px) clamp(10px,1.1vw,18px);
+      border-left: 3px solid transparent;
+      display: flex;
+      flex-direction: column;
+      gap: clamp(3px,.4vh,6px);
+      transition: opacity .3s;
+    }
+    .sp-game.heim    { border-left-color: var(--green); }
+    .sp-game.ausw    { border-left-color: var(--blue); }
+    .sp-game.played  { opacity: .42; }
+    .sp-game.current-week { background: color-mix(in srgb, var(--bg2) 85%, var(--green) 15%); }
+
+    .sp-game-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .sp-game-team {
+      font-size: clamp(11px,1.25vw,18px);
+      font-weight: 700;
+      color: var(--fg);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+    }
+    .sp-game-score {
+      font-size: clamp(13px,1.5vw,22px);
+      font-weight: 800;
+      color: var(--fg);
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+    .sp-game-score.win  { color: var(--green); }
+    .sp-game-score.loss { color: var(--red); }
+    .sp-game-score.draw { color: var(--amber); }
+
+    .sp-game-bottom {
+      display: flex;
+      align-items: center;
+      gap: clamp(6px,.8vw,12px);
+    }
+    .sp-ha-badge {
+      font-size: clamp(8px,.85vw,11px);
+      font-weight: 800;
+      letter-spacing: .5px;
+      text-transform: uppercase;
+      padding: 2px clamp(6px,.7vw,10px);
+      border-radius: 10px;
+      flex-shrink: 0;
+    }
+    .sp-ha-badge.heim { background: color-mix(in srgb,var(--green) 20%,transparent); color: var(--green); }
+    .sp-ha-badge.ausw { background: color-mix(in srgb,var(--blue)  20%,transparent); color: var(--blue);  }
+    .sp-game-opp {
+      font-size: clamp(10px,1.1vw,16px);
+      color: var(--slate);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+    }
+    .sp-game-time {
+      font-size: clamp(9px,.95vw,13px);
+      color: var(--slate);
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+    .sp-game-time.soon { color: var(--amber); font-weight: 700; }
+
+    /* Footer */
+    #sp-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+      font-size: clamp(9px,.9vw,12px);
+      color: var(--slate);
+    }
+
+    /* Auto-Scroll Indikator */
+    #sp-progress {
+      height: 2px;
+      background: var(--border);
+      border-radius: 1px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    #sp-progress-bar {
+      height: 100%;
+      background: var(--green);
+      width: 0%;
+      transition: width linear;
+    }
+
+    @media (orientation: portrait) {
+      .sp-games-grid { grid-template-columns: 1fr; }
+      .sp-title { font-size: clamp(13px,3.5vw,22px); }
+      #sp-time  { font-size: clamp(20px,6vw,44px); }
+      #sp-date  { font-size: clamp(9px,2.5vw,14px); }
+    }
+    @media (max-height: 450px) {
+      #sp-filter-bar { display: none; }
+    }
   </style>
 </head>
 <body>
@@ -650,6 +875,44 @@ setTimeout(function() {
     <span id="fotos-dots"></span>
   </div>
   <div id="fotos-empty">📷 Keine Fotos diese Woche</div>
+</div>
+
+<!-- ── SPIELPLAN MODE ── -->
+<div id="spielplan-screen">
+  <header id="sp-header">
+    <div class="sp-logo-area">
+      <svg viewBox="0 0 32 32" fill="none">
+        <circle cx="16" cy="16" r="15" stroke="#22C55E" stroke-width="2"/>
+        <ellipse cx="16" cy="16" rx="5" ry="14" stroke="#22C55E" stroke-width="1.5"/>
+        <line x1="1" y1="16" x2="31" y2="16" stroke="#22C55E" stroke-width="1.5"/>
+      </svg>
+      <div>
+        <div class="sp-title">Tennis Herrieden</div>
+        <div class="sp-sub">Spielplan Saison 2026</div>
+      </div>
+    </div>
+    <div class="sp-header-right">
+      <div id="sp-date">–</div>
+      <div id="sp-time">–:–</div>
+    </div>
+  </header>
+
+  <div id="sp-filter-bar">
+    <div class="sp-filter-badge active"  id="sp-badge-alle">Alle Spiele</div>
+    <div class="sp-filter-badge inactive" id="sp-badge-future">Zukünftige Spiele</div>
+    <span id="sp-update"></span>
+  </div>
+
+  <div id="sp-progress"><div id="sp-progress-bar"></div></div>
+
+  <div id="sp-body">
+    <div id="sp-scroll"></div>
+  </div>
+
+  <footer id="sp-footer">
+    <div style="display:flex;align-items:center;gap:6px"><div class="dot"></div><span id="sp-status">Verbunden</span></div>
+    <span>Tennis Herrieden · Spielplan</span>
+  </footer>
 </div>
 
 <!-- ── BILD MODE ── -->
@@ -1253,6 +1516,218 @@ async function startFotosModus(intervalSec) {
   }, 5 * 60 * 1000);
 }
 
+// ── SPIELPLAN MODE ───────────────────────────────────────────────────────
+function getISOWeek(dateStr) {
+  const d = new Date(Date.UTC(...dateStr.split("-").map((v,i) => i===1 ? +v-1 : +v)));
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+  const y0 = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil(((d - y0) / 86400000 + 1) / 7);
+}
+function getISOWeekYear(dateStr) {
+  const d = new Date(Date.UTC(...dateStr.split("-").map((v,i) => i===1 ? +v-1 : +v)));
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+  return d.getUTCFullYear();
+}
+function kwRangeLabel(firstDate) {
+  const d = new Date(firstDate + "T12:00:00");
+  const day = d.getDay() || 7;
+  const mon = new Date(d); mon.setDate(d.getDate() - day + 1);
+  const sun = new Date(d); sun.setDate(d.getDate() - day + 7);
+  const fmt = x => `${x.getDate()}. ${DE_MONTH[x.getMonth()]}`;
+  return `${fmt(mon)} – ${fmt(sun)}`;
+}
+function fmtShortDate(s) {
+  const d = new Date(s + "T12:00:00");
+  const WD = ["So","Mo","Di","Mi","Do","Fr","Sa"];
+  return `${WD[d.getDay()]}, ${d.getDate()}. ${DE_MONTH[d.getMonth()]}`;
+}
+
+async function startSpielplanModus() {
+  const screen = document.getElementById("spielplan-screen");
+  screen.style.display = "flex";
+
+  // Uhr
+  function updateSpClock() {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2,"0");
+    const mm = String(now.getMinutes()).padStart(2,"0");
+    document.getElementById("sp-time").textContent = `${hh}:${mm}`;
+    document.getElementById("sp-date").textContent =
+      `${DE_DAYS[now.getDay()]}, ${now.getDate()}. ${DE_MONTH[now.getMonth()]} ${now.getFullYear()}`;
+  }
+  updateSpClock();
+  setInterval(updateSpClock, 30_000);
+
+  // Daten laden
+  let allGames = [];
+  let ergebnisMap = {};
+
+  async function loadSpielplanData() {
+    const [teamsRes, ergebRes] = await Promise.all([
+      sb.from("settings").select("value").eq("key","btv_club_teams").single(),
+      sb.from("settings").select("value").eq("key","btv_club_teams_ergebnisse").single(),
+    ]);
+
+    // Ergebnis-Map aufbauen: team|date → {homeScore, awayScore}
+    ergebnisMap = {};
+    try {
+      const er = JSON.parse(ergebRes.data?.value);
+      (er?.groups || []).forEach(grp => {
+        (grp.games || []).forEach(g => {
+          if (!g.played || g.homeScore == null) return;
+          ergebnisMap[`${grp.name}|${g.date}`] = { homeScore: g.homeScore, awayScore: g.awayScore };
+        });
+      });
+    } catch(_) {}
+
+    // Alle Saisonspiele sammeln
+    allGames = [];
+    try {
+      const ct = JSON.parse(teamsRes.data?.value);
+      (ct?.groups || []).forEach(g => {
+        (g.homeGames || []).forEach(game => {
+          if (!game.date) return;
+          allGames.push({ team: g.name || g.teamName, isHome: true, ...game });
+        });
+        (g.awayGames || []).forEach(game => {
+          if (!game.date) return;
+          allGames.push({ team: g.name || g.teamName, isHome: false, ...game });
+        });
+      });
+    } catch(_) {}
+
+    document.getElementById("sp-status").textContent =
+      `Zuletzt aktualisiert: ${new Date().toLocaleTimeString("de-DE")}`;
+    document.getElementById("sp-update").textContent =
+      `Stand: ${new Date().toLocaleTimeString("de-DE","de-DE")} Uhr`;
+  }
+
+  await loadSpielplanData();
+  setInterval(loadSpielplanData, 5 * 60_000);
+
+  // Filter-Wechsel: alle 12s zwischen "alle" und "future" wechseln
+  let activeFilter = "alle"; // "alle" | "future"
+  const FILTER_INTERVAL = 12000;
+  const progressBar = document.getElementById("sp-progress-bar");
+
+  function setFilter(f) {
+    activeFilter = f;
+    document.getElementById("sp-badge-alle").className   = "sp-filter-badge " + (f === "alle"   ? "active" : "inactive");
+    document.getElementById("sp-badge-future").className = "sp-filter-badge " + (f === "future" ? "active" : "inactive");
+    renderSpielplan();
+    // Progress-Bar zurücksetzen
+    progressBar.style.transition = "none";
+    progressBar.style.width = "0%";
+    requestAnimationFrame(() => {
+      progressBar.style.transition = `width ${FILTER_INTERVAL}ms linear`;
+      progressBar.style.width = "100%";
+    });
+  }
+
+  setFilter("alle");
+  setInterval(() => setFilter(activeFilter === "alle" ? "future" : "alle"), FILTER_INTERVAL);
+
+  function renderSpielplan() {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const todayStr = today.toISOString().slice(0,10);
+    const todayKW  = getISOWeek(todayStr);
+    const todayKWY = getISOWeekYear(todayStr);
+
+    let games = allGames;
+    if (activeFilter === "future") {
+      games = allGames.filter(g => new Date(g.date + "T23:59:59") >= today);
+    }
+
+    // Nach KW gruppieren
+    const byKW = {};
+    games.forEach(g => {
+      const kw  = getISOWeek(g.date);
+      const kwy = getISOWeekYear(g.date);
+      const key = `${kwy}-${String(kw).padStart(2,"0")}`;
+      if (!byKW[key]) byKW[key] = { kw, kwy, firstDate: g.date, games: [] };
+      byKW[key].games.push(g);
+    });
+    const kwGroups = Object.keys(byKW).sort().map(k => byKW[k]);
+    kwGroups.forEach(grp => {
+      grp.games.sort((a,b) => a.date.localeCompare(b.date) || (b.isHome ? 1 : -1) - (a.isHome ? 1 : -1));
+    });
+
+    const scroll = document.getElementById("sp-scroll");
+
+    if (!kwGroups.length) {
+      scroll.innerHTML = `<div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--slate);font-size:clamp(14px,1.5vw,22px)">Keine Spiele gefunden</div>`;
+      return;
+    }
+
+    scroll.innerHTML = kwGroups.map(grp => {
+      const isCurrent = grp.kw === todayKW && grp.kwy === todayKWY;
+      const kwLabel = `KW ${grp.kw} · ${kwRangeLabel(grp.firstDate)}${isCurrent ? " · Diese Woche" : ""}`;
+
+      const cardsHtml = grp.games.map(g => {
+        const played = new Date(g.date + "T23:59:59") < today;
+        const erKey  = `${g.team}|${g.date}`;
+        const score  = played ? ergebnisMap[erKey] : null;
+
+        let scoreHtml = "";
+        if (score != null) {
+          const won  = score.homeScore > score.awayScore;
+          const lost = score.homeScore < score.awayScore;
+          const cls  = won ? "win" : lost ? "loss" : "draw";
+          scoreHtml = `<span class="sp-game-score ${cls}">${score.homeScore}:${score.awayScore}</span>`;
+        } else if (played) {
+          scoreHtml = `<span class="sp-game-score" style="color:var(--slate);font-size:.85em">Gespielt</span>`;
+        }
+
+        const timeHtml = !played && g.time
+          ? `<span class="sp-game-time${isCurrent ? " soon" : ""}">${g.time} Uhr</span>`
+          : played ? "" : `<span class="sp-game-time">${fmtShortDate(g.date)}</span>`;
+
+        return `
+          <div class="sp-game ${g.isHome ? "heim" : "ausw"}${played ? " played" : ""}${isCurrent && !played ? " current-week" : ""}">
+            <div class="sp-game-top">
+              <span class="sp-game-team">${g.team}</span>
+              ${scoreHtml}
+            </div>
+            <div class="sp-game-bottom">
+              <span class="sp-ha-badge ${g.isHome ? "heim" : "ausw"}">${g.isHome ? "Heim" : "Ausw"}</span>
+              <span class="sp-game-opp">${g.isHome ? "vs." : "@"} ${g.opponent}</span>
+              ${timeHtml}
+            </div>
+          </div>`;
+      }).join("");
+
+      return `
+        <div class="sp-kw-group">
+          <div class="sp-kw-label${isCurrent ? " current" : ""}">${kwLabel}</div>
+          <div class="sp-games-grid">${cardsHtml}</div>
+        </div>`;
+    }).join("");
+
+    // Bei "future": automatisch zur nächsten Woche scrollen
+    if (activeFilter === "future" && kwGroups.length > 0) {
+      const firstGroup = scroll.querySelector(".sp-kw-group");
+      if (firstGroup) firstGroup.scrollIntoView({ behavior: "auto" });
+    }
+
+    // Auto-Scroll für lange Listen
+    startAutoScroll();
+  }
+
+  // Sanfter Auto-Scroll durch den Container
+  let _scrollTimer = null;
+  function startAutoScroll() {
+    if (_scrollTimer) clearInterval(_scrollTimer);
+    const el = document.getElementById("sp-scroll");
+    _scrollTimer = setInterval(() => {
+      if (el.scrollTop + el.clientHeight >= el.scrollHeight - 4) {
+        el.scrollTop = 0;
+      } else {
+        el.scrollTop += 1;
+      }
+    }, 40);
+  }
+}
+
 // ── AFFEN-EASTER-EGG ──────────────────────────────────────────────────────
 function initAffe(alleMinuten, dauerSek, modes, currentMode) {
   if (!modes.includes(currentMode)) return;
@@ -1552,6 +2027,13 @@ function scheduleMidnightReload() {
   // Heimspielmodus
   if (displayMode === "heimspiel") {
     startHeimspielmodus();
+    scheduleMidnightReload();
+    return;
+  }
+
+  // Spielplan-Übersicht
+  if (displayMode === "spielplan") {
+    startSpielplanModus();
     scheduleMidnightReload();
     return;
   }

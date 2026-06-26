@@ -3496,7 +3496,7 @@ function SettingsJobsTab() {
   const [spielplanStatus, setSpielplanStatus] = useState(null); // null | "running" | "ok" | "error"
 
   useEffect(()=>{
-    const keys = ["btv_club_teams","btv_players","github_pat"];
+    const keys = ["btv_club_teams","btv_club_teams_ergebnisse","btv_players","github_pat"];
     sb.from("settings").select("key,value").in("key", keys).then(({data:rows})=>{
       if (!rows) return;
       const m = {};
@@ -3538,8 +3538,9 @@ function SettingsJobsTab() {
            d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}) + " Uhr";
   };
 
-  const lastPlan   = data.btv_club_teams?.scrapedAt;
-  const lastMelde  = data.btv_players?.scrapedAt;
+  const lastPlan       = data.btv_club_teams?.scrapedAt;
+  const lastErgebnisse = data.btv_club_teams_ergebnisse?.scrapedAt;
+  const lastMelde      = data.btv_players?.scrapedAt;
 
   const jobs = [
     {
@@ -3551,6 +3552,19 @@ function SettingsJobsTab() {
       lastRun: lastPlan,
       error: null,
       saves: ["btv_club_teams"],
+      color: "#059669",
+      bg: "#F0FDF4",
+      border: "#BBF7D0",
+    },
+    {
+      icon: "🏆",
+      name: "BTV Ergebnisse",
+      trigger: "Automatisch",
+      schedule: "Täglich um 05:00 Uhr (MEZ)",
+      desc: "Liest Spielergebnisse aller Mannschaften aus dem BTV-Widget. Läuft 2 Stunden nach dem Spielplan-Scraper.",
+      lastRun: lastErgebnisse,
+      error: null,
+      saves: ["btv_club_teams_ergebnisse"],
       color: "#059669",
       bg: "#F0FDF4",
       border: "#BBF7D0",
@@ -3935,6 +3949,7 @@ function SettingsDisplayTab({onToast}) {
           const MODES = [
             {id:"schedule",  icon:"📅", label:"Tagesbelegung"},
             {id:"heimspiel", icon:"🏆", label:"Heimspiel"},
+            {id:"spielplan", icon:"🗓️", label:"Spielplan Saison"},
             {id:"bild",      icon:"🖼️", label:"Bildanzeige"},
             {id:"fotos",     icon:"📸", label:"Fotos-Slideshow"},
           ];
