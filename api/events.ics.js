@@ -12,20 +12,28 @@ function escapeIcs(str) {
   return (str || "").replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
 }
 
+// Konvertiert UTC-Timestamp → Europe/Berlin Lokalzeit als floating ICS-String
 function toIcsDatetime(isoStr) {
   if (!isoStr) return null;
   const d = new Date(isoStr);
   if (isNaN(d)) return null;
-  const pad = n => String(n).padStart(2, "0");
-  return `${d.getUTCFullYear()}${pad(d.getUTCMonth()+1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}00Z`;
+  const berlin = new Intl.DateTimeFormat("sv", {
+    timeZone: "Europe/Berlin",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+  }).format(d); // "2026-08-01 10:00:00"
+  return berlin.replace(/[-: ]/g, "").replace(/(\d{8})(\d{6})/, "$1T$2");
 }
 
 function toIcsDate(isoStr) {
   if (!isoStr) return null;
   const d = new Date(isoStr);
   if (isNaN(d)) return null;
-  const pad = n => String(n).padStart(2, "0");
-  return `${d.getUTCFullYear()}${pad(d.getUTCMonth()+1)}${pad(d.getUTCDate())}`;
+  const berlin = new Intl.DateTimeFormat("sv", {
+    timeZone: "Europe/Berlin",
+    year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(d); // "2026-08-01"
+  return berlin.replace(/-/g, "");
 }
 
 module.exports = async function handler(req, res) {
@@ -73,8 +81,8 @@ module.exports = async function handler(req, res) {
     ];
 
     if (hasTime) {
-      lines.push(`DTSTART:${dtStart}`);
-      lines.push(`DTEND:${dtEnd}`);
+      lines.push(`DTSTART;TZID=Europe/Berlin:${dtStart}`);
+      lines.push(`DTEND;TZID=Europe/Berlin:${dtEnd}`);
     } else {
       lines.push(`DTSTART;VALUE=DATE:${dtStart}`);
       lines.push(`DTEND;VALUE=DATE:${dtEnd}`);
