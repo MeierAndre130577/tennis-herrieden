@@ -357,6 +357,26 @@ function UserWidget({profile}) {
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HEIMSPIELWOCHE SCREEN
+function CalendarCopyButton() {
+  const [copied, setCopied] = useState(false);
+  const url = "webcal://www.tennis-herrieden.de/api/calendar.ics";
+  const copy = () => {
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+  return (
+    <div style={{marginTop:24,paddingTop:16,borderTop:"1px solid #E2E8F0",display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <button onClick={copy}
+        style={{display:"flex",alignItems:"center",gap:8,padding:"10px 20px",borderRadius:10,border:"1.5px solid #CBD5E1",background:copied?"#F0FDF4":"#F8FAFC",color:copied?"#16A34A":"#475569",fontWeight:700,fontSize:13,cursor:"pointer",transition:"all .2s"}}>
+        <span>{copied ? "✓" : "📅"}</span>
+        {copied ? "Link kopiert!" : "Kalenderabo-Link kopieren"}
+      </button>
+    </div>
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 function HeimspielwocheScreen({onBack, profile}) {
   const [allGames,setAllGames]           = useState([]);
@@ -586,6 +606,11 @@ function HeimspielwocheScreen({onBack, profile}) {
               );
             })}
           </div>
+        )}
+
+        {/* ── Kalenderabo-Button (nur in Saison-Tab) ── */}
+        {!loading && filter==="gesamt" && (
+          <CalendarCopyButton/>
         )}
 
         {/* ── 7-Tage-Ansicht (Alle / Heim / Auswärts) ── */}
