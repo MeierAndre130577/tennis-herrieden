@@ -737,69 +737,57 @@
     .sp-kw-label.current { color: var(--green); border-color: var(--green); }
 
     .sp-games-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(clamp(220px,28vw,400px), 1fr));
-      gap: clamp(4px,.6vw,10px);
-    }
-
-    /* Spielkarte */
-    .sp-game {
-      background: var(--bg2);
-      border-radius: clamp(6px,.7vw,12px);
-      padding: clamp(8px,.9vh,14px) clamp(10px,1.1vw,18px);
-      border-left: 3px solid transparent;
       display: flex;
       flex-direction: column;
-      gap: clamp(3px,.4vh,6px);
-      transition: opacity .3s;
+      gap: clamp(2px,.3vh,4px);
     }
-    .sp-game.heim    { border-left-color: var(--green); }
-    .sp-game.ausw    { border-left-color: var(--blue); }
-    .sp-game.played  { opacity: .42; }
-    .sp-game.current-week { background: color-mix(in srgb, var(--bg2) 85%, var(--green) 15%); }
 
-    .sp-game-top {
+    /* 1-zeilige Spielzeile */
+    .sp-game {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 8px;
+      gap: clamp(6px,.8vw,14px);
+      padding: clamp(5px,.55vh,9px) clamp(10px,1.1vw,18px);
+      border-radius: clamp(5px,.5vw,8px);
+      border-left: 3px solid transparent;
+      background: var(--bg2);
+      transition: opacity .3s;
+      min-width: 0;
     }
+    .sp-game.heim   { border-left-color: var(--green); }
+    .sp-game.ausw   { border-left-color: var(--blue); }
+    .sp-game.played { opacity: .38; }
+    .sp-game.current-week { background: color-mix(in srgb, var(--bg2) 85%, var(--green) 15%); }
+
+    .sp-ha-badge {
+      font-size: clamp(7px,.75vw,10px);
+      font-weight: 800;
+      letter-spacing: .5px;
+      text-transform: uppercase;
+      padding: 2px clamp(5px,.6vw,9px);
+      border-radius: 8px;
+      flex-shrink: 0;
+      width: clamp(28px,3.2vw,46px);
+      text-align: center;
+    }
+    .sp-ha-badge.heim { background: color-mix(in srgb,var(--green) 18%,transparent); color: var(--green); }
+    .sp-ha-badge.ausw { background: color-mix(in srgb,var(--blue)  18%,transparent); color: var(--blue);  }
+
     .sp-game-team {
-      font-size: clamp(11px,1.25vw,18px);
+      font-size: clamp(10px,1.1vw,16px);
       font-weight: 700;
       color: var(--fg);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      flex: 1;
-    }
-    .sp-game-score {
-      font-size: clamp(13px,1.5vw,22px);
-      font-weight: 800;
-      color: var(--fg);
-      flex-shrink: 0;
-      white-space: nowrap;
-    }
-    .sp-game-score.win  { color: var(--green); }
-    .sp-game-score.loss { color: var(--red); }
-    .sp-game-score.draw { color: var(--amber); }
-
-    .sp-game-bottom {
-      display: flex;
-      align-items: center;
-      gap: clamp(6px,.8vw,12px);
-    }
-    .sp-ha-badge {
-      font-size: clamp(8px,.85vw,11px);
-      font-weight: 800;
-      letter-spacing: .5px;
-      text-transform: uppercase;
-      padding: 2px clamp(6px,.7vw,10px);
-      border-radius: 10px;
+      width: clamp(100px,14vw,220px);
       flex-shrink: 0;
     }
-    .sp-ha-badge.heim { background: color-mix(in srgb,var(--green) 20%,transparent); color: var(--green); }
-    .sp-ha-badge.ausw { background: color-mix(in srgb,var(--blue)  20%,transparent); color: var(--blue);  }
+    .sp-game-sep {
+      font-size: clamp(9px,1vw,14px);
+      color: var(--slate);
+      flex-shrink: 0;
+    }
     .sp-game-opp {
       font-size: clamp(10px,1.1vw,16px);
       color: var(--slate);
@@ -807,14 +795,27 @@
       overflow: hidden;
       text-overflow: ellipsis;
       flex: 1;
+      min-width: 0;
     }
-    .sp-game-time {
+    .sp-game-date {
       font-size: clamp(9px,.95vw,13px);
       color: var(--slate);
       flex-shrink: 0;
       white-space: nowrap;
     }
-    .sp-game-time.soon { color: var(--amber); font-weight: 700; }
+    .sp-game-date.soon { color: var(--amber); font-weight: 700; }
+    .sp-game-score {
+      font-size: clamp(11px,1.25vw,18px);
+      font-weight: 800;
+      color: var(--fg);
+      flex-shrink: 0;
+      white-space: nowrap;
+      min-width: clamp(28px,3vw,44px);
+      text-align: right;
+    }
+    .sp-game-score.win  { color: var(--green); }
+    .sp-game-score.loss { color: var(--red); }
+    .sp-game-score.draw { color: var(--amber); }
 
     /* Footer */
     #sp-footer {
@@ -1675,24 +1676,30 @@ async function startSpielplanModus() {
           const cls  = won ? "win" : lost ? "loss" : "draw";
           scoreHtml = `<span class="sp-game-score ${cls}">${score.homeScore}:${score.awayScore}</span>`;
         } else if (played) {
-          scoreHtml = `<span class="sp-game-score" style="color:var(--slate);font-size:.85em">Gespielt</span>`;
+          scoreHtml = `<span class="sp-game-score" style="color:var(--slate);opacity:.5">–</span>`;
+        } else {
+          scoreHtml = `<span class="sp-game-score" style="opacity:0">–</span>`;
         }
 
-        const timeHtml = !played && g.time
-          ? `<span class="sp-game-time${isCurrent ? " soon" : ""}">${g.time} Uhr</span>`
-          : played ? "" : `<span class="sp-game-time">${fmtShortDate(g.date)}</span>`;
+        let dateLabel = "";
+        let dateCls   = "sp-game-date";
+        if (!played) {
+          if (g.time) {
+            dateLabel = `${fmtShortDate(g.date)} · ${g.time}`;
+            if (isCurrent) dateCls += " soon";
+          } else {
+            dateLabel = fmtShortDate(g.date);
+          }
+        }
 
         return `
           <div class="sp-game ${g.isHome ? "heim" : "ausw"}${played ? " played" : ""}${isCurrent && !played ? " current-week" : ""}">
-            <div class="sp-game-top">
-              <span class="sp-game-team">${g.team}</span>
-              ${scoreHtml}
-            </div>
-            <div class="sp-game-bottom">
-              <span class="sp-ha-badge ${g.isHome ? "heim" : "ausw"}">${g.isHome ? "Heim" : "Ausw"}</span>
-              <span class="sp-game-opp">${g.isHome ? "vs." : "@"} ${g.opponent}</span>
-              ${timeHtml}
-            </div>
+            <span class="sp-ha-badge ${g.isHome ? "heim" : "ausw"}">${g.isHome ? "Heim" : "Ausw"}</span>
+            <span class="sp-game-team">${g.team}</span>
+            <span class="sp-game-sep">${g.isHome ? "vs." : "@"}</span>
+            <span class="sp-game-opp">${g.opponent}</span>
+            ${dateLabel ? `<span class="${dateCls}">${dateLabel}</span>` : ""}
+            ${scoreHtml}
           </div>`;
       }).join("");
 
