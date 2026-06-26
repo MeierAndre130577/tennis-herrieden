@@ -65,6 +65,7 @@ jobs:
           TZ: Europe/Berlin
           TEAMS_ONLY: ${{ inputs.teams_only || (github.event.schedule == '0 2 * * *' && 'true' || 'false') }}
 
+
       - name: Spieler-Meldelisten laden
         if: ${{ inputs.players_only == 'true' }}
         run: node scripts/fetch-players.js
