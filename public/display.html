@@ -682,16 +682,13 @@
     #sp-body {
       flex: 1;
       min-height: 0;
-      overflow: hidden;
-      position: relative;
-    }
-    #sp-scroll {
-      position: absolute;
-      inset: 0;
-      overflow: hidden;
+      overflow-y: auto;
       display: flex;
       flex-direction: column;
       gap: clamp(6px,.9vh,14px);
+    }
+    #sp-scroll {
+      display: contents;
     }
 
     /* KW-Gruppe */
