@@ -1554,8 +1554,13 @@ async function startSpielplanModus() {
       `Stand: ${new Date().toLocaleTimeString("de-DE","de-DE")} Uhr`;
   }
 
-  await loadSpielplanData();
-  setInterval(loadSpielplanData, 5 * 60_000);
+  async function reloadAndRender() {
+    await loadSpielplanData();
+    renderSpielplan();
+  }
+
+  await reloadAndRender();
+  setInterval(reloadAndRender, 5 * 60_000);
 
   function renderSpielplan() {
     const today = new Date(); today.setHours(0,0,0,0);
