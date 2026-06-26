@@ -545,7 +545,7 @@ function HeimspielwocheScreen({onBack, profile}) {
                           <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8}}>
                             <div style={{fontSize:13,fontWeight:700,color:T.textPrimary,flex:1,minWidth:0,
                               overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                              {g.team}
+                              <span style={{color:T.textMuted,fontWeight:400}}>{g.isHome?"(H)":"(A)"} </span>{g.team}
                             </div>
                             {played
                               ? <span style={{fontSize:10,color:T.textMuted,fontStyle:"italic",flexShrink:0}}>Gespielt</span>
