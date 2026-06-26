@@ -386,7 +386,7 @@ function HeimspielwocheScreen({onBack, profile}) {
           (er?.groups||[]).forEach(grp=>{
             (grp.games||[]).forEach(g=>{
               if(!g.played || g.homeScore==null) return;
-              const key = `${grp.name}|${g.date}|${g.opponent.trim()}`;
+              const key = `${grp.name}|${g.date}`;
               map[key] = { homeScore: g.homeScore, awayScore: g.awayScore };
             });
           });
@@ -554,7 +554,7 @@ function HeimspielwocheScreen({onBack, profile}) {
                   <div style={{display:"flex",flexDirection:"column",gap:5}}>
                     {grp.games.map((g,i)=>{
                       const played = new Date(g.date+"T23:59:59") < today;
-                      const erKey = `${g.team}|${g.date}|${g.opponent.trim()}`;
+                      const erKey = `${g.team}|${g.date}`;
                       const score = played ? ergebnisMap[erKey] : null;
                       return (
                         <div key={i} style={{background:T.bgCard,borderRadius:T.rSm,
