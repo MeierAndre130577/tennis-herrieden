@@ -359,11 +359,12 @@ function UserWidget({profile}) {
 // HEIMSPIELWOCHE SCREEN
 // ═══════════════════════════════════════════════════════════════════════════
 function HeimspielwocheScreen({onBack, profile}) {
-  const [allGames,setAllGames] = useState([]);
-  const [loading,setLoading]   = useState(true);
-  const [scrapedAt,setScrapedAt] = useState(null);
-  const [ligaMap,setLigaMap]   = useState({});
-  const [filter,setFilter]     = useState("alle"); // "alle" | "heim" | "auswaerts"
+  const [allGames,setAllGames]           = useState([]);
+  const [allSeasonGames,setAllSeasonGames] = useState([]);
+  const [loading,setLoading]             = useState(true);
+  const [scrapedAt,setScrapedAt]         = useState(null);
+  const [ligaMap,setLigaMap]             = useState({});
+  const [filter,setFilter]               = useState("alle");
   const isAdmin = profile?.role === "admin";
 
   useEffect(()=>{
@@ -383,22 +384,26 @@ function HeimspielwocheScreen({onBack, profile}) {
           setScrapedAt(ct?.scrapedAt || null);
           const now = new Date(); now.setHours(0,0,0,0);
           const end = new Date(now); end.setDate(end.getDate()+7);
-          const list = [];
+          const week7 = [];
+          const season = [];
           (ct?.groups||[]).forEach(g=>{
             (g.homeGames||[]).forEach(game=>{
               if(!game.date) return;
               const d = new Date(game.date+"T12:00:00");
-              if(d<now || d>=end) return;
-              list.push({ team: g.name||g.teamName, isHome:true, ...game });
+              const entry = { team: g.name||g.teamName, isHome:true, ...game };
+              season.push(entry);
+              if(d>=now && d<end) week7.push(entry);
             });
             (g.awayGames||[]).forEach(game=>{
               if(!game.date) return;
               const d = new Date(game.date+"T12:00:00");
-              if(d<now || d>=end) return;
-              list.push({ team: g.name||g.teamName, isHome:false, ...game });
+              const entry = { team: g.name||g.teamName, isHome:false, ...game };
+              season.push(entry);
+              if(d>=now && d<end) week7.push(entry);
             });
           });
-          setAllGames(list);
+          setAllGames(week7);
+          setAllSeasonGames(season);
         } catch(_){}
         setLoading(false);
       });
@@ -409,12 +414,39 @@ function HeimspielwocheScreen({onBack, profile}) {
     const d = new Date(s+"T12:00:00");
     return `${DE_WEEKDAY[d.getDay()]}, ${d.getDate()}. ${DE_MONTH[d.getMonth()]}`;
   }
+  function getISOWeek(dateStr) {
+    const d = new Date(Date.UTC(...dateStr.split("-").map((v,i)=>i===1?+v-1:+v)));
+    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
+    const y0 = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+    return Math.ceil(((d-y0)/86400000+1)/7);
+  }
+  function getISOWeekYear(dateStr) {
+    const d = new Date(Date.UTC(...dateStr.split("-").map((v,i)=>i===1?+v-1:+v)));
+    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
+    return d.getUTCFullYear();
+  }
+  function kwMonday(dateStr) {
+    const d = new Date(dateStr+"T12:00:00");
+    const day = d.getDay()||7;
+    d.setDate(d.getDate()-day+1);
+    return `${d.getDate()}. ${DE_MONTH[d.getMonth()]}`;
+  }
+  function kwSunday(dateStr) {
+    const d = new Date(dateStr+"T12:00:00");
+    const day = d.getDay()||7;
+    d.setDate(d.getDate()-day+7);
+    return `${d.getDate()}. ${DE_MONTH[d.getMonth()]}`;
+  }
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const todayKW = getISOWeek(today.toISOString().slice(0,10));
+  const todayKWY = getISOWeekYear(today.toISOString().slice(0,10));
 
   const filtered = allGames.filter(g=>
     filter==="alle" ? true : filter==="heim" ? g.isHome : !g.isHome
   );
 
-  // Gruppieren nach Datum
+  // Gruppieren nach Datum (7-Tage-Tabs)
   const byDate = {};
   filtered.forEach(g=>{
     if(!byDate[g.date]) byDate[g.date]=[];
@@ -422,10 +454,23 @@ function HeimspielwocheScreen({onBack, profile}) {
   });
   const groups = Object.keys(byDate).sort().map(date=>({ date, games: byDate[date] }));
 
+  // Gesamt: alle Saisonspiele nach KW gruppieren
+  const byKW = {};
+  allSeasonGames.forEach(g=>{
+    const kw = getISOWeek(g.date);
+    const kwy = getISOWeekYear(g.date);
+    const key = `${kwy}-${String(kw).padStart(2,"0")}`;
+    if(!byKW[key]) byKW[key]={ kw, kwy, firstDate: g.date, games:[] };
+    byKW[key].games.push(g);
+  });
+  const kwGroups = Object.keys(byKW).sort().map(k=>byKW[k]);
+  kwGroups.forEach(grp=>{ grp.games.sort((a,b)=>a.date.localeCompare(b.date)||(b.isHome?1:-1)-(a.isHome?1:-1)); });
+
   const TABS = [
-    {key:"alle",    label:"Alle"},
-    {key:"heim",    label:"🏠 Heim"},
+    {key:"alle",      label:"Alle"},
+    {key:"heim",      label:"🏠 Heim"},
     {key:"auswaerts", label:"✈️ Auswärts"},
+    {key:"gesamt",    label:"Saison"},
   ];
 
   return (
@@ -439,7 +484,7 @@ function HeimspielwocheScreen({onBack, profile}) {
           </div>
           <div style={{...H.header,paddingTop:12}}>
             <h1 style={{...H.title,fontSize:22}}>📅 Spielwoche</h1>
-            <p style={H.greeting}>Heim- & Auswärtsspiele der nächsten 7 Tage</p>
+            <p style={H.greeting}>{filter==="gesamt"?"Alle Spiele der Saison":"Heim- & Auswärtsspiele der nächsten 7 Tage"}</p>
           </div>
         </div>
 
@@ -474,57 +519,109 @@ function HeimspielwocheScreen({onBack, profile}) {
 
         {loading && <div style={{textAlign:"center",color:"#64748B",padding:32}}>Lade…</div>}
 
-        {!loading && groups.length===0 && (
-          <div style={{textAlign:"center",color:"#64748B",padding:32,fontSize:15}}>
-            Keine {filter==="heim"?"Heim":filter==="auswaerts"?"Auswärts":""}spiele in den nächsten 7 Tagen
+        {/* ── Gesamt-Ansicht ── */}
+        {!loading && filter==="gesamt" && (
+          <div style={{display:"flex",flexDirection:"column",gap:0}}>
+            {kwGroups.length===0 && (
+              <div style={{textAlign:"center",color:"#64748B",padding:32,fontSize:15}}>Keine Spiele gefunden</div>
+            )}
+            {kwGroups.map((grp,gi)=>{
+              const isCurrentKW = grp.kw===todayKW && grp.kwy===todayKWY;
+              return (
+                <div key={gi}>
+                  {gi>0 && <div style={{height:1,background:"#ffffff10",margin:"8px 0"}}/>}
+                  <div style={{fontSize:10,fontWeight:700,color: isCurrentKW?T.warning:T.textMuted,
+                    textTransform:"uppercase",letterSpacing:.9,padding:"6px 0 4px"}}>
+                    KW {grp.kw} · {kwMonday(grp.firstDate)} – {kwSunday(grp.firstDate)}
+                    {isCurrentKW && <span style={{marginLeft:6,fontSize:9,color:T.warning}}>← diese Woche</span>}
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                    {grp.games.map((g,i)=>{
+                      const played = new Date(g.date+"T23:59:59") < today;
+                      return (
+                        <div key={i} style={{background:T.bgCard,borderRadius:T.rSm,
+                          border: isCurrentKW&&!played ? `1px solid ${T.warning}44` : `1px solid ${T.bgBorder}`,
+                          padding:"8px 12px", opacity: played?0.45:1}}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8}}>
+                            <div style={{fontSize:13,fontWeight:700,color:T.textPrimary,flex:1,minWidth:0,
+                              overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                              {g.team}
+                            </div>
+                            {played
+                              ? <span style={{fontSize:10,color:T.textMuted,fontStyle:"italic",flexShrink:0}}>Gespielt</span>
+                              : g.time && <span style={{fontSize:11,color:T.warning,flexShrink:0}}>{g.time} Uhr</span>
+                            }
+                          </div>
+                          <div style={{fontSize:12,color:T.textSecondary,marginTop:2}}>
+                            {g.isHome?"vs.":"@"} {g.opponent}
+                            <span style={{marginLeft:8,fontSize:11,color:T.textMuted}}>
+                              {fmtGameDate(g.date)}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
 
-        <div style={{display:"flex",flexDirection:"column",gap:16}}>
-          {groups.map(({date,games})=>(
-            <div key={date}>
-              <div style={{fontSize:T.fzLabel,fontWeight:700,color:T.warning,textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>
-                {fmtGameDate(date)}
-              </div>
-              <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                {games.map((g,i)=>{
-                  const accentColor = g.isHome ? T.warning : T.info;
-                  return (
-                    <div key={i} style={{background:T.bgCard,border:accentBorder(accentColor),borderRadius:T.rMd,padding:T.pCompact}}>
-                      {/* Kopfzeile: Team + Heim/Auswärts-Badge */}
-                      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:7}}>
-                        <span style={{fontSize:T.fzBadge,fontWeight:800,color:accentColor,background:accentColor+"22",
-                          borderRadius:T.rPill,padding:T.pBadge,letterSpacing:.5,flexShrink:0}}>
-                          {g.isHome ? "🏠 HEIM" : "✈️ AUSWÄRTS"}
-                        </span>
-                        <span style={{fontSize:T.fzLabel,fontWeight:700,color:T.textSecondary,textTransform:"uppercase",letterSpacing:.6,
-                          overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                          {g.team}
-                        </span>
-                        {ligaMap[g.team] && (
-                          <span style={{fontSize:T.fzBadge,color:T.textMuted,fontStyle:"italic",flexShrink:0}}>{ligaMap[g.team]}</span>
-                        )}
-                      </div>
-                      {/* Spielinfo */}
-                      <div style={{display:"flex",alignItems:"center",gap:10}}>
-                        {g.opponentLogo && (
-                          <img src={g.opponentLogo} alt="" style={{width:38,height:38,objectFit:"contain",borderRadius:T.rSm,background:"#F8FAFC18",padding:2,flexShrink:0}}
-                            onError={e=>{e.target.style.display="none"}}/>
-                        )}
-                        <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontSize:T.fzBody,fontWeight:700,color:T.textPrimary,lineHeight:1.3}}>
-                            {g.isHome ? "vs." : "@"} {g.opponent}
+        {/* ── 7-Tage-Ansicht (Alle / Heim / Auswärts) ── */}
+        {!loading && filter!=="gesamt" && (
+          <>
+          {groups.length===0 && (
+            <div style={{textAlign:"center",color:"#64748B",padding:32,fontSize:15}}>
+              Keine {filter==="heim"?"Heim":filter==="auswaerts"?"Auswärts":""}spiele in den nächsten 7 Tagen
+            </div>
+          )}
+          <div style={{display:"flex",flexDirection:"column",gap:16}}>
+            {groups.map(({date,games})=>(
+              <div key={date}>
+                <div style={{fontSize:T.fzLabel,fontWeight:700,color:T.warning,textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>
+                  {fmtGameDate(date)}
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  {games.map((g,i)=>{
+                    const accentColor = g.isHome ? T.warning : T.info;
+                    return (
+                      <div key={i} style={{background:T.bgCard,border:accentBorder(accentColor),borderRadius:T.rMd,padding:T.pCompact}}>
+                        <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:7}}>
+                          <span style={{fontSize:T.fzBadge,fontWeight:800,color:accentColor,background:accentColor+"22",
+                            borderRadius:T.rPill,padding:T.pBadge,letterSpacing:.5,flexShrink:0}}>
+                            {g.isHome ? "🏠 HEIM" : "✈️ AUSWÄRTS"}
+                          </span>
+                          <span style={{fontSize:T.fzLabel,fontWeight:700,color:T.textSecondary,textTransform:"uppercase",letterSpacing:.6,
+                            overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                            {g.team}
+                          </span>
+                          {ligaMap[g.team] && (
+                            <span style={{fontSize:T.fzBadge,color:T.textMuted,fontStyle:"italic",flexShrink:0}}>{ligaMap[g.team]}</span>
+                          )}
+                        </div>
+                        <div style={{display:"flex",alignItems:"center",gap:10}}>
+                          {g.opponentLogo && (
+                            <img src={g.opponentLogo} alt="" style={{width:38,height:38,objectFit:"contain",borderRadius:T.rSm,background:"#F8FAFC18",padding:2,flexShrink:0}}
+                              onError={e=>{e.target.style.display="none"}}/>
+                          )}
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontSize:T.fzBody,fontWeight:700,color:T.textPrimary,lineHeight:1.3}}>
+                              {g.isHome ? "vs." : "@"} {g.opponent}
+                            </div>
+                            {g.time && <div style={{fontSize:T.fzSm,color:T.warning,marginTop:2}}>⏰ {g.time} Uhr</div>}
                           </div>
-                          {g.time && <div style={{fontSize:T.fzSm,color:T.warning,marginTop:2}}>⏰ {g.time} Uhr</div>}
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+          </>
+        )}
+
         </div>{/* h-content */}
         </div>{/* h-cols */}
       </div>
