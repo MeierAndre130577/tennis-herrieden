@@ -685,14 +685,18 @@
       overflow-y: auto;
     }
     #sp-scroll {
-      display: flex;
-      flex-direction: column;
-      gap: clamp(6px,.9vh,14px);
-      min-height: 100%;
+      columns: 2;
+      column-gap: clamp(16px,2.5vw,40px);
+    }
+    @media (orientation: portrait) {
+      #sp-scroll { columns: 1; }
     }
 
     /* KW-Gruppe */
-    .sp-kw-group { flex-shrink: 0; }
+    .sp-kw-group {
+      break-inside: avoid;
+      margin-bottom: clamp(8px,1.2vh,18px);
+    }
     .sp-kw-label {
       font-size: clamp(9px,.95vw,13px);
       font-weight: 800;
