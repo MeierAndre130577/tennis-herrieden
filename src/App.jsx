@@ -972,7 +972,8 @@ function ClubstreamDetail({item,onBack}) {
   const color   = CS_COLORS[item.type]||"#94A3B8";
   const icon    = CS_ICONS[item.type]||"📰";
   const label   = CS_LABELS[item.type]||item.type;
-  const bodyText = csStripHtml(item.content) || item.summary || "";
+  const isRueckblick = item.age_group === "wochenrueckblick";
+  const bodyText = isRueckblick ? "" : (csStripHtml(item.content) || item.summary || "");
   return (
     <div style={H.wrap}>
       <div style={H.inner} className="h-inner">
@@ -1021,6 +1022,34 @@ function ClubstreamDetail({item,onBack}) {
               {item.league&&<p style={{fontSize:11,color:"#475569",margin:"2px 0 0"}}>{item.league}{item.age_group?` · ${item.age_group}`:""}</p>}
             </div>
           )}
+
+          {/* Wochenrückblick Ergebnisliste */}
+          {isRueckblick&&(()=>{
+            let games=[];
+            try{games=JSON.parse(item.content||"[]");}catch(_){}
+            return games.length>0?(
+              <div style={{display:"flex",flexDirection:"column",gap:1,borderRadius:10,overflow:"hidden"}}>
+                {games.map((g,i)=>{
+                  const won=g.homeScore>g.awayScore, lost=g.homeScore<g.awayScore;
+                  const clr=won?"#22C55E":lost?"#EF4444":"#F59E0B";
+                  const lbl=won?"Sieg":lost?"Niederlage":"Unentschieden";
+                  return(
+                    <div key={i} style={{background:"#0F172A",padding:"10px 14px",display:"flex",alignItems:"center",gap:10}}>
+                      <div style={{width:3,height:36,borderRadius:2,background:clr,flexShrink:0}}/>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:12,fontWeight:700,color:"#F1F5F9"}}>{g.team}</div>
+                        <div style={{fontSize:11,color:"#64748B",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{g.isHome?"vs.":"@"} {g.opponent}</div>
+                      </div>
+                      <div style={{textAlign:"right"}}>
+                        <div style={{fontSize:18,fontWeight:900,color:clr,letterSpacing:1}}>{g.homeScore}:{g.awayScore}</div>
+                        <div style={{fontSize:10,color:clr}}>{lbl}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ):null;
+          })()}
 
           {/* Bild */}
           {item.image_url&&(
