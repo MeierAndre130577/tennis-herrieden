@@ -91,7 +91,7 @@ module.exports = async function handler(req, res) {
         if (played) {
           desc += `\nErgebnis: ${score.homeScore}:${score.awayScore}`;
           if (score.homeScore > score.awayScore) desc += " 🏆 Sieg";
-          else if (score.homeScore < score.awayScore) desc += " 💪 Niederlage";
+          else if (score.homeScore < score.awayScore) desc += " 😔 Niederlage";
           else desc += " 🤝 Unentschieden";
         }
 
