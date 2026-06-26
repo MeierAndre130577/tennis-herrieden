@@ -672,35 +672,7 @@
     #sp-date { font-size: clamp(10px,1.2vw,16px); font-weight: 700; color: var(--green); }
     #sp-time { font-size: clamp(22px,3.5vw,48px); font-weight: 800; color: var(--fg); letter-spacing: -1px; line-height: 1; }
 
-    /* Filter-Badge */
-    #sp-filter-bar {
-      display: flex;
-      align-items: center;
-      gap: clamp(6px,1vw,12px);
-      flex-shrink: 0;
-    }
-    .sp-filter-badge {
-      font-size: clamp(9px,0.95vw,13px);
-      font-weight: 800;
-      letter-spacing: .6px;
-      text-transform: uppercase;
-      padding: clamp(3px,.4vh,6px) clamp(10px,1.2vw,18px);
-      border-radius: 20px;
-      border: 1.5px solid transparent;
-      transition: all .3s;
-    }
-    .sp-filter-badge.active {
-      background: var(--green);
-      color: #0F172A;
-      border-color: var(--green);
-    }
-    .sp-filter-badge.inactive {
-      background: transparent;
-      color: var(--slate);
-      border-color: var(--border);
-    }
     #sp-update {
-      margin-left: auto;
       font-size: clamp(8px,.85vw,11px);
       color: var(--slate);
       opacity: .6;
@@ -828,19 +800,6 @@
     }
 
     /* Auto-Scroll Indikator */
-    #sp-progress {
-      height: 2px;
-      background: var(--border);
-      border-radius: 1px;
-      overflow: hidden;
-      flex-shrink: 0;
-    }
-    #sp-progress-bar {
-      height: 100%;
-      background: var(--green);
-      width: 0%;
-      transition: width linear;
-    }
 
     @media (orientation: portrait) {
       .sp-games-grid { grid-template-columns: 1fr; }
@@ -897,14 +856,6 @@ setTimeout(function() {
       <div id="sp-time">–:–</div>
     </div>
   </header>
-
-  <div id="sp-filter-bar">
-    <div class="sp-filter-badge active"  id="sp-badge-alle">Alle Spiele</div>
-    <div class="sp-filter-badge inactive" id="sp-badge-future">Zukünftige Spiele</div>
-    <span id="sp-update"></span>
-  </div>
-
-  <div id="sp-progress"><div id="sp-progress-bar"></div></div>
 
   <div id="sp-body">
     <div id="sp-scroll"></div>
@@ -1606,38 +1557,13 @@ async function startSpielplanModus() {
   await loadSpielplanData();
   setInterval(loadSpielplanData, 5 * 60_000);
 
-  // Filter-Wechsel: alle 12s zwischen "alle" und "future" wechseln
-  let activeFilter = "alle"; // "alle" | "future"
-  const FILTER_INTERVAL = 12000;
-  const progressBar = document.getElementById("sp-progress-bar");
-
-  function setFilter(f) {
-    activeFilter = f;
-    document.getElementById("sp-badge-alle").className   = "sp-filter-badge " + (f === "alle"   ? "active" : "inactive");
-    document.getElementById("sp-badge-future").className = "sp-filter-badge " + (f === "future" ? "active" : "inactive");
-    renderSpielplan();
-    // Progress-Bar zurücksetzen
-    progressBar.style.transition = "none";
-    progressBar.style.width = "0%";
-    requestAnimationFrame(() => {
-      progressBar.style.transition = `width ${FILTER_INTERVAL}ms linear`;
-      progressBar.style.width = "100%";
-    });
-  }
-
-  setFilter("alle");
-  setInterval(() => setFilter(activeFilter === "alle" ? "future" : "alle"), FILTER_INTERVAL);
-
   function renderSpielplan() {
     const today = new Date(); today.setHours(0,0,0,0);
     const todayStr = today.toISOString().slice(0,10);
     const todayKW  = getISOWeek(todayStr);
     const todayKWY = getISOWeekYear(todayStr);
 
-    let games = allGames;
-    if (activeFilter === "future") {
-      games = allGames.filter(g => new Date(g.date + "T23:59:59") >= today);
-    }
+    const games = allGames;
 
     // Nach KW gruppieren
     const byKW = {};
