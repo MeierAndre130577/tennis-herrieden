@@ -361,6 +361,7 @@ function UserWidget({profile}) {
 function HeimspielwocheScreen({onBack, profile}) {
   const [allGames,setAllGames]           = useState([]);
   const [allSeasonGames,setAllSeasonGames] = useState([]);
+  const [ergebnisMap,setErgebnisMap]     = useState({});
   const [loading,setLoading]             = useState(true);
   const [scrapedAt,setScrapedAt]         = useState(null);
   const [ligaMap,setLigaMap]             = useState({});
@@ -375,6 +376,21 @@ function HeimspielwocheScreen({onBack, profile}) {
           const m = {};
           cfg.forEach(t=>{ if(t.name && t.liga) m[t.name]=t.liga; });
           setLigaMap(m);
+        } catch(_){}
+      });
+    sb.from("settings").select("value").eq("key","btv_club_teams_ergebnisse").single()
+      .then(({data})=>{
+        try {
+          const er = JSON.parse(data?.value);
+          const map = {};
+          (er?.groups||[]).forEach(grp=>{
+            (grp.games||[]).forEach(g=>{
+              if(!g.played || g.homeScore==null) return;
+              const key = `${grp.name}|${g.date}|${g.opponent.trim()}`;
+              map[key] = { homeScore: g.homeScore, awayScore: g.awayScore };
+            });
+          });
+          setErgebnisMap(map);
         } catch(_){}
       });
     sb.from("settings").select("value").eq("key","btv_club_teams").single()
@@ -538,17 +554,21 @@ function HeimspielwocheScreen({onBack, profile}) {
                   <div style={{display:"flex",flexDirection:"column",gap:5}}>
                     {grp.games.map((g,i)=>{
                       const played = new Date(g.date+"T23:59:59") < today;
+                      const erKey = `${g.team}|${g.date}|${g.opponent.trim()}`;
+                      const score = played ? ergebnisMap[erKey] : null;
                       return (
                         <div key={i} style={{background:T.bgCard,borderRadius:T.rSm,
                           border: isCurrentKW&&!played ? `1px solid ${T.warning}44` : `1px solid ${T.bgBorder}`,
-                          padding:"8px 12px", opacity: played?0.45:1}}>
+                          padding:"8px 12px", opacity: played?0.5:1}}>
                           <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8}}>
                             <div style={{fontSize:13,fontWeight:700,color:T.textPrimary,flex:1,minWidth:0,
                               overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                               <span style={{color:T.textMuted,fontWeight:400}}>{g.isHome?"(H)":"(A)"} </span>{g.team}
                             </div>
                             {played
-                              ? <span style={{fontSize:10,color:T.textMuted,fontStyle:"italic",flexShrink:0}}>Gespielt</span>
+                              ? score
+                                ? <span style={{fontSize:13,fontWeight:700,color:T.textPrimary,flexShrink:0}}>{score.homeScore}:{score.awayScore}</span>
+                                : <span style={{fontSize:10,color:T.textMuted,fontStyle:"italic",flexShrink:0}}>Gespielt</span>
                               : g.time && <span style={{fontSize:11,color:T.warning,flexShrink:0}}>{g.time} Uhr</span>
                             }
                           </div>
