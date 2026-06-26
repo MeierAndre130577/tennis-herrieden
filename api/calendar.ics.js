@@ -8,7 +8,6 @@ const sb = createClient(
   process.env.SUPABASE_ANON_KEY
 );
 
-const HOME_ADDRESS = "Sportgelände TC Herrieden, Ansbach-Herrieden, Bayern";
 
 function escapeIcs(str) {
   return (str || "").replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
@@ -94,6 +93,9 @@ module.exports = async function handler(req, res) {
           else if (score.homeScore < score.awayScore) desc += " 😔 Niederlage";
           else desc += " 🤝 Unentschieden";
         }
+        if (grp.groupId) {
+          desc += `\nhttps://www.btv.de/ligen-ergebnisse/?groupid=${grp.groupId}`;
+        }
 
         const dtStart = toIcsDate(game.date, game.time);
         const dtEnd   = toIcsDateEnd(game.date, game.time);
@@ -102,11 +104,7 @@ module.exports = async function handler(req, res) {
         const isAllDay = !game.time;
         const uid = `tcherrieden-${teamName.replace(/\s+/g,"-")}-${game.date}-${isHome?"H":"A"}@tennis-herrieden.de`;
 
-        events.push({
-          uid, summary, desc,
-          dtStart, dtEnd, isAllDay,
-          location: isHome ? HOME_ADDRESS : opponent,
-        });
+        events.push({ uid, summary, desc, dtStart, dtEnd, isAllDay });
       };
 
       (grp.homeGames || []).forEach(g => process(g, true));
