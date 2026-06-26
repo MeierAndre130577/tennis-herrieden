@@ -94,7 +94,7 @@ module.exports = async function handler(req, res) {
           else desc += " 🤝 Unentschieden";
         }
         if (grp.groupId) {
-          desc += `\nhttps://www.btv.de/ligen-ergebnisse/?groupid=${grp.groupId}`;
+          desc += `\nhttps://www.btv.de/de/spielbetrieb/tabelle-spielplan.html?groupid=${grp.groupId}`;
         }
 
         const dtStart = toIcsDate(game.date, game.time);
