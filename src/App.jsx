@@ -357,6 +357,26 @@ function UserWidget({profile}) {
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HEIMSPIELWOCHE SCREEN
+function EventsCalendarCopyButton() {
+  const [copied, setCopied] = useState(false);
+  const url = "webcal://www.tennis-herrieden.de/api/events.ics";
+  const copy = () => {
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+  return (
+    <div style={{marginTop:8,marginBottom:4,display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <button onClick={copy}
+        style={{display:"flex",alignItems:"center",gap:8,padding:"8px 18px",borderRadius:10,border:"1.5px solid #8B5CF644",background:copied?"#F5F3FF":"#8B5CF610",color:copied?"#7C3AED":"#A78BFA",fontWeight:700,fontSize:13,cursor:"pointer",transition:"all .2s"}}>
+        <span>{copied ? "✓" : "📅"}</span>
+        {copied ? "Link kopiert!" : "Termine als Kalenderabo"}
+      </button>
+    </div>
+  );
+}
+
 function CalendarCopyButton() {
   const [copied, setCopied] = useState(false);
   const url = "webcal://www.tennis-herrieden.de/api/calendar.ics";
@@ -1195,6 +1215,10 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
             )}
           </div>
         )}
+
+        {/* Kalenderabo-Button für Termine */}
+        {typeFilter==="event"&&<EventsCalendarCopyButton/>}
+
         <div className="h-content">
 
         {/* Lightbox mit Swipe + Navigation */}
