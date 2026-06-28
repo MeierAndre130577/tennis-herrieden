@@ -53,7 +53,15 @@ jobs:
       - name: Abhängigkeiten installieren
         run: npm ci
 
+      - name: Playwright-Cache laden
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}
+
       - name: Playwright + Chromium installieren
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install chromium --with-deps
 
       - name: BTV Daten holen
