@@ -274,6 +274,7 @@ function UserWidget({profile}) {
   const [open, setOpen]             = useState(false);
   const [theme, setTheme]           = useState(()=>localStorage.getItem("app-theme")||"dark");
   const [forceMobile, setForceMobile] = useState(()=>document.documentElement.classList.contains("force-mobile"));
+  const [anonBookings, setAnonBookings] = useState(!!profile?.anonymous_bookings);
   const isDesktop                   = window.innerWidth >= 768;
   const initials = profile?.name?.split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase() || "🎨";
 
@@ -284,6 +285,11 @@ function UserWidget({profile}) {
     const next = !forceMobile;
     setForceMobile(next);
     document.documentElement.classList.toggle("force-mobile", next);
+  };
+  const toggleAnon = async () => {
+    const next = !anonBookings;
+    setAnonBookings(next);
+    await sb.from("profiles").update({anonymous_bookings: next}).eq("id", profile.id);
   };
 
   return (
@@ -327,6 +333,24 @@ function UserWidget({profile}) {
                   {forceMobile&&<span style={{fontSize:10,color:T.warning}}>temp.</span>}
                 </button>
                 {forceMobile&&<div style={{fontSize:10,color:T.textMuted,marginTop:4,paddingLeft:2}}>Wird beim Neuladen zurückgesetzt</div>}
+              </div>
+            )}
+
+            {profile?.role!=="admin"&&(
+              <div style={{borderTop:`1px solid ${T.bgBorder}`,paddingTop:12,marginTop:4}}>
+                <div style={{fontSize:10,fontWeight:700,color:T.textMuted,textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>Buchungen</div>
+                <button onClick={toggleAnon} style={{
+                  width:"100%",padding:"8px 10px",borderRadius:T.rSm,cursor:"pointer",
+                  border:anonBookings?`1.5px solid ${T.info}`:`1px solid ${T.bgBorder}`,
+                  background:anonBookings?T.info+"18":"transparent",
+                  color:anonBookings?T.info:T.textSecondary,fontSize:13,fontWeight:600,
+                  display:"flex",alignItems:"center",gap:8,
+                }}>
+                  <span>{anonBookings?"🕵️":"👤"}</span>
+                  <span style={{flex:1,textAlign:"left"}}>Anonym buchen</span>
+                  {anonBookings&&<span style={{fontSize:10,color:T.info}}>✓</span>}
+                </button>
+                {anonBookings&&<div style={{fontSize:10,color:T.textMuted,marginTop:4,paddingLeft:2}}>Andere sehen nur deine Initialen</div>}
               </div>
             )}
 
@@ -1490,10 +1514,16 @@ function BookingApp({profile,perms={},onBack}) {
     sb.from("settings").select("*").eq("key","guest_fee").single().then(({data})=>{ if(data) setGuestFee(parseFloat(data.value)||5); });
   },[]);
 
+  const [anonUserIds,setAnonUserIds]=useState(new Set());
+
   const loadBookings=useCallback(async()=>{
     const from=addDays(today(),-30);
-    const {data}=await sb.from("bookings").select("*").gte("date",from).order("date").order("slot");
-    setBookings(data||[]);
+    const [bRes,aRes]=await Promise.all([
+      sb.from("bookings").select("*").gte("date",from).order("date").order("slot"),
+      sb.from("profiles").select("id").eq("anonymous_bookings",true),
+    ]);
+    setBookings(bRes.data||[]);
+    setAnonUserIds(new Set((aRes.data||[]).map(p=>p.id)));
   },[]);
 
   useEffect(()=>{ loadBookings(); },[loadBookings]);
@@ -1507,6 +1537,13 @@ function BookingApp({profile,perms={},onBack}) {
   const canMassBook=localCanDo("massenbuchung");
   const adaptedBookings=bookings.map(b=>({...b,courtId:b.court_id,userId:b.user_id,userName:b.user_name}));
   const adaptedData={bookings:adaptedBookings,courts};
+  const toInitials=name=>(name||"?").split(" ").filter(Boolean).map(n=>n[0]+".").join("");
+  const displayName=b=>{
+    if(b.userId===profile.id) return b.userName;
+    if(profile.role==="admin") return b.userName;
+    if(anonUserIds.has(b.userId)) return toInitials(b.userName);
+    return b.userName;
+  };
 
   const bookSingle=async(courtId,date,slot,type="regular",label="",withGuest=false)=>{
     const {error}=await sb.from("bookings").insert({court_id:courtId,user_id:profile.id,user_name:profile.name,date,slot,type,label,with_guest:withGuest,guest_fee:withGuest?guestFee:0});
@@ -4402,7 +4439,7 @@ function SlotModal({modal,data,user,guestFee,onBook,onCancel,onClose}) {
         {existing&&(<>
           <div style={{background:"#F9FAFB",borderRadius:8,padding:"12px 14px",marginBottom:16}}>
             <div style={{fontSize:12,color:"#6B7280",marginBottom:4}}>Gebucht von</div>
-            <div style={{fontWeight:700,fontSize:16}}>{existing.userName}</div>
+            <div style={{fontWeight:700,fontSize:16}}>{displayName(existing)}</div>
             <div style={{marginTop:6,display:"flex",gap:6,flexWrap:"wrap"}}>
               <span style={{fontSize:12,padding:"2px 8px",borderRadius:20,background:BOOKING_TYPE_COLORS[bType]+"22",color:BOOKING_TYPE_COLORS[bType],fontWeight:600}}>{bType==="training"?"🏋️ Training":bType==="match"?"🏆 Spieltag":"📅 Standard"}</span>
               {existing.with_guest&&<span style={{fontSize:12,padding:"2px 8px",borderRadius:20,background:"#FEF3C7",color:"#D97706",fontWeight:700}}>👥 Gastspieler</span>}
@@ -4482,7 +4519,7 @@ function CalendarView({data,user,dayBase,setDayBase,selCourt,setSelCourt,onSlotC
             bg=T.bgCard; border=`1px solid ${T.bgBorder}`;
             timeColor=T.textMuted;
             icon=bType==="training"?"🏋️":bType==="match"?"🏆":booking.with_guest?"👥":"";
-            const name=booking.userName?.split(" ")[0]||"?";
+            const name=displayName(booking);
             label=`${icon} ${name}`.trim(); labelColor=T.textSecondary;
           }
 
@@ -4875,7 +4912,7 @@ function AdminView({data,allBookings,guestFee,onSaveGuestFee,onAddCourt,onUpdate
       {tab==="bookings"&&(<div><h3 style={{fontWeight:700,marginBottom:14}}>Bevorstehende Buchungen</h3>
         {data.bookings.filter(b=>b.date>=today()).sort((a,b)=>(a.date+a.slot).localeCompare(b.date+b.slot)).map(b=>{const court=data.courts.find(c=>c.id===b.courtId);const ci=data.courts.findIndex(c=>c.id===b.courtId);const icon=b.type==="training"?"🏋️":b.type==="match"?"🏆":"📅";
           return (<div key={b.id} style={{...S.card,borderLeft:`4px solid ${COURT_COLORS[ci%COURT_COLORS.length]}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <div><div style={{fontWeight:600}}>{icon} {court?.name||"?"} · {b.slot} Uhr · {b.date}</div><div style={{fontSize:12,color:"#6B7280"}}>{b.userName}{b.with_guest?" · 👥 Gastspieler":""}{b.label?` · ${b.label}`:""}</div></div>
+            <div><div style={{fontWeight:600}}>{icon} {court?.name||"?"} · {b.slot} Uhr · {b.date}</div><div style={{fontSize:12,color:"#6B7280"}}>{displayName(b)}{b.with_guest?" · 👥 Gastspieler":""}{b.label?` · ${b.label}`:""}</div></div>
             <button style={S.cancelBtn} onClick={()=>onCancelBooking(b.id)}>Stornieren</button>
           </div>);
         })}
