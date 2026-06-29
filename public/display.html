@@ -1078,9 +1078,7 @@ function render() {
         else if (type === "match") {
           cls = "slot-match"; icon = "🏆";
           const uname = booking.user_name || "";
-          const team = uname.startsWith("Heimspiel ") ? uname.slice(10) : "";
-          const opp  = booking.label || "";
-          label = team && opp ? `${team} ${opp}` : (team || opp || "Spieltag");
+          label = uname.startsWith("Heimspiel ") ? uname.slice(10) : (booking.label || "Spieltag");
         }
         else if (withGuest)       { cls = "slot-guest";  icon = "👥"; }
 
