@@ -1075,7 +1075,11 @@ function render() {
         let label = booking.user_name?.split(" ")[0] || "–";
 
         if (type === "training") { cls = "slot-training"; icon = "🏋️"; label = booking.label || "Training"; }
-        else if (type === "match") { cls = "slot-match"; icon = "🏆"; label = booking.label || "Spieltag"; }
+        else if (type === "match") {
+          cls = "slot-match"; icon = "🏆";
+          const uname = booking.user_name || "";
+          label = uname.startsWith("Heimspiel ") ? uname.slice(10) : (booking.label || "Spieltag");
+        }
         else if (withGuest)       { cls = "slot-guest";  icon = "👥"; }
 
         cellHtml = `<div class="slot-btn ${cls}">${icon ? `<span>${icon}</span>` : ""}<span>${label}</span></div>`;
