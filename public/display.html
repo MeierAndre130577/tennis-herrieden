@@ -1075,10 +1075,15 @@ function render() {
         let label = booking.user_name?.split(" ")[0] || "–";
 
         if (type === "training") { cls = "slot-training"; icon = "🏋️"; label = booking.label || "Training"; }
-        else if (type === "match") { cls = "slot-match"; icon = "🏆"; label = booking.user_name || "Spieltag"; }
-        else if (withGuest)       { cls = "slot-guest";  icon = "👥"; }
+        else if (type === "match") {
+          cellHtml = `<div class="slot-btn slot-match" style="flex-direction:column;align-items:flex-start;justify-content:center;white-space:normal;gap:1px;">
+            <span style="display:flex;align-items:center;gap:4px;font-weight:700;line-height:1.2;">🏆 ${booking.user_name || "Spieltag"}</span>
+            <span style="font-size:0.82em;opacity:0.75;line-height:1.2;">${booking.label || ""}</span>
+          </div>`;
+        }
+        else if (withGuest) { cls = "slot-guest"; icon = "👥"; }
 
-        cellHtml = `<div class="slot-btn ${cls}">${icon ? `<span>${icon}</span>` : ""}<span>${label}</span></div>`;
+        if (!cellHtml) cellHtml = `<div class="slot-btn ${cls}">${icon ? `<span>${icon}</span>` : ""}<span>${label}</span></div>`;
       } else if (past) {
         cellHtml = `<div class="slot-btn slot-past">—</div>`;
       } else {
