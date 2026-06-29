@@ -122,14 +122,14 @@ function computeSlots(timeStr, format, applyEarlyOffset) {
       const applyOffset    = !isDoubleDay || gi === 0; // nur erstes Spiel bekommt -1h
       const slots          = computeSlots(game.time, game.format, applyOffset);
       const gameCourts     = courts.slice(0, game.numCourts);
-      const bookingLabel   = `${game.label} gegen ${game.opponent}`;
+      const bookingLabel   = `gegen ${game.opponent}`;
 
       for (const court of gameCourts) {
         for (const slot of slots) {
           bookingMap[`${court.id}|${slot}`] = {
             court_id: court.id,
             user_id:  systemUserId,
-            user_name: "Heimspiel",
+            user_name: `Heimspiel ${game.label}`,
             date,
             slot,
             type:       "match",
