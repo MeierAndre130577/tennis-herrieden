@@ -1523,6 +1523,7 @@ function BookingApp({profile,perms={},onBack}) {
       sb.from("profiles").select("id").eq("anonymous_bookings",true),
     ]);
     setBookings(bRes.data||[]);
+    console.log("anonProfiles:", aRes.data, "error:", aRes.error);
     setAnonUserIds(new Set((aRes.data||[]).map(p=>p.id)));
   },[]);
 
