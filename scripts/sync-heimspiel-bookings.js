@@ -87,7 +87,7 @@ function computeSlots(timeStr, format, applyEarlyOffset) {
     const label  = cfg.name  || grp.name || grp.teamName;
 
     for (const g of grp.homeGames || []) {
-      if (!g.date || !g.time || g.date < today) continue;
+      if (!g.date || !g.time) continue;
       if (!gamesByDate[g.date]) gamesByDate[g.date] = [];
       gamesByDate[g.date].push({
         label,
@@ -100,15 +100,13 @@ function computeSlots(timeStr, format, applyEarlyOffset) {
   }
 
   if (!Object.keys(gamesByDate).length) {
-    console.log("Keine zukünftigen Heimspiele gefunden.");
+    console.log("Keine Heimspiele gefunden.");
     process.exit(0);
   }
 
-  // Alle zukünftigen System-Buchungen löschen (werden neu gesetzt)
-  await sb.from("bookings").delete()
-    .eq("user_id", systemUserId)
-    .gte("date", today);
-  console.log("Alte zukünftige Heimspiel-Buchungen gelöscht.");
+  // Alle System-Buchungen der Saison löschen (werden komplett neu gesetzt)
+  await sb.from("bookings").delete().eq("user_id", systemUserId);
+  console.log("Alle bisherigen Heimspiel-Buchungen gelöscht.");
 
   let totalInserted = 0;
 
@@ -146,13 +144,15 @@ function computeSlots(timeStr, format, applyEarlyOffset) {
     const newBookings = Object.values(bookingMap);
     if (!newBookings.length) continue;
 
-    // Kollidierende Mitglieder-Buchungen löschen (Heimspiel hat Priorität)
-    for (const bk of newBookings) {
-      await sb.from("bookings").delete()
-        .eq("date", bk.date)
-        .eq("court_id", bk.court_id)
-        .eq("slot", bk.slot)
-        .neq("user_id", systemUserId);
+    // Kollidierende Mitglieder-Buchungen löschen – nur für zukünftige Termine
+    if (date >= today) {
+      for (const bk of newBookings) {
+        await sb.from("bookings").delete()
+          .eq("date", bk.date)
+          .eq("court_id", bk.court_id)
+          .eq("slot", bk.slot)
+          .neq("user_id", systemUserId);
+      }
     }
 
     const { error } = await sb.from("bookings").insert(newBookings);
