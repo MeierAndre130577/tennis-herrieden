@@ -124,7 +124,6 @@ module.exports = async function handler(req, res) {
       `DTSTAMP:${dtstamp}`,
       `SUMMARY:${escapeIcs(e.summary)}`,
       `DESCRIPTION:${escapeIcs(e.desc)}`,
-      `LOCATION:${escapeIcs(e.location)}`,
     ];
     if (e.isAllDay) {
       lines.push(`DTSTART;VALUE=DATE:${e.dtStart}`);
