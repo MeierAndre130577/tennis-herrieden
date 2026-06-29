@@ -1613,12 +1613,12 @@ function BookingApp({profile,perms={},onBack}) {
         </div>
 
         <div className="h-content">
-        {view==="calendar"  &&<CalendarView data={adaptedData} user={profile} dayBase={dayBase} setDayBase={setDayBase} selCourt={selCourt||courts[0]?.id} setSelCourt={setSelCourt} onSlotClick={(courtId,date,slot,existing)=>setModal({type:"slot",courtId,date,slot,existing})}/>}
+        {view==="calendar"  &&<CalendarView data={adaptedData} user={profile} dayBase={dayBase} setDayBase={setDayBase} selCourt={selCourt||courts[0]?.id} setSelCourt={setSelCourt} displayName={displayName} onSlotClick={(courtId,date,slot,existing)=>setModal({type:"slot",courtId,date,slot,existing})}/>}
         {view==="myBookings"&&<MyBookings data={adaptedData} user={profile} onCancel={cancel} guestFee={guestFee} onMarkPaid={()=>markGuestPaid(profile.id)}/>}
         {view==="massbook"  &&canMassBook&&<MassBookView data={adaptedData} user={profile} onMassBook={massBook} onCancelMany={cancelMany}/>}
         {view==="admin"     &&profile.role==="admin"&&<AdminView data={adaptedData} allBookings={bookings} guestFee={guestFee} onSaveGuestFee={saveGuestFee} onAddCourt={addCourt} onUpdateCourt={updateCourt} onDeleteCourt={deleteCourt} onDeleteUser={deleteUser} onCancelBooking={cancel} onMarkPaid={markGuestPaid}/>}
 
-        {modal?.type==="slot"&&<SlotModal modal={modal} data={adaptedData} user={profile} guestFee={guestFee} onBook={bookSingle} onCancel={cancel} onClose={()=>setModal(null)}/>}
+        {modal?.type==="slot"&&<SlotModal modal={modal} data={adaptedData} user={profile} guestFee={guestFee} displayName={displayName} onBook={bookSingle} onCancel={cancel} onClose={()=>setModal(null)}/>}
         {toast&&<div style={{...S.toast,background:toast.type==="error"?"#EF4444":"#10B981"}}>{toast.msg}</div>}
         </div>{/* h-content */}
         </div>{/* h-cols */}
@@ -4411,7 +4411,7 @@ function SettingsDisplayTab({onToast}) {
 // ═══════════════════════════════════════════════════════════════════════════
 // EXISTING BOOKING COMPONENTS (unverändert)
 // ═══════════════════════════════════════════════════════════════════════════
-function SlotModal({modal,data,user,guestFee,onBook,onCancel,onClose}) {
+function SlotModal({modal,data,user,guestFee,displayName,onBook,onCancel,onClose}) {
   const {courtId,date,slot,existing}=modal;
   const [withGuest,setWithGuest]=useState(false);
   const court=data.courts.find(c=>c.id===courtId);
@@ -4458,7 +4458,7 @@ function SlotModal({modal,data,user,guestFee,onBook,onCancel,onClose}) {
   );
 }
 
-function CalendarView({data,user,dayBase,setDayBase,selCourt,setSelCourt,onSlotClick}) {
+function CalendarView({data,user,dayBase,setDayBase,selCourt,setSelCourt,displayName,onSlotClick}) {
   const todayStr=today();
   const isToday=dayBase===todayStr;
   const isTomorrow=dayBase===addDays(todayStr,1);
