@@ -1001,6 +1001,11 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
 let courts   = [];
 let bookings = [];
+let anonUserIds = new Set();
+
+function toInitials(name) {
+  return (name||"?").split(" ").filter(Boolean).map(n=>n[0]+".").join("");
+}
 
 // ── HELPERS ───────────────────────────────────────────────────────────────
 function todayStr() {
@@ -1072,7 +1077,9 @@ function render() {
         const withGuest = booking.with_guest;
         let cls = "slot-regular";
         let icon = "";
-        let label = booking.user_name?.split(" ")[0] || "–";
+        let label = anonUserIds.has(booking.user_id)
+          ? toInitials(booking.user_name)
+          : (booking.user_name?.split(" ")[0] || "–");
 
         if (type === "training") { cls = "slot-training"; icon = "🏋️"; label = booking.label || "Training"; }
         else if (type === "match") {
@@ -1104,13 +1111,15 @@ function render() {
 async function loadData() {
   const today = todayStr();
 
-  const [courtsRes, bookingsRes] = await Promise.all([
+  const [courtsRes, bookingsRes, anonRes] = await Promise.all([
     sb.from("courts").select("*").order("sort_order"),
     sb.from("bookings").select("*").eq("date", today).order("slot"),
+    sb.rpc("get_anonymous_user_ids"),
   ]);
 
-  courts   = courtsRes.data  || [];
-  bookings = bookingsRes.data || [];
+  courts       = courtsRes.data  || [];
+  bookings     = bookingsRes.data || [];
+  anonUserIds  = new Set((anonRes.data||[]).map(r=>r.id));
 
   document.getElementById("status-text").textContent =
     `Zuletzt aktualisiert: ${new Date().toLocaleTimeString("de-DE")} · wird automatisch aktualisiert`;
