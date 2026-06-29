@@ -144,15 +144,13 @@ function computeSlots(timeStr, format, applyEarlyOffset) {
     const newBookings = Object.values(bookingMap);
     if (!newBookings.length) continue;
 
-    // Kollidierende Mitglieder-Buchungen löschen – nur für zukünftige Termine
-    if (date >= today) {
-      for (const bk of newBookings) {
-        await sb.from("bookings").delete()
-          .eq("date", bk.date)
-          .eq("court_id", bk.court_id)
-          .eq("slot", bk.slot)
-          .neq("user_id", systemUserId);
-      }
+    // Kollidierende Buchungen löschen (Heimspiel hat immer Priorität)
+    for (const bk of newBookings) {
+      await sb.from("bookings").delete()
+        .eq("date", bk.date)
+        .eq("court_id", bk.court_id)
+        .eq("slot", bk.slot)
+        .neq("user_id", systemUserId);
     }
 
     const { error } = await sb.from("bookings").insert(newBookings);
