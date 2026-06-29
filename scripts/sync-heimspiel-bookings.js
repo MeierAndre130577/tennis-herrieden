@@ -73,18 +73,18 @@ function computeSlots(timeStr, format, applyEarlyOffset) {
   const systemUserId = await getOrCreateSystemUser();
   const today = new Date().toISOString().slice(0, 10);
 
-  // Config-Map: teamName → {format, name}
+  // Config-Map: name → {format, name}  (name ist eindeutig, teamName nicht)
   const cfgMap = {};
   for (const cfg of teamsConfig) {
-    if (cfg.teamName) cfgMap[cfg.teamName] = cfg;
+    if (cfg.name) cfgMap[cfg.name] = cfg;
   }
 
   // Alle Heimspiele ab heute nach Datum gruppieren
   const gamesByDate = {}; // date → [{label, opponent, time, format, numCourts}]
   for (const grp of teams.groups) {
-    const cfg    = cfgMap[grp.teamName] || cfgMap[grp.name] || {};
+    const cfg    = cfgMap[grp.name] || {};
     const format = cfg.format || "6er";
-    const label  = cfg.name  || grp.name || grp.teamName;
+    const label  = grp.name || grp.teamName;
 
     for (const g of grp.homeGames || []) {
       if (!g.date || !g.time) continue;
