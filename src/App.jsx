@@ -289,7 +289,7 @@ function UserWidget({profile}) {
   const toggleAnon = async () => {
     const next = !anonBookings;
     setAnonBookings(next);
-    await sb.from("profiles").update({anonymous_bookings: next}).eq("id", profile.id);
+    await sb.rpc("update_own_anonymous_bookings", { p_value: next });
   };
 
   return (
