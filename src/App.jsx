@@ -3407,6 +3407,12 @@ function SettingsMannschaftenTab({onToast}) {
                   onChange={e=>{const c=[...teamsConfig];c[i]={...c[i],liga:e.target.value};setTeamsConfig(c);}}
                   style={{flex:1,padding:"5px 8px",border:"1px solid #D1D5DB",borderRadius:6,fontSize:11,
                     color:"#6B7280"}}/>
+                <select value={row.format||"6er"}
+                  onChange={e=>{const c=[...teamsConfig];c[i]={...c[i],format:e.target.value};setTeamsConfig(c);}}
+                  style={{padding:"5px 8px",border:"1px solid #D1D5DB",borderRadius:6,fontSize:11,color:"#374151",flexShrink:0,cursor:"pointer"}}>
+                  <option value="6er">6er</option>
+                  <option value="4er">4er</option>
+                </select>
                 {(()=>{
                   const gm = row.url?.match(/groupid=(\d+)/i);
                   const gid = gm?.[1];

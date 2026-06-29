@@ -83,3 +83,10 @@ jobs:
           PLAYERS_GROUP_ID: ${{ inputs.players_group_id }}
           PLAYERS_TEAM_NAME: ${{ inputs.players_team_name }}
           PLAYERS_CONFIG_NAME: ${{ inputs.players_config_name }}
+
+      - name: Heimspiel-Buchungen synchronisieren
+        if: ${{ inputs.players_only != 'true' && inputs.teams_only != 'true' || github.event.schedule == '0 2 * * *' }}
+        run: node scripts/sync-heimspiel-bookings.js
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
