@@ -129,7 +129,7 @@ function computeSlots(timeStr, format, applyEarlyOffset) {
           bookingMap[`${court.id}|${slot}`] = {
             court_id: court.id,
             user_id:  systemUserId,
-            user_name: `Heimspiel ${game.label}`,
+            user_name: game.label || "Heimspiel",
             date,
             slot,
             type:       "match",
