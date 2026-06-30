@@ -91,6 +91,11 @@
       body { font-family: 'DM Sans', sans-serif; background: var(--bg-page); }
       :focus-visible { outline: 2px solid #22C55E; outline-offset: 2px; border-radius: 4px; }
       button { font-family: inherit; }
+      .widget-btn:hover { box-shadow: 0 0 0 2px #22C55E33; border-color: #22C55E55 !important; }
+      .widget-btn:active { transform: scale(.99); }
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+      }
 
       /* ── DESKTOP LAYOUT (≥768px) ── */
       @media(min-width:768px) {

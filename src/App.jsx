@@ -823,7 +823,7 @@ function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassen
         <div style={{display:"flex",flexDirection:"column",gap:12}}>
 
           {/* Next bookings */}
-          {canDo("booking")&&<button style={H.widget} onClick={onGoBooking}>
+          {canDo("booking")&&<button className="widget-btn" style={H.widget} onClick={onGoBooking}>
             <div style={H.widgetLabel}><Ico name="ti-calendar" size={11} style={{marginRight:4}}/>Nächste Buchungen</div>
             {nextBookings.length===0
               ? <div style={{fontSize:13,color:T.textSecondary,padding:"6px 0"}}>Keine bevorstehenden Buchungen</div>
@@ -852,7 +852,7 @@ function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassen
           </button>}
 
           {/* Clubstream */}
-          {canDo("clubstream")&&<button style={{...H.widgetCompact, borderColor:`${T.success}55`}}
+          {canDo("clubstream")&&<button className="widget-btn" style={{...H.widgetCompact, borderColor:`${T.success}55`}}
                onClick={onGoClubstream}>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
               <Ico name="ti-news" size={18} color="#4ADE80"/>
@@ -865,7 +865,7 @@ function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassen
           </button>}
 
           {/* BTV Links */}
-          {canDo("btv")&&<button style={{...H.widgetCompact, borderColor:`${T.info}55`}} onClick={onGoBtv}>
+          {canDo("btv")&&<button className="widget-btn" style={{...H.widgetCompact, borderColor:`${T.info}55`}} onClick={onGoBtv}>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
               <Ico name="ti-link" size={18} color="#93C5FD"/>
               <div style={{flex:1}}>
@@ -877,7 +877,7 @@ function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassen
           </button>}
 
           {/* Spielwoche */}
-          {canDo("heimspiel")&&<button style={{...H.widgetCompact, borderColor:`${T.warning}55`}} onClick={onGoHeimspiele}>
+          {canDo("heimspiel")&&<button className="widget-btn" style={{...H.widgetCompact, borderColor:`${T.warning}55`}} onClick={onGoHeimspiele}>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
               <Ico name="ti-trophy" size={18} color="#FCD34D"/>
               <div style={{flex:1}}>
@@ -891,13 +891,13 @@ function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassen
           </button>}
 
           {/* Open drinks – compact */}
-          {canDo("kasse")&&<button style={{...H.widgetCompact,...(openLog.length>0?H.widgetWarn:H.widgetOk)}} onClick={onGoKasse}>
+          {canDo("kasse")&&<button className="widget-btn" style={{...H.widgetCompact,...(openLog.length>0?H.widgetWarn:H.widgetOk)}} onClick={onGoKasse}>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
               <Ico name="ti-receipt" size={18} color={openLog.length>0?"#F59E0B":"#4ADE80"}/>
               <div style={{flex:1}}>
                 <div style={{fontSize:T.fzLabel,fontWeight:700,color:T.textSecondary,textTransform:"uppercase",letterSpacing:.7}}>Offene Getränke</div>
                 {openLog.length===0
-                  ? <span style={{fontSize:13,fontWeight:700,color:"#4ADE80"}}>Alles bezahlt</span>
+                  ? <span style={{fontSize:13,fontWeight:700,color:"#4ADE80",display:"flex",alignItems:"center",gap:4}}><Ico name="ti-check" size={14}/> Alles bezahlt</span>
                   : <span style={{fontSize:18,fontWeight:800,color:"#F59E0B"}}>{eur(openTotal)} <span style={{fontSize:12,fontWeight:500,color:"#92400E"}}>({openLog.length})</span></span>
                 }
               </div>
@@ -937,8 +937,8 @@ const H={
   header:       {textAlign:"center",paddingTop:16},
   title:        {fontSize:T.fzH2+6,fontWeight:800,color:T.textPrimary,letterSpacing:-.8,margin:"12px 0 4px"},
   greeting:     {color:T.textMuted,fontSize:T.fzBody,margin:0},
-  widget:       {background:T.bgCard,border:`1.5px solid ${T.bgBorder}`,borderRadius:T.rMd,padding:T.pCard,cursor:"pointer",display:"flex",flexDirection:"column",gap:0,width:"100%",textAlign:"left"},
-  widgetCompact:{background:T.bgCard,border:`1.5px solid ${T.bgBorder}`,borderRadius:T.rMd,padding:T.pCompact,cursor:"pointer",width:"100%",textAlign:"left"},
+  widget:       {background:T.bgCard,border:`1.5px solid ${T.bgBorder}`,borderRadius:T.rMd,padding:T.pCard,cursor:"pointer",display:"flex",flexDirection:"column",gap:0,width:"100%",textAlign:"left",transition:"border-color .15s,box-shadow .15s"},
+  widgetCompact:{background:T.bgCard,border:`1.5px solid ${T.bgBorder}`,borderRadius:T.rMd,padding:T.pCompact,cursor:"pointer",width:"100%",textAlign:"left",display:"block",transition:"border-color .15s,box-shadow .15s"},
   widgetWarn:   {borderColor:`${T.warning}55`,background:T.bgCard},
   widgetOk:     {borderColor:`${T.success}33`},
   widgetLabel:  {fontSize:T.fzLabel,fontWeight:700,color:T.textSecondary,textTransform:"uppercase",letterSpacing:.8,marginBottom:6},
