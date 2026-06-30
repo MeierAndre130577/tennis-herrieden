@@ -35,8 +35,8 @@ const T = {
   fzH3:    16,
   fzBody:  14,
   fzSm:    12,
-  fzLabel: 11,
-  fzBadge: 10,
+  fzLabel: 12,
+  fzBadge: 11,
   // Padding-Presets
   pCard:    "16px",
   pCompact: "12px 14px",
@@ -823,10 +823,10 @@ function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassen
         <div style={{display:"flex",flexDirection:"column",gap:12}}>
 
           {/* Next bookings */}
-          {canDo("booking")&&<div style={H.widget} onClick={onGoBooking}>
-            <div style={H.widgetLabel}>📅 Nächste Buchungen</div>
+          {canDo("booking")&&<button style={H.widget} onClick={onGoBooking}>
+            <div style={H.widgetLabel}><Ico name="ti-calendar" size={11} style={{marginRight:4}}/>Nächste Buchungen</div>
             {nextBookings.length===0
-              ? <div style={{fontSize:13,color:"#475569",padding:"6px 0"}}>Keine bevorstehenden Buchungen</div>
+              ? <div style={{fontSize:13,color:T.textSecondary,padding:"6px 0"}}>Keine bevorstehenden Buchungen</div>
               : nextBookings.map(b=>{
                   const t=BOOKING_TYPE_MAP[b.type]||BOOKING_TYPE_MAP.regular;
                   return (
@@ -835,10 +835,10 @@ function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassen
                         <span style={{fontSize:15}}>{t.icon}</span>
                       </div>
                       <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontWeight:700,fontSize:13,color:"#F1F5F9",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                        <div style={{fontWeight:700,fontSize:13,color:T.textPrimary,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                           {b.label||b.courts?.name||"?"} · {b.slot} Uhr
                         </div>
-                        <div style={{fontSize:11,color:"#64748B",marginTop:1}}>
+                        <div style={{fontSize:11,color:T.textMuted,marginTop:1}}>
                           {fmtDateShort(b.date)} · {b.courts?.name} · {b.courts?.surface}
                         </div>
                       </div>
@@ -849,75 +849,75 @@ function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassen
                   );
                 })
             }
-          </div>}
+          </button>}
 
           {/* Clubstream */}
-          {canDo("clubstream")&&<div style={{...H.widgetCompact, borderColor:`${T.success}55`}}
+          {canDo("clubstream")&&<button style={{...H.widgetCompact, borderColor:`${T.success}55`}}
                onClick={onGoClubstream}>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
-              <span style={{fontSize:18}}>📰</span>
+              <Ico name="ti-news" size={18} color="#4ADE80"/>
               <div style={{flex:1}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#94A3B8",textTransform:"uppercase",letterSpacing:.7}}>Clubstream</div>
+                <div style={{fontSize:T.fzLabel,fontWeight:700,color:T.textSecondary,textTransform:"uppercase",letterSpacing:.7}}>Clubstream</div>
                 <div style={{fontSize:13,fontWeight:600,color:"#4ADE80"}}>News & Termine</div>
               </div>
-              <span style={{color:"#4ADE80",fontSize:16}}>→</span>
+              <Ico name="ti-arrow-right" size={16} color="#4ADE80"/>
             </div>
-          </div>}
+          </button>}
 
           {/* BTV Links */}
-          {canDo("btv")&&<div style={{...H.widgetCompact, borderColor:`${T.info}55`}} onClick={onGoBtv}>
+          {canDo("btv")&&<button style={{...H.widgetCompact, borderColor:`${T.info}55`}} onClick={onGoBtv}>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
-              <span style={{fontSize:18}}>🔗</span>
+              <Ico name="ti-link" size={18} color="#93C5FD"/>
               <div style={{flex:1}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#94A3B8",textTransform:"uppercase",letterSpacing:.7}}>BTV Links</div>
+                <div style={{fontSize:T.fzLabel,fontWeight:700,color:T.textSecondary,textTransform:"uppercase",letterSpacing:.7}}>BTV Links</div>
                 <div style={{fontSize:13,fontWeight:600,color:"#93C5FD"}}>{btvTeams.length} Mannschaften</div>
               </div>
-              <span style={{color:"#93C5FD",fontSize:16}}>→</span>
+              <Ico name="ti-arrow-right" size={16} color="#93C5FD"/>
             </div>
-          </div>}
+          </button>}
 
           {/* Spielwoche */}
-          {canDo("heimspiel")&&<div style={{...H.widgetCompact, borderColor:`${T.warning}55`}} onClick={onGoHeimspiele}>
+          {canDo("heimspiel")&&<button style={{...H.widgetCompact, borderColor:`${T.warning}55`}} onClick={onGoHeimspiele}>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
-              <span style={{fontSize:18}}>📅</span>
+              <Ico name="ti-trophy" size={18} color="#FCD34D"/>
               <div style={{flex:1}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#94A3B8",textTransform:"uppercase",letterSpacing:.7}}>Spielwoche</div>
+                <div style={{fontSize:T.fzLabel,fontWeight:700,color:T.textSecondary,textTransform:"uppercase",letterSpacing:.7}}>Spielwoche</div>
                 <div style={{fontSize:13,fontWeight:600,color:"#FCD34D"}}>
                   {heimspielCount>0 ? `${heimspielCount} Spiel${heimspielCount!==1?"e":""} in den nächsten 7 Tagen` : "Keine Spiele diese Woche"}
                 </div>
               </div>
-              <span style={{color:"#FCD34D",fontSize:16}}>→</span>
+              <Ico name="ti-arrow-right" size={16} color="#FCD34D"/>
             </div>
-          </div>}
+          </button>}
 
           {/* Open drinks – compact */}
-          {canDo("kasse")&&<div style={{...H.widgetCompact,...(openLog.length>0?H.widgetWarn:H.widgetOk)}} onClick={onGoKasse}>
+          {canDo("kasse")&&<button style={{...H.widgetCompact,...(openLog.length>0?H.widgetWarn:H.widgetOk)}} onClick={onGoKasse}>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
-              <span style={{fontSize:18}}>🧾</span>
+              <Ico name="ti-receipt" size={18} color={openLog.length>0?"#F59E0B":"#4ADE80"}/>
               <div style={{flex:1}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#94A3B8",textTransform:"uppercase",letterSpacing:.7}}>Offene Getränke</div>
+                <div style={{fontSize:T.fzLabel,fontWeight:700,color:T.textSecondary,textTransform:"uppercase",letterSpacing:.7}}>Offene Getränke</div>
                 {openLog.length===0
-                  ? <span style={{fontSize:13,fontWeight:700,color:"#4ADE80"}}>✅ Alles bezahlt</span>
+                  ? <span style={{fontSize:13,fontWeight:700,color:"#4ADE80"}}>Alles bezahlt</span>
                   : <span style={{fontSize:18,fontWeight:800,color:"#F59E0B"}}>{eur(openTotal)} <span style={{fontSize:12,fontWeight:500,color:"#92400E"}}>({openLog.length})</span></span>
                 }
               </div>
-              <span style={{fontSize:12,color:openLog.length>0?"#D97706":"#475569"}}>→</span>
+              <Ico name="ti-arrow-right" size={12} color={openLog.length>0?"#D97706":T.textSecondary}/>
             </div>
-          </div>}
+          </button>}
         </div>
 
         {/* ── Nav tiles ── */}
         <div style={H.navGrid}>
           {canDo("kassenbuch")&&(
             <button style={{...H.navTile,borderColor:"#22C55E33",gridColumn:"1 / -1"}} onClick={onGoKassenbuch}>
-              <span style={{fontSize:28}}>💰</span>
+              <Ico name="ti-cash" size={28} color="#22C55E"/>
               <span style={H.navTileLabel}>Kassenbuch</span>
               <span style={H.navTileSub}>Einnahmen & Ausgaben</span>
             </button>
           )}
           {profile.role==="admin"&&(
             <button style={{...H.navTile,borderColor:"#8B5CF633",gridColumn:"1 / -1"}} onClick={onGoSettings}>
-              <span style={{fontSize:28}}>⚙️</span>
+              <Ico name="ti-settings" size={28} color="#8B5CF6"/>
               <span style={H.navTileLabel}>Einstellungen</span>
               <span style={H.navTileSub}>Systemkonfiguration</span>
             </button>
@@ -937,8 +937,8 @@ const H={
   header:       {textAlign:"center",paddingTop:16},
   title:        {fontSize:T.fzH2+6,fontWeight:800,color:T.textPrimary,letterSpacing:-.8,margin:"12px 0 4px"},
   greeting:     {color:T.textMuted,fontSize:T.fzBody,margin:0},
-  widget:       {background:T.bgCard,border:`1.5px solid ${T.bgBorder}`,borderRadius:T.rMd,padding:T.pCard,cursor:"pointer",display:"flex",flexDirection:"column",gap:0},
-  widgetCompact:{background:T.bgCard,border:`1.5px solid ${T.bgBorder}`,borderRadius:T.rMd,padding:T.pCompact,cursor:"pointer"},
+  widget:       {background:T.bgCard,border:`1.5px solid ${T.bgBorder}`,borderRadius:T.rMd,padding:T.pCard,cursor:"pointer",display:"flex",flexDirection:"column",gap:0,width:"100%",textAlign:"left"},
+  widgetCompact:{background:T.bgCard,border:`1.5px solid ${T.bgBorder}`,borderRadius:T.rMd,padding:T.pCompact,cursor:"pointer",width:"100%",textAlign:"left"},
   widgetWarn:   {borderColor:`${T.warning}55`,background:T.bgCard},
   widgetOk:     {borderColor:`${T.success}33`},
   widgetLabel:  {fontSize:T.fzLabel,fontWeight:700,color:T.textSecondary,textTransform:"uppercase",letterSpacing:.8,marginBottom:6},
@@ -1581,10 +1581,10 @@ function BookingApp({profile,perms={},onBack}) {
   const deleteUser=async(uid)=>{ await sb.from("bookings").delete().eq("user_id",uid); await sb.from("profiles").delete().eq("id",uid); showToast("Gelöscht."); };
 
   const navItems=[
-    {id:"calendar",  icon:"📅",label:"Kalender"},
-    {id:"myBookings",icon:"📋",label:"Meine"},
-    ...(canMassBook?[{id:"massbook",icon:"📆",label:"Serien"}]:[]),
-    ...(profile.role==="admin"?[{id:"admin",icon:"⚙️",label:"Admin"}]:[]),
+    {id:"calendar",  icon:"ti-calendar",       label:"Kalender"},
+    {id:"myBookings",icon:"ti-clipboard-list",  label:"Meine"},
+    ...(canMassBook?[{id:"massbook",icon:"ti-calendar-event",label:"Serien"}]:[]),
+    ...(profile.role==="admin"?[{id:"admin",icon:"ti-settings",label:"Admin"}]:[]),
   ];
 
   return (
@@ -1596,7 +1596,7 @@ function BookingApp({profile,perms={},onBack}) {
             <button style={H.backBtn} onClick={onBack}>←</button>
           </div>
           <div style={{...H.header,paddingTop:12}}>
-            <h1 style={{...H.title,fontSize:22}}>📅 Buchung</h1>
+            <h1 style={{...H.title,fontSize:22}}><Ico name="ti-calendar" size={20} style={{marginRight:6}}/> Buchung</h1>
             <p style={H.greeting}>Plätze buchen · Reservierungen verwalten</p>
           </div>
         </div>
@@ -1607,7 +1607,7 @@ function BookingApp({profile,perms={},onBack}) {
           {navItems.map(item=>(
             <button key={item.id} onClick={()=>setView(item.id)}
               style={ftab(view===item.id, T.info, true)}>
-              {item.icon} {item.label}
+              <Ico name={item.icon} size={14}/> {item.label}
             </button>
           ))}
         </div>
@@ -4993,6 +4993,7 @@ function LoginScreen() {
 // SHARED COMPONENTS & STYLES
 // ═══════════════════════════════════════════════════════════════════════════
 function TennisBall({size=32}){return(<svg width={size} height={size} viewBox="0 0 32 32" fill="none" style={{display:"block",margin:"0 auto"}}><circle cx="16" cy="16" r="15" stroke="#22C55E" strokeWidth="2"/><ellipse cx="16" cy="16" rx="5" ry="14" stroke="#22C55E" strokeWidth="1.5"/><line x1="1" y1="16" x2="31" y2="16" stroke="#22C55E" strokeWidth="1.5"/></svg>);}
+function Ico({name,size=16,color,style={}}){if(!name)return null;if(name.startsWith("ti-"))return<i className={`ti ${name}`} aria-hidden="true" style={{fontSize:size,color,lineHeight:1,...style}}/>;return<span aria-hidden="true" style={{fontSize:size,...style}}>{name}</span>;}
 function Av({name}){return(<div style={{width:34,height:34,borderRadius:"50%",background:"#22C55E",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:14,flexShrink:0}}>{name?.[0]||"?"}</div>);}
 function Loading({msg="Laden…"}){return(<div style={{display:"flex",justifyContent:"center",alignItems:"center",height:"100vh",background:"#F9FAFB"}}><div style={{textAlign:"center"}}><div style={{fontSize:36,marginBottom:12}}>🎾</div><div style={{color:"#6B7280"}}>{msg}</div></div></div>);}
 function SectTitle({children}){return <div style={{fontSize:13,fontWeight:800,color:"#374151",textTransform:"uppercase",letterSpacing:.6,marginBottom:10}}>{children}</div>;}
