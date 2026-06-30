@@ -170,6 +170,18 @@ export default function App() {
   const [screen,setScreen]         = useState("home");
   const [showLogin,setShowLogin]   = useState(false);
 
+  const navigate = useCallback((s) => {
+    history.pushState({screen:s},"");
+    setScreen(s);
+  },[]);
+
+  useEffect(()=>{
+    history.replaceState({screen:"home"},"");
+    const onPop=(e)=>setScreen(e.state?.screen||"home");
+    window.addEventListener("popstate",onPop);
+    return ()=>window.removeEventListener("popstate",onPop);
+  },[]);
+
   useEffect(()=>{
     if (!shareParam) { setShareValid(false); return; }
     sb.from("settings").select("value").eq("key","display_share_token").single()
@@ -224,30 +236,30 @@ export default function App() {
     const pubModules = MODULES.filter(m=>canDoPublic(m.id));
     if(pubModules.length===0) return <LoginScreen/>;
     // Öffentlich zugängliche Screens ohne Login
-    if(screen==="clubstream" && canDoPublic("clubstream")) return <ClubstreamApp profile={guestProfile} onBack={()=>setScreen("home")} onLogin={()=>setShowLogin(true)} contentTypePerms={contentTypePerms}/>;
-    if(screen==="btv"        && canDoPublic("btv"))        return <BtvLinksScreen onBack={()=>setScreen("home")}/>;
-    if(screen==="heimspiel"  && canDoPublic("heimspiel"))  return <HeimspielwocheScreen onBack={()=>setScreen("home")} profile={guestProfile}/>;
+    if(screen==="clubstream" && canDoPublic("clubstream")) return <ClubstreamApp profile={guestProfile} onBack={()=>navigate("home")} onLogin={()=>setShowLogin(true)} contentTypePerms={contentTypePerms}/>;
+    if(screen==="btv"        && canDoPublic("btv"))        return <BtvLinksScreen onBack={()=>navigate("home")}/>;
+    if(screen==="heimspiel"  && canDoPublic("heimspiel"))  return <HeimspielwocheScreen onBack={()=>navigate("home")} profile={guestProfile}/>;
     return <HomeScreen profile={guestProfile} canDo={canDoPublic} isGuest
       onGoBooking={()=>setShowLogin(true)} onGoKasse={()=>setShowLogin(true)}
       onGoSettings={()=>setShowLogin(true)} onGoKassenbuch={()=>setShowLogin(true)}
-      onGoClubstream={()=>setScreen("clubstream")} onGoBtv={()=>setScreen("btv")}
-      onGoHeimspiele={()=>setScreen("heimspiel")} onLogin={()=>setShowLogin(true)}/>;
+      onGoClubstream={()=>navigate("clubstream")} onGoBtv={()=>navigate("btv")}
+      onGoHeimspiele={()=>navigate("heimspiel")} onLogin={()=>setShowLogin(true)}/>;
   }
   if(!profile) return <Loading msg="Lade Profil…"/>;
 
   let el;
-  if(screen==="booking"    && canDo("booking"))       el=<BookingApp     profile={profile} perms={permissions} onBack={()=>setScreen("home")}/>;
-  else if(screen==="kasse"      && canDo("kasse"))         el=<KasseApp       profile={profile} perms={permissions} onBack={()=>setScreen("home")}/>;
-  else if(screen==="settings"   && canDo("einstellungen")) el=<SettingsApp    profile={profile} onBack={()=>setScreen("home")}/>;
-  else if(screen==="kassenbuch" && canDo("kassenbuch"))    el=<KassenbuchApp  profile={profile} onBack={()=>setScreen("home")}/>;
-  else if(screen==="clubstream" && canDo("clubstream"))    el=<ClubstreamApp  profile={profile} onBack={()=>setScreen("home")} contentTypePerms={contentTypePerms}/>;
-  else if(screen==="btv"        && canDo("btv"))           el=<BtvLinksScreen onBack={()=>setScreen("home")}/>;
-  else if(screen==="heimspiel"  && canDo("heimspiel"))     el=<HeimspielwocheScreen onBack={()=>setScreen("home")} profile={profile}/>;
+  if(screen==="booking"    && canDo("booking"))       el=<BookingApp     profile={profile} perms={permissions} onBack={()=>navigate("home")}/>;
+  else if(screen==="kasse"      && canDo("kasse"))         el=<KasseApp       profile={profile} perms={permissions} onBack={()=>navigate("home")}/>;
+  else if(screen==="settings"   && canDo("einstellungen")) el=<SettingsApp    profile={profile} onBack={()=>navigate("home")}/>;
+  else if(screen==="kassenbuch" && canDo("kassenbuch"))    el=<KassenbuchApp  profile={profile} onBack={()=>navigate("home")}/>;
+  else if(screen==="clubstream" && canDo("clubstream"))    el=<ClubstreamApp  profile={profile} onBack={()=>navigate("home")} contentTypePerms={contentTypePerms}/>;
+  else if(screen==="btv"        && canDo("btv"))           el=<BtvLinksScreen onBack={()=>navigate("home")}/>;
+  else if(screen==="heimspiel"  && canDo("heimspiel"))     el=<HeimspielwocheScreen onBack={()=>navigate("home")} profile={profile}/>;
   else el=<HomeScreen profile={profile} canDo={canDo}
-    onGoBooking={()=>setScreen("booking")} onGoKasse={()=>setScreen("kasse")}
-    onGoSettings={()=>setScreen("settings")} onGoKassenbuch={()=>setScreen("kassenbuch")}
-    onGoClubstream={()=>setScreen("clubstream")} onGoBtv={()=>setScreen("btv")}
-    onGoHeimspiele={()=>setScreen("heimspiel")}/>;
+    onGoBooking={()=>navigate("booking")} onGoKasse={()=>navigate("kasse")}
+    onGoSettings={()=>navigate("settings")} onGoKassenbuch={()=>navigate("kassenbuch")}
+    onGoClubstream={()=>navigate("clubstream")} onGoBtv={()=>navigate("btv")}
+    onGoHeimspiele={()=>navigate("heimspiel")}/>;
   return <>{el}<UserWidget profile={profile}/></>;
 }
 
@@ -1880,6 +1892,7 @@ function KasseDrinksTab({favs,onLogDrink,onDeleteEntry,onGoSettings}) {
 function KasseLogTab({myLog,myOpen,myTotal,onMarkPaid,onDeleteEntry}) {
   const [showPaid,setShowPaid]       = useState(false);
   const [showConfirm,setShowConfirm] = useState(false);
+  const [confirmDel,setConfirmDel]   = useState(null);
 
   const paid=myLog.filter(l=>l.paid);
   const byDate={};
@@ -1919,7 +1932,7 @@ function KasseLogTab({myLog,myOpen,myTotal,onMarkPaid,onDeleteEntry}) {
               <span style={{fontSize:24}}>{entry.emoji}</span>
               <div style={{flex:1}}><div style={{fontWeight:700,fontSize:14}}>{entry.drink_name}</div></div>
               <div style={{fontWeight:800,fontSize:15}}>{eur(entry.price)}</div>
-              <button style={{background:"none",border:"none",color:"#D1D5DB",cursor:"pointer",fontSize:14,fontWeight:700}} onClick={()=>onDeleteEntry(entry.id)}>✕</button>
+              <button style={{background:"none",border:"none",color:"#D1D5DB",cursor:"pointer",fontSize:14,fontWeight:700}} aria-label={`${entry.drink_name} löschen`} onClick={()=>setConfirmDel(entry)}>✕</button>
             </div>
           ))}
           <div style={{fontSize:12,color:"#6B7280",textAlign:"right",marginTop:4,paddingRight:36}}>
@@ -1955,6 +1968,23 @@ function KasseLogTab({myLog,myOpen,myTotal,onMarkPaid,onDeleteEntry}) {
             </div>
             <button style={{...S.primaryBtn,width:"100%",background:"#22C55E",color:"#fff",marginBottom:8}} onClick={()=>{onMarkPaid();setShowConfirm(false);}}>✓ Ja, bezahlt</button>
             <button style={{...S.ghostBtn,width:"100%"}} onClick={()=>setShowConfirm(false)}>Abbrechen</button>
+          </div>
+        </div>
+      )}
+
+      {confirmDel&&(
+        <div style={S.overlay} onClick={()=>setConfirmDel(null)}>
+          <div style={S.modal} onClick={e=>e.stopPropagation()}>
+            <div style={S.modalHeader}><div style={S.modalTitle}>Eintrag löschen?</div><button style={S.closeBtn} onClick={()=>setConfirmDel(null)}>✕</button></div>
+            <div style={{display:"flex",alignItems:"center",gap:12,background:T.bgCard,borderRadius:10,padding:"14px 16px",marginBottom:20,border:`1px solid ${T.bgBorder}`}}>
+              <span style={{fontSize:28}}>{confirmDel.emoji}</span>
+              <div>
+                <div style={{fontWeight:700,fontSize:14,color:T.textPrimary}}>{confirmDel.drink_name}</div>
+                <div style={{fontSize:13,color:"#F59E0B",fontWeight:700}}>{eur(confirmDel.price)}</div>
+              </div>
+            </div>
+            <button style={{...S.primaryBtn,width:"100%",background:"#DC2626",color:"#fff",marginBottom:8}} onClick={()=>{onDeleteEntry(confirmDel.id);setConfirmDel(null);}}>Löschen</button>
+            <button style={{...S.ghostBtn,width:"100%"}} onClick={()=>setConfirmDel(null)}>Abbrechen</button>
           </div>
         </div>
       )}
