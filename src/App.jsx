@@ -744,13 +744,14 @@ function BtvLinksScreen({onBack}) {
 
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
           {teams.filter(t=>t.url).map((t,i)=>(
-            <div key={i} onClick={()=>window.open(t.url,"_blank")}
+            <a key={i} href={t.url} target="_blank" rel="noopener noreferrer"
+              aria-label={`${t.name} auf BTV öffnen`}
               style={{display:"flex",alignItems:"center",justifyContent:"space-between",
                 background:T.bgCard,border:accentBorder(T.info),borderRadius:T.rMd,
-                padding:"14px 16px",cursor:"pointer"}}>
+                padding:"14px 16px",cursor:"pointer",textDecoration:"none"}}>
               <span style={{fontSize:T.fzBody,fontWeight:600,color:T.textPrimary}}>{t.name}</span>
               <span style={{fontSize:T.fzSm,color:T.info}}>BTV →</span>
-            </div>
+            </a>
           ))}
         </div>
       </div>
@@ -807,7 +808,7 @@ function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassen
           <h1 style={H.title}>Tennis Herrieden</h1>
           <p style={H.greeting}>Hallo, {profile.name} 👋</p>
           {(()=>{
-            const badges={admin:{icon:"👑",label:"Administrator",color:"#8B5CF6",bg:"#8B5CF618"},member2:{icon:"⭐",label:"Mitglied Plus",color:"#3B82F6",bg:"#3B82F618"},member:{icon:"🎾",label:"Mitglied",color:"#22C55E",bg:"#22C55E18"},known:{icon:"🤝",label:"Tennisfreund",color:"#F59E0B",bg:"#F59E0B18"},pending:{icon:"🤝",label:"Tennisfreund",color:"#F59E0B",bg:"#F59E0B18"},public:{icon:"👋",label:"Gast",color:"#64748B",bg:"#64748B18"}};
+            const badges={admin:{icon:"👑",label:"Administrator",color:"#8B5CF6",bg:"#8B5CF618"},member2:{icon:"⭐",label:"Mitglied Plus",color:"#3B82F6",bg:"#3B82F618"},member:{icon:"🎾",label:"Mitglied",color:"#22C55E",bg:"#22C55E18"},known:{icon:"🤝",label:"Tennisfreund",color:"#F59E0B",bg:"#F59E0B18"},pending:{icon:"⏳",label:"Ausstehend",color:"#F59E0B",bg:"#F59E0B18"},public:{icon:"👋",label:"Gast",color:"#64748B",bg:"#64748B18"}};
             const b=badges[profile.role]||badges.pending;
             return <div style={{display:"flex",flexDirection:"column",alignItems:"flex-start",gap:6,marginTop:6}}>
               <div style={{display:"inline-flex",alignItems:"center",gap:5,padding:"3px 10px",borderRadius:20,background:b.bg,border:`1px solid ${b.color}44`}}>
@@ -818,6 +819,34 @@ function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassen
             </div>;
           })()}
         </div>
+
+        {/* ── Pending-Erklärungskarte ── */}
+        {profile.role==="pending"&&(
+          <div style={{background:T.bgCard,border:`1.5px solid #F59E0B55`,borderRadius:T.rLg,padding:"18px 20px",display:"flex",flexDirection:"column",gap:12}}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <div style={{width:36,height:36,borderRadius:"50%",background:"#F59E0B18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>⏳</div>
+              <div>
+                <div style={{fontWeight:800,fontSize:15,color:T.textPrimary}}>Dein Konto wird freigegeben</div>
+                <div style={{fontSize:13,color:T.textSecondary,marginTop:2}}>Registrierung erfolgreich — kurz warten</div>
+              </div>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {[
+                {n:1,text:"Registrierung abgeschlossen ✓",done:true},
+                {n:2,text:"Admin des TC Herrieden schaltet dich frei",done:false},
+                {n:3,text:"Du erhältst Zugang zu Buchung & mehr",done:false},
+              ].map(s=>(
+                <div key={s.n} style={{display:"flex",alignItems:"center",gap:10}}>
+                  <div style={{width:22,height:22,borderRadius:"50%",background:s.done?"#14532D":"#F59E0B18",border:`1.5px solid ${s.done?"#22C55E":"#F59E0B44"}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:s.done?"#4ADE80":"#F59E0B",flexShrink:0}}>{s.done?"✓":s.n}</div>
+                  <span style={{fontSize:13,color:s.done?T.textSecondary:T.textPrimary}}>{s.text}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{fontSize:12,color:T.textMuted,borderTop:`1px solid ${T.bgBorder}`,paddingTop:10,marginTop:2}}>
+              Fragen? Wende dich an den Vereinsvorstand oder schreib uns eine E-Mail.
+            </div>
+          </div>
+        )}
 
         {/* ── Widgets ── */}
         <div style={{display:"flex",flexDirection:"column",gap:12}}>
