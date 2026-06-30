@@ -1786,8 +1786,8 @@ function KasseDrinksTab({favs,onLogDrink,onDeleteEntry,onGoSettings}) {
 
       {undoEntry&&(
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",
-          background:"#1E293B",borderRadius:10,padding:"10px 14px",marginBottom:16}}>
-          <span style={{color:"#E2E8F0",fontSize:13}}>{undoEntry.emoji} {undoEntry.name} eingetragen</span>
+          background:T.bgCard,borderRadius:10,padding:"10px 14px",marginBottom:16}}>
+          <span style={{color:T.textPrimary,fontSize:13}}>{undoEntry.emoji} {undoEntry.name} eingetragen</span>
           <button onClick={handleUndo}
             style={{background:"none",border:"none",color:"#4ADE80",fontWeight:700,fontSize:13,cursor:"pointer",padding:0}}>
             Rückgängig
@@ -1810,15 +1810,15 @@ function KasseDrinksTab({favs,onLogDrink,onDeleteEntry,onGoSettings}) {
               <div key={f.id} onClick={()=>handleTap(f)}
                 style={{...K.drinkTile,...(done?K.drinkTileDone:{}),cursor:"pointer",userSelect:"none"}}>
                 <span style={{fontSize:40,lineHeight:1}}>{done?"✓":f.emoji}</span>
-                <span style={{fontWeight:700,fontSize:13,color:done?"#16A34A":"#111827",marginTop:6}}>{f.name}</span>
+                <span style={{fontWeight:700,fontSize:13,color:done?"#16A34A":T.textPrimary,marginTop:6}}>{f.name}</span>
                 <span style={{fontSize:13,fontWeight:700,color:done?"#16A34A":"#22C55E"}}>{eur(f.price)}</span>
               </div>
             );
           })}
-          <div style={{...K.drinkTile,borderStyle:"dashed",borderColor:"#D1D5DB",background:"#FAFAFA",cursor:"pointer",justifyContent:"center"}}
+          <div style={{...K.drinkTile,borderStyle:"dashed",borderColor:T.bgBorder,background:T.bgInput,cursor:"pointer",justifyContent:"center"}}
             onClick={()=>setQuickModal(true)}>
-            <span style={{fontSize:28,color:"#CBD5E1"}}>+</span>
-            <span style={{fontSize:12,color:"#9CA3AF",marginTop:4}}>Weiteres</span>
+            <span style={{fontSize:28,color:T.textMuted}}>+</span>
+            <span style={{fontSize:12,color:T.textMuted,marginTop:4}}>Weiteres</span>
           </div>
         </div>
       )}
@@ -1832,7 +1832,7 @@ function KasseDrinksTab({favs,onLogDrink,onDeleteEntry,onGoSettings}) {
             </div>
             <div style={{textAlign:"center",padding:"20px 0 24px"}}>
               <div style={{fontSize:56,lineHeight:1,marginBottom:10}}>{confirmDrink.emoji}</div>
-              <div style={{fontWeight:800,fontSize:20,color:"#111827",marginBottom:4}}>{confirmDrink.name}</div>
+              <div style={{fontWeight:800,fontSize:20,color:T.textPrimary,marginBottom:4}}>{confirmDrink.name}</div>
               <div style={{fontSize:28,fontWeight:800,color:"#22C55E"}}>{eur(confirmDrink.price)}</div>
             </div>
             <button style={{...S.primaryBtn,width:"100%",background:"#22C55E",color:"#fff",marginBottom:8,fontSize:15,padding:"14px"}}
@@ -4997,19 +4997,19 @@ function Ico({name,size=16,color,style={}}){if(!name)return null;if(name.startsW
 function Av({name}){return(<div style={{width:34,height:34,borderRadius:"50%",background:"#22C55E",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:14,flexShrink:0}}>{name?.[0]||"?"}</div>);}
 function Loading({msg="Laden…"}){return(<div style={{display:"flex",justifyContent:"center",alignItems:"center",height:"100vh",background:"#F9FAFB"}}><div style={{textAlign:"center"}}><div style={{fontSize:36,marginBottom:12}}>🎾</div><div style={{color:"#6B7280"}}>{msg}</div></div></div>);}
 function SectTitle({children}){return <div style={{fontSize:13,fontWeight:800,color:"#374151",textTransform:"uppercase",letterSpacing:.6,marginBottom:10}}>{children}</div>;}
-function Em({msg}){return <div style={{color:"#9CA3AF",padding:"18px 0",fontSize:14}}>– {msg}</div>;}
-function Lbl({children}){return <div style={{fontSize:12,fontWeight:700,color:"#374151",marginBottom:6,textTransform:"uppercase",letterSpacing:.5}}>{children}</div>;}
+function Em({msg}){return <div style={{color:T.textMuted,padding:"18px 0",fontSize:14}}>– {msg}</div>;}
+function Lbl({children}){return <div style={{fontSize:12,fontWeight:700,color:T.textPrimary,marginBottom:6,textTransform:"uppercase",letterSpacing:.5}}>{children}</div>;}
 
 const K={
-  sidebar:    {width:210,background:"#0F172A",display:"flex",flexDirection:"column",padding:"16px 0",flexShrink:0},
+  sidebar:    {width:210,background:T.bgPage,display:"flex",flexDirection:"column",padding:"16px 0",flexShrink:0},
   backBtn:    {margin:"0 12px 14px",padding:"6px 12px",background:"none",border:`1px solid ${T.bgBorder}`,borderRadius:7,color:T.textSecondary,cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left"},
-  logo:       {padding:"0 16px 14px",borderBottom:"1px solid #1E293B",marginBottom:12,display:"flex",flexDirection:"column",gap:4},
-  openChip:   {margin:"0 12px 8px",background:"#1E293B",border:"1px solid #F59E0B44",borderRadius:10,padding:"10px 12px",textAlign:"center"},
+  logo:       {padding:"0 16px 14px",borderBottom:`1px solid ${T.bgBorder}`,marginBottom:12,display:"flex",flexDirection:"column",gap:4},
+  openChip:   {margin:"0 12px 8px",background:T.bgCard,border:"1px solid #F59E0B44",borderRadius:10,padding:"10px 12px",textAlign:"center"},
   page:       {padding:"28px 32px",maxWidth:860},
-  summaryBar: {background:"#0F172A",borderRadius:12,padding:"16px 20px",marginBottom:24,display:"flex",justifyContent:"space-between",alignItems:"center"},
+  summaryBar: {background:T.bgPage,borderRadius:12,padding:"16px 20px",marginBottom:24,display:"flex",justifyContent:"space-between",alignItems:"center"},
   payBtn:     {padding:"10px 16px",background:"#F59E0B",color:"#0F172A",border:"none",borderRadius:8,fontWeight:800,cursor:"pointer",fontSize:13,lineHeight:1.4,textAlign:"center"},
   drinkGrid:  {display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:12},
-  drinkTile:  {background:"#fff",border:"1.5px solid #E5E7EB",borderRadius:14,padding:"22px 10px 16px",display:"flex",flexDirection:"column",alignItems:"center",gap:5,textAlign:"center",boxShadow:"0 1px 4px rgba(0,0,0,.06)",transition:"all .15s"},
+  drinkTile:  {background:T.bgCard,border:`1.5px solid ${T.bgBorder}`,borderRadius:14,padding:"22px 10px 16px",display:"flex",flexDirection:"column",alignItems:"center",gap:5,textAlign:"center",boxShadow:"0 1px 4px rgba(0,0,0,.06)",transition:"all .15s"},
   drinkTileDone:{background:"#DCFCE7",borderColor:"#22C55E"},
 };
 
@@ -5144,50 +5144,50 @@ function KassenbuchApp({profile, onBack}) {
   const monthLabel= showAll ? "Alle Buchungen" : `${DE_MONTHS_LONG[viewMonth]} ${viewYear}`;
 
   const KB = {
-    wrap:    {minHeight:"100vh",background:"#0F172A",fontFamily:"'DM Sans',system-ui,sans-serif",color:"#F1F5F9",display:"flex",flexDirection:"column",alignItems:"center"},
+    wrap:    {minHeight:"100vh",background:T.bgPage,fontFamily:"'DM Sans',system-ui,sans-serif",color:T.textPrimary,display:"flex",flexDirection:"column",alignItems:"center"},
     inner:   {width:"100%",maxWidth:480,padding:"52px 20px 40px",display:"flex",flexDirection:"column",gap:14},
     header:  {display:"flex",alignItems:"center",gap:10,paddingBottom:4},
     backBtn: {background:"none",border:`1px solid ${T.bgBorder}`,borderRadius:8,color:T.textSecondary,cursor:"pointer",fontSize:13,padding:"6px 12px",display:"flex",alignItems:"center",gap:5},
     title:   {fontSize:20,fontWeight:800,letterSpacing:-.5,flex:1,color:T.textPrimary},
     addBtn:  {background:"#22C55E",color:"#052e16",border:"none",borderRadius:8,padding:"7px 14px",fontWeight:700,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",gap:5},
-    balCard: {background:"#1E293B",border:"1.5px solid #334155",borderRadius:14,padding:"16px 18px"},
-    balLabel:{fontSize:11,fontWeight:700,color:"#475569",textTransform:"uppercase",letterSpacing:.8,marginBottom:4},
+    balCard: {background:T.bgCard,border:`1.5px solid ${T.bgBorder}`,borderRadius:14,padding:"16px 18px"},
+    balLabel:{fontSize:11,fontWeight:700,color:T.textSecondary,textTransform:"uppercase",letterSpacing:.8,marginBottom:4},
     balAmt:  (pos)=>({fontSize:32,fontWeight:800,color:pos?"#4ADE80":"#F87171"}),
-    startRow:{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:10,paddingTop:10,borderTop:"1px solid #334155"},
-    editBtn: {background:"none",border:"1px solid #334155",borderRadius:6,color:"#94A3B8",cursor:"pointer",fontSize:12,padding:"4px 10px",display:"flex",alignItems:"center",gap:4},
+    startRow:{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:10,paddingTop:10,borderTop:`1px solid ${T.bgBorder}`},
+    editBtn: {background:"none",border:`1px solid ${T.bgBorder}`,borderRadius:6,color:T.textMuted,cursor:"pointer",fontSize:12,padding:"4px 10px",display:"flex",alignItems:"center",gap:4},
     menuWrap:{position:"relative"},
-    menuBtn: {background:"none",border:"1px solid #334155",borderRadius:6,color:"#94A3B8",cursor:"pointer",fontSize:12,padding:"4px 10px",display:"flex",alignItems:"center",gap:4},
-    menuDrop:{position:"absolute",right:0,top:"calc(100% + 4px)",background:"#1E293B",border:"1px solid #334155",borderRadius:8,overflow:"hidden",zIndex:10,minWidth:140},
-    menuItem:{display:"block",width:"100%",padding:"10px 14px",background:"none",border:"none",color:"#E2E8F0",fontSize:13,cursor:"pointer",textAlign:"left"},
+    menuBtn: {background:"none",border:`1px solid ${T.bgBorder}`,borderRadius:6,color:T.textMuted,cursor:"pointer",fontSize:12,padding:"4px 10px",display:"flex",alignItems:"center",gap:4},
+    menuDrop:{position:"absolute",right:0,top:"calc(100% + 4px)",background:T.bgCard,border:`1px solid ${T.bgBorder}`,borderRadius:8,overflow:"hidden",zIndex:10,minWidth:140},
+    menuItem:{display:"block",width:"100%",padding:"10px 14px",background:"none",border:"none",color:T.textPrimary,fontSize:13,cursor:"pointer",textAlign:"left"},
     statRow: {display:"grid",gridTemplateColumns:"1fr 1fr",gap:10},
-    stat:    {background:"#1E293B",border:"1.5px solid #334155",borderRadius:10,padding:"10px 14px"},
-    statLbl: {fontSize:11,color:"#475569",fontWeight:700,textTransform:"uppercase",letterSpacing:.6,marginBottom:3},
+    stat:    {background:T.bgCard,border:`1.5px solid ${T.bgBorder}`,borderRadius:10,padding:"10px 14px"},
+    statLbl: {fontSize:11,color:T.textSecondary,fontWeight:700,textTransform:"uppercase",letterSpacing:.6,marginBottom:3},
     statVal: (c)=>({fontSize:18,fontWeight:800,color:c}),
     monthRow:{display:"flex",alignItems:"center",gap:8},
-    mBtn:    {background:"none",border:"1px solid #334155",borderRadius:6,color:"#94A3B8",cursor:"pointer",fontSize:18,lineHeight:1,padding:"5px 10px"},
-    mLabel:  {flex:1,textAlign:"center",fontSize:14,fontWeight:700,color:"#CBD5E1"},
-    allBtn:  (on)=>({background:on?"#14532D":"none",border:`1px solid ${on?"#22C55E":"#334155"}`,borderRadius:6,color:on?"#4ADE80":"#475569",cursor:"pointer",fontSize:12,padding:"4px 10px"}),
-    hint:    {fontSize:11,color:"#334155",textAlign:"right",marginBottom:-4},
-    entry:   (swiped)=>({background:"#1E293B",border:"1.5px solid #334155",borderRadius:10,padding:"10px 12px",display:"flex",alignItems:"center",gap:10,transition:"transform .18s",transform:swiped?"translateX(-64px)":"translateX(0)",cursor:"pointer",userSelect:"none",touchAction:"pan-y"}),
+    mBtn:    {background:"none",border:`1px solid ${T.bgBorder}`,borderRadius:6,color:T.textMuted,cursor:"pointer",fontSize:18,lineHeight:1,padding:"5px 10px"},
+    mLabel:  {flex:1,textAlign:"center",fontSize:14,fontWeight:700,color:T.textMuted},
+    allBtn:  (on)=>({background:on?"#14532D":"none",border:`1px solid ${on?"#22C55E":T.bgBorder}`,borderRadius:6,color:on?"#4ADE80":T.textSecondary,cursor:"pointer",fontSize:12,padding:"4px 10px"}),
+    hint:    {fontSize:11,color:T.bgBorder,textAlign:"right",marginBottom:-4},
+    entry:   (swiped)=>({background:T.bgCard,border:`1.5px solid ${T.bgBorder}`,borderRadius:10,padding:"10px 12px",display:"flex",alignItems:"center",gap:10,transition:"transform .18s",transform:swiped?"translateX(-64px)":"translateX(0)",cursor:"pointer",userSelect:"none",touchAction:"pan-y"}),
     entryWrap:{position:"relative",overflow:"hidden",borderRadius:10,marginBottom:6},
     delBtn:  {position:"absolute",right:0,top:0,bottom:0,width:60,background:"#DC2626",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",borderRadius:"0 10px 10px 0",fontSize:18},
     icon:    (t)=>({width:30,height:30,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:800,flexShrink:0,background:t==="in"?"#14532D":"#450A0A",color:t==="in"?"#4ADE80":"#F87171"}),
-    eDesc:   {fontSize:14,color:"#E2E8F0",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"},
-    eDate:   {fontSize:12,color:"#475569"},
+    eDesc:   {fontSize:14,color:T.textPrimary,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"},
+    eDate:   {fontSize:12,color:T.textSecondary},
     eAmt:    (t)=>({fontSize:14,fontWeight:800,flexShrink:0,color:t==="in"?"#4ADE80":"#F87171"}),
-    empty:   {textAlign:"center",color:"#475569",fontSize:14,padding:"2rem 0"},
-    formCard:{background:"#1E293B",border:"1.5px solid #334155",borderRadius:14,padding:"18px",display:"flex",flexDirection:"column",gap:14},
+    empty:   {textAlign:"center",color:T.textSecondary,fontSize:14,padding:"2rem 0"},
+    formCard:{background:T.bgCard,border:`1.5px solid ${T.bgBorder}`,borderRadius:14,padding:"18px",display:"flex",flexDirection:"column",gap:14},
     typeRow: {display:"grid",gridTemplateColumns:"1fr 1fr",gap:8},
-    typeBtn: (t,sel)=>({border:`2px solid ${sel?(t==="in"?"#22C55E":"#EF4444"):"#334155"}`,borderRadius:10,padding:"12px 8px",cursor:"pointer",fontSize:22,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",background:sel?(t==="in"?"#14532D":"#450A0A"):"#0F172A",color:sel?(t==="in"?"#4ADE80":"#F87171"):"#475569",transition:"all .12s"}),
-    lbl:     {fontSize:12,color:"#475569",fontWeight:600,marginBottom:-8},
-    inp:     {background:"#0F172A",border:"1.5px solid #334155",borderRadius:8,color:"#F1F5F9",fontSize:14,padding:"9px 12px",outline:"none",width:"100%",boxSizing:"border-box"},
+    typeBtn: (t,sel)=>({border:`2px solid ${sel?(t==="in"?"#22C55E":"#EF4444"):T.bgBorder}`,borderRadius:10,padding:"12px 8px",cursor:"pointer",fontSize:22,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",background:sel?(t==="in"?"#14532D":"#450A0A"):T.bgPage,color:sel?(t==="in"?"#4ADE80":"#F87171"):T.textSecondary,transition:"all .12s"}),
+    lbl:     {fontSize:12,color:T.textSecondary,fontWeight:600,marginBottom:-8},
+    inp:     {background:T.bgPage,border:`1.5px solid ${T.bgBorder}`,borderRadius:8,color:T.textPrimary,fontSize:14,padding:"9px 12px",outline:"none",width:"100%",boxSizing:"border-box"},
     saveBtn: {background:"#22C55E",color:"#052e16",border:"none",borderRadius:8,padding:"11px",fontWeight:800,fontSize:14,cursor:"pointer"},
     overlay: {position:"fixed",inset:0,background:"rgba(0,0,0,.6)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:999},
-    sheet:   {background:"#1E293B",borderRadius:"16px 16px 0 0",padding:"24px 20px",width:"100%",maxWidth:480,display:"flex",flexDirection:"column",gap:12},
-    shTitle: {fontSize:16,fontWeight:800,color:"#F1F5F9"},
-    shDesc:  {fontSize:14,color:"#94A3B8"},
+    sheet:   {background:T.bgCard,borderRadius:"16px 16px 0 0",padding:"24px 20px",width:"100%",maxWidth:480,display:"flex",flexDirection:"column",gap:12},
+    shTitle: {fontSize:16,fontWeight:800,color:T.textPrimary},
+    shDesc:  {fontSize:14,color:T.textMuted},
     shBtns:  {display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:4},
-    shCancel:{background:"none",border:"1px solid #334155",borderRadius:8,padding:10,fontSize:14,color:"#94A3B8",cursor:"pointer"},
+    shCancel:{background:"none",border:`1px solid ${T.bgBorder}`,borderRadius:8,padding:10,fontSize:14,color:T.textMuted,cursor:"pointer"},
     shDel:   {background:"#DC2626",border:"none",borderRadius:8,padding:10,fontSize:14,fontWeight:700,color:"#fff",cursor:"pointer"},
   };
 
@@ -5426,43 +5426,43 @@ function KassenbuchApp({profile, onBack}) {
 }
 
 const S={
-  shell:{display:"flex",height:"100vh",fontFamily:"'DM Sans',system-ui,sans-serif",background:"#F3F4F6",color:"#111827"},
-  sidebar:{width:228,background:"#0F172A",color:"#F8FAFC",display:"flex",flexDirection:"column",padding:"20px 0",flexShrink:0},
-  logo:{display:"flex",alignItems:"center",gap:10,padding:"0 20px 22px",borderBottom:"1px solid #1E293B"},
+  shell:{display:"flex",height:"100vh",fontFamily:"'DM Sans',system-ui,sans-serif",background:T.bgPage,color:T.textPrimary},
+  sidebar:{width:228,background:T.bgPage,color:T.textPrimary,display:"flex",flexDirection:"column",padding:"20px 0",flexShrink:0},
+  logo:{display:"flex",alignItems:"center",gap:10,padding:"0 20px 22px",borderBottom:`1px solid ${T.bgBorder}`},
   logoText:{fontWeight:800,fontSize:17,letterSpacing:-.5},
   nav:{flex:1,padding:"14px 0"},
-  navBtn:{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"10px 20px",background:"none",border:"none",color:"#94A3B8",fontSize:13,cursor:"pointer",textAlign:"left"},
-  navBtnActive:{background:"#1E293B",color:"#4ADE80",borderLeft:"3px solid #4ADE80"},
-  sidebarBottom:{padding:"16px 20px",borderTop:"1px solid #1E293B"},
+  navBtn:{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"10px 20px",background:"none",border:"none",color:T.textMuted,fontSize:13,cursor:"pointer",textAlign:"left"},
+  navBtnActive:{background:T.bgCard,color:"#4ADE80",borderLeft:"3px solid #4ADE80"},
+  sidebarBottom:{padding:"16px 20px",borderTop:`1px solid ${T.bgBorder}`},
   userChip:{display:"flex",alignItems:"center",gap:10,marginBottom:12},
   main:{flex:1,overflowY:"auto"},
   pageTitle:{fontSize:23,fontWeight:800,letterSpacing:-.5,margin:0},
-  pageSub:{color:"#6B7280",fontSize:13,marginTop:4},
-  courtTab:{padding:"8px 14px",border:"2px solid #E5E7EB",borderRadius:8,cursor:"pointer",background:"#fff",fontSize:13,fontWeight:600,textAlign:"center"},
+  pageSub:{color:T.textSecondary,fontSize:13,marginTop:4},
+  courtTab:{padding:"8px 14px",border:`2px solid ${T.bgBorder}`,borderRadius:8,cursor:"pointer",background:T.bgCard,fontSize:13,fontWeight:600,textAlign:"center"},
   weekNav:{display:"flex",alignItems:"center",gap:10,marginBottom:16,flexWrap:"wrap"},
-  weekBtn:{padding:"6px 14px",background:"#fff",border:"1px solid #E5E7EB",borderRadius:6,cursor:"pointer",fontSize:13,fontWeight:500},
-  calTable:{width:"100%",borderCollapse:"collapse",background:"#fff",borderRadius:10,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)",minWidth:600},
-  thTime:{width:58,padding:"10px 8px",background:"#F8FAFC",fontSize:12,color:"#9CA3AF",fontWeight:600},
-  thDay:{padding:"10px 8px",textAlign:"center",borderLeft:"1px solid #F1F5F9",background:"#F8FAFC"},
+  weekBtn:{padding:"6px 14px",background:T.bgCard,border:`1px solid ${T.bgBorder}`,borderRadius:6,cursor:"pointer",fontSize:13,fontWeight:500},
+  calTable:{width:"100%",borderCollapse:"collapse",background:T.bgCard,borderRadius:10,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)",minWidth:600},
+  thTime:{width:58,padding:"10px 8px",background:T.bgInput,fontSize:12,color:T.textMuted,fontWeight:600},
+  thDay:{padding:"10px 8px",textAlign:"center",borderLeft:`1px solid ${T.bgBorder}`,background:T.bgInput},
   thDayToday:{background:"#F0FDF4"},
-  tdTime:{padding:"4px 8px",fontSize:12,color:"#9CA3AF",textAlign:"right",borderTop:"1px solid #F8FAFC",whiteSpace:"nowrap"},
-  tdSlot:{padding:3,borderLeft:"1px solid #F8FAFC",borderTop:"1px solid #F8FAFC"},
-  slotBtn:{width:"100%",padding:"5px 4px",border:"1px solid #E5E7EB",borderRadius:5,background:"#F9FAFB",cursor:"pointer",fontSize:11,fontWeight:500,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:"100%",display:"block"},
-  slotPast:{background:"#F9FAFB",color:"#D1D5DB",cursor:"not-allowed"},
-  card:{background:"#fff",borderRadius:10,padding:"14px 16px",marginBottom:10,boxShadow:"0 1px 3px rgba(0,0,0,.05)"},
+  tdTime:{padding:"4px 8px",fontSize:12,color:T.textMuted,textAlign:"right",borderTop:`1px solid ${T.bgInput}`,whiteSpace:"nowrap"},
+  tdSlot:{padding:3,borderLeft:`1px solid ${T.bgInput}`,borderTop:`1px solid ${T.bgInput}`},
+  slotBtn:{width:"100%",padding:"5px 4px",border:`1px solid ${T.bgBorder}`,borderRadius:5,background:T.bgInput,cursor:"pointer",fontSize:11,fontWeight:500,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:"100%",display:"block"},
+  slotPast:{background:T.bgInput,color:T.textMuted,cursor:"not-allowed"},
+  card:{background:T.bgCard,borderRadius:10,padding:"14px 16px",marginBottom:10,boxShadow:"0 1px 3px rgba(0,0,0,.05)"},
   overlay:{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999},
-  modal:{background:"#fff",borderRadius:14,padding:28,width:380,boxShadow:"0 20px 60px rgba(0,0,0,.2)"},
+  modal:{background:T.bgCard,borderRadius:14,padding:28,width:380,boxShadow:"0 20px 60px rgba(0,0,0,.2)"},
   modalHeader:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:18},
   modalTitle:{fontWeight:800,fontSize:18,letterSpacing:-.3},
-  modalSub:{color:"#6B7280",fontSize:13,marginTop:2},
-  closeBtn:{background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#9CA3AF",padding:0},
-  loginWrap:{minHeight:"100vh",background:"linear-gradient(135deg,#ECFDF5,#EFF6FF)",display:"flex",alignItems:"center",justifyContent:"center"},
-  loginCard:{background:"#fff",borderRadius:16,padding:32,width:340,boxShadow:"0 8px 40px rgba(0,0,0,.10)"},
-  input:{padding:"10px 12px",border:"1.5px solid #E5E7EB",borderRadius:8,fontSize:13,outline:"none",width:"100%",boxSizing:"border-box",background:"#fff"},
-  primaryBtn:{padding:"11px 20px",background:"#0F172A",color:"#4ADE80",border:"none",borderRadius:8,fontWeight:700,cursor:"pointer",fontSize:14},
-  ghostBtn:{padding:"11px 20px",background:"#F9FAFB",color:"#374151",border:"1px solid #E5E7EB",borderRadius:8,fontWeight:600,cursor:"pointer",fontSize:14},
+  modalSub:{color:T.textSecondary,fontSize:13,marginTop:2},
+  closeBtn:{background:"none",border:"none",fontSize:18,cursor:"pointer",color:T.textMuted,padding:0},
+  loginWrap:{minHeight:"100vh",background:`linear-gradient(135deg,${T.bgPage},${T.bgCard})`,display:"flex",alignItems:"center",justifyContent:"center"},
+  loginCard:{background:T.bgCard,borderRadius:16,padding:32,width:340,boxShadow:"0 8px 40px rgba(0,0,0,.10)"},
+  input:{padding:"10px 12px",border:`1.5px solid ${T.bgBorder}`,borderRadius:8,fontSize:13,outline:"none",width:"100%",boxSizing:"border-box",background:T.bgInput},
+  primaryBtn:{padding:"11px 20px",background:T.bgPage,color:"#4ADE80",border:"none",borderRadius:8,fontWeight:700,cursor:"pointer",fontSize:14},
+  ghostBtn:{padding:"11px 20px",background:T.bgInput,color:T.textPrimary,border:`1px solid ${T.bgBorder}`,borderRadius:8,fontWeight:600,cursor:"pointer",fontSize:14},
   cancelBtn:{padding:"7px 14px",background:"#FEE2E2",color:"#DC2626",border:"none",borderRadius:6,fontWeight:600,cursor:"pointer",fontSize:13,flexShrink:0},
-  tabBtn:{padding:"8px 16px",border:"1.5px solid #E5E7EB",borderRadius:7,cursor:"pointer",background:"#fff",fontSize:13,fontWeight:500},
-  tabBtnActive:{background:"#0F172A",color:"#4ADE80",borderColor:"#0F172A"},
+  tabBtn:{padding:"8px 16px",border:`1.5px solid ${T.bgBorder}`,borderRadius:7,cursor:"pointer",background:T.bgCard,fontSize:13,fontWeight:500},
+  tabBtnActive:{background:T.bgPage,color:"#4ADE80",borderColor:T.bgPage},
   toast:{position:"fixed",bottom:24,right:24,padding:"12px 20px",borderRadius:10,color:"#fff",fontWeight:600,fontSize:14,boxShadow:"0 4px 20px rgba(0,0,0,.2)",zIndex:9999},
 };
