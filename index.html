@@ -162,7 +162,11 @@
       (function(){
         const t=localStorage.getItem("app-theme");
         const map={"light":"theme-light","frenchopen":"theme-frenchopen","australianopen":"theme-australianopen","usopen":"theme-usopen","wimbledon":"theme-wimbledon"};
-        if(map[t]) document.documentElement.classList.add(map[t]);
+        if(map[t]) {
+          document.documentElement.classList.add(map[t]);
+        } else if(!t && window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches) {
+          document.documentElement.classList.add("theme-light");
+        }
       })();
     </script>
     <script type="module" src="/src/main.jsx"></script>

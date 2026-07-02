@@ -284,7 +284,11 @@ function applyTheme(id) {
 
 function UserWidget({profile}) {
   const [open, setOpen]             = useState(false);
-  const [theme, setTheme]           = useState(()=>localStorage.getItem("app-theme")||"dark");
+  const [theme, setTheme]           = useState(()=>{
+    const stored = localStorage.getItem("app-theme");
+    if (stored) return stored;
+    return (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches) ? "light" : "dark";
+  });
   const [forceMobile, setForceMobile] = useState(()=>document.documentElement.classList.contains("force-mobile"));
   const [anonBookings, setAnonBookings] = useState(!!profile?.anonymous_bookings);
   const isDesktop                   = window.innerWidth >= 768;
