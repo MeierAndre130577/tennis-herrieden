@@ -286,6 +286,7 @@
     .hs-meld-pos { font-size:.65em; font-weight:600; opacity:.6; margin-right:.25em; vertical-align:.05em; }
     .hs-rubber-score { font-size:clamp(14px,1.5vw,24px); font-weight:800; white-space:nowrap; color:var(--fg); flex-shrink:0; }
     .hs-rubber-score.live { color:var(--live-fg); }
+    .hs-rubber-score.wo { font-size:clamp(11px,1.1vw,18px); font-weight:600; color:var(--slate); font-style:italic; opacity:.75; }
     .hs-rubber-result { width:clamp(26px,2.6vw,42px); height:clamp(26px,2.6vw,42px); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:clamp(12px,1.3vw,20px); font-weight:800; flex-shrink:0; }
     @keyframes hs-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
     .hs-spin-ball { animation:hs-spin 1s linear infinite; display:block; }
@@ -1296,7 +1297,7 @@ function renderHsMatch(match) {
           <div class="hs-rubber-home">${isDouble ? shortName(r.home) : formatName(r.home)}</div>
           <div class="hs-rubber-away">${isDouble ? shortName(r.away) : formatName(r.away)}</div>
         </div>
-        <span class="hs-rubber-score${r.result==="live"?" live":""}">${r.score}</span>
+        <span class="hs-rubber-score${r.result==="live"?" live":r.wo?" wo":""}">${r.wo?"w.o.":r.score}</span>
         <span class="hs-rubber-result hs-result-${r.result}">${r.result==="live"?LIVE_BALL_SVG:(RESULT_LABEL[r.result]||"?")}</span>
       </div>`;
     }).join("");

@@ -2683,6 +2683,7 @@ function RubberModal({rubber, homePlayers, awayPlayers, onSave, onClose}) {
   const [sets,   setSets]   = useState(initSets);
   const [result, setResult] = useState(rubber.result||"open");
   const [manualResult, setManualResult] = useState(false);
+  const [wo, setWo] = useState(rubber.wo || null);
 
   const initDouble = () => {
     if(isD){
@@ -2710,7 +2711,8 @@ function RubberModal({rubber, homePlayers, awayPlayers, onSave, onClose}) {
   const handleSave = () => {
     const homeVal = isD ? [h1,h2].filter(Boolean).join(" / ") : h1;
     const awayVal = isD ? [a1,a2].filter(Boolean).join(" / ") : a1;
-    onSave({...rubber, home:homeVal, away:awayVal, score:buildScore(), result});
+    const scoreVal = wo ? "w.o." : buildScore();
+    onSave({...rubber, home:homeVal, away:awayVal, score:scoreVal, result, wo: wo||null});
   };
 
   const RESULTS = [
@@ -2786,6 +2788,7 @@ function RubberModal({rubber, homePlayers, awayPlayers, onSave, onClose}) {
         </div>
 
         {/* Sätze */}
+        <div style={{opacity:wo?0.3:1,pointerEvents:wo?"none":"auto",transition:"opacity .2s"}}>
         {[0,1,2].map(i=>{
           const isTb = i===2;
           const sw   = setWinner(sets[i].home, sets[i].away, isTb);
@@ -2838,6 +2841,41 @@ function RubberModal({rubber, homePlayers, awayPlayers, onSave, onClose}) {
             </div>
           );
         })}
+        </div>
+
+        {/* W/O */}
+        <div style={{marginBottom:14,padding:"10px 12px",borderRadius:10,
+          border:`1.5px solid ${wo?"#FBBF24":"#E5E7EB"}`,
+          background:wo?"#FFFBEB":"#FAFAFA"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+            <div style={{fontSize:10,fontWeight:700,color:wo?"#92400E":"#6B7280"}}>
+              AUFGABE / W.O.{wo?" — AKTIV":""}
+            </div>
+            {wo&&(
+              <button onClick={()=>{setWo(null);setManualResult(false);setResult(calcResult(sets));}}
+                style={{fontSize:10,color:"#6366F1",background:"none",border:"none",
+                  cursor:"pointer",textDecoration:"underline"}}>
+                Aufheben
+              </button>
+            )}
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+            <button onClick={()=>{setWo("home");setResult("loss");setManualResult(true);}}
+              style={{padding:"9px 0",fontSize:12,fontWeight:700,borderRadius:8,cursor:"pointer",
+                border:`2px solid ${wo==="home"?"#FECACA":"#E5E7EB"}`,
+                background:wo==="home"?"#FEF2F2":"#fff",
+                color:wo==="home"?"#DC2626":"#9CA3AF",transition:"all .12s"}}>
+              Heim gibt auf
+            </button>
+            <button onClick={()=>{setWo("away");setResult("win");setManualResult(true);}}
+              style={{padding:"9px 0",fontSize:12,fontWeight:700,borderRadius:8,cursor:"pointer",
+                border:`2px solid ${wo==="away"?"#BBF7D0":"#E5E7EB"}`,
+                background:wo==="away"?"#F0FDF4":"#fff",
+                color:wo==="away"?"#059669":"#9CA3AF",transition:"all .12s"}}>
+              Gast gibt auf
+            </button>
+          </div>
+        </div>
 
         {/* Status — auto + manuell überschreibbar */}
         <div style={{marginBottom:16}}>
@@ -3165,7 +3203,9 @@ function HeimspieleEdit({onToast, onSaved, reloadKey, hideShare=false}) {
                 </div>
                 {/* Score + Status */}
                 <div style={{textAlign:"right",flexShrink:0}}>
-                  {r.score?(
+                  {r.wo?(
+                    <div style={{fontSize:12,fontWeight:700,color:"#9CA3AF",fontStyle:"italic"}}>w.o.</div>
+                  ):r.score?(
                     <div style={{fontSize:13,fontWeight:800,color:"#111827",fontFamily:"monospace"}}>
                       {r.score}
                     </div>
