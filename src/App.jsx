@@ -4755,43 +4755,21 @@ function MyBookings({data,user,onCancel,guestFee,onMarkPaid}) {
 
 function MassBookView({data,user,onMassBook,onCancelMany}) {
   const [tab,setTab]     = useState("create");
-  const [type,setType]   = useState("training"); // "training" | "match"
 
   // Training form
   const [tForm,setTForm] = useState({label:"",dateFrom:today(),dateTo:addDays(today(),27),weekdays:[1,2,3,4],courtIds:data.courts.length>0?[data.courts[0].id]:[],slots:["09:00","10:00"]});
   const [preview,setPreview] = useState(null);
 
-  // Spieltag form
-  const [mForm,setMForm] = useState({label:"",date:today(),courtIds:data.courts.length>0?[data.courts[0].id]:[],slots:["09:00"]});
-  const [mConflicts,setMConflicts] = useState([]);
-
   const WD=["Mo","Di","Mi","Do","Fr","Sa","So"];
   const toggleWd =i => setTForm(f=>({...f,weekdays:f.weekdays.includes(i)?f.weekdays.filter(d=>d!==i):[...f.weekdays,i].sort()}));
   const toggleTCourt=id=>setTForm(f=>({...f,courtIds:f.courtIds.includes(id)?f.courtIds.filter(c=>c!==id):[...f.courtIds,id]}));
   const toggleTSlot =s =>setTForm(f=>({...f,slots:f.slots.includes(s)?f.slots.filter(x=>x!==s):[...f.slots,s].sort()}));
-  const toggleMCourt=id=>setMForm(f=>({...f,courtIds:f.courtIds.includes(id)?f.courtIds.filter(c=>c!==id):[...f.courtIds,id]}));
-  const toggleMSlot =s =>setMForm(f=>({...f,slots:f.slots.includes(s)?f.slots.filter(x=>x!==s):[...f.slots,s].sort()}));
-
   // Training preview
   const calcPreview=()=>{
     const allDates=datesBetween(tForm.dateFrom,tForm.dateTo).filter(d=>tForm.weekdays.includes(dayOfWeek(d)));
     const total=allDates.length*tForm.courtIds.length*tForm.slots.length;let conflicts=0;
     for(const date of allDates) for(const cId of tForm.courtIds) for(const slot of tForm.slots) if(data.bookings.find(b=>b.courtId===cId&&b.date===date&&b.slot===slot)) conflicts++;
     setPreview({days:allDates.length,total,conflicts,toBook:total-conflicts,dates:allDates.slice(0,5)});
-  };
-
-  // Spieltag: check conflicts on the fly
-  const calcMatchConflicts=()=>{
-    const c=[];
-    for(const cId of mForm.courtIds) for(const slot of mForm.slots) if(data.bookings.find(b=>b.courtId===cId&&b.date===mForm.date&&b.slot===slot)) c.push(`${data.courts.find(x=>x.id===cId)?.name} ${slot}`);
-    setMConflicts(c);
-  };
-  const bookMatch=()=>{
-    const toBook=[];
-    for(const cId of mForm.courtIds) for(const slot of mForm.slots) if(!data.bookings.find(b=>b.courtId===cId&&b.date===mForm.date&&b.slot===slot)) toBook.push({courtId:cId,date:mForm.date,slot});
-    if(!toBook.length) return;
-    onMassBook({courtIds:mForm.courtIds,dateFrom:mForm.date,dateTo:mForm.date,weekdays:[0,1,2,3,4,5,6],slots:mForm.slots,type:"match",label:mForm.label});
-    setMConflicts([]);
   };
 
   // Groups for manage tab – training only in series, match as single entries
@@ -4805,23 +4783,12 @@ function MassBookView({data,user,onMassBook,onCancelMany}) {
   return (
     <div style={{padding:"24px 28px"}}>
       <h1 style={S.pageTitle}>Serienbuchung</h1>
-      <p style={S.pageSub}>Training & Spieltage buchen</p>
+      <p style={S.pageSub}>Trainingsbuchungen</p>
       <div style={{display:"flex",gap:8,marginBottom:24,marginTop:4}}>
         {[["create","Buchung erstellen"],["manage","Buchungen verwalten"]].map(([id,l])=>(<button key={id} style={{...S.tabBtn,...(tab===id?S.tabBtnActive:{})}} onClick={()=>setTab(id)}>{l}</button>))}
       </div>
 
-      {tab==="create"&&(<>
-        {/* Type toggle */}
-        <div style={{display:"flex",gap:10,marginBottom:20}}>
-          {[["training","🏋️ Training","#3B82F6"],["match","🏆 Spieltag","#EF4444"]].map(([val,lab,col])=>(
-            <button key={val} style={{flex:1,padding:"12px 8px",border:`2px solid ${type===val?col:"#E5E7EB"}`,borderRadius:10,background:type===val?col+"11":"#fff",cursor:"pointer",fontWeight:700,color:type===val?col:"#374151",fontSize:14}} onClick={()=>{setType(val);setPreview(null);setMConflicts([]);}}>
-              {lab}
-            </button>
-          ))}
-        </div>
-
-        {/* ── TRAINING ── */}
-        {type==="training"&&(
+      {tab==="create"&&(
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,alignItems:"start"}}>
             <div style={S.card}>
               <h3 style={{fontWeight:700,marginBottom:16}}>Parameter</h3>
@@ -4863,63 +4830,7 @@ function MassBookView({data,user,onMassBook,onCancelMany}) {
               </div>)}
             </div>
           </div>
-        )}
-
-        {/* ── SPIELTAG ── */}
-        {type==="match"&&(
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,alignItems:"start"}}>
-            <div style={S.card}>
-              <h3 style={{fontWeight:700,marginBottom:16}}>Spieltag buchen</h3>
-              <Lbl>Bezeichnung</Lbl>
-              <input placeholder="z.B. Vereinsmeisterschaft" value={mForm.label} onChange={e=>setMForm(f=>({...f,label:e.target.value}))} style={{...S.input,marginBottom:14}}/>
-              <Lbl>Datum</Lbl>
-              <input type="date" value={mForm.date} onChange={e=>{setMForm(f=>({...f,date:e.target.value}));setMConflicts([]);}} style={{...S.input,marginBottom:14,fontSize:15,fontWeight:700}}/>
-              <div style={{background:"#EFF6FF",border:"1px solid #BFDBFE",borderRadius:8,padding:"10px 12px",marginBottom:14,fontSize:12,color:"#1D4ED8"}}>
-                📅 {DE_FULL[dayOfWeek(mForm.date)]}, {fmtDate(new Date(mForm.date+"T12:00:00"))}
-              </div>
-              <Lbl>Plätze</Lbl>
-              <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
-                {data.courts.map((c,i)=>(<button key={c.id} style={{padding:"6px 12px",borderRadius:7,border:`2px solid ${mForm.courtIds.includes(c.id)?COURT_COLORS[i%COURT_COLORS.length]:"#E5E7EB"}`,background:mForm.courtIds.includes(c.id)?COURT_COLORS[i%COURT_COLORS.length]+"11":"#fff",color:mForm.courtIds.includes(c.id)?COURT_COLORS[i%COURT_COLORS.length]:"#374151",fontWeight:600,cursor:"pointer",fontSize:13}} onClick={()=>toggleMCourt(c.id)}>{c.name}</button>))}
-              </div>
-              <Lbl>Zeitslots</Lbl>
-              <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:18}}>
-                {SLOTS.map(s=>(<button key={s} style={{padding:"5px 10px",borderRadius:6,border:`1.5px solid ${mForm.slots.includes(s)?"#EF4444":"#E5E7EB"}`,background:mForm.slots.includes(s)?"#EF444411":"#fff",color:mForm.slots.includes(s)?"#EF4444":"#374151",fontWeight:600,cursor:"pointer",fontSize:12}} onClick={()=>toggleMSlot(s)}>{s}</button>))}
-              </div>
-              <button style={{...S.primaryBtn,width:"100%"}} onClick={calcMatchConflicts}>Vorschau berechnen</button>
-            </div>
-            <div>
-              {mConflicts.length===0&&mForm.slots.length>0&&(
-                <div style={{...S.card,textAlign:"center",color:"#9CA3AF",padding:"40px 20px"}}>
-                  <div style={{fontSize:32,marginBottom:8}}>🏆</div>
-                  <div>Klicke auf „Vorschau berechnen"</div>
-                </div>
-              )}
-              {mConflicts.length>=0&&mForm.slots.length>0&&mConflicts!==null&&(
-                <div style={S.card}>
-                  <h3 style={{fontWeight:700,marginBottom:16}}>Vorschau</h3>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
-                    <div style={{background:"#F9FAFB",borderRadius:8,padding:"12px",textAlign:"center"}}><div style={{fontSize:22,fontWeight:800,color:"#22C55E"}}>{mForm.courtIds.length*mForm.slots.length-mConflicts.length}</div><div style={{fontSize:12,color:"#6B7280"}}>Buchbar</div></div>
-                    <div style={{background:"#F9FAFB",borderRadius:8,padding:"12px",textAlign:"center"}}><div style={{fontSize:22,fontWeight:800,color:"#EF4444"}}>{mConflicts.length}</div><div style={{fontSize:12,color:"#6B7280"}}>Belegt</div></div>
-                  </div>
-                  {mConflicts.length>0&&(
-                    <div style={{background:"#FEE2E2",borderRadius:8,padding:"10px 12px",marginBottom:12,fontSize:12,color:"#DC2626"}}>
-                      <div style={{fontWeight:700,marginBottom:4}}>Bereits belegt:</div>
-                      {mConflicts.map(c=>(<div key={c}>· {c}</div>))}
-                    </div>
-                  )}
-                  <div style={{fontSize:13,padding:"6px 0",borderBottom:"1px solid #F3F4F6",marginBottom:12}}>
-                    🏆 {mForm.label||"Spieltag"} · {DE_FULL[dayOfWeek(mForm.date)]}, {fmtDate(new Date(mForm.date+"T12:00:00"))}
-                  </div>
-                  {(mForm.courtIds.length*mForm.slots.length-mConflicts.length)>0
-                    ?<button style={{...S.primaryBtn,width:"100%",background:"#EF4444",color:"#fff"}} onClick={bookMatch}>{mForm.courtIds.length*mForm.slots.length-mConflicts.length} Slots buchen</button>
-                    :<div style={{padding:"12px",background:"#FEF3C7",borderRadius:8,fontSize:13,color:"#92400E",textAlign:"center"}}>Alle Slots belegt.</div>
-                  }
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </>)}
+      )}
 
       {tab==="manage"&&(
         <div>
