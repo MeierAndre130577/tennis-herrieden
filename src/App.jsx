@@ -2882,10 +2882,11 @@ function HeimspieleEdit({onToast, onSaved, reloadKey, hideShare=false}) {
   const [rubberModal,  setRubberModal]  = useState(null);
 
   // Editierbare Felder
-  const [format,    setFormat]    = useState("6er");
-  const [homeTeam,  setHomeTeam]  = useState("");
-  const [awayTeam,  setAwayTeam]  = useState("");
-  const [league,    setLeague]    = useState("");
+  const [format,       setFormat]       = useState("6er");
+  const [homeTeam,     setHomeTeam]     = useState("");
+  const [awayTeam,     setAwayTeam]     = useState("");
+  const [matchGroupId, setMatchGroupId] = useState(null);
+  const [league,       setLeague]       = useState("");
   const [matchDate, setMatchDate] = useState("");
   const [matchTime, setMatchTime] = useState("");
   const [rubbers,   setRubbers]   = useState(DEFAULT_RUBBERS("6er"));
@@ -2901,6 +2902,7 @@ function HeimspieleEdit({onToast, onSaved, reloadKey, hideShare=false}) {
     setAwayLogo(m.awayLogo || null);
     setHomeTeam(m.homeTeam || "");
     setAwayTeam(m.awayTeam || "");
+    setMatchGroupId(m.groupId || null);
     setLeague(m.league || "");
     setMatchDate(m.matchDate || "");
     setMatchTime((m.time || "").replace(/\s*Uhr$/i, "").trim());
@@ -2986,9 +2988,11 @@ function HeimspieleEdit({onToast, onSaved, reloadKey, hideShare=false}) {
 
   const [homePlayers, awayPlayers] = (() => {
     if (!playersData?.config?.length || !homeTeam || !awayTeam) return [[],[]];
-    const entry = playersData.config.find(e =>
-      e.groupId && e.teamName === homeTeam && (e.opponents||[]).includes(awayTeam)
-    );
+    const entry = matchGroupId
+      ? playersData.config.find(e => e.groupId === matchGroupId)
+      : playersData.config.find(e =>
+          e.groupId && e.teamName === homeTeam && (e.opponents||[]).includes(awayTeam)
+        );
     if (!entry) return [[],[]];
     return [
       playersData.teams?.[`${entry.groupId}:${entry.teamName}`] || [],
@@ -4024,8 +4028,10 @@ function SettingsDisplayTab({onToast}) {
     const grp = clubTeams?.groups?.find(g => g.name === selStaffel);
     const game = grp?.homeGames?.find(g => g.opponent === selGegner);
     const homeTeam = staffelCfg?.teamName || selStaffel;
+    const groupIdMatch = staffelCfg?.url?.match(/groupid=(\d+)/i);
     const payload = {
       homeTeam,
+      groupId:   groupIdMatch?.[1] || null,
       awayTeam:  selGegner,
       league:    grp?.liga || staffelCfg?.liga || "",
       matchDate: game?.date  || null,
