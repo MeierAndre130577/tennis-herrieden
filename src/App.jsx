@@ -2996,6 +2996,7 @@ function HeimspieleEdit({onToast, onSaved, reloadKey, hideShare=false}) {
     const autoStatus = !hasPlayers ? "upcoming" : openCount===0 ? "done" : "live";
     const payload = {
       homeTeam, awayTeam, league, status: autoStatus,
+      ...(matchGroupId ? {groupId: matchGroupId} : {}),
       matchDate: matchDate||null, time: matchTime ? matchTime+" Uhr" : null,
       homeLogo: homeLogo||null, awayLogo: awayLogo||null,
       homeScore: rubbers.filter(r=>r.result==="win").length,
