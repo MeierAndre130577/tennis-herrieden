@@ -3014,7 +3014,7 @@ function HeimspieleEdit({onToast, onSaved, reloadKey, hideShare=false}) {
   const toggleShare = async () => {
     setShareLoading(true);
     if (shareToken) {
-      await sb.from("settings").upsert({key:"display_share_token",value:crypto.randomUUID()},{onConflict:"key"});
+      await sb.from("settings").upsert({key:"display_share_token",value:""},{onConflict:"key"});
       setShareToken(null);
     } else {
       const token = crypto.randomUUID();
