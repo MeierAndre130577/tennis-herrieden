@@ -2248,10 +2248,10 @@ function SettingsApp({profile,onBack}) {
         <div className="h-content">
         {tab==="betrieb"&&(
           <>
-            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+            <div style={{display:"flex",gap:20,borderBottom:`1.5px solid ${T.bgBorder}`,marginBottom:16,flexWrap:"wrap"}}>
               {[{id:"booking",icon:"📅",label:"Buchung"},{id:"courts",icon:"🎾",label:"Plätze"},{id:"jobs",icon:"⚡",label:"Hintergrund"}].map(t=>(
                 <button key={t.id} onClick={()=>setBetriebTabP(t.id)}
-                  style={ftab(betriebTab===t.id, T.purple)}>
+                  style={{padding:"6px 2px 10px",border:"none",borderBottom:betriebTab===t.id?`2px solid ${T.purple}`:"2px solid transparent",background:"none",color:betriebTab===t.id?T.textPrimary:T.textMuted,fontSize:13,fontWeight:betriebTab===t.id?700:600,cursor:"pointer"}}>
                   {t.icon} {t.label}
                 </button>
               ))}
@@ -2542,12 +2542,12 @@ function SettingsPermissionsTab({onToast}) {
   const roleLabels={public:"Öffentlich",pending:"Ausstehend",known:"Bekannt",member:"Mitglied",member2:"Mitglied+",admin:"Admin"};
 
   const PermTable = ({title, rows, getValue, onToggle, rowLabel}) => (
-    <div style={{overflowX:"auto",marginTop:20}}>
-      <div style={{fontSize:11,fontWeight:700,color:"#94A3B8",textTransform:"uppercase",letterSpacing:.7,marginBottom:6}}>{title}</div>
-      <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+    <div style={{marginTop:24,padding:"16px 18px",background:T.bgCard,border:`1px solid ${T.bgBorder}`,borderRadius:T.rMd,overflowX:"auto"}}>
+      <div style={{fontSize:12,fontWeight:700,color:T.textSecondary,textTransform:"uppercase",letterSpacing:.7,marginBottom:10}}>{title}</div>
+      <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
         <thead>
           <tr>
-            <th style={{textAlign:"left",padding:"8px 10px",color:"#94A3B8",fontWeight:700,fontSize:11,textTransform:"uppercase",letterSpacing:.7}}>{rowLabel}</th>
+            <th style={{textAlign:"left",padding:"8px 10px",color:T.textSecondary,fontWeight:700,fontSize:11,textTransform:"uppercase",letterSpacing:.7}}>{rowLabel}</th>
             {PERM_ROLES.map(r=>(
               <th key={r} style={{padding:"6px 8px",color:roleColors[r],fontWeight:700,fontSize:10,textTransform:"uppercase",letterSpacing:.5,textAlign:"center",whiteSpace:"nowrap"}}>
                 {roleLabels[r]}
@@ -2558,18 +2558,18 @@ function SettingsPermissionsTab({onToast}) {
         </thead>
         <tbody>
           {rows.map(({id,icon,label},i)=>(
-            <tr key={id} style={{background:i%2===0?"#1E293B":"#162032"}}>
-              <td style={{padding:"10px 10px",fontWeight:600,color:"#F1F5F9",whiteSpace:"nowrap"}}>
+            <tr key={id} style={{background:i%2===0?T.bgCard:T.bgPage}}>
+              <td style={{padding:"11px 10px",fontWeight:600,color:T.textPrimary,whiteSpace:"nowrap"}}>
                 <span style={{marginRight:5}}>{icon}</span>{label}
               </td>
               {PERM_ROLES.map(role=>(
-                <td key={role} style={{textAlign:"center",padding:"10px 8px"}}>
+                <td key={role} style={{textAlign:"center",padding:"11px 8px"}}>
                   <input type="checkbox" checked={getValue(id,role)} onChange={()=>onToggle(id,role)}
-                    style={{width:15,height:15,accentColor:roleColors[role],cursor:"pointer"}}/>
+                    style={{width:16,height:16,accentColor:roleColors[role],cursor:"pointer"}}/>
                 </td>
               ))}
-              <td style={{textAlign:"center",padding:"10px 8px"}}>
-                <input type="checkbox" checked disabled style={{width:15,height:15,accentColor:"#8B5CF6"}}/>
+              <td style={{textAlign:"center",padding:"11px 8px"}}>
+                <input type="checkbox" checked disabled style={{width:16,height:16,accentColor:"#8B5CF6"}}/>
               </td>
             </tr>
           ))}
