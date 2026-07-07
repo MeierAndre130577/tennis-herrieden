@@ -144,8 +144,8 @@ export default function App() {
     <div style={{minHeight:"100vh",background:"#0F172A",display:"flex",alignItems:"center",justifyContent:"center",padding:24,fontFamily:"system-ui,sans-serif"}}>
       <div style={{maxWidth:380,textAlign:"center"}}>
         <div style={{fontSize:56,marginBottom:16}}>🎾</div>
-        <h1 style={{color:"#F1F5F9",fontSize:22,fontWeight:800,margin:"0 0 12px"}}>SG Herrieden Tennis</h1>
-        <p style={{color:"#94A3B8",fontSize:15,lineHeight:1.6,margin:"0 0 24px"}}>
+        <h1 style={{color:T.textPrimary,fontSize:22,fontWeight:800,margin:"0 0 12px"}}>SG Herrieden Tennis</h1>
+        <p style={{color:T.textMuted,fontSize:15,lineHeight:1.6,margin:"0 0 24px"}}>
           Diese App wurde auf eine neue Plattform umgezogen.
           Bitte registriere dich dort neu — deine Daten sind sicher übertragen.
         </p>
@@ -153,7 +153,7 @@ export default function App() {
           style={{display:"inline-block",background:"#22C55E",color:"#fff",fontWeight:700,fontSize:15,padding:"13px 28px",borderRadius:12,textDecoration:"none"}}>
           → Zur neuen App
         </a>
-        <p style={{color:"#475569",fontSize:12,marginTop:20}}>
+        <p style={{color:T.textSecondary,fontSize:12,marginTop:20}}>
           Bei Fragen wende dich an den Vereinsvorstand.
         </p>
       </div>
@@ -613,13 +613,13 @@ function HeimspielwocheScreen({onBack, profile}) {
           );
         })()}
 
-        {loading && <div style={{textAlign:"center",color:"#64748B",padding:32}}>Lade…</div>}
+        {loading && <div style={{textAlign:"center",color:T.textMuted,padding:32}}>Lade…</div>}
 
         {/* ── Gesamt-Ansicht ── */}
         {!loading && filter==="gesamt" && (
           <div style={{display:"flex",flexDirection:"column",gap:0}}>
             {kwGroups.length===0 && (
-              <div style={{textAlign:"center",color:"#64748B",padding:32,fontSize:15}}>Keine Spiele gefunden</div>
+              <div style={{textAlign:"center",color:T.textMuted,padding:32,fontSize:15}}>Keine Spiele gefunden</div>
             )}
             {kwGroups.map((grp,gi)=>{
               const isCurrentKW = grp.kw===todayKW && grp.kwy===todayKWY;
@@ -677,7 +677,7 @@ function HeimspielwocheScreen({onBack, profile}) {
         {!loading && filter!=="gesamt" && (
           <>
           {groups.length===0 && (
-            <div style={{textAlign:"center",color:"#64748B",padding:32,fontSize:15}}>
+            <div style={{textAlign:"center",color:T.textMuted,padding:32,fontSize:15}}>
               Keine {filter==="heim"?"Heim":filter==="auswaerts"?"Auswärts":""}spiele in den nächsten 7 Tagen
             </div>
           )}
@@ -824,7 +824,7 @@ function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassen
           <h1 style={H.title}>Tennis Herrieden</h1>
           <p style={H.greeting}>Hallo, {profile.name} 👋</p>
           {(()=>{
-            const badges={admin:{icon:"👑",label:"Administrator",color:"#8B5CF6",bg:"#8B5CF618"},member2:{icon:"⭐",label:"Mitglied Plus",color:"#3B82F6",bg:"#3B82F618"},member:{icon:"🎾",label:"Mitglied",color:"#22C55E",bg:"#22C55E18"},known:{icon:"🤝",label:"Tennisfreund",color:"#F59E0B",bg:"#F59E0B18"},pending:{icon:"⏳",label:"Ausstehend",color:"#F59E0B",bg:"#F59E0B18"},public:{icon:"👋",label:"Gast",color:"#64748B",bg:"#64748B18"}};
+            const badges={admin:{icon:"👑",label:"Administrator",color:"#8B5CF6",bg:"#8B5CF618"},member2:{icon:"⭐",label:"Mitglied Plus",color:"#3B82F6",bg:"#3B82F618"},member:{icon:"🎾",label:"Mitglied",color:"#22C55E",bg:"#22C55E18"},known:{icon:"🤝",label:"Tennisfreund",color:"#F59E0B",bg:"#F59E0B18"},pending:{icon:"⏳",label:"Ausstehend",color:"#F59E0B",bg:"#F59E0B18"},public:{icon:"👋",label:"Gast",color:T.textMuted,bg:"#64748B18"}};
             const b=badges[profile.role]||badges.pending;
             return <div style={{display:"flex",flexDirection:"column",alignItems:"flex-start",gap:6,marginTop:6}}>
               <div style={{display:"inline-flex",alignItems:"center",gap:5,padding:"3px 10px",borderRadius:20,background:b.bg,border:`1px solid ${b.color}44`}}>
@@ -1058,7 +1058,7 @@ function ClubstreamDetail({item,onBack}) {
           </div>
 
           {/* Titel */}
-          <h2 style={{fontSize:18,fontWeight:800,color:"#F1F5F9",margin:0,lineHeight:1.3}}>{item.title}</h2>
+          <h2 style={{fontSize:18,fontWeight:800,color:T.textPrimary,margin:0,lineHeight:1.3}}>{item.title}</h2>
 
           {/* Termin-Infos */}
           {item.event_start&&(()=>{
@@ -1073,11 +1073,11 @@ function ClubstreamDetail({item,onBack}) {
             return(
               <p style={{fontSize:13,color:"#8B5CF6",margin:0,fontWeight:600}}>
                 {fmt(item.event_start,sHasTime)}
-                {item.event_end&&<span style={{color:"#64748B",fontWeight:400}}> – {fmt(item.event_end,eHasTime)}</span>}
+                {item.event_end&&<span style={{color:T.textMuted,fontWeight:400}}> – {fmt(item.event_end,eHasTime)}</span>}
               </p>
             );
           })()}
-          {item.event_location&&<p style={{fontSize:13,color:"#64748B",margin:0}}>📍 {item.event_location}</p>}
+          {item.event_location&&<p style={{fontSize:13,color:T.textMuted,margin:0}}>📍 {item.event_location}</p>}
 
           {/* Spielergebnis */}
           {item.result_home!=null&&item.result_away!=null&&(
@@ -1086,9 +1086,9 @@ function ClubstreamDetail({item,onBack}) {
                 {item.result_home} : {item.result_away}
               </span>
               {(item.team_name||item.opponent)&&(
-                <p style={{fontSize:12,color:"#64748B",margin:"6px 0 0"}}>{item.team_name||"SG Herrieden"} vs. {item.opponent||"?"}</p>
+                <p style={{fontSize:12,color:T.textMuted,margin:"6px 0 0"}}>{item.team_name||"SG Herrieden"} vs. {item.opponent||"?"}</p>
               )}
-              {item.league&&<p style={{fontSize:11,color:"#475569",margin:"2px 0 0"}}>{item.league}{item.age_group?` · ${item.age_group}`:""}</p>}
+              {item.league&&<p style={{fontSize:11,color:T.textSecondary,margin:"2px 0 0"}}>{item.league}{item.age_group?` · ${item.age_group}`:""}</p>}
             </div>
           )}
 
@@ -1106,8 +1106,8 @@ function ClubstreamDetail({item,onBack}) {
                     <div key={i} style={{background:"#0F172A",padding:"10px 14px",display:"flex",alignItems:"center",gap:10}}>
                       <div style={{width:3,height:36,borderRadius:2,background:clr,flexShrink:0}}/>
                       <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontSize:12,fontWeight:700,color:"#F1F5F9"}}>{g.team}</div>
-                        <div style={{fontSize:11,color:"#64748B",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{g.isHome?"vs.":"@"} {g.opponent}</div>
+                        <div style={{fontSize:12,fontWeight:700,color:T.textPrimary}}>{g.team}</div>
+                        <div style={{fontSize:11,color:T.textMuted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{g.isHome?"vs.":"@"} {g.opponent}</div>
                       </div>
                       <div style={{textAlign:"right"}}>
                         <div style={{fontSize:18,fontWeight:900,color:clr,letterSpacing:1}}>{g.homeScore}:{g.awayScore}</div>
@@ -1127,7 +1127,7 @@ function ClubstreamDetail({item,onBack}) {
 
           {/* Haupttext */}
           {bodyText&&(
-            <p style={{fontSize:14,color:"#94A3B8",lineHeight:1.7,margin:0,whiteSpace:"pre-line"}}>{bodyText}</p>
+            <p style={{fontSize:14,color:T.textMuted,lineHeight:1.7,margin:0,whiteSpace:"pre-line"}}>{bodyText}</p>
           )}
 
           {/* Gültigkeitszeitraum */}
@@ -1139,7 +1139,7 @@ function ClubstreamDetail({item,onBack}) {
           )}
 
           {/* Zeitstempel */}
-          <p style={{fontSize:11,color:"#475569",margin:0,borderTop:"1px solid #334155",paddingTop:8}}>{csTimeAgo(item.published_at)}</p>
+          <p style={{fontSize:11,color:T.textSecondary,margin:0,borderTop:"1px solid #334155",paddingTop:8}}>{csTimeAgo(item.published_at)}</p>
         </div>
 
       </div>
@@ -1330,15 +1330,15 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
             <img src={lbPhotos[lbIdx]?.image_url||lbPhotos[lbIdx]?.url} alt={lbPhotos[lbIdx]?.caption||""}
               style={{maxWidth:"100%",maxHeight:"78vh",borderRadius:10,objectFit:"contain"}}
               onClick={e=>e.stopPropagation()}/>
-            {lbPhotos[lbIdx]?.caption&&<p style={{color:"#F1F5F9",fontSize:13,marginTop:10,textAlign:"center",maxWidth:400,padding:"0 8px"}}>{lbPhotos[lbIdx].caption}</p>}
+            {lbPhotos[lbIdx]?.caption&&<p style={{color:T.textPrimary,fontSize:13,marginTop:10,textAlign:"center",maxWidth:400,padding:"0 8px"}}>{lbPhotos[lbIdx].caption}</p>}
             <div style={{display:"flex",alignItems:"center",gap:16,marginTop:12}}>
               <button onClick={e=>{e.stopPropagation();setLbIdx(i=>Math.max(0,i-1));}} disabled={lbIdx===0}
                 style={{background:"#ffffff22",border:"none",color:"#fff",fontSize:22,borderRadius:"50%",width:40,height:40,cursor:lbIdx===0?"default":"pointer",opacity:lbIdx===0?.3:1}}>‹</button>
-              <span style={{color:"#94A3B8",fontSize:12}}>{lbIdx+1} / {lbPhotos.length}</span>
+              <span style={{color:T.textMuted,fontSize:12}}>{lbIdx+1} / {lbPhotos.length}</span>
               <button onClick={e=>{e.stopPropagation();setLbIdx(i=>Math.min(lbPhotos.length-1,i+1));}} disabled={lbIdx===lbPhotos.length-1}
                 style={{background:"#ffffff22",border:"none",color:"#fff",fontSize:22,borderRadius:"50%",width:40,height:40,cursor:lbIdx===lbPhotos.length-1?"default":"pointer",opacity:lbIdx===lbPhotos.length-1?.3:1}}>›</button>
             </div>
-            <button onClick={()=>setLbPhotos([])} style={{marginTop:10,color:"#64748B",fontSize:12,background:"none",border:"none",cursor:"pointer"}}>✕ Schließen</button>
+            <button onClick={()=>setLbPhotos([])} style={{marginTop:10,color:T.textMuted,fontSize:12,background:"none",border:"none",cursor:"pointer"}}>✕ Schließen</button>
           </div>
         )}
 
@@ -1355,7 +1355,7 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
               {uploadErr&&<div style={{fontSize:12,color:"#EF4444",marginBottom:8}}>{uploadErr}</div>}
               <div style={{display:"flex",gap:8}}>
                 <button onClick={()=>{setPendingFile(null);setPendingCaption("");setUploadErr(null);}}
-                  style={{flex:1,padding:"10px",borderRadius:10,border:"1.5px solid #334155",background:"transparent",color:"#94A3B8",fontSize:13,cursor:"pointer"}}>
+                  style={{flex:1,padding:"10px",borderRadius:10,border:"1.5px solid #334155",background:"transparent",color:T.textMuted,fontSize:13,cursor:"pointer"}}>
                   Abbrechen
                 </button>
                 <button onClick={()=>uploadPhoto(pendingFile,pendingCaption)} disabled={uploading}
@@ -1373,7 +1373,7 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
             {kwGroups.length===0&&(
               <div style={{background:"#1E293B",border:"1.5px solid #334155",borderRadius:14,padding:"32px 14px",textAlign:"center"}}>
                 <span style={{fontSize:32}}>🖼️</span>
-                <p style={{color:"#475569",fontSize:13,marginTop:8}}>Noch keine Fotos hochgeladen</p>
+                <p style={{color:T.textSecondary,fontSize:13,marginTop:8}}>Noch keine Fotos hochgeladen</p>
               </div>
             )}
             {kwGroups.map(({label,photos:kphotos})=>{
@@ -1402,8 +1402,8 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
                       </button>
                     )}
                   </div>
-                  {cur.caption&&<div style={{marginTop:6,fontSize:13,color:"#94A3B8",padding:"0 2px"}}>{cur.caption}</div>}
-                  <div style={{marginTop:3,fontSize:11,color:"#475569"}}>{new Date(cur.created_at).toLocaleDateString("de-DE",{day:"numeric",month:"long",year:"numeric"})}</div>
+                  {cur.caption&&<div style={{marginTop:6,fontSize:13,color:T.textMuted,padding:"0 2px"}}>{cur.caption}</div>}
+                  <div style={{marginTop:3,fontSize:11,color:T.textSecondary}}>{new Date(cur.created_at).toLocaleDateString("de-DE",{day:"numeric",month:"long",year:"numeric"})}</div>
                   <div style={{display:"flex",gap:4,marginTop:8,overflowX:"auto",paddingBottom:2}}>
                     {kphotos.map((p,i)=>(
                       <div key={p.id} onClick={()=>setKwIdxMap(m=>({...m,[label]:i}))}
@@ -1469,9 +1469,9 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
                     <div style={{padding:"8px 14px 12px",display:"flex",alignItems:"center",gap:8}}>
                       <div style={{flex:1,minWidth:0}}>
                         <div style={{fontSize:10,fontWeight:700,color:"#EC4899",textTransform:"uppercase",letterSpacing:.7,marginBottom:2}}>📸 {item._kwLabel}</div>
-                        {cur.caption&&<div style={{fontSize:13,color:"#CBD5E1",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{cur.caption}</div>}
+                        {cur.caption&&<div style={{fontSize:13,color:T.textMuted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{cur.caption}</div>}
                       </div>
-                      <div style={{fontSize:11,color:"#475569",flexShrink:0}}>{csTimeAgo(cur.created_at)}</div>
+                      <div style={{fontSize:11,color:T.textSecondary,flexShrink:0}}>{csTimeAgo(cur.created_at)}</div>
                     </div>
                   </div>
                 );
@@ -1506,13 +1506,13 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
                       <span style={{fontSize:18,fontWeight:900,color:item.result_home>item.result_away?"#22C55E":"#EF4444"}}>
                         {item.result_home} : {item.result_away}
                       </span>
-                      {item.opponent&&<span style={{fontSize:11,color:"#64748B",marginLeft:8}}>vs. {item.opponent}</span>}
+                      {item.opponent&&<span style={{fontSize:11,color:T.textMuted,marginLeft:8}}>vs. {item.opponent}</span>}
                     </div>
                   )}
                   {item.type==="event"&&item.event_start&&(
                     <div style={{marginTop:6,fontSize:12,color:"#8B5CF6",fontWeight:600}}>
                       {new Date(item.event_start).toLocaleDateString("de-DE",{weekday:"short",day:"numeric",month:"short",timeZone:"UTC"})}
-                      {item.event_location&&<span style={{color:"#64748B",fontWeight:400}}> · 📍 {item.event_location}</span>}
+                      {item.event_location&&<span style={{color:T.textMuted,fontWeight:400}}> · 📍 {item.event_location}</span>}
                     </div>
                   )}
                   </div>
@@ -1844,7 +1844,7 @@ function KasseDrinksTab({favs,onLogDrink,onDeleteEntry,onGoSettings}) {
         <div style={{...S.card,textAlign:"center",padding:"40px 20px",borderStyle:"dashed"}}>
           <div style={{fontSize:40,marginBottom:12}}>🥤</div>
           <div style={{fontWeight:700,marginBottom:6}}>Noch keine Getränke</div>
-          <div style={{fontSize:13,color:"#9CA3AF",marginBottom:16}}>Lege deine Getränke unter „Verwalten" an.</div>
+          <div style={{fontSize:13,color:T.textMuted,marginBottom:16}}>Lege deine Getränke unter „Verwalten" an.</div>
           <button style={S.primaryBtn} onClick={onGoSettings}>Getränke anlegen →</button>
         </div>
       ):(
@@ -1913,33 +1913,33 @@ function KasseLogTab({myLog,myOpen,myTotal,onMarkPaid,onDeleteEntry}) {
       {myOpen.length>0&&(
         <div style={K.summaryBar}>
           <div>
-            <div style={{fontSize:11,fontWeight:700,color:"#94A3B8"}}>OFFEN</div>
+            <div style={{fontSize:11,fontWeight:700,color:T.textMuted}}>OFFEN</div>
             <div style={{fontSize:28,fontWeight:800,color:"#F59E0B"}}>{eur(myTotal)}</div>
-            <div style={{fontSize:12,color:"#64748B"}}>{myOpen.length} {myOpen.length===1?"Getränk":"Getränke"}</div>
+            <div style={{fontSize:12,color:T.textMuted}}>{myOpen.length} {myOpen.length===1?"Getränk":"Getränke"}</div>
           </div>
           <button style={K.payBtn} onClick={()=>setShowConfirm(true)}>✓ Bezahlen</button>
         </div>
       )}
 
       {myOpen.length===0&&!showPaid&&(
-        <div style={{textAlign:"center",padding:"40px 0",color:"#9CA3AF"}}>
+        <div style={{textAlign:"center",padding:"40px 0",color:T.textMuted}}>
           <div style={{fontSize:44}}>✅</div>
-          <div style={{fontWeight:700,marginTop:8,color:"#374151"}}>Alles bezahlt!</div>
+          <div style={{fontWeight:700,marginTop:8,color:T.textSecondary}}>Alles bezahlt!</div>
         </div>
       )}
 
       {sortedDates.map(date=>(
         <div key={date} style={{marginBottom:20}}>
-          <div style={{fontSize:11,fontWeight:700,color:"#9CA3AF",textTransform:"uppercase",letterSpacing:.8,marginBottom:6}}>{fmtDateShort(date)}</div>
+          <div style={{fontSize:11,fontWeight:700,color:T.textMuted,textTransform:"uppercase",letterSpacing:.8,marginBottom:6}}>{fmtDateShort(date)}</div>
           {byDate[date].map(entry=>(
             <div key={entry.id} style={{...S.card,background:"#F59E0B0D",border:`1px solid #F59E0B33`,display:"flex",alignItems:"center",gap:12}}>
               <span style={{fontSize:24}}>{entry.emoji}</span>
               <div style={{flex:1}}><div style={{fontWeight:700,fontSize:14}}>{entry.drink_name}</div></div>
               <div style={{fontWeight:800,fontSize:15}}>{eur(entry.price)}</div>
-              <button style={{background:"none",border:"none",color:"#D1D5DB",cursor:"pointer",fontSize:14,fontWeight:700}} aria-label={`${entry.drink_name} löschen`} onClick={()=>setConfirmDel(entry)}>✕</button>
+              <button style={{background:"none",border:"none",color:T.textMuted,cursor:"pointer",fontSize:14,fontWeight:700}} aria-label={`${entry.drink_name} löschen`} onClick={()=>setConfirmDel(entry)}>✕</button>
             </div>
           ))}
-          <div style={{fontSize:12,color:"#6B7280",textAlign:"right",marginTop:4,paddingRight:36}}>
+          <div style={{fontSize:12,color:T.textSecondary,textAlign:"right",marginTop:4,paddingRight:36}}>
             Summe: <strong>{eur(byDate[date].reduce((s,l)=>s+l.price,0))}</strong>
           </div>
         </div>
@@ -1947,14 +1947,14 @@ function KasseLogTab({myLog,myOpen,myTotal,onMarkPaid,onDeleteEntry}) {
 
       {paid.length>0&&(
         <div style={{marginTop:8}}>
-          <button style={{background:"none",border:"none",color:"#9CA3AF",cursor:"pointer",fontSize:13,padding:"4px 0",marginBottom:8}} onClick={()=>setShowPaid(p=>!p)}>
+          <button style={{background:"none",border:"none",color:T.textMuted,cursor:"pointer",fontSize:13,padding:"4px 0",marginBottom:8}} onClick={()=>setShowPaid(p=>!p)}>
             {showPaid?"▲ Bezahlte ausblenden":`▼ Bezahlte anzeigen (${paid.length})`}
           </button>
           {showPaid&&paid.map(entry=>(
             <div key={entry.id} style={{...S.card,display:"flex",alignItems:"center",gap:12,opacity:.6}}>
               <span style={{fontSize:24}}>{entry.emoji}</span>
-              <div style={{flex:1}}><div style={{fontWeight:700,fontSize:14}}>{entry.drink_name}</div><div style={{fontSize:11,color:"#9CA3AF"}}>Bezahlt ✓</div></div>
-              <div style={{fontWeight:800,fontSize:15,color:"#9CA3AF"}}>{eur(entry.price)}</div>
+              <div style={{flex:1}}><div style={{fontWeight:700,fontSize:14}}>{entry.drink_name}</div><div style={{fontSize:11,color:T.textMuted}}>Bezahlt ✓</div></div>
+              <div style={{fontWeight:800,fontSize:15,color:T.textMuted}}>{eur(entry.price)}</div>
             </div>
           ))}
         </div>
@@ -1964,11 +1964,11 @@ function KasseLogTab({myLog,myOpen,myTotal,onMarkPaid,onDeleteEntry}) {
         <div style={S.overlay} onClick={()=>setShowConfirm(false)}>
           <div style={S.modal} onClick={e=>e.stopPropagation()}>
             <div style={S.modalHeader}><div style={S.modalTitle}>Bezahlung bestätigen</div><button style={S.closeBtn} onClick={()=>setShowConfirm(false)}>✕</button></div>
-            <p style={{color:"#6B7280",fontSize:13,marginBottom:16}}>Bitte bestätige, dass du die Getränke beim Kassenwart bezahlt hast.</p>
+            <p style={{color:T.textSecondary,fontSize:13,marginBottom:16}}>Bitte bestätige, dass du die Getränke beim Kassenwart bezahlt hast.</p>
             <div style={{background:"#FEF3C7",borderRadius:10,padding:14,textAlign:"center",marginBottom:20}}>
               <div style={{fontSize:11,color:"#92400E",fontWeight:700,marginBottom:4}}>BETRAG</div>
               <div style={{fontSize:32,fontWeight:800}}>{eur(myTotal)}</div>
-              <div style={{fontSize:12,color:"#6B7280",marginTop:4}}>{myOpen.length} Getränke</div>
+              <div style={{fontSize:12,color:T.textSecondary,marginTop:4}}>{myOpen.length} Getränke</div>
             </div>
             <button style={{...S.primaryBtn,width:"100%",background:"#22C55E",color:"#fff",marginBottom:8}} onClick={()=>{onMarkPaid();setShowConfirm(false);}}>✓ Ja, bezahlt</button>
             <button style={{...S.ghostBtn,width:"100%"}} onClick={()=>setShowConfirm(false)}>Abbrechen</button>
@@ -2041,7 +2041,7 @@ function KasseSettingsTab({favs,onAddFav,onUpdateFav,onDeleteFav}) {
       )}
 
       {favs.length===0&&!showForm&&(
-        <div style={{textAlign:"center",padding:"40px 0",color:"#9CA3AF"}}>
+        <div style={{textAlign:"center",padding:"40px 0",color:T.textMuted}}>
           <div style={{fontSize:36}}>🥤</div>
           <div style={{marginTop:8}}>Noch keine Favoriten</div>
         </div>
@@ -2051,7 +2051,7 @@ function KasseSettingsTab({favs,onAddFav,onUpdateFav,onDeleteFav}) {
         {favs.map(f=>(
           <div key={f.id} style={{...S.card,display:"flex",alignItems:"center",gap:12}}>
             <span style={{fontSize:30}}>{f.emoji}</span>
-            <div style={{flex:1}}><div style={{fontWeight:700}}>{f.name}</div><div style={{fontSize:13,color:"#6B7280"}}>{eur(f.price)}</div></div>
+            <div style={{flex:1}}><div style={{fontWeight:700}}>{f.name}</div><div style={{fontSize:13,color:T.textSecondary}}>{eur(f.price)}</div></div>
             <div style={{display:"flex",gap:4}}>
               <button style={{background:"none",border:"1px solid #E5E7EB",borderRadius:6,cursor:"pointer",fontSize:14,padding:"4px 7px"}} onClick={()=>openEdit(f)}>✏️</button>
               <button style={{...S.cancelBtn,padding:"4px 8px",fontSize:13}} onClick={()=>onDeleteFav(f.id)}>✕</button>
@@ -2087,10 +2087,10 @@ function KasseAdminTab({log,onMarkPaid}) {
 
       <div style={{background:"#0F172A",borderRadius:12,padding:"16px 20px",marginBottom:20,display:"flex",alignItems:"center",gap:16,marginTop:16}}>
         <div>
-          <div style={{fontSize:11,color:"#94A3B8",fontWeight:700}}>GESAMT OFFEN</div>
+          <div style={{fontSize:11,color:T.textMuted,fontWeight:700}}>GESAMT OFFEN</div>
           <div style={{fontSize:30,fontWeight:800,color:"#F59E0B"}}>{eur(totalOpen)}</div>
         </div>
-        <div style={{fontSize:12,color:"#475569",borderLeft:"1px solid #334155",paddingLeft:16}}>
+        <div style={{fontSize:12,color:T.textSecondary,borderLeft:"1px solid #334155",paddingLeft:16}}>
           {userStats.filter(u=>u.openCount>0).length} Mitglieder mit offenen Getränken
         </div>
       </div>
@@ -2104,7 +2104,7 @@ function KasseAdminTab({log,onMarkPaid}) {
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
             <div>
               <div style={{fontWeight:700,fontSize:15}}>{u.name}</div>
-              <div style={{fontSize:12,color:"#6B7280"}}>{u.openCount} offene Getränke</div>
+              <div style={{fontSize:12,color:T.textSecondary}}>{u.openCount} offene Getränke</div>
             </div>
             <div style={{textAlign:"right"}}>
               <div style={{fontWeight:800,fontSize:20,color:"#D97706"}}>{eur(u.openTotal)}</div>
@@ -2117,7 +2117,7 @@ function KasseAdminTab({log,onMarkPaid}) {
         </div>
       ))}
       {subtab==="open"&&userStats.filter(u=>u.openCount>0).length===0&&(
-        <div style={{textAlign:"center",padding:"40px 0",color:"#9CA3AF"}}><div style={{fontSize:36}}>✅</div><div style={{marginTop:8}}>Alle auf dem neusten Stand!</div></div>
+        <div style={{textAlign:"center",padding:"40px 0",color:T.textMuted}}><div style={{fontSize:36}}>✅</div><div style={{marginTop:8}}>Alle auf dem neusten Stand!</div></div>
       )}
 
       {subtab==="history"&&userStats.map(u=>(
@@ -2134,7 +2134,7 @@ function KasseAdminTab({log,onMarkPaid}) {
         <div style={S.overlay} onClick={()=>setConfirmPay(null)}>
           <div style={S.modal} onClick={e=>e.stopPropagation()}>
             <div style={S.modalHeader}><div style={S.modalTitle}>Zahlung bestätigen</div><button style={S.closeBtn} onClick={()=>setConfirmPay(null)}>✕</button></div>
-            <p style={{color:"#6B7280",fontSize:13,marginBottom:16}}>{confirmPay.name} als bezahlt markieren?</p>
+            <p style={{color:T.textSecondary,fontSize:13,marginBottom:16}}>{confirmPay.name} als bezahlt markieren?</p>
             <div style={{background:"#FEF3C7",borderRadius:10,padding:14,textAlign:"center",marginBottom:20}}>
               <div style={{fontSize:11,color:"#92400E",fontWeight:700,marginBottom:4}}>BETRAG</div>
               <div style={{fontSize:32,fontWeight:800}}>{eur(confirmPay.openTotal)}</div>
@@ -2172,7 +2172,7 @@ function KasseQuickModal({onLog,onClose}) {
           </div>
         </div>
         <div style={{marginBottom:14}}>
-          <Lbl>Name <span style={{color:"#9CA3AF",fontWeight:400,textTransform:"none",letterSpacing:0}}>(optional)</span></Lbl>
+          <Lbl>Name <span style={{color:T.textMuted,fontWeight:400,textTransform:"none",letterSpacing:0}}>(optional)</span></Lbl>
           <input placeholder="z.B. Bier" value={name} onChange={e=>setName(e.target.value)} style={S.input}/>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:12,marginBottom:16,alignItems:"flex-end"}}>
@@ -2191,7 +2191,7 @@ function KasseQuickModal({onLog,onClose}) {
         </div>
         {price&&!isNaN(parseFloat(price.replace(",","."))&&(
           <div style={{background:"#F9FAFB",borderRadius:8,padding:"10px 14px",marginBottom:16,display:"flex",justifyContent:"space-between",fontSize:13}}>
-            <span style={{color:"#6B7280"}}>{qty}× {eur(parseFloat(price.replace(",",".")))}</span>
+            <span style={{color:T.textSecondary}}>{qty}× {eur(parseFloat(price.replace(",",".")))}</span>
             <span style={{fontWeight:800}}>= {eur(qty*parseFloat(price.replace(",",".")))}</span>
           </div>
         ))}
@@ -2298,7 +2298,7 @@ function SettingsBookingTab({onToast}) {
     <div style={K.page}>
       <div style={{...S.card,border:`1.5px solid #8B5CF644`,background:"#8B5CF608",marginTop:4}}>
         <div style={{fontWeight:700,fontSize:15,marginBottom:4}}>Gästegebühr</div>
-        <div style={{fontSize:13,color:"#6B7280",marginBottom:16}}>Betrag pro Buchung mit Gastspieler – wird am Jahresende abgerechnet</div>
+        <div style={{fontSize:13,color:T.textSecondary,marginBottom:16}}>Betrag pro Buchung mit Gastspieler – wird am Jahresende abgerechnet</div>
         <div style={{display:"flex",alignItems:"flex-end",gap:12}}>
           <div style={{flex:1,maxWidth:160}}>
             <Lbl>Betrag (€)</Lbl>
@@ -2359,14 +2359,14 @@ function SettingsCourtsTab({onToast}) {
       )}
 
       {courts.length===0&&!showForm&&(
-        <div style={{textAlign:"center",padding:"40px 0",color:"#9CA3AF"}}><div style={{fontSize:36}}>🎾</div><div style={{marginTop:8}}>Noch keine Plätze angelegt</div></div>
+        <div style={{textAlign:"center",padding:"40px 0",color:T.textMuted}}><div style={{fontSize:36}}>🎾</div><div style={{marginTop:8}}>Noch keine Plätze angelegt</div></div>
       )}
 
       <div style={{display:"flex",flexDirection:"column",gap:8}}>
         {courts.map((c,i)=>(
           <div key={c.id} style={{...S.card,display:"flex",alignItems:"center",gap:14}}>
             <div style={{width:10,height:10,borderRadius:"50%",background:COURT_COLORS[i%COURT_COLORS.length],flexShrink:0}}/>
-            <div style={{flex:1}}><div style={{fontWeight:700}}>{c.name}</div><div style={{fontSize:12,color:"#6B7280"}}>{c.surface}</div></div>
+            <div style={{flex:1}}><div style={{fontWeight:700}}>{c.name}</div><div style={{fontSize:12,color:T.textSecondary}}>{c.surface}</div></div>
             <div style={{display:"flex",gap:6}}>
               <button style={{background:"none",border:"1px solid #E5E7EB",borderRadius:6,cursor:"pointer",fontSize:14,padding:"4px 7px"}} onClick={()=>openEdit(c)}>✏️</button>
               <button style={{...S.cancelBtn,padding:"4px 8px",fontSize:13}} onClick={()=>handleDelete(c.id,c.name)}>✕</button>
@@ -2424,11 +2424,11 @@ function SettingsMembersTab({onToast}) {
   const toggleSort=(col)=>setSort(prev=>prev.col===col?{col,dir:prev.dir*-1}:{col,dir:1});
 
   const RC={pending:{bg:"#FEF3C7",color:"#92400E",border:"#F59E0B"},known:{bg:"#FFF7ED",color:"#C2410C",border:"#FB923C"},member:{bg:"#DCFCE7",color:"#166534",border:"#22C55E"},member2:{bg:"#DBEAFE",color:"#1E40AF",border:"#3B82F6"},admin:{bg:"#F3E8FF",color:"#6B21A8",border:"#8B5CF6"}};
-  const rc=(role)=>RC[role]||{bg:"#F3F4F6",color:"#6B7280",border:"#D1D5DB"};
+  const rc=(role)=>RC[role]||{bg:"#F3F4F6",color:T.textSecondary,border:"#D1D5DB"};
 
-  const Arrow=({col})=>sort.col!==col?<span style={{color:"#D1D5DB"}}>⇅</span>:<span style={{color:"#6B7280"}}>{sort.dir===1?"↑":"↓"}</span>;
+  const Arrow=({col})=>sort.col!==col?<span style={{color:T.textMuted}}>⇅</span>:<span style={{color:T.textSecondary}}>{sort.dir===1?"↑":"↓"}</span>;
   const Th=({col,label,w})=>(
-    <th onClick={()=>toggleSort(col)} style={{textAlign:"left",padding:"9px 10px",fontSize:11,fontWeight:700,color:"#6B7280",textTransform:"uppercase",letterSpacing:.6,cursor:"pointer",userSelect:"none",whiteSpace:"nowrap",width:w}}>
+    <th onClick={()=>toggleSort(col)} style={{textAlign:"left",padding:"9px 10px",fontSize:11,fontWeight:700,color:T.textSecondary,textTransform:"uppercase",letterSpacing:.6,cursor:"pointer",userSelect:"none",whiteSpace:"nowrap",width:w}}>
       {label} <Arrow col={col}/>
     </th>
   );
@@ -2466,15 +2466,15 @@ function SettingsMembersTab({onToast}) {
           </thead>
           <tbody>
             {sorted.length===0&&(
-              <tr><td colSpan={5} style={{textAlign:"center",padding:"32px 0",color:"#9CA3AF"}}>Keine Einträge gefunden</td></tr>
+              <tr><td colSpan={5} style={{textAlign:"center",padding:"32px 0",color:T.textMuted}}>Keine Einträge gefunden</td></tr>
             )}
             {sorted.map((m,i)=>{
               const c=rc(m.role);
               return (
                 <tr key={m.id} style={{background:i%2===0?"#fff":"#F9FAFB",borderBottom:"1px solid #F3F4F6"}}>
-                  <td style={{padding:"10px 10px",fontWeight:600,color:"#111827",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.firstName}</td>
-                  <td style={{padding:"10px 10px",color:"#374151",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.lastName||"–"}</td>
-                  <td style={{padding:"10px 10px",color:"#6B7280",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.email||"–"}</td>
+                  <td style={{padding:"10px 10px",fontWeight:600,color:T.textPrimary,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.firstName}</td>
+                  <td style={{padding:"10px 10px",color:T.textSecondary,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.lastName||"–"}</td>
+                  <td style={{padding:"10px 10px",color:T.textSecondary,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.email||"–"}</td>
                   <td style={{padding:"10px 10px"}}>
                     <select value={m.role||"pending"} disabled={saving===m.id} onChange={e=>changeRole(m.id,e.target.value)}
                       style={{border:`1.5px solid ${c.border}`,borderRadius:20,padding:"4px 8px",fontSize:11,fontWeight:700,cursor:"pointer",background:c.bg,color:c.color,width:"100%",maxWidth:140}}>
@@ -2621,7 +2621,7 @@ function SpinningBall({size=16}) {
 }
 
 const RUBBER_RESULT_OPTS = [
-  {v:"open",  label:"Offen",        color:"#9CA3AF"},
+  {v:"open",  label:"Offen",        color:T.textMuted},
   {v:"live",  label:"● Läuft",      color:"#F59E0B"},
   {v:"win",   label:"✓ Heimsieg",   color:"#16A34A"},
   {v:"loss",  label:"✗ Niederlage", color:"#DC2626"},
@@ -2716,7 +2716,7 @@ function RubberModal({rubber, homePlayers, awayPlayers, onSave, onClose}) {
   };
 
   const RESULTS = [
-    {v:"open", label:"Offen",        color:"#6B7280", bg:"#F3F4F6", border:"#E5E7EB"},
+    {v:"open", label:"Offen",        color:T.textSecondary, bg:"#F3F4F6", border:"#E5E7EB"},
     {v:"live", label:"● Läuft",      color:"#D97706", bg:"#FFFBEB", border:"#FDE68A"},
     {v:"win",  label:"✓ Heimsieg",   color:"#059669", bg:"#F0FDF4", border:"#BBF7D0"},
     {v:"loss", label:"✗ Niederlage", color:"#DC2626", bg:"#FEF2F2", border:"#FECACA"},
@@ -2768,7 +2768,7 @@ function RubberModal({rubber, homePlayers, awayPlayers, onSave, onClose}) {
 
         {/* Spieler */}
         <div style={{marginBottom:14}}>
-          <div style={{fontSize:10,fontWeight:700,color:"#6B7280",marginBottom:6}}>SPIELER</div>
+          <div style={{fontSize:10,fontWeight:700,color:T.textSecondary,marginBottom:6}}>SPIELER</div>
           <div style={{display:"flex",flexDirection:"column",gap:5}}>
             <div style={{display:"flex",alignItems:"center",gap:6}}>
               <span style={{fontSize:10,fontWeight:700,color:"#1D4ED8",width:30,flexShrink:0}}>Heim</span>
@@ -2778,7 +2778,7 @@ function RubberModal({rubber, homePlayers, awayPlayers, onSave, onClose}) {
               </div>:renderSel(h1,setH1,homePlayers,"Heim-Spieler")}
             </div>
             <div style={{display:"flex",alignItems:"center",gap:6}}>
-              <span style={{fontSize:10,fontWeight:700,color:"#6B7280",width:30,flexShrink:0}}>Gast</span>
+              <span style={{fontSize:10,fontWeight:700,color:T.textSecondary,width:30,flexShrink:0}}>Gast</span>
               {isD?<div style={{display:"flex",gap:4,flex:1}}>
                 {renderSel(a1,setA1,awayPlayers,"G1")}
                 {renderSel(a2,setA2,awayPlayers,"G2")}
@@ -2815,9 +2815,9 @@ function RubberModal({rubber, homePlayers, awayPlayers, onSave, onClose}) {
                       style={{width:60,textAlign:"center",fontSize:22,fontWeight:800,
                         border:"1.5px solid #E5E7EB",borderRadius:8,padding:"6px 0",background:"#F8FAFC"}}/>
                   </div>
-                  <span style={{fontSize:22,color:"#D1D5DB",fontWeight:700,marginTop:18}}>:</span>
+                  <span style={{fontSize:22,color:T.textMuted,fontWeight:700,marginTop:18}}>:</span>
                   <div style={{textAlign:"center"}}>
-                    <div style={{fontSize:10,fontWeight:700,color:"#6B7280",marginBottom:4}}>GAST</div>
+                    <div style={{fontSize:10,fontWeight:700,color:T.textSecondary,marginBottom:4}}>GAST</div>
                     <input type="number" min={0} value={sets[i].away}
                       onChange={e=>updSet(i,"away",e.target.value)}
                       style={{width:60,textAlign:"center",fontSize:22,fontWeight:800,
@@ -2832,7 +2832,7 @@ function RubberModal({rubber, homePlayers, awayPlayers, onSave, onClose}) {
                       onChange={v=>updSet(i,"home",v)}/>
                   </div>
                   <div>
-                    <div style={{fontSize:10,fontWeight:700,color:"#6B7280",marginBottom:4}}>GAST</div>
+                    <div style={{fontSize:10,fontWeight:700,color:T.textSecondary,marginBottom:4}}>GAST</div>
                     <NumBtns max={7} val={sets[i].away} color="#6B7280"
                       onChange={v=>updSet(i,"away",v)}/>
                   </div>
@@ -2880,7 +2880,7 @@ function RubberModal({rubber, homePlayers, awayPlayers, onSave, onClose}) {
         {/* Status — auto + manuell überschreibbar */}
         <div style={{marginBottom:16}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-            <div style={{fontSize:10,fontWeight:700,color:"#6B7280"}}>ERGEBNIS</div>
+            <div style={{fontSize:10,fontWeight:700,color:T.textSecondary}}>ERGEBNIS</div>
             {manualResult&&(
               <button onClick={()=>{setManualResult(false);setResult(calcResult(sets));}}
                 style={{fontSize:10,color:"#6366F1",background:"none",border:"none",
@@ -3040,7 +3040,7 @@ function HeimspieleEdit({onToast, onSaved, reloadKey, hideShare=false}) {
   })();
 
   if (loading) return (
-    <div style={{padding:"16px",fontSize:12,color:"#9CA3AF",textAlign:"center"}}>Lade Daten…</div>
+    <div style={{padding:"16px",fontSize:12,color:T.textMuted,textAlign:"center"}}>Lade Daten…</div>
   );
 
   const hasP = rubbers.some(r=>(r.home||"").trim()||(r.away||"").trim());
@@ -3050,7 +3050,7 @@ function HeimspieleEdit({onToast, onSaved, reloadKey, hideShare=false}) {
   const statusLabel = s => ({upcoming:"geplant",live:"läuft 🔴",done:"fertig ✓"}[s]||"–");
   const statusColor = s => ({upcoming:"#6B7280",live:"#059669",done:"#1D4ED8"}[s]||"#6B7280");
   const inp = {width:"100%",fontSize:12,border:"1.5px solid #E5E7EB",borderRadius:6,padding:"4px 8px",boxSizing:"border-box"};
-  const sel = {width:"100%",fontSize:11,border:"1.5px solid #E5E7EB",borderRadius:6,padding:"4px 6px",boxSizing:"border-box",background:"#fff",color:"#374151"};
+  const sel = {width:"100%",fontSize:11,border:"1.5px solid #E5E7EB",borderRadius:6,padding:"4px 6px",boxSizing:"border-box",background:"#fff",color:T.textSecondary};
 
   const renderSide = (r, side, players) => {
     const isD = r.id.startsWith("D");
@@ -3105,24 +3105,24 @@ function HeimspieleEdit({onToast, onSaved, reloadKey, hideShare=false}) {
       <div style={{padding:"12px",background:"#fff",borderBottom:"1px solid #E2E8F0"}}>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
           <div>
-            <div style={{fontSize:10,fontWeight:700,color:"#6B7280",marginBottom:3}}>HEIMTEAM</div>
+            <div style={{fontSize:10,fontWeight:700,color:T.textSecondary,marginBottom:3}}>HEIMTEAM</div>
             <input value={homeTeam} onChange={e=>{setHomeTeam(e.target.value);setDirty(true);}} style={inp} placeholder="TC Herrieden I"/>
           </div>
           <div>
-            <div style={{fontSize:10,fontWeight:700,color:"#6B7280",marginBottom:3}}>GASTTEAM</div>
+            <div style={{fontSize:10,fontWeight:700,color:T.textSecondary,marginBottom:3}}>GASTTEAM</div>
             <input value={awayTeam} onChange={e=>{setAwayTeam(e.target.value);setDirty(true);}} style={inp} placeholder="TC Gegner"/>
           </div>
           <div>
-            <div style={{fontSize:10,fontWeight:700,color:"#6B7280",marginBottom:3}}>LIGA</div>
+            <div style={{fontSize:10,fontWeight:700,color:T.textSecondary,marginBottom:3}}>LIGA</div>
             <input value={league} onChange={e=>{setLeague(e.target.value);setDirty(true);}} style={inp} placeholder="Bezirksliga"/>
           </div>
           <div style={{display:"flex",gap:6}}>
             <div style={{flex:2}}>
-              <div style={{fontSize:10,fontWeight:700,color:"#6B7280",marginBottom:3}}>DATUM</div>
+              <div style={{fontSize:10,fontWeight:700,color:T.textSecondary,marginBottom:3}}>DATUM</div>
               <input type="date" value={matchDate} onChange={e=>{setMatchDate(e.target.value);setDirty(true);}} style={inp}/>
             </div>
             <div style={{flex:1}}>
-              <div style={{fontSize:10,fontWeight:700,color:"#6B7280",marginBottom:3}}>UHRZEIT</div>
+              <div style={{fontSize:10,fontWeight:700,color:T.textSecondary,marginBottom:3}}>UHRZEIT</div>
               <input type="time" value={matchTime} onChange={e=>{setMatchTime(e.target.value);setDirty(true);}} style={inp}/>
             </div>
           </div>
@@ -3146,10 +3146,10 @@ function HeimspieleEdit({onToast, onSaved, reloadKey, hideShare=false}) {
             {statusLabel(currentStatus)}
           </span>
           <div style={{display:"flex",alignItems:"center",gap:4}}>
-            <span style={{fontSize:22,fontWeight:800,color:"#111827",fontFamily:"monospace",
+            <span style={{fontSize:22,fontWeight:800,color:T.textPrimary,fontFamily:"monospace",
               minWidth:20,textAlign:"center"}}>{rubbers.filter(r=>r.result==="win").length}</span>
-            <span style={{fontSize:16,color:"#9CA3AF",fontWeight:700}}>:</span>
-            <span style={{fontSize:22,fontWeight:800,color:"#111827",fontFamily:"monospace",
+            <span style={{fontSize:16,color:T.textMuted,fontWeight:700}}>:</span>
+            <span style={{fontSize:22,fontWeight:800,color:T.textPrimary,fontFamily:"monospace",
               minWidth:20,textAlign:"center"}}>{rubbers.filter(r=>r.result==="loss").length}</span>
           </div>
         </div>
@@ -3193,29 +3193,29 @@ function HeimspieleEdit({onToast, onSaved, reloadKey, hideShare=false}) {
                         overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                         {shortName(r.home)||"—"}
                       </div>
-                      <div style={{fontSize:11,color:"#6B7280",
+                      <div style={{fontSize:11,color:T.textSecondary,
                         overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                         {shortName(r.away)||"—"}
                       </div>
                     </>
                   ):(
-                    <div style={{fontSize:12,color:"#CBD5E1",fontStyle:"italic"}}>Tippen zum Eintragen</div>
+                    <div style={{fontSize:12,color:T.textMuted,fontStyle:"italic"}}>Tippen zum Eintragen</div>
                   )}
                 </div>
                 {/* Score + Status */}
                 <div style={{textAlign:"right",flexShrink:0}}>
                   {r.wo?(
-                    <div style={{fontSize:12,fontWeight:700,color:"#9CA3AF",fontStyle:"italic"}}>w.o.</div>
+                    <div style={{fontSize:12,fontWeight:700,color:T.textMuted,fontStyle:"italic"}}>w.o.</div>
                   ):r.score?(
-                    <div style={{fontSize:13,fontWeight:800,color:"#111827",fontFamily:"monospace"}}>
+                    <div style={{fontSize:13,fontWeight:800,color:T.textPrimary,fontFamily:"monospace"}}>
                       {r.score}
                     </div>
-                  ):<div style={{fontSize:12,color:"#E5E7EB"}}>–:–</div>}
+                  ):<div style={{fontSize:12,color:T.textMuted}}>–:–</div>}
                   <div style={{fontSize:10,fontWeight:700,color:textCol,marginTop:1}}>
                     {RL[r.result]||"Offen"}
                   </div>
                 </div>
-                <span style={{fontSize:14,color:"#D1D5DB",flexShrink:0}}>›</span>
+                <span style={{fontSize:14,color:T.textMuted,flexShrink:0}}>›</span>
               </div>
             );
           });
@@ -3261,12 +3261,12 @@ function HeimspieleEdit({onToast, onSaved, reloadKey, hideShare=false}) {
       {!hideShare&&sharePanel&&(
         <div style={{padding:"12px",borderTop:"1px solid #E2E8F0",background:"#F8FAFC"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-            <span style={{fontSize:12,fontWeight:700,color:"#374151"}}>🔗 Zugriffs-Link</span>
+            <span style={{fontSize:12,fontWeight:700,color:T.textSecondary}}>🔗 Zugriffs-Link</span>
             <ToggleSwitch on={!!shareToken} onToggle={toggleShare}/>
           </div>
           {shareToken ? (
             <>
-              <div style={{fontSize:11,color:"#6B7280",marginBottom:6}}>
+              <div style={{fontSize:11,color:T.textSecondary,marginBottom:6}}>
                 Personen mit diesem Link können das Display bearbeiten — ohne Login.
                 Toggle aus = Link sofort ungültig.
               </div>
@@ -3286,7 +3286,7 @@ function HeimspieleEdit({onToast, onSaved, reloadKey, hideShare=false}) {
               </div>
             </>
           ) : (
-            <div style={{fontSize:11,color:"#9CA3AF"}}>
+            <div style={{fontSize:11,color:T.textMuted}}>
               Toggle aktivieren um einen neuen Link zu generieren.
             </div>
           )}
@@ -3334,7 +3334,7 @@ function ZeitSchaltung({sched, setSched}) {
   return (
     <div style={{marginBottom:16,padding:"12px 14px",background:"#F9FAFB",
       borderRadius:8,border:`1px solid ${isActive?"#86EFAC":"#E5E7EB"}`}}>
-      <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:10,
+      <div style={{fontSize:11,fontWeight:700,color:T.textSecondary,marginBottom:10,
         display:"flex",alignItems:"center",gap:8}}>
         ⏰ ZEITSCHALTUNG <span style={{fontWeight:400}}>(optional)</span>
         {isActive&&<span style={{fontSize:10,background:"#DCFCE7",color:"#16A34A",
@@ -3342,13 +3342,13 @@ function ZeitSchaltung({sched, setSched}) {
       </div>
       <div style={{display:"flex",gap:8,alignItems:"stretch"}}>
         <button style={btnStyle(!!sched.from)} onClick={()=>openPicker("from")}>
-          <div style={{fontSize:10,color:"#9CA3AF",fontWeight:700,marginBottom:2}}>VON</div>
+          <div style={{fontSize:10,color:T.textMuted,fontWeight:700,marginBottom:2}}>VON</div>
           <div style={{fontSize:12,fontWeight:sched.from?600:400,color:sched.from?"#374151":"#9CA3AF"}}>
             {fmtDT(sched.from)||"nicht gesetzt"}
           </div>
         </button>
         <button style={btnStyle(!!sched.to)} onClick={()=>openPicker("to")}>
-          <div style={{fontSize:10,color:"#9CA3AF",fontWeight:700,marginBottom:2}}>BIS</div>
+          <div style={{fontSize:10,color:T.textMuted,fontWeight:700,marginBottom:2}}>BIS</div>
           <div style={{fontSize:12,fontWeight:sched.to?600:400,color:sched.to?"#374151":"#9CA3AF"}}>
             {fmtDT(sched.to)||"nicht gesetzt"}
           </div>
@@ -3361,7 +3361,7 @@ function ZeitSchaltung({sched, setSched}) {
           </button>
         )}
       </div>
-      <div style={{fontSize:10,color:"#9CA3AF",marginTop:6}}>
+      <div style={{fontSize:10,color:T.textMuted,marginTop:6}}>
         Innerhalb dieser Zeit wird dieser Modus automatisch aktiviert
       </div>
 
@@ -3374,7 +3374,7 @@ function ZeitSchaltung({sched, setSched}) {
             </div>
             <input type="datetime-local" value={tempVal} onChange={e=>setTempVal(e.target.value)}
               style={{...S.input,width:"100%",marginBottom:16,fontSize:15}}/>
-            {tempVal&&<div style={{fontSize:12,color:"#6B7280",marginBottom:16,textAlign:"center"}}>
+            {tempVal&&<div style={{fontSize:12,color:T.textSecondary,marginBottom:16,textAlign:"center"}}>
               {new Date(tempVal).toLocaleString("de-DE",{weekday:"long",day:"2-digit",month:"long",year:"numeric",hour:"2-digit",minute:"2-digit"})} Uhr
             </div>}
             <div style={{display:"flex",gap:8}}>
@@ -3489,7 +3489,7 @@ function SettingsMannschaftenTab({onToast}) {
         {/* Spaltenköpfe */}
         <div style={{display:"grid",gridTemplateColumns:"130px 140px 1fr 28px",gap:6,marginBottom:4,paddingLeft:2}}>
           {["Bezeichnung","BTV-Teamname","Staffel-URL",""].map(h=>(
-            <span key={h} style={{fontSize:10,fontWeight:700,color:"#9CA3AF",textTransform:"uppercase"}}>{h}</span>
+            <span key={h} style={{fontSize:10,fontWeight:700,color:T.textMuted,textTransform:"uppercase"}}>{h}</span>
           ))}
         </div>
 
@@ -3515,10 +3515,10 @@ function SettingsMannschaftenTab({onToast}) {
                 <input placeholder="Liga / Staffel  z.B. Bezirksklasse Gruppe 3" value={row.liga||""}
                   onChange={e=>{const c=[...teamsConfig];c[i]={...c[i],liga:e.target.value};setTeamsConfig(c);}}
                   style={{flex:1,padding:"5px 8px",border:"1px solid #D1D5DB",borderRadius:6,fontSize:11,
-                    color:"#6B7280"}}/>
+                    color:T.textSecondary}}/>
                 <select value={row.format||"6er"}
                   onChange={e=>{const c=[...teamsConfig];c[i]={...c[i],format:e.target.value};setTeamsConfig(c);}}
-                  style={{padding:"5px 8px",border:"1px solid #D1D5DB",borderRadius:6,fontSize:11,color:"#374151",flexShrink:0,cursor:"pointer"}}>
+                  style={{padding:"5px 8px",border:"1px solid #D1D5DB",borderRadius:6,fontSize:11,color:T.textSecondary,flexShrink:0,cursor:"pointer"}}>
                   <option value="6er">6er</option>
                   <option value="4er">4er</option>
                 </select>
@@ -3551,7 +3551,7 @@ function SettingsMannschaftenTab({onToast}) {
 
         <button onClick={()=>setTeamsConfig([...teamsConfig,{name:"",teamName:"",url:"",liga:""}])}
           style={{background:"none",border:"1px dashed #D1D5DB",borderRadius:6,
-            padding:"6px 14px",fontSize:12,cursor:"pointer",color:"#6B7280",width:"100%",marginBottom:16}}>
+            padding:"6px 14px",fontSize:12,cursor:"pointer",color:T.textSecondary,width:"100%",marginBottom:16}}>
           + Mannschaft hinzufügen
         </button>
 
@@ -3578,19 +3578,19 @@ function SettingsMannschaftenTab({onToast}) {
           </button>
         </div>
         {scrapedAt&&(
-          <div style={{marginTop:10,fontSize:11,color:"#9CA3AF"}}>
+          <div style={{marginTop:10,fontSize:11,color:T.textMuted}}>
             Letzter Abruf: {new Date(scrapedAt).toLocaleDateString("de-DE",{day:"numeric",month:"long",year:"numeric"})} um {new Date(scrapedAt).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})} Uhr
           </div>
         )}
         <div style={{marginTop:12,padding:"10px 12px",background:"#F8FAFC",border:"1px solid #E5E7EB",
           borderRadius:8,fontSize:11,color:"#6B7280",lineHeight:1.7}}>
-          <div style={{fontWeight:700,color:"#374151",marginBottom:4}}>Dieser Abruf aktualisiert:</div>
+          <div style={{fontWeight:700,color:T.textSecondary,marginBottom:4}}>Dieser Abruf aktualisiert:</div>
           <ul style={{margin:0,paddingLeft:16}}>
             <li><strong>Heimspielwoche-Widget</strong> — Spiele der nächsten 7 Tage auf dem Startbildschirm</li>
             <li><strong>BTV Links</strong> — Mannschaftsnamen und Verlinkungen</li>
             <li><strong>Display Schnellauswahl</strong> — Staffeln und Gegner für den Live-Anzeigebereich</li>
           </ul>
-          <div style={{marginTop:6,fontStyle:"italic",color:"#9CA3AF"}}>
+          <div style={{marginTop:6,fontStyle:"italic",color:T.textMuted}}>
             Einmal pro Saison ausreichend, außer es kommen Mannschaften hinzu oder URLs ändern sich.
           </div>
         </div>
@@ -3609,19 +3609,19 @@ function SettingsMannschaftenTab({onToast}) {
                 maxHeight:"80vh",overflow:"auto",boxShadow:"0 8px 32px rgba(0,0,0,0.18)"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
                 <div>
-                  <div style={{fontWeight:700,fontSize:14,color:"#111827"}}>{label}</div>
-                  <div style={{fontSize:11,color:"#9CA3AF"}}>{players.length} Spieler</div>
+                  <div style={{fontWeight:700,fontSize:14,color:T.textPrimary}}>{label}</div>
+                  <div style={{fontSize:11,color:T.textMuted}}>{players.length} Spieler</div>
                 </div>
                 <button onClick={()=>setPlayersPopup(null)}
-                  style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#9CA3AF",lineHeight:1}}>✕</button>
+                  style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:T.textMuted,lineHeight:1}}>✕</button>
               </div>
               {players.length===0
-                ? <div style={{fontSize:12,color:"#9CA3AF"}}>Keine Spieler geladen.</div>
+                ? <div style={{fontSize:12,color:T.textMuted}}>Keine Spieler geladen.</div>
                 : players.map((p,i)=>(
                   <div key={i} style={{display:"flex",alignItems:"center",gap:8,
                     padding:"6px 0",borderBottom:"1px solid #F3F4F6"}}>
-                    <span style={{fontSize:11,color:"#9CA3AF",minWidth:20,textAlign:"right"}}>{i+1}</span>
-                    <span style={{fontSize:13,color:"#111827"}}>{p}</span>
+                    <span style={{fontSize:11,color:T.textMuted,minWidth:20,textAlign:"right"}}>{i+1}</span>
+                    <span style={{fontSize:13,color:T.textPrimary}}>{p}</span>
                   </div>
                 ))
               }
@@ -3632,14 +3632,14 @@ function SettingsMannschaftenTab({onToast}) {
 
       {/* ── Spieler-Übersicht ── */}
       <div style={S.card}>
-        <div style={{fontWeight:700,color:"#374151",fontSize:13,marginBottom:4}}>Meldelisten (Spieler)</div>
-        <p style={{fontSize:12,color:"#6B7280",marginBottom:12,lineHeight:1.6}}>
+        <div style={{fontWeight:700,color:T.textSecondary,fontSize:13,marginBottom:4}}>Meldelisten (Spieler)</div>
+        <p style={{fontSize:12,color:T.textSecondary,marginBottom:12,lineHeight:1.6}}>
           Pro Mannschaft "👤 Spieler laden" klicken — lädt Heimteam + alle Gegner dieser Staffel (ca. 3–5 Min.).
           Einmal pro Saison ausreichend.
         </p>
 
         {!playersData&&(
-          <div style={{fontSize:11,color:"#9CA3AF",fontStyle:"italic",marginBottom:8}}>
+          <div style={{fontSize:11,color:T.textMuted,fontStyle:"italic",marginBottom:8}}>
             Noch keine Spielerdaten geladen — "👤 Spieler laden" bei einer Mannschaft klicken.
           </div>
         )}
@@ -3652,7 +3652,7 @@ function SettingsMannschaftenTab({onToast}) {
           return (
             <div>
               {ts&&(
-                <div style={{fontSize:11,color:"#9CA3AF",marginBottom:10}}>
+                <div style={{fontSize:11,color:T.textMuted,marginBottom:10}}>
                   Geladen am {ts.toLocaleDateString("de-DE",{day:"numeric",month:"long",year:"numeric"})} um {ts.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})} Uhr
                 </div>
               )}
@@ -3663,9 +3663,9 @@ function SettingsMannschaftenTab({onToast}) {
                 return (
                   <div key={entry.name} style={{marginBottom:12,padding:"10px 12px",
                     background:"#F8FAFC",border:"1px solid #E5E7EB",borderRadius:8}}>
-                    <div style={{fontWeight:600,color:"#374151",fontSize:12,marginBottom:6}}>
+                    <div style={{fontWeight:600,color:T.textSecondary,fontSize:12,marginBottom:6}}>
                       {entry.name}
-                      <span style={{fontWeight:400,color:"#6B7280",marginLeft:6}}>({entry.teamName})</span>
+                      <span style={{fontWeight:400,color:T.textSecondary,marginLeft:6}}>({entry.teamName})</span>
                     </div>
                     {/* Heimteam */}
                     <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
@@ -3673,7 +3673,7 @@ function SettingsMannschaftenTab({onToast}) {
                         padding:"1px 6px",borderRadius:4,fontWeight:600}}>Heim</span>
                       <span
                         onClick={homeCount>0?()=>setPlayersPopup({key:homeKey,name:entry.teamName}):undefined}
-                        style={{fontSize:11,color:"#374151",cursor:homeCount>0?"pointer":"default"}}>
+                        style={{fontSize:11,color:T.textSecondary,cursor:homeCount>0?"pointer":"default"}}>
                         {entry.teamName}
                       </span>
                       <span
@@ -3707,7 +3707,7 @@ function SettingsMannschaftenTab({onToast}) {
                 );
               })}
               {cfg.length===0&&Object.keys(teams).length>0&&(
-                <div style={{fontSize:12,color:"#6B7280"}}>
+                <div style={{fontSize:12,color:T.textSecondary}}>
                   {Object.keys(teams).length} Teams geladen (altes Format — einmal neu laden).
                 </div>
               )}
@@ -3824,21 +3824,21 @@ function SettingsJobsTab() {
             <div style={{fontSize:22,lineHeight:1}}>{job.icon}</div>
             <div style={{flex:1,minWidth:0}}>
               <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:4}}>
-                <span style={{fontWeight:700,fontSize:14,color:"#111827"}}>{job.name}</span>
+                <span style={{fontWeight:700,fontSize:14,color:T.textPrimary}}>{job.name}</span>
                 <span style={{fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:20,
                   background:job.bg,color:job.color,border:`1px solid ${job.border}`}}>
                   {job.trigger}
                 </span>
               </div>
-              <div style={{fontSize:11,color:"#6B7280",marginBottom:6}}>🕐 {job.schedule}</div>
-              <div style={{fontSize:12,color:"#374151",lineHeight:1.6,marginBottom:8}}>{job.desc}</div>
+              <div style={{fontSize:11,color:T.textSecondary,marginBottom:6}}>🕐 {job.schedule}</div>
+              <div style={{fontSize:12,color:T.textSecondary,lineHeight:1.6,marginBottom:8}}>{job.desc}</div>
 
               {/* Letzter Lauf */}
               <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-                <span style={{fontSize:11,color:"#9CA3AF"}}>Zuletzt:</span>
+                <span style={{fontSize:11,color:T.textMuted}}>Zuletzt:</span>
                 {job.lastRun
                   ? <span style={{fontSize:11,fontWeight:600,color:"#059669"}}>✓ {fmt(job.lastRun)}</span>
-                  : <span style={{fontSize:11,color:"#9CA3AF"}}>noch nie gelaufen</span>
+                  : <span style={{fontSize:11,color:T.textMuted}}>noch nie gelaufen</span>
                 }
               </div>
 
@@ -3888,7 +3888,7 @@ function SettingsJobsTab() {
         </div>
       ))}
 
-      <p style={{fontSize:11,color:"#9CA3AF",marginTop:8,lineHeight:1.6}}>
+      <p style={{fontSize:11,color:T.textMuted,marginTop:8,lineHeight:1.6}}>
         Alle Jobs laufen auf GitHub Actions. Logs und manuelle Starts unter{" "}
         <span style={{fontFamily:"monospace"}}>Actions → BTV Daten holen</span>.
       </p>
@@ -4127,7 +4127,7 @@ function SettingsDisplayTab({onToast}) {
         <div style={{fontWeight:700,fontSize:13,color:mode===modeId?"#7C3AED":"#374151"}}>
           {label || "Auf Display anzeigen"}
         </div>
-        <div style={{fontSize:11,color:"#6B7280",marginTop:2}}>
+        <div style={{fontSize:11,color:T.textSecondary,marginTop:2}}>
           {mode===modeId ? "✓ Aktuell aktiver Modus" : "Klicken zum Aktivieren"}
         </div>
       </div>
@@ -4207,20 +4207,20 @@ function SettingsDisplayTab({onToast}) {
           return (
             <div>
               {/* Aktiver Modus */}
-              <p style={{fontSize:12,color:"#6B7280",marginBottom:10}}>Wähle, welcher Modus aktuell auf dem Display angezeigt wird.</p>
+              <p style={{fontSize:12,color:T.textSecondary,marginBottom:10}}>Wähle, welcher Modus aktuell auf dem Display angezeigt wird.</p>
               <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:24}}>
                 {MODES.map(m=><ModeRow key={m.id} modeId={m.id} label={`${m.icon} ${m.label}`}/>)}
               </div>
 
               {/* Zeitschaltung */}
               <div style={{borderTop:"1px solid #E5E7EB",paddingTop:16,marginBottom:14}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:2}}>⏰ ZEITSCHALTUNG</div>
-                <p style={{fontSize:12,color:"#9CA3AF",marginBottom:14}}>Schalte ein Display automatisch für einen bestimmten Zeitraum ein. Mehrere Einträge möglich.</p>
+                <div style={{fontSize:11,fontWeight:700,color:T.textSecondary,marginBottom:2}}>⏰ ZEITSCHALTUNG</div>
+                <p style={{fontSize:12,color:T.textMuted,marginBottom:14}}>Schalte ein Display automatisch für einen bestimmten Zeitraum ein. Mehrere Einträge möglich.</p>
 
                 {/* Formular */}
                 <div style={{background:"#F8FAFC",border:"1px solid #E2E8F0",borderRadius:10,padding:"14px",marginBottom:14}}>
                   <div style={{marginBottom:10}}>
-                    <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>DISPLAY</div>
+                    <div style={{fontSize:11,fontWeight:700,color:T.textSecondary,marginBottom:5}}>DISPLAY</div>
                     <select value={newEntry.mode} onChange={e=>setNewEntry(n=>({...n,mode:e.target.value}))}
                       style={{...S.input,width:"100%"}}>
                       {MODES.map(m=><option key={m.id} value={m.id}>{m.icon} {m.label}</option>)}
@@ -4228,7 +4228,7 @@ function SettingsDisplayTab({onToast}) {
                   </div>
                   <div style={{display:"flex",gap:10,marginBottom:8}}>
                     <div style={{flex:1}}>
-                      <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>VON</div>
+                      <div style={{fontSize:11,fontWeight:700,color:T.textSecondary,marginBottom:5}}>VON</div>
                       <div style={{display:"flex",gap:4}}>
                         <input type="date" value={newEntry.fromDate}
                           onChange={e=>setNewEntry(n=>({...n,fromDate:e.target.value}))}
@@ -4239,7 +4239,7 @@ function SettingsDisplayTab({onToast}) {
                       </div>
                     </div>
                     <div style={{flex:1}}>
-                      <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>BIS</div>
+                      <div style={{fontSize:11,fontWeight:700,color:T.textSecondary,marginBottom:5}}>BIS</div>
                       <div style={{display:"flex",gap:4}}>
                         <input type="date" value={newEntry.toDate}
                           onChange={e=>setNewEntry(n=>({...n,toDate:e.target.value}))}
@@ -4251,7 +4251,7 @@ function SettingsDisplayTab({onToast}) {
                     </div>
                   </div>
                   <div style={{display:"flex",gap:5,marginBottom:12,alignItems:"center"}}>
-                    <span style={{fontSize:11,color:"#9CA3AF"}}>Schnell:</span>
+                    <span style={{fontSize:11,color:T.textMuted}}>Schnell:</span>
                     {[{l:"Heute",d:today},{l:"Morgen",d:tomorrow}].map(p=>(
                       <button key={p.l} onClick={()=>setNewEntry(n=>({...n,fromDate:p.d,toDate:p.d}))}
                         style={{fontSize:11,padding:"2px 9px",borderRadius:12,border:"1px solid #D1D5DB",
@@ -4268,7 +4268,7 @@ function SettingsDisplayTab({onToast}) {
 
                 {/* Eintrags-Liste */}
                 {timeEntries.length===0
-                  ? <div style={{fontSize:12,color:"#9CA3AF",textAlign:"center",padding:"18px 0"}}>Noch keine Einträge gesetzt</div>
+                  ? <div style={{fontSize:12,color:T.textMuted,textAlign:"center",padding:"18px 0"}}>Noch keine Einträge gesetzt</div>
                   : <div style={{display:"flex",flexDirection:"column",gap:5}}>
                       {[...timeEntries].sort((a,b)=>new Date(a.from)-new Date(b.from)).map(e=>{
                         const st = entryStatus(e);
@@ -4277,7 +4277,7 @@ function SettingsDisplayTab({onToast}) {
                           ? {bg:"#DCFCE7",color:"#16A34A",text:"AKTIV"}
                           : st==="future"
                             ? {bg:"#EFF6FF",color:"#3B82F6",text:"KOMMT"}
-                            : {bg:"#F3F4F6",color:"#9CA3AF",text:"ABGELAUFEN"};
+                            : {bg:"#F3F4F6",color:T.textMuted,text:"ABGELAUFEN"};
                         return (
                           <div key={e.id} style={{display:"flex",alignItems:"center",gap:8,
                             padding:"9px 12px",borderRadius:8,
@@ -4292,7 +4292,7 @@ function SettingsDisplayTab({onToast}) {
                             </span>
                             <span style={{flex:1,fontSize:11,color:st==="past"?"#9CA3AF":"#64748B",
                               textAlign:"right",lineHeight:1.4}}>
-                              {fmt(e.from)}<br/><span style={{color:"#94A3B8"}}>→</span> {fmt(e.to)}
+                              {fmt(e.from)}<br/><span style={{color:T.textMuted}}>→</span> {fmt(e.to)}
                             </span>
                             <button onClick={()=>setTimeEntries(prev=>prev.filter(x=>x.id!==e.id))}
                               style={{fontSize:13,color:"#EF4444",background:"none",border:"none",
@@ -4310,7 +4310,7 @@ function SettingsDisplayTab({onToast}) {
         {/* ── EINSTELLUNGEN: Farbschema ── */}
         {activeTab==="einstellungen"&&subTab==="farbschema"&&(
           <div>
-            <p style={{fontSize:12,color:"#6B7280",marginBottom:12}}>Gilt übergreifend für alle Anzeigemodi.</p>
+            <p style={{fontSize:12,color:T.textSecondary,marginBottom:12}}>Gilt übergreifend für alle Anzeigemodi.</p>
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
               {themes.map(t=>(
                 <button key={t.id} onClick={()=>setTheme(t.id)}
@@ -4324,7 +4324,7 @@ function SettingsDisplayTab({onToast}) {
                   </div>
                   <div style={{flex:1}}>
                     <div style={{fontWeight:700,fontSize:14}}>{t.label}</div>
-                    <div style={{fontSize:12,color:"#6B7280",marginTop:2}}>{t.desc}</div>
+                    <div style={{fontSize:12,color:T.textSecondary,marginTop:2}}>{t.desc}</div>
                   </div>
                   {theme===t.id&&<span style={{color:"#8B5CF6",fontWeight:800,fontSize:18}}>✓</span>}
                 </button>
@@ -4338,7 +4338,7 @@ function SettingsDisplayTab({onToast}) {
           <div>
             <div style={{display:"flex",gap:12,marginBottom:16}}>
               <div style={{flex:1}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>TAKT (MINUTEN)</div>
+                <div style={{fontSize:11,fontWeight:700,color:T.textSecondary,marginBottom:5}}>TAKT (MINUTEN)</div>
                 <select value={affeMinuten} onChange={e=>setAffeMinuten(Number(e.target.value))}
                   style={{...S.input,width:"100%"}}>
                   <option value={1}>Jede Minute (:01, :02, …)</option>
@@ -4347,13 +4347,13 @@ function SettingsDisplayTab({onToast}) {
                 </select>
               </div>
               <div style={{flex:1}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:5}}>DAUER (SEKUNDEN)</div>
+                <div style={{fontSize:11,fontWeight:700,color:T.textSecondary,marginBottom:5}}>DAUER (SEKUNDEN)</div>
                 <input type="number" min="5" max="60" value={affeSekunden}
                   onChange={e=>setAffeSekunden(Math.max(5,Number(e.target.value)))}
                   style={{...S.input,width:"100%"}}/>
               </div>
             </div>
-            <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:8}}>AUF WELCHEN DISPLAYS ERSCHEINT DER AFFE?</div>
+            <div style={{fontSize:11,fontWeight:700,color:T.textSecondary,marginBottom:8}}>AUF WELCHEN DISPLAYS ERSCHEINT DER AFFE?</div>
             <div style={{display:"flex",flexDirection:"column",gap:8}}>
               {[
                 {id:"schedule",  label:"Tagesbelegungsplan", icon:"📅"},
@@ -4379,7 +4379,7 @@ function SettingsDisplayTab({onToast}) {
         {/* ── TAGESBELEGUNGSPLAN ── */}
         {activeTab==="schedule"&&(
           <div>
-            <p style={{fontSize:12,color:"#9CA3AF"}}>Zeigt die heutigen Platzbuchungen in Echtzeit.</p>
+            <p style={{fontSize:12,color:T.textMuted}}>Zeigt die heutigen Platzbuchungen in Echtzeit.</p>
           </div>
         )}
 
@@ -4448,7 +4448,7 @@ function SettingsDisplayTab({onToast}) {
             {/* Hinweis für KI-Bildgenerierung */}
             <div style={{marginBottom:14,padding:"10px 12px",background:"#F8FAFC",
               border:"1px solid #E2E8F0",borderRadius:8,fontSize:11,color:"#6B7280",lineHeight:1.6}}>
-              <div style={{fontWeight:700,color:"#374151",marginBottom:4}}>📐 Ideales Format für KI-generierte Bilder</div>
+              <div style={{fontWeight:700,color:T.textSecondary,marginBottom:4}}>📐 Ideales Format für KI-generierte Bilder</div>
               <div><strong>Querformat, mind. 1920 × 1080 px (16:9 oder breiter)</strong></div>
               <div style={{marginTop:4}}>Das Bild füllt immer den ganzen Bildschirm — Ränder werden automatisch beschnitten.</div>
               <div style={{marginTop:4}}>Das Bild erscheint unterhalb einer Kopfzeile (~85 px) — wichtige Inhalte nicht ganz oben platzieren.</div>
@@ -4464,10 +4464,10 @@ function SettingsDisplayTab({onToast}) {
             {bildUrl&&(
               <div style={{marginTop:14}}>
                 <img src={bildUrl} alt="" style={{width:"100%",maxHeight:180,objectFit:"contain",borderRadius:8,background:"#E5E7EB"}}/>
-                <div style={{fontSize:11,color:"#9CA3AF",marginTop:6}}>Aktuell hinterlegtes Bild</div>
+                <div style={{fontSize:11,color:T.textMuted,marginTop:6}}>Aktuell hinterlegtes Bild</div>
               </div>
             )}
-            {!bildUrl&&<div style={{marginTop:10,fontSize:12,color:"#9CA3AF"}}>Noch kein Bild hochgeladen.</div>}
+            {!bildUrl&&<div style={{marginTop:10,fontSize:12,color:T.textMuted}}>Noch kein Bild hochgeladen.</div>}
           </div>
         )}
 
@@ -4476,19 +4476,19 @@ function SettingsDisplayTab({onToast}) {
           <div>
             <div style={{padding:"14px",background:"#F8FAFC",border:"1px solid #E2E8F0",
               borderRadius:8,fontSize:12,color:"#6B7280",lineHeight:1.6,marginBottom:16}}>
-              <div style={{fontWeight:700,color:"#374151",marginBottom:4}}>📸 Fotos der aktuellen Woche</div>
+              <div style={{fontWeight:700,color:T.textSecondary,marginBottom:4}}>📸 Fotos der aktuellen Woche</div>
               <div>Zeigt alle Fotos aus dem Clubstream die diese Woche (Mo–So) hochgeladen wurden.</div>
               <div style={{marginTop:4}}>Der Wechsel erfolgt automatisch — kein Tippen nötig.</div>
             </div>
             <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:8}}>
-              <label style={{fontSize:13,fontWeight:600,color:"#374151",whiteSpace:"nowrap"}}>
+              <label style={{fontSize:13,fontWeight:600,color:T.textSecondary,whiteSpace:"nowrap"}}>
                 Wechsel alle
               </label>
               <input type="number" min={3} max={120} value={fotosInterval}
                 onChange={e=>setFotosInterval(Math.max(3,Number(e.target.value)))}
                 style={{width:64,fontSize:14,fontWeight:700,textAlign:"center",
                   border:"1.5px solid #E5E7EB",borderRadius:6,padding:"5px 8px"}}/>
-              <label style={{fontSize:13,color:"#6B7280"}}>Sekunden</label>
+              <label style={{fontSize:13,color:T.textSecondary}}>Sekunden</label>
             </div>
           </div>
         )}
@@ -4539,11 +4539,11 @@ function SlotModal({modal,data,user,guestFee,displayName,onBook,onCancel,onClose
         </div>
         {!existing&&(<>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:16}}>
-            {[["Platz",court?.name||"?"],["Uhrzeit",slot+" Uhr"],["Dauer","1 Std."]].map(([l,v])=>(<div key={l} style={{background:"#F8FAFC",borderRadius:8,padding:"10px",textAlign:"center"}}><div style={{fontSize:10,color:"#9CA3AF",fontWeight:700,marginBottom:3}}>{l}</div><div style={{fontSize:13,fontWeight:800,color:"#111827"}}>{v}</div></div>))}
+            {[["Platz",court?.name||"?"],["Uhrzeit",slot+" Uhr"],["Dauer","1 Std."]].map(([l,v])=>(<div key={l} style={{background:"#F8FAFC",borderRadius:8,padding:"10px",textAlign:"center"}}><div style={{fontSize:10,color:T.textMuted,fontWeight:700,marginBottom:3}}>{l}</div><div style={{fontSize:13,fontWeight:800,color:T.textPrimary}}>{v}</div></div>))}
           </div>
           <div style={{background:"#FFFBEB",border:"1.5px solid #FDE68A",borderRadius:12,padding:14,marginBottom:16}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer"}} onClick={()=>setWithGuest(g=>!g)}>
-              <div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:22}}>👥</span><div><div style={{fontWeight:700,fontSize:14,color:"#111827"}}>Gastspieler</div><div style={{fontSize:11,color:"#92400E",marginTop:1}}>Gebühr wird am Jahresende abgerechnet</div></div></div>
+              <div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:22}}>👥</span><div><div style={{fontWeight:700,fontSize:14,color:T.textPrimary}}>Gastspieler</div><div style={{fontSize:11,color:"#92400E",marginTop:1}}>Gebühr wird am Jahresende abgerechnet</div></div></div>
               <div style={{width:44,height:24,background:withGuest?"#F59E0B":"#E5E7EB",borderRadius:12,position:"relative",transition:"background .2s",flexShrink:0}}><div style={{width:20,height:20,background:"#fff",borderRadius:"50%",position:"absolute",top:2,left:withGuest?22:2,transition:"left .2s",boxShadow:"0 1px 4px rgba(0,0,0,.2)"}}></div></div>
             </div>
             {withGuest&&(<div style={{marginTop:10,padding:"10px 12px",background:"#FEF3C7",borderRadius:8,fontSize:12,color:"#92400E",fontWeight:600}}>💶 Gebühr: <strong>{eur(guestFee)}</strong> – wird in deinem Konto vorgemerkt</div>)}
@@ -4555,7 +4555,7 @@ function SlotModal({modal,data,user,guestFee,displayName,onBook,onCancel,onClose
         </>)}
         {existing&&(<>
           <div style={{background:"#F9FAFB",borderRadius:8,padding:"12px 14px",marginBottom:16}}>
-            <div style={{fontSize:12,color:"#6B7280",marginBottom:4}}>Gebucht von</div>
+            <div style={{fontSize:12,color:T.textSecondary,marginBottom:4}}>Gebucht von</div>
             <div style={{fontWeight:700,fontSize:16}}>{displayName(existing)}</div>
             <div style={{marginTop:6,display:"flex",gap:6,flexWrap:"wrap"}}>
               <span style={{fontSize:12,padding:"2px 8px",borderRadius:20,background:BOOKING_TYPE_COLORS[bType]+"22",color:BOOKING_TYPE_COLORS[bType],fontWeight:600}}>{bType==="training"?"🏋️ Training":bType==="match"?"🏆 Spieltag":"📅 Standard"}</span>
@@ -4683,8 +4683,8 @@ function MyBookings({data,user,onCancel,guestFee,onMarkPaid}) {
         <div style={{background:openAmount>0?"linear-gradient(135deg,#FEF3C7,#FDE68A)":"linear-gradient(135deg,#DCFCE7,#BBF7D0)",border:`1.5px solid ${openAmount>0?"#F59E0B":"#22C55E"}`,borderRadius:14,padding:16,marginBottom:20,display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
           <div>
             <div style={{fontSize:11,fontWeight:700,color:openAmount>0?"#92400E":"#166534",marginBottom:4}}>GASTSPIELER-GEBÜHR {new Date().getFullYear()}</div>
-            <div style={{fontSize:28,fontWeight:800,color:"#111827"}}>{eur(openAmount)}</div>
-            <div style={{fontSize:12,color:"#6B7280",marginTop:2}}>{openGuestBookings.length} offene Buchungen · {eur(guestFee)} pro Buchung</div>
+            <div style={{fontSize:28,fontWeight:800,color:T.textPrimary}}>{eur(openAmount)}</div>
+            <div style={{fontSize:12,color:T.textSecondary,marginTop:2}}>{openGuestBookings.length} offene Buchungen · {eur(guestFee)} pro Buchung</div>
           </div>
           {openAmount>0&&(<button style={{...S.primaryBtn,background:"#0F172A",whiteSpace:"nowrap"}} onClick={()=>setShowPayConfirm(true)}>Als bezahlt<br/>markieren</button>)}
           {openAmount===0&&<div style={{fontSize:24}}>✅</div>}
@@ -4698,22 +4698,22 @@ function MyBookings({data,user,onCancel,guestFee,onMarkPaid}) {
             <div style={{padding:"14px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap"}}>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}><span style={{fontSize:18}}>{typeIcon}</span><span style={{fontWeight:800,fontSize:15}}>{g.label||typeLabel}</span><span style={{fontSize:11,padding:"2px 8px",borderRadius:20,background:typeColor+"22",color:typeColor,fontWeight:700}}>{typeLabel}</span></div>
-                <div style={{fontSize:12,color:"#6B7280",display:"flex",flexWrap:"wrap",gap:12}}><span>📅 {groupDateRange(g.bookings)}</span><span>🎾 {groupCourts(g.bookings)}</span><span>⏰ {groupSlots(g.bookings)}</span></div>
+                <div style={{fontSize:12,color:T.textSecondary,display:"flex",flexWrap:"wrap",gap:12}}><span>📅 {groupDateRange(g.bookings)}</span><span>🎾 {groupCourts(g.bookings)}</span><span>⏰ {groupSlots(g.bookings)}</span></div>
                 {next&&<div style={{fontSize:12,color:typeColor,fontWeight:600,marginTop:4}}>Nächster Termin: {next}</div>}
               </div>
               <div style={{display:"flex",gap:8,alignItems:"center",flexShrink:0}}>
-                <div style={{textAlign:"center",background:"#F9FAFB",borderRadius:8,padding:"6px 12px"}}><div style={{fontWeight:800,fontSize:18,color:typeColor}}>{g.bookings.length}</div><div style={{fontSize:11,color:"#9CA3AF"}}>Slots</div></div>
+                <div style={{textAlign:"center",background:"#F9FAFB",borderRadius:8,padding:"6px 12px"}}><div style={{fontWeight:800,fontSize:18,color:typeColor}}>{g.bookings.length}</div><div style={{fontSize:11,color:T.textMuted}}>Slots</div></div>
                 <button style={S.cancelBtn} onClick={()=>{if(window.confirm(`Alle ${g.bookings.length} Slots stornieren?`))g.bookings.forEach(b=>onCancel(b.id));}}>Alle stornieren</button>
                 <button style={{...S.ghostBtn,padding:"7px 12px",fontSize:13}} onClick={()=>toggleGroup(key)}>{isOpen?"▲ Einklappen":"▼ Details"}</button>
               </div>
             </div>
             {isOpen&&(<div style={{borderTop:"1px solid #F3F4F6",padding:"8px 16px 12px"}}>
-              <div style={{fontSize:12,color:"#9CA3AF",marginBottom:8,fontWeight:600,textTransform:"uppercase",letterSpacing:.4}}>Alle Termine</div>
+              <div style={{fontSize:12,color:T.textMuted,marginBottom:8,fontWeight:600,textTransform:"uppercase",letterSpacing:.4}}>Alle Termine</div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:6}}>
                 {g.bookings.map(b=>{const court=data.courts.find(c=>c.id===b.courtId);const ci=data.courts.findIndex(c=>c.id===b.courtId);const col=COURT_COLORS[ci%COURT_COLORS.length];const d=new Date(b.date+"T12:00:00");
                   return (<div key={b.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:"#F9FAFB",borderRadius:7,padding:"7px 10px",borderLeft:`3px solid ${col}`}}>
-                    <div><div style={{fontSize:13,fontWeight:600}}>{DE_DAYS[dayOfWeek(b.date)]} {d.getDate()}. {DE_MONTH[d.getMonth()]} · {b.slot} Uhr</div><div style={{fontSize:11,color:"#9CA3AF"}}>{court?.name}</div></div>
-                    <button style={{background:"none",border:"none",cursor:"pointer",color:"#D1D5DB",fontSize:16,padding:"0 4px"}} onClick={()=>onCancel(b.id)}>✕</button>
+                    <div><div style={{fontSize:13,fontWeight:600}}>{DE_DAYS[dayOfWeek(b.date)]} {d.getDate()}. {DE_MONTH[d.getMonth()]} · {b.slot} Uhr</div><div style={{fontSize:11,color:T.textMuted}}>{court?.name}</div></div>
+                    <button style={{background:"none",border:"none",cursor:"pointer",color:T.textMuted,fontSize:16,padding:"0 4px"}} onClick={()=>onCancel(b.id)}>✕</button>
                   </div>);
                 })}
               </div>
@@ -4724,7 +4724,7 @@ function MyBookings({data,user,onCancel,guestFee,onMarkPaid}) {
       {singles.length>0&&(<div style={{marginBottom:28}}><SectTitle>Einzelbuchungen ({singles.length})</SectTitle>
         {singles.map(b=>{const court=data.courts.find(c=>c.id===b.courtId);const ci=data.courts.findIndex(c=>c.id===b.courtId);const color=b.with_guest?"#16A34A":COURT_COLORS[ci%COURT_COLORS.length];const d=new Date(b.date+"T12:00:00");
           return (<div key={b.id} style={{...S.card,border:`1.5px solid ${color}44`,background:`${color}08`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
-            <div><div style={{fontWeight:700,fontSize:14}}>{court?.name||"?"} · {b.slot} Uhr {b.with_guest?"👥":""}</div><div style={{fontSize:12,color:"#6B7280",marginTop:2}}>{DE_FULL[dayOfWeek(b.date)]}, {fmtDate(d)}</div></div>
+            <div><div style={{fontWeight:700,fontSize:14}}>{court?.name||"?"} · {b.slot} Uhr {b.with_guest?"👥":""}</div><div style={{fontSize:12,color:T.textSecondary,marginTop:2}}>{DE_FULL[dayOfWeek(b.date)]}, {fmtDate(d)}</div></div>
             <button style={S.cancelBtn} onClick={()=>onCancel(b.id)}>Stornieren</button>
           </div>);
         })}
@@ -4734,18 +4734,18 @@ function MyBookings({data,user,onCancel,guestFee,onMarkPaid}) {
         <button style={{...S.ghostBtn,fontSize:13,padding:"7px 14px",marginBottom:12}} onClick={()=>setShowPast(p=>!p)}>{showPast?"▲ Vergangene ausblenden":`▼ Vergangene Buchungen (${past.length})`}</button>
         {showPast&&[...past].reverse().slice(0,20).map(b=>{const court=data.courts.find(c=>c.id===b.courtId);const ci=data.courts.findIndex(c=>c.id===b.courtId);const color=b.with_guest?"#16A34A":COURT_COLORS[ci%COURT_COLORS.length];const bType=b.type||"regular";const icon=bType==="training"?"🏋️":bType==="match"?"🏆":b.with_guest?"👥":"📅";const d=new Date(b.date+"T12:00:00");
           return (<div key={b.id} style={{...S.card,border:`1.5px solid ${color}33`,opacity:.7,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
-            <div><div style={{fontSize:13,fontWeight:600}}>{icon} {court?.name||"?"} · {b.slot} Uhr</div><div style={{fontSize:12,color:"#9CA3AF"}}>{DE_FULL[dayOfWeek(b.date)]}, {fmtDate(d)}</div></div>
+            <div><div style={{fontSize:13,fontWeight:600}}>{icon} {court?.name||"?"} · {b.slot} Uhr</div><div style={{fontSize:12,color:T.textMuted}}>{DE_FULL[dayOfWeek(b.date)]}, {fmtDate(d)}</div></div>
             {b.with_guest&&<span style={{fontSize:11,padding:"2px 8px",borderRadius:20,background:b.guest_paid?"#DCFCE7":"#FEF3C7",color:b.guest_paid?"#16A34A":"#D97706",fontWeight:700}}>{b.guest_paid?"Bezahlt ✓":"Offen"}</span>}
           </div>);
         })}
       </div>
       {showPayConfirm&&(<div style={S.overlay} onClick={()=>setShowPayConfirm(false)}><div style={S.modal} onClick={e=>e.stopPropagation()}>
         <div style={S.modalHeader}><div style={S.modalTitle}>Zahlung bestätigen</div><button style={S.closeBtn} onClick={()=>setShowPayConfirm(false)}>✕</button></div>
-        <p style={{color:"#6B7280",fontSize:13,marginBottom:16}}>Bitte bestätige, dass du den offenen Betrag an den Verein bezahlt hast.</p>
+        <p style={{color:T.textSecondary,fontSize:13,marginBottom:16}}>Bitte bestätige, dass du den offenen Betrag an den Verein bezahlt hast.</p>
         <div style={{background:"#FEF3C7",borderRadius:10,padding:14,textAlign:"center",marginBottom:20}}>
           <div style={{fontSize:11,color:"#92400E",fontWeight:700,marginBottom:4}}>ZU BEZAHLENDER BETRAG</div>
-          <div style={{fontSize:28,fontWeight:800,color:"#111827"}}>{eur(openAmount)}</div>
-          <div style={{fontSize:12,color:"#6B7280",marginTop:4}}>{openGuestBookings.length} Buchungen × {eur(guestFee)}</div>
+          <div style={{fontSize:28,fontWeight:800,color:T.textPrimary}}>{eur(openAmount)}</div>
+          <div style={{fontSize:12,color:T.textSecondary,marginTop:4}}>{openGuestBookings.length} Buchungen × {eur(guestFee)}</div>
         </div>
         <button style={{...S.primaryBtn,width:"100%",background:"#22C55E",color:"#fff",marginBottom:8}} onClick={()=>{onMarkPaid();setShowPayConfirm(false);}}>✓ Ja, ich habe bezahlt</button>
         <button style={{...S.ghostBtn,width:"100%"}} onClick={()=>setShowPayConfirm(false)}>Abbrechen</button>
@@ -4814,14 +4814,14 @@ function MassBookView({data,user,onMassBook,onCancelMany}) {
               <button style={{...S.primaryBtn,width:"100%"}} onClick={calcPreview}>Vorschau berechnen</button>
             </div>
             <div>
-              {!preview&&<div style={{...S.card,textAlign:"center",color:"#9CA3AF",padding:"40px 20px"}}><div style={{fontSize:32,marginBottom:8}}>📊</div><div>Klicke auf „Vorschau berechnen"</div></div>}
+              {!preview&&<div style={{...S.card,textAlign:"center",color:T.textMuted,padding:"40px 20px"}}><div style={{fontSize:32,marginBottom:8}}>📊</div><div>Klicke auf „Vorschau berechnen"</div></div>}
               {preview&&(<div style={S.card}>
                 <h3 style={{fontWeight:700,marginBottom:16}}>Vorschau</h3>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
-                  {[["Tage",preview.days,"#111827"],["Gesamt",preview.total,"#111827"],["Belegt",preview.conflicts,"#EF4444"],["Gebucht",preview.toBook,"#22C55E"]].map(([l,v,c])=>(<div key={l} style={{background:"#F9FAFB",borderRadius:8,padding:"12px",textAlign:"center"}}><div style={{fontSize:22,fontWeight:800,color:c}}>{v}</div><div style={{fontSize:12,color:"#6B7280"}}>{l}</div></div>))}
+                  {[["Tage",preview.days,"#111827"],["Gesamt",preview.total,"#111827"],["Belegt",preview.conflicts,"#EF4444"],["Gebucht",preview.toBook,"#22C55E"]].map(([l,v,c])=>(<div key={l} style={{background:"#F9FAFB",borderRadius:8,padding:"12px",textAlign:"center"}}><div style={{fontSize:22,fontWeight:800,color:c}}>{v}</div><div style={{fontSize:12,color:T.textSecondary}}>{l}</div></div>))}
                 </div>
                 {preview.dates.map(d=>(<div key={d} style={{fontSize:13,padding:"4px 0",borderBottom:"1px solid #F3F4F6"}}>{DE_FULL[dayOfWeek(d)]}, {fmtDate(new Date(d+"T12:00:00"))}</div>))}
-                {preview.days>5&&<div style={{fontSize:12,color:"#9CA3AF",marginTop:4}}>...und {preview.days-5} weitere</div>}
+                {preview.days>5&&<div style={{fontSize:12,color:T.textMuted,marginTop:4}}>...und {preview.days-5} weitere</div>}
                 <div style={{marginTop:16}}>
                   {preview.toBook>0
                     ?<button style={{...S.primaryBtn,width:"100%",background:"#22C55E",color:"#fff"}} onClick={()=>{onMassBook({...tForm,type:"training"});setPreview(null);}}>{preview.toBook} Slots buchen</button>
@@ -4843,8 +4843,8 @@ function MassBookView({data,user,onMassBook,onCancelMany}) {
               return (
                 <div key={key} style={{...S.card,border:`1.5px solid #3B82F644`,background:"#3B82F608",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
                   <div>
-                    <div style={{fontWeight:700}}>🏋️ Training{g.label&&<span style={{marginLeft:8,fontWeight:400,color:"#6B7280"}}>– {g.label}</span>}</div>
-                    <div style={{fontSize:12,color:"#6B7280"}}>{g.count} Slots gesamt · nächster: {dates[0]?fmtDate(new Date(dates[0]+"T12:00:00")):"–"}</div>
+                    <div style={{fontWeight:700}}>🏋️ Training{g.label&&<span style={{marginLeft:8,fontWeight:400,color:T.textSecondary}}>– {g.label}</span>}</div>
+                    <div style={{fontSize:12,color:T.textSecondary}}>{g.count} Slots gesamt · nächster: {dates[0]?fmtDate(new Date(dates[0]+"T12:00:00")):"–"}</div>
                   </div>
                   <button style={S.cancelBtn} onClick={()=>onCancelMany(g.ids)}>Alle stornieren</button>
                 </div>
@@ -4859,7 +4859,7 @@ function MassBookView({data,user,onMassBook,onCancelMany}) {
               <div key={key} style={{...S.card,border:`1.5px solid #EF444444`,background:"#EF444408",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
                 <div>
                   <div style={{fontWeight:700}}>🏆 {g.label||"Spieltag"}</div>
-                  <div style={{fontSize:12,color:"#6B7280"}}>{fmtDate(new Date(g.date+"T12:00:00"))} · {g.slots.sort().join(", ")} Uhr</div>
+                  <div style={{fontSize:12,color:T.textSecondary}}>{fmtDate(new Date(g.date+"T12:00:00"))} · {g.slots.sort().join(", ")} Uhr</div>
                 </div>
                 <button style={S.cancelBtn} onClick={()=>onCancelMany(g.ids)}>Stornieren</button>
               </div>
@@ -4904,14 +4904,14 @@ function AdminView({data,allBookings,guestFee,onSaveGuestFee,onAddCourt,onUpdate
           <div style={{fontWeight:800,fontSize:13,color:"#1E40AF",marginBottom:10}}>⚙️ Gebühr pro Gastspieler-Buchung</div>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
             <input type="number" value={feeInput} onChange={e=>setFeeInput(e.target.value)} min="0" step="0.5" style={{...S.input,maxWidth:100,fontSize:16,fontWeight:800}}/>
-            <span style={{fontWeight:700,color:"#6B7280"}}>€</span>
+            <span style={{fontWeight:700,color:T.textSecondary}}>€</span>
             <button style={S.primaryBtn} onClick={()=>onSaveGuestFee(parseFloat(feeInput)||0)}>Speichern</button>
           </div>
-          <div style={{fontSize:11,color:"#6B7280",marginTop:8}}>Gilt für alle zukünftigen Buchungen mit Gastspieler.</div>
+          <div style={{fontSize:11,color:T.textSecondary,marginTop:8}}>Gilt für alle zukünftigen Buchungen mit Gastspieler.</div>
         </div>
         <div style={{background:"#0F172A",borderRadius:12,padding:14,marginBottom:16,display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-          <div style={{textAlign:"center"}}><div style={{color:"#94A3B8",fontSize:11,fontWeight:700,marginBottom:4}}>GESAMT OFFEN {new Date().getFullYear()}</div><div style={{color:"#F59E0B",fontSize:22,fontWeight:800}}>{eur(totalOpen)}</div></div>
-          <div style={{textAlign:"center"}}><div style={{color:"#94A3B8",fontSize:11,fontWeight:700,marginBottom:4}}>BEZAHLT {new Date().getFullYear()}</div><div style={{color:"#4ADE80",fontSize:22,fontWeight:800}}>{eur(totalPaid)}</div></div>
+          <div style={{textAlign:"center"}}><div style={{color:T.textMuted,fontSize:11,fontWeight:700,marginBottom:4}}>GESAMT OFFEN {new Date().getFullYear()}</div><div style={{color:"#F59E0B",fontSize:22,fontWeight:800}}>{eur(totalOpen)}</div></div>
+          <div style={{textAlign:"center"}}><div style={{color:T.textMuted,fontSize:11,fontWeight:700,marginBottom:4}}>BEZAHLT {new Date().getFullYear()}</div><div style={{color:"#4ADE80",fontSize:22,fontWeight:800}}>{eur(totalPaid)}</div></div>
         </div>
         <SectTitle>Alle Mitglieder</SectTitle>
         {guestStats.filter(u=>u.openCount>0||u.paidAmount>0).map(u=>(
@@ -4920,18 +4920,18 @@ function AdminView({data,allBookings,guestFee,onSaveGuestFee,onAddCourt,onUpdate
               <Av name={u.name}/>
               <div>
                 <div style={{fontWeight:700,fontSize:14}}>{u.name}</div>
-                <div style={{fontSize:12,color:"#6B7280"}}>{u.openCount} offen · {eur(u.paidAmount)} bezahlt</div>
+                <div style={{fontSize:12,color:T.textSecondary}}>{u.openCount} offen · {eur(u.paidAmount)} bezahlt</div>
                 {u.openAmount>0&&<button style={{...S.cancelBtn,background:"#FEF3C7",color:"#D97706",border:"1px solid #FDE68A",marginTop:6,padding:"5px 10px",fontSize:11}} onClick={()=>setConfirmPay({userId:u.id,name:u.name,amount:u.openAmount,count:u.openCount})}>Als bezahlt markieren</button>}
               </div>
             </div>
-            <div style={{textAlign:"right"}}><div style={{fontSize:18,fontWeight:800,color:u.openAmount>0?"#D97706":"#22C55E"}}>{eur(u.openAmount)}</div><div style={{fontSize:11,color:"#9CA3AF"}}>offen</div></div>
+            <div style={{textAlign:"right"}}><div style={{fontSize:18,fontWeight:800,color:u.openAmount>0?"#D97706":"#22C55E"}}>{eur(u.openAmount)}</div><div style={{fontSize:11,color:T.textMuted}}>offen</div></div>
           </div>
         ))}
         {guestStats.every(u=>u.openCount===0&&u.paidAmount===0)&&<Em msg="Keine Gastspieler-Buchungen vorhanden"/>}
         {guestStats.some(u=>u.paidAmount>0)&&(<><SectTitle style={{marginTop:16}}>Zahlungshistorie</SectTitle>
           <div style={S.card}>{guestStats.filter(u=>u.paidAmount>0).map(u=>(
             <div key={u.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid #F3F4F6"}}>
-              <div><div style={{fontWeight:600,fontSize:13}}>{u.name}</div><div style={{fontSize:11,color:"#6B7280"}}>Bezahlt</div></div>
+              <div><div style={{fontWeight:600,fontSize:13}}>{u.name}</div><div style={{fontSize:11,color:T.textSecondary}}>Bezahlt</div></div>
               <div style={{textAlign:"right"}}><div style={{fontWeight:800,color:"#16A34A"}}>{eur(u.paidAmount)}</div><span style={{fontSize:10,padding:"2px 8px",borderRadius:20,background:"#DCFCE7",color:"#16A34A",fontWeight:700}}>Bezahlt ✓</span></div>
             </div>
           ))}</div>
@@ -4940,18 +4940,18 @@ function AdminView({data,allBookings,guestFee,onSaveGuestFee,onAddCourt,onUpdate
       {tab==="bookings"&&(<div><h3 style={{fontWeight:700,marginBottom:14}}>Bevorstehende Buchungen</h3>
         {data.bookings.filter(b=>b.date>=today()).sort((a,b)=>(a.date+a.slot).localeCompare(b.date+b.slot)).map(b=>{const court=data.courts.find(c=>c.id===b.courtId);const ci=data.courts.findIndex(c=>c.id===b.courtId);const icon=b.type==="training"?"🏋️":b.type==="match"?"🏆":"📅";
           return (<div key={b.id} style={{...S.card,border:`1.5px solid ${COURT_COLORS[ci%COURT_COLORS.length]}44`,background:`${COURT_COLORS[ci%COURT_COLORS.length]}08`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <div><div style={{fontWeight:600}}>{icon} {court?.name||"?"} · {b.slot} Uhr · {b.date}</div><div style={{fontSize:12,color:"#6B7280"}}>{displayName(b)}{b.with_guest?" · 👥 Gastspieler":""}{b.label?` · ${b.label}`:""}</div></div>
+            <div><div style={{fontWeight:600}}>{icon} {court?.name||"?"} · {b.slot} Uhr · {b.date}</div><div style={{fontSize:12,color:T.textSecondary}}>{displayName(b)}{b.with_guest?" · 👥 Gastspieler":""}{b.label?` · ${b.label}`:""}</div></div>
             <button style={S.cancelBtn} onClick={()=>onCancelBooking(b.id)}>Stornieren</button>
           </div>);
         })}
       </div>)}
       {confirmPay&&(<div style={S.overlay} onClick={()=>setConfirmPay(null)}><div style={S.modal} onClick={e=>e.stopPropagation()}>
         <div style={S.modalHeader}><div style={S.modalTitle}>Zahlung bestätigen</div><button style={S.closeBtn} onClick={()=>setConfirmPay(null)}>✕</button></div>
-        <p style={{color:"#6B7280",fontSize:13,marginBottom:16}}>{confirmPay.name} als bezahlt markieren?</p>
+        <p style={{color:T.textSecondary,fontSize:13,marginBottom:16}}>{confirmPay.name} als bezahlt markieren?</p>
         <div style={{background:"#FEF3C7",borderRadius:10,padding:14,textAlign:"center",marginBottom:20}}>
           <div style={{fontSize:11,color:"#92400E",fontWeight:700,marginBottom:4}}>BETRAG</div>
-          <div style={{fontSize:28,fontWeight:800,color:"#111827"}}>{eur(confirmPay.amount)}</div>
-          <div style={{fontSize:12,color:"#6B7280",marginTop:4}}>{confirmPay.count} Buchungen × {eur(guestFee)}</div>
+          <div style={{fontSize:28,fontWeight:800,color:T.textPrimary}}>{eur(confirmPay.amount)}</div>
+          <div style={{fontSize:12,color:T.textSecondary,marginTop:4}}>{confirmPay.count} Buchungen × {eur(guestFee)}</div>
         </div>
         <button style={{...S.primaryBtn,width:"100%",background:"#22C55E",color:"#fff",marginBottom:8}} onClick={()=>{onMarkPaid(confirmPay.userId);setConfirmPay(null);}}>✓ Als bezahlt markieren</button>
         <button style={{...S.ghostBtn,width:"100%"}} onClick={()=>setConfirmPay(null)}>Abbrechen</button>
@@ -4995,7 +4995,7 @@ function LoginScreen() {
   return (
     <div style={S.loginWrap}>
       <div style={S.loginCard}>
-        <div style={{textAlign:"center",marginBottom:28}}><img src="/logo.png" alt="Tennis Herrieden" style={{width:72,height:72,objectFit:"contain",margin:"0 auto",display:"block"}}/><h1 style={{fontSize:22,fontWeight:800,letterSpacing:-.5,marginTop:12}}>Tennis Herrieden</h1><p style={{color:"#6B7280",fontSize:13,marginTop:4}}>Vereins-App</p></div>
+        <div style={{textAlign:"center",marginBottom:28}}><img src="/logo.png" alt="Tennis Herrieden" style={{width:72,height:72,objectFit:"contain",margin:"0 auto",display:"block"}}/><h1 style={{fontSize:22,fontWeight:800,letterSpacing:-.5,marginTop:12}}>Tennis Herrieden</h1><p style={{color:T.textSecondary,fontSize:13,marginTop:4}}>Vereins-App</p></div>
         <div style={{display:"flex",gap:6,marginBottom:20}}>{[["login","Anmelden"],["register","Registrieren"]].map(([m,l])=>(<button key={m} style={{...S.tabBtn,flex:1,...(mode===m?S.tabBtnActive:{})}} onClick={()=>{setMode(m);setMsg(null);}}>{l}</button>))}</div>
         <div style={{display:"flex",flexDirection:"column",gap:12}}>
           {mode==="register"&&<input placeholder="Vorname" value={firstName} onChange={e=>setFirstName(e.target.value)} style={S.input}/>}
@@ -5004,7 +5004,7 @@ function LoginScreen() {
           {mode!=="reset"&&<input type="password" placeholder="Passwort" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handle()} style={S.input}/>}
           {msg&&<div style={{padding:"10px 12px",borderRadius:8,fontSize:13,background:msg.type==="error"?"#FEE2E2":"#DCFCE7",color:msg.type==="error"?"#991B1B":"#166534"}}>{msg.text}</div>}
           <button style={{...S.primaryBtn,marginTop:4,opacity:loading?.6:1}} onClick={handle} disabled={loading}>{loading?"…":mode==="login"?"Anmelden":mode==="register"?"Registrieren":"Link senden"}</button>
-          {mode==="login"&&<button style={{background:"none",border:"none",color:"#6B7280",cursor:"pointer",fontSize:12}} onClick={()=>{setMode("reset");setMsg(null);}}>Passwort vergessen?</button>}
+          {mode==="login"&&<button style={{background:"none",border:"none",color:T.textSecondary,cursor:"pointer",fontSize:12}} onClick={()=>{setMode("reset");setMsg(null);}}>Passwort vergessen?</button>}
         </div>
       </div>
     </div>
@@ -5017,8 +5017,8 @@ function LoginScreen() {
 function TennisBall({size=32}){return(<svg width={size} height={size} viewBox="0 0 32 32" fill="none" style={{display:"block",margin:"0 auto"}}><circle cx="16" cy="16" r="15" stroke="#22C55E" strokeWidth="2"/><ellipse cx="16" cy="16" rx="5" ry="14" stroke="#22C55E" strokeWidth="1.5"/><line x1="1" y1="16" x2="31" y2="16" stroke="#22C55E" strokeWidth="1.5"/></svg>);}
 function Ico({name,size=16,color,style={}}){if(!name)return null;if(name.startsWith("ti-"))return<i className={`ti ${name}`} aria-hidden="true" style={{fontSize:size,color,lineHeight:1,...style}}/>;return<span aria-hidden="true" style={{fontSize:size,...style}}>{name}</span>;}
 function Av({name}){return(<div style={{width:34,height:34,borderRadius:"50%",background:"#22C55E",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:14,flexShrink:0}}>{name?.[0]||"?"}</div>);}
-function Loading({msg="Laden…"}){return(<div style={{display:"flex",justifyContent:"center",alignItems:"center",height:"100vh",background:"#F9FAFB"}}><div style={{textAlign:"center"}}><div style={{fontSize:36,marginBottom:12}}>🎾</div><div style={{color:"#6B7280"}}>{msg}</div></div></div>);}
-function SectTitle({children}){return <div style={{fontSize:13,fontWeight:800,color:"#374151",textTransform:"uppercase",letterSpacing:.6,marginBottom:10}}>{children}</div>;}
+function Loading({msg="Laden…"}){return(<div style={{display:"flex",justifyContent:"center",alignItems:"center",height:"100vh",background:"#F9FAFB"}}><div style={{textAlign:"center"}}><div style={{fontSize:36,marginBottom:12}}>🎾</div><div style={{color:T.textSecondary}}>{msg}</div></div></div>);}
+function SectTitle({children}){return <div style={{fontSize:13,fontWeight:800,color:T.textSecondary,textTransform:"uppercase",letterSpacing:.6,marginBottom:10}}>{children}</div>;}
 function Em({msg}){return <div style={{color:T.textMuted,padding:"18px 0",fontSize:14}}>– {msg}</div>;}
 function Lbl({children}){return <div style={{fontSize:12,fontWeight:700,color:T.textPrimary,marginBottom:6,textTransform:"uppercase",letterSpacing:.5}}>{children}</div>;}
 
@@ -5226,11 +5226,11 @@ function KassenbuchApp({profile, onBack}) {
           </div>
         </div>
         <div style={KB.formCard}>
-          <p style={{fontSize:14,color:"#64748B",margin:0}}>
+          <p style={{fontSize:14,color:T.textMuted,margin:0}}>
             Trage den tatsächlich gezählten Kassenbestand ein. Die Differenz zum aktuellen Bestand wird automatisch als Buchung eingetragen.
           </p>
           <div style={{background:"#0F172A",borderRadius:8,padding:"10px 14px",display:"flex",justifyContent:"space-between"}}>
-            <span style={{fontSize:13,color:"#64748B"}}>Aktueller Bestand</span>
+            <span style={{fontSize:13,color:T.textMuted}}>Aktueller Bestand</span>
             <span style={{fontSize:13,fontWeight:700,color:bal>=0?"#4ADE80":"#F87171"}}>{eur(bal)}</span>
           </div>
           <div>
@@ -5263,7 +5263,7 @@ function KassenbuchApp({profile, onBack}) {
           </div>
         </div>
         <div style={KB.formCard}>
-          <p style={{fontSize:14,color:"#64748B",margin:0}}>Der Startbetrag ist der Kassenbestand vor der ersten Buchung. Alle Buchungen werden dazu addiert bzw. subtrahiert.</p>
+          <p style={{fontSize:14,color:T.textMuted,margin:0}}>Der Startbetrag ist der Kassenbestand vor der ersten Buchung. Alle Buchungen werden dazu addiert bzw. subtrahiert.</p>
           <div>
             <div style={KB.lbl}>Startbetrag (€)</div>
             <input style={{...KB.inp,marginTop:6}} type="number" min="0" step="0.01" placeholder="0.00"
@@ -5341,7 +5341,7 @@ function KassenbuchApp({profile, onBack}) {
           <div style={KB.balLabel}>Kassenbestand</div>
           <div style={KB.balAmt(bal>=0)}>{eur(bal)}</div>
           <div style={KB.startRow}>
-            <span style={{fontSize:13,color:"#64748B"}}>Startbetrag: <strong style={{color:"#94A3B8"}}>{eur(startbetrag)}</strong></span>
+            <span style={{fontSize:13,color:T.textMuted}}>Startbetrag: <strong style={{color:T.textMuted}}>{eur(startbetrag)}</strong></span>
             <div style={KB.menuWrap}>
               <button style={KB.menuBtn} onClick={e=>{ e.stopPropagation(); setShowStartMenu(v=>!v); }}>
                 ⚙️ Optionen ▾
@@ -5359,9 +5359,9 @@ function KassenbuchApp({profile, onBack}) {
             </div>
           </div>
           {(()=>{ const li=[...entries].find(e=>e.description==="Inventur"); if(!li) return null;
-            return <div style={{marginTop:8,paddingTop:8,borderTop:"1px solid #1E3A2F",fontSize:12,color:"#475569",display:"flex",justifyContent:"space-between"}}>
+            return <div style={{marginTop:8,paddingTop:8,borderTop:"1px solid #1E3A2F",fontSize:12,color:T.textSecondary,display:"flex",justifyContent:"space-between"}}>
               <span>Letzte Inventur</span>
-              <span style={{color:"#64748B"}}>{li.type==="in"?"+":"−"}{eur(parseFloat(li.amount))} · {new Date(li.date+"T12:00:00").toLocaleDateString("de-DE")}</span>
+              <span style={{color:T.textMuted}}>{li.type==="in"?"+":"−"}{eur(parseFloat(li.amount))} · {new Date(li.date+"T12:00:00").toLocaleDateString("de-DE")}</span>
             </div>;
           })()}
         </div>
