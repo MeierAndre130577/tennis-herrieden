@@ -25,23 +25,23 @@ const T = {
   info:    "#3B82F6",
   purple:  "#8B5CF6",
   orange:  "#F97316",
-  // Border-Radien
-  rSm:   8,
-  rMd:   12,
-  rLg:   16,
-  rPill: 20,
-  // Schriftgrößen
-  fzH2:    20,
-  fzH3:    16,
-  fzBody:  14,
-  fzSm:    12,
-  fzLabel: 12,
-  fzBadge: 11,
-  // Padding-Presets
-  pCard:    "16px",
-  pCompact: "12px 14px",
-  pBadge:   "4px 10px",
-  pBtn:     "7px 16px",
+  // Border-Radien (rem statt px, damit sie mit der Systemschrift mitskalieren)
+  rSm:   "0.5rem",
+  rMd:   "0.75rem",
+  rLg:   "1rem",
+  rPill: "1.25rem",
+  // Schriftgrößen (rem statt px)
+  fzH2:    "1.25rem",
+  fzH3:    "1rem",
+  fzBody:  "0.875rem",
+  fzSm:    "0.75rem",
+  fzLabel: "0.75rem",
+  fzBadge: "0.6875rem",
+  // Padding-Presets (rem statt px)
+  pCard:    "1rem",
+  pCompact: "0.75rem 0.875rem",
+  pBadge:   "0.25rem 0.625rem",
+  pBtn:     "0.4375rem 1rem",
 };
 // Theme umschalten: document.documentElement.classList.toggle('theme-light')
 const accentBorder = (color) => `1.5px solid ${color}44`;
@@ -576,7 +576,7 @@ function HeimspielwocheScreen({onBack, profile}) {
         {/* Header-Card */}
         <div style={{background:T.bgCard,padding:"16px 20px 20px",borderRadius:T.rLg,border:`1px solid ${T.bgBorder}`}}>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
-            <button style={H.backBtn} onClick={onBack}>←</button>
+            <button style={H.backBtn} onClick={onBack}>‹ Zurück</button>
           </div>
           <div style={{...H.header,paddingTop:12}}>
             <h1 style={{...H.title,fontSize:22}}>📅 Spielwoche</h1>
@@ -603,10 +603,10 @@ function HeimspielwocheScreen({onBack, profile}) {
           const label = d.toLocaleDateString("de-DE",{day:"numeric",month:"short"}) + ", " + d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}) + " Uhr";
           return (
             <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:12,
-              background: stale?"#431407":"#0F2A1A", border:`1px solid ${stale?"#C2410C44":"#16A34A44"}`,
+              background: stale?T.warning+"18":T.success+"18", border:`1px solid ${stale?T.warning:T.success}44`,
               borderRadius:8, padding:"6px 10px"}}>
               <span style={{fontSize:13}}>{stale?"⚠️":"✅"}</span>
-              <span style={{fontSize:11,color: stale?"#FB923C":"#4ADE80"}}>
+              <span style={{fontSize:11,color: stale?T.warning:T.success}}>
                 Aktualisiert: {label}{stale?" – veraltet!":""}
               </span>
             </div>
@@ -750,7 +750,7 @@ function BtvLinksScreen({onBack}) {
         {/* Header-Card */}
         <div style={{background:T.bgCard,padding:"16px 20px 20px",borderRadius:T.rLg,border:`1px solid ${T.bgBorder}`}}>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
-            <button style={H.backBtn} onClick={onBack}>←</button>
+            <button style={H.backBtn} onClick={onBack}>‹ Zurück</button>
           </div>
           <div style={{...H.header,paddingTop:12}}>
             <h1 style={{...H.title,fontSize:22}}>🔗 BTV Links</h1>
@@ -980,7 +980,7 @@ const H={
   glow:         {position:"absolute",top:0,left:"50%",transform:"translateX(-50%)",width:600,height:300,background:"radial-gradient(ellipse at 50% 0%, #22C55E14, transparent 70%)",pointerEvents:"none"},
   inner:        {width:"100%",maxWidth:480,padding:"52px 0 32px",display:"flex",flexDirection:"column",gap:16},
   header:       {textAlign:"center",paddingTop:16},
-  title:        {fontSize:T.fzH2+6,fontWeight:800,color:T.textPrimary,letterSpacing:-.8,margin:"12px 0 4px"},
+  title:        {fontSize:"1.625rem",fontWeight:800,color:T.textPrimary,letterSpacing:-.8,margin:"12px 0 4px"},
   greeting:     {color:T.textMuted,fontSize:T.fzBody,margin:0},
   widget:       {background:T.bgCard,border:`1.5px solid ${T.bgBorder}`,borderRadius:T.rMd,padding:T.pCard,cursor:"pointer",display:"flex",flexDirection:"column",gap:0,width:"100%",textAlign:"left",transition:"border-color .15s,box-shadow .15s"},
   widgetCompact:{background:T.bgCard,border:`1.5px solid ${T.bgBorder}`,borderRadius:T.rMd,padding:T.pCompact,cursor:"pointer",width:"100%",textAlign:"left",display:"block",transition:"border-color .15s,box-shadow .15s"},
@@ -994,14 +994,14 @@ const H={
   navTile:      {background:T.bgCard,border:`1.5px solid ${T.bgBorder}`,borderRadius:T.rMd,padding:"18px 12px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:6},
   navTileLabel: {fontSize:T.fzBody,fontWeight:700,color:T.textSecondary},
   navTileSub:   {fontSize:T.fzLabel,color:T.textMuted},
-  backBtn:      {background:"none",border:"none",color:T.textSecondary,fontSize:22,cursor:"pointer",padding:"0 4px",lineHeight:1,flexShrink:0},
+  backBtn:      {background:"none",border:"none",color:T.textSecondary,fontSize:15,fontWeight:700,cursor:"pointer",lineHeight:1,flexShrink:0,minWidth:44,minHeight:44,display:"flex",alignItems:"center",justifyContent:"center",gap:3},
 };
 
 // Einheitlicher Screen-Header mit Back-Button + Titel
 function ScreenHeader({onBack, title, children}) {
   return (
     <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
-      <button onClick={onBack} style={H.backBtn}>←</button>
+      <button onClick={onBack} style={H.backBtn}>‹ Zurück</button>
       <h2 style={{color:T.textPrimary,fontSize:T.fzH2,fontWeight:800,margin:0,flex:1}}>{title}</h2>
       {children}
     </div>
@@ -1081,7 +1081,7 @@ function ClubstreamDetail({item,onBack}) {
 
           {/* Spielergebnis */}
           {item.result_home!=null&&item.result_away!=null&&(
-            <div style={{textAlign:"center",padding:"12px 10px",background:"#0F172A",borderRadius:10}}>
+            <div style={{textAlign:"center",padding:"12px 10px",background:T.bgPage,borderRadius:10}}>
               <span style={{fontSize:32,fontWeight:900,color:item.result_home>item.result_away?"#22C55E":"#EF4444"}}>
                 {item.result_home} : {item.result_away}
               </span>
@@ -1103,7 +1103,7 @@ function ClubstreamDetail({item,onBack}) {
                   const clr=won?"#22C55E":lost?"#EF4444":"#F59E0B";
                   const lbl=won?"Sieg":lost?"Niederlage":"Unentschieden";
                   return(
-                    <div key={i} style={{background:"#0F172A",padding:"10px 14px",display:"flex",alignItems:"center",gap:10}}>
+                    <div key={i} style={{background:T.bgPage,padding:"10px 14px",display:"flex",alignItems:"center",gap:10}}>
                       <div style={{width:3,height:36,borderRadius:2,background:clr,flexShrink:0}}/>
                       <div style={{flex:1,minWidth:0}}>
                         <div style={{fontSize:12,fontWeight:700,color:T.textPrimary}}>{g.team}</div>
@@ -1263,7 +1263,7 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
         {/* Header-Card */}
         <div style={{background:T.bgCard,padding:"16px 20px 20px",borderRadius:T.rLg,border:`1px solid ${T.bgBorder}`}}>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
-            <button style={H.backBtn} onClick={onBack}>←</button>
+            <button style={H.backBtn} onClick={onBack}>‹ Zurück</button>
             <div style={{flex:1}}/>
             {pending>0&&(
               <span style={{fontSize:11,fontWeight:700,color:"#F59E0B",background:"#F59E0B18",border:"1px solid #F59E0B44",borderRadius:20,padding:"3px 10px"}}>
@@ -1322,7 +1322,7 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
         {/* Lightbox mit Swipe + Navigation */}
         {lbPhotos.length>0&&(
           <div
-            style={{position:"fixed",inset:0,background:"#000000EE",zIndex:1000,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:16}}
+            style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",zIndex:1000,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:16,animation:"modal-in .2s cubic-bezier(.2,.85,.25,1)"}}
             onClick={()=>{if(!lbSwiped.current)setLbPhotos([]);}}
             onTouchStart={e=>{lbTouchX.current=e.touches[0].clientX;lbSwiped.current=false;}}
             onTouchEnd={e=>{const dx=e.changedTouches[0].clientX-(lbTouchX.current||0);if(Math.abs(dx)>30){lbSwiped.current=true;if(dx>0&&lbIdx>0)setLbIdx(i=>i-1);else if(dx<0&&lbIdx<lbPhotos.length-1)setLbIdx(i=>i+1);}}}
@@ -1333,10 +1333,10 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
             {lbPhotos[lbIdx]?.caption&&<p style={{color:T.textPrimary,fontSize:13,marginTop:10,textAlign:"center",maxWidth:400,padding:"0 8px"}}>{lbPhotos[lbIdx].caption}</p>}
             <div style={{display:"flex",alignItems:"center",gap:16,marginTop:12}}>
               <button onClick={e=>{e.stopPropagation();setLbIdx(i=>Math.max(0,i-1));}} disabled={lbIdx===0}
-                style={{background:"#ffffff22",border:"none",color:"#fff",fontSize:22,borderRadius:"50%",width:40,height:40,cursor:lbIdx===0?"default":"pointer",opacity:lbIdx===0?.3:1}}>‹</button>
+                style={{background:"#ffffff22",border:"none",color:"#fff",fontSize:22,borderRadius:"50%",width:44,height:44,cursor:lbIdx===0?"default":"pointer",opacity:lbIdx===0?.3:1}}>‹</button>
               <span style={{color:T.textMuted,fontSize:12}}>{lbIdx+1} / {lbPhotos.length}</span>
               <button onClick={e=>{e.stopPropagation();setLbIdx(i=>Math.min(lbPhotos.length-1,i+1));}} disabled={lbIdx===lbPhotos.length-1}
-                style={{background:"#ffffff22",border:"none",color:"#fff",fontSize:22,borderRadius:"50%",width:40,height:40,cursor:lbIdx===lbPhotos.length-1?"default":"pointer",opacity:lbIdx===lbPhotos.length-1?.3:1}}>›</button>
+                style={{background:"#ffffff22",border:"none",color:"#fff",fontSize:22,borderRadius:"50%",width:44,height:44,cursor:lbIdx===lbPhotos.length-1?"default":"pointer",opacity:lbIdx===lbPhotos.length-1?.3:1}}>›</button>
             </div>
             <button onClick={()=>setLbPhotos([])} style={{marginTop:10,color:T.textMuted,fontSize:12,background:"none",border:"none",cursor:"pointer"}}>✕ Schließen</button>
           </div>
@@ -1344,8 +1344,8 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
 
         {/* Upload-Modal mit Caption */}
         {pendingFile&&(
-          <div style={{position:"fixed",inset:0,background:"#000000CC",zIndex:999,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-            <div style={{background:"#1E293B",borderRadius:16,padding:20,width:"100%",maxWidth:380,border:"1.5px solid #EC489944"}} onClick={e=>e.stopPropagation()}>
+          <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",zIndex:999,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+            <div style={{background:"#1E293B",borderRadius:16,padding:20,width:"100%",maxWidth:380,border:"1.5px solid #EC489944",animation:"modal-in .22s cubic-bezier(.2,.85,.25,1)"}} onClick={e=>e.stopPropagation()}>
               <img src={URL.createObjectURL(pendingFile)} alt="" style={{width:"100%",height:200,objectFit:"cover",borderRadius:10,display:"block",marginBottom:14}}/>
               <input
                 value={pendingCaption} onChange={e=>setPendingCaption(e.target.value)}
@@ -1406,7 +1406,7 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
                   <div style={{marginTop:3,fontSize:11,color:T.textSecondary}}>{new Date(cur.created_at).toLocaleDateString("de-DE",{day:"numeric",month:"long",year:"numeric"})}</div>
                   <div style={{display:"flex",gap:4,marginTop:8,overflowX:"auto",paddingBottom:2}}>
                     {kphotos.map((p,i)=>(
-                      <div key={p.id} onClick={()=>setKwIdxMap(m=>({...m,[label]:i}))}
+                      <div key={p.id} onClick={()=>setKwIdxMap(m=>({...m,[label]:i}))} className="tap-div"
                         style={{flexShrink:0,width:52,height:52,borderRadius:6,overflow:"hidden",cursor:"pointer",border:`2px solid ${i===idx?"#EC4899":"transparent"}`,opacity:i===idx?1:.55,transition:"all .15s"}}>
                         <img src={p.image_url||p.url} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
                       </div>
@@ -1638,7 +1638,7 @@ function BookingApp({profile,perms={},onBack}) {
         {/* Header-Card */}
         <div style={{background:T.bgCard,padding:"16px 20px 20px",borderRadius:T.rLg,border:`1px solid ${T.bgBorder}`}}>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
-            <button style={H.backBtn} onClick={onBack}>←</button>
+            <button style={H.backBtn} onClick={onBack}>‹ Zurück</button>
           </div>
           <div style={{...H.header,paddingTop:12}}>
             <h1 style={{...H.title,fontSize:22}}><Ico name="ti-calendar" size={20} style={{marginRight:6}}/> Buchung</h1>
@@ -1752,7 +1752,7 @@ function KasseApp({profile,perms={},onBack}) {
         {/* Header-Card */}
         <div style={{background:T.bgCard,padding:"16px 20px 20px",borderRadius:T.rLg,border:`1px solid ${T.bgBorder}`}}>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
-            <button style={H.backBtn} onClick={onBack}>←</button>
+            <button style={H.backBtn} onClick={onBack}>‹ Zurück</button>
             <div style={{flex:1}}/>
             {myOpen.length>0&&(
               <span style={{fontSize:11,fontWeight:700,color:"#F59E0B",background:"#F59E0B18",border:"1px solid #F59E0B44",borderRadius:20,padding:"3px 10px"}}>
@@ -1852,7 +1852,7 @@ function KasseDrinksTab({favs,onLogDrink,onDeleteEntry,onGoSettings}) {
           {favs.map(f=>{
             const done=confirmed===f.id;
             return (
-              <div key={f.id} onClick={()=>handleTap(f)}
+              <div key={f.id} onClick={()=>handleTap(f)} className="tap-div"
                 style={{...K.drinkTile,...(done?K.drinkTileDone:{}),cursor:"pointer",userSelect:"none"}}>
                 <span style={{fontSize:40,lineHeight:1}}>{done?"✓":f.emoji}</span>
                 <span style={{fontWeight:700,fontSize:13,color:done?"#16A34A":T.textPrimary,marginTop:6}}>{f.name}</span>
@@ -2226,7 +2226,7 @@ function SettingsApp({profile,onBack}) {
         {/* Header-Card */}
         <div style={{background:T.bgCard,padding:"16px 20px 20px",borderRadius:T.rLg,border:`1px solid ${T.bgBorder}`}}>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
-            <button style={H.backBtn} onClick={onBack}>←</button>
+            <button style={H.backBtn} onClick={onBack}>‹ Zurück</button>
           </div>
           <div style={{...H.header,paddingTop:12}}>
             <h1 style={{...H.title,fontSize:22}}>⚙️ Einstellungen</h1>
@@ -3171,7 +3171,7 @@ function HeimspieleEdit({onToast, onSaved, reloadKey, hideShare=false}) {
               return clean.split(" / ").map(p=>p.trim()).join(" / ");
             };
             return (
-              <div key={r.id} onClick={()=>setRubberModal(r)}
+              <div key={r.id} onClick={()=>setRubberModal(r)} className="tap-div"
                 style={{display:"flex",alignItems:"center",gap:8,
                   background:isD?"#F8FAFC":"#fff",
                   border:`2px solid ${borderCol}`,
@@ -3304,7 +3304,7 @@ function ToggleSwitch({on, onToggle}) {
         position:"relative",transition:"background .2s",cursor:"pointer",flexShrink:0,
         border:"none",padding:0}}>
       <div style={{width:20,height:20,background:"#fff",borderRadius:"50%",
-        position:"absolute",top:2,left:on?22:2,transition:"left .2s",
+        position:"absolute",top:2,left:2,transform:`translateX(${on?20:0}px)`,transition:"transform .2s",willChange:"transform",
         boxShadow:"0 1px 4px rgba(0,0,0,.25)"}}/>
     </button>
   );
@@ -3602,11 +3602,11 @@ function SettingsMannschaftenTab({onToast}) {
         const label   = playersPopup.name;
         return (
           <div onClick={()=>setPlayersPopup(null)}
-            style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:1000,
+            style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",zIndex:1000,
               display:"flex",alignItems:"center",justifyContent:"center"}}>
             <div onClick={e=>e.stopPropagation()}
               style={{background:"#fff",borderRadius:12,padding:"20px 24px",width:360,
-                maxHeight:"80vh",overflow:"auto",boxShadow:"0 8px 32px rgba(0,0,0,0.18)"}}>
+                maxHeight:"80vh",overflow:"auto",boxShadow:"0 8px 32px rgba(0,0,0,0.18)",animation:"modal-in .22s cubic-bezier(.2,.85,.25,1)"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
                 <div>
                   <div style={{fontWeight:700,fontSize:14,color:T.textPrimary}}>{label}</div>
@@ -4118,7 +4118,7 @@ function SettingsDisplayTab({onToast}) {
   };
 
   const ModeRow = ({modeId, label}) => (
-    <div onClick={()=>setMode(modeId)}
+    <div onClick={()=>setMode(modeId)} className="tap-div"
       style={{display:"flex",alignItems:"center",justifyContent:"space-between",
         padding:"12px 14px",borderRadius:10,marginBottom:0,cursor:"pointer",
         background:mode===modeId?"#F5F3FF":"#F9FAFB",
@@ -4363,7 +4363,7 @@ function SettingsDisplayTab({onToast}) {
               ].map(m=>{
                 const on = affeModes.includes(m.id);
                 return (
-                  <div key={m.id} onClick={()=>setAffeModes(prev=>on?prev.filter(x=>x!==m.id):[...prev,m.id])}
+                  <div key={m.id} onClick={()=>setAffeModes(prev=>on?prev.filter(x=>x!==m.id):[...prev,m.id])} className="tap-div"
                     style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:8,cursor:"pointer",
                       background:on?"#F5F3FF":"#F9FAFB",border:`1.5px solid ${on?"#8B5CF6":"#E5E7EB"}`}}>
                     <span style={{fontSize:16}}>{m.icon}</span>
@@ -4544,7 +4544,7 @@ function SlotModal({modal,data,user,guestFee,displayName,onBook,onCancel,onClose
           <div style={{background:"#FFFBEB",border:"1.5px solid #FDE68A",borderRadius:12,padding:14,marginBottom:16}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer"}} onClick={()=>setWithGuest(g=>!g)}>
               <div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:22}}>👥</span><div><div style={{fontWeight:700,fontSize:14,color:T.textPrimary}}>Gastspieler</div><div style={{fontSize:11,color:"#92400E",marginTop:1}}>Gebühr wird am Jahresende abgerechnet</div></div></div>
-              <div style={{width:44,height:24,background:withGuest?"#F59E0B":"#E5E7EB",borderRadius:12,position:"relative",transition:"background .2s",flexShrink:0}}><div style={{width:20,height:20,background:"#fff",borderRadius:"50%",position:"absolute",top:2,left:withGuest?22:2,transition:"left .2s",boxShadow:"0 1px 4px rgba(0,0,0,.2)"}}></div></div>
+              <div style={{width:44,height:24,background:withGuest?"#F59E0B":"#E5E7EB",borderRadius:12,position:"relative",transition:"background .2s",flexShrink:0}}><div style={{width:20,height:20,background:"#fff",borderRadius:"50%",position:"absolute",top:2,left:2,transform:`translateX(${withGuest?20:0}px)`,transition:"transform .2s",willChange:"transform",boxShadow:"0 1px 4px rgba(0,0,0,.2)"}}></div></div>
             </div>
             {withGuest&&(<div style={{marginTop:10,padding:"10px 12px",background:"#FEF3C7",borderRadius:8,fontSize:12,color:"#92400E",fontWeight:600}}>💶 Gebühr: <strong>{eur(guestFee)}</strong> – wird in deinem Konto vorgemerkt</div>)}
           </div>
@@ -4595,13 +4595,13 @@ function CalendarView({data,user,dayBase,setDayBase,selCourt,setSelCourt,display
       {/* Datum-Navigation */}
       <div style={{display:"flex",alignItems:"center",background:T.bgCard,borderRadius:T.rMd,border:`1px solid ${T.bgBorder}`,padding:"10px 14px"}}>
         <button onClick={()=>setDayBase(addDays(dayBase,-1))}
-          style={{background:"none",border:"none",color:T.textSecondary,fontSize:22,cursor:"pointer",padding:"0 8px",lineHeight:1}}>‹</button>
+          style={{background:"none",border:"none",color:T.textSecondary,fontSize:22,cursor:"pointer",lineHeight:1,minWidth:44,minHeight:44,display:"flex",alignItems:"center",justifyContent:"center"}}>‹</button>
         <div style={{flex:1,textAlign:"center"}}>
           <div style={{fontWeight:800,fontSize:15,color:isToday?T.success:T.textPrimary}}>{dateLabel}</div>
           {!isToday&&<div style={{fontSize:11,color:T.textMuted,marginTop:2}}>{fmtDate(d)}</div>}
         </div>
         <button onClick={()=>setDayBase(addDays(dayBase,1))}
-          style={{background:"none",border:"none",color:T.textSecondary,fontSize:22,cursor:"pointer",padding:"0 8px",lineHeight:1}}>›</button>
+          style={{background:"none",border:"none",color:T.textSecondary,fontSize:22,cursor:"pointer",lineHeight:1,minWidth:44,minHeight:44,display:"flex",alignItems:"center",justifyContent:"center"}}>›</button>
       </div>
 
       {!isToday&&(
@@ -5062,6 +5062,7 @@ function KassenbuchApp({profile, onBack}) {
   const [fInventur, setFInventur] = useState("");
 
   const swipeRef = useState({})[0];
+  const rowRefs = useRef(new Map());
 
   useEffect(()=>{ loadData(); },[profile.id]);
 
@@ -5145,18 +5146,57 @@ function KassenbuchApp({profile, onBack}) {
     loadData();
   }
 
-  // touch/mouse swipe helpers
-  function onSwipeStart(id,x){ swipeRef.id=id; swipeRef.x=x; swipeRef.active=true; }
-  function onSwipeMove(id,x){
-    if(!swipeRef.active||swipeRef.id!==id) return;
-    if(x-swipeRef.x < -20) setSwipedId(id);
-    else if(x-swipeRef.x > 10) setSwipedId(null);
+  // Swipe: 1:1-Tracking per Pointer Events, Velocity-Projektion, Spring-Settle
+  // (statt nur Start-/Endpunkt zu vergleichen und den Zustand binär umzuschalten)
+  function swipeProject(v, decel=0.998){ return (v/1000)*decel/(1-decel); }
+  function swipeSpringTo(el, from, to, velocity, onDone){
+    const damping=1.0, response=0.3;
+    const stiffness = Math.pow(2*Math.PI/response, 2);
+    const dampCoef = damping*2*Math.sqrt(stiffness);
+    let pos=from, vel=velocity, cancelled=false;
+    if(el._cancelSpring) el._cancelSpring();
+    el._cancelSpring = ()=>{ cancelled=true; };
+    (function step(){
+      if(cancelled) return;
+      const dt=1/60;
+      const acc = -stiffness*(pos-to) - dampCoef*vel;
+      vel += acc*dt; pos += vel*dt;
+      el.style.transform = `translateX(${pos}px)`;
+      if(Math.abs(pos-to)<0.4 && Math.abs(vel)<0.4){ el.style.transform=`translateX(${to}px)`; onDone&&onDone(); return; }
+      requestAnimationFrame(step);
+    })();
   }
-  function onSwipeEnd(id,x){
-    if(!swipeRef.active||swipeRef.id!==id) return;
-    swipeRef.active=false;
-    if(x-swipeRef.x < -50){ const e=entries.find(e=>e.id===id); if(e) setPendingDel(e); }
-    else setSwipedId(null);
+  function onSwipeDown(e,id){
+    const el = rowRefs.current.get(id);
+    if(!el) return;
+    el.setPointerCapture(e.pointerId);
+    swipeRef.id = id;
+    swipeRef.startX = e.clientX;
+    swipeRef.base = swipedId===id ? -64 : 0; // von der aktuellen Live-Position weiter, nicht vom Ziel
+    swipeRef.live = swipeRef.base;
+    swipeRef.history = [{t:performance.now(), x:e.clientX}];
+  }
+  function onSwipeMoveEv(e,id){
+    if(swipeRef.id!==id) return;
+    const el = rowRefs.current.get(id);
+    const dx = e.clientX - swipeRef.startX;
+    swipeRef.live = Math.max(-64, Math.min(0, swipeRef.base + dx));
+    el.style.transform = `translateX(${swipeRef.live}px)`;
+    swipeRef.history.push({t:performance.now(), x:e.clientX});
+    if(swipeRef.history.length>6) swipeRef.history.shift();
+  }
+  function onSwipeUp(e,id){
+    if(swipeRef.id!==id) return;
+    const el = rowRefs.current.get(id);
+    const hist = swipeRef.history;
+    const a=hist[0], b=hist[hist.length-1];
+    const dt = Math.max(8, b.t-a.t);
+    const v = Math.max(-3000, Math.min(3000, ((b.x-a.x)/dt)*1000));
+    const projected = swipeRef.live + swipeProject(v);
+    const commit = projected < -32;
+    const target = commit ? -64 : 0;
+    swipeRef.id = null;
+    swipeSpringTo(el, swipeRef.live, target, v, ()=>{ setSwipedId(commit?id:null); });
   }
 
   const list      = filtered();
@@ -5186,11 +5226,11 @@ function KassenbuchApp({profile, onBack}) {
     statLbl: {fontSize:11,color:T.textSecondary,fontWeight:700,textTransform:"uppercase",letterSpacing:.6,marginBottom:3},
     statVal: (c)=>({fontSize:18,fontWeight:800,color:c}),
     monthRow:{display:"flex",alignItems:"center",gap:8},
-    mBtn:    {background:"none",border:`1px solid ${T.bgBorder}`,borderRadius:6,color:T.textMuted,cursor:"pointer",fontSize:18,lineHeight:1,padding:"5px 10px"},
+    mBtn:    {background:"none",border:`1px solid ${T.bgBorder}`,borderRadius:6,color:T.textMuted,cursor:"pointer",fontSize:18,lineHeight:1,minWidth:44,minHeight:44,display:"flex",alignItems:"center",justifyContent:"center"},
     mLabel:  {flex:1,textAlign:"center",fontSize:14,fontWeight:700,color:T.textMuted},
     allBtn:  (on)=>({background:on?"#14532D":"none",border:`1px solid ${on?"#22C55E":T.bgBorder}`,borderRadius:6,color:on?"#4ADE80":T.textSecondary,cursor:"pointer",fontSize:12,padding:"4px 10px"}),
     hint:    {fontSize:11,color:T.bgBorder,textAlign:"right",marginBottom:-4},
-    entry:   (swiped)=>({background:T.bgCard,border:`1.5px solid ${T.bgBorder}`,borderRadius:10,padding:"10px 12px",display:"flex",alignItems:"center",gap:10,transition:"transform .18s",transform:swiped?"translateX(-64px)":"translateX(0)",cursor:"pointer",userSelect:"none",touchAction:"pan-y"}),
+    entry:   (swiped)=>({background:T.bgCard,border:`1.5px solid ${T.bgBorder}`,borderRadius:10,padding:"10px 12px",display:"flex",alignItems:"center",gap:10,transform:swiped?"translateX(-64px)":"translateX(0)",cursor:"grab",userSelect:"none",touchAction:"pan-y"}),
     entryWrap:{position:"relative",overflow:"hidden",borderRadius:10,marginBottom:6},
     delBtn:  {position:"absolute",right:0,top:0,bottom:0,width:60,background:"#DC2626",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",borderRadius:"0 10px 10px 0",fontSize:18},
     icon:    (t)=>({width:30,height:30,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:800,flexShrink:0,background:t==="in"?"#14532D":"#450A0A",color:t==="in"?"#4ADE80":"#F87171"}),
@@ -5204,8 +5244,8 @@ function KassenbuchApp({profile, onBack}) {
     lbl:     {fontSize:12,color:T.textSecondary,fontWeight:600,marginBottom:-8},
     inp:     {background:T.bgPage,border:`1.5px solid ${T.bgBorder}`,borderRadius:8,color:T.textPrimary,fontSize:14,padding:"9px 12px",outline:"none",width:"100%",boxSizing:"border-box"},
     saveBtn: {background:"#22C55E",color:"#052e16",border:"none",borderRadius:8,padding:"11px",fontWeight:800,fontSize:14,cursor:"pointer"},
-    overlay: {position:"fixed",inset:0,background:"rgba(0,0,0,.6)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:999},
-    sheet:   {background:T.bgCard,borderRadius:"16px 16px 0 0",padding:"24px 20px",width:"100%",maxWidth:480,display:"flex",flexDirection:"column",gap:12},
+    overlay: {position:"fixed",inset:0,background:"rgba(0,0,0,.45)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:999},
+    sheet:   {background:T.bgCard,borderRadius:"16px 16px 0 0",padding:"24px 20px",width:"100%",maxWidth:480,display:"flex",flexDirection:"column",gap:12,animation:"modal-in .22s cubic-bezier(.2,.85,.25,1)"},
     shTitle: {fontSize:16,fontWeight:800,color:T.textPrimary},
     shDesc:  {fontSize:14,color:T.textMuted},
     shBtns:  {display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:4},
@@ -5221,7 +5261,7 @@ function KassenbuchApp({profile, onBack}) {
       <div style={H.inner} className="h-inner">
         <div style={{background:T.bgCard,padding:"16px 20px 16px",borderRadius:T.rLg,border:`1px solid ${T.bgBorder}`}}>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
-            <button style={H.backBtn} onClick={()=>setView("list")}>←</button>
+            <button style={H.backBtn} onClick={()=>setView("list")}>‹ Zurück</button>
             <span style={{fontSize:T.fzH2,fontWeight:800,color:T.textPrimary}}>Inventur</span>
           </div>
         </div>
@@ -5258,7 +5298,7 @@ function KassenbuchApp({profile, onBack}) {
       <div style={H.inner} className="h-inner">
         <div style={{background:T.bgCard,padding:"16px 20px 16px",borderRadius:T.rLg,border:`1px solid ${T.bgBorder}`}}>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
-            <button style={H.backBtn} onClick={()=>setView("list")}>←</button>
+            <button style={H.backBtn} onClick={()=>setView("list")}>‹ Zurück</button>
             <span style={{fontSize:T.fzH2,fontWeight:800,color:T.textPrimary}}>Startbetrag</span>
           </div>
         </div>
@@ -5281,7 +5321,7 @@ function KassenbuchApp({profile, onBack}) {
       <div style={H.inner} className="h-inner">
         <div style={{background:T.bgCard,padding:"16px 20px 16px",borderRadius:T.rLg,border:`1px solid ${T.bgBorder}`}}>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
-            <button style={H.backBtn} onClick={()=>setView("list")}>←</button>
+            <button style={H.backBtn} onClick={()=>setView("list")}>‹ Zurück</button>
             <span style={{fontSize:T.fzH2,fontWeight:800,color:T.textPrimary}}>Buchung eintragen</span>
           </div>
         </div>
@@ -5326,7 +5366,7 @@ function KassenbuchApp({profile, onBack}) {
         {/* Header-Card */}
         <div style={{background:T.bgCard,padding:"16px 20px 20px",borderRadius:T.rLg,border:`1px solid ${T.bgBorder}`}}>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
-            <button style={H.backBtn} onClick={onBack}>←</button>
+            <button style={H.backBtn} onClick={onBack}>‹ Zurück</button>
             <div style={{flex:1}}/>
             <button style={KB.addBtn} onClick={()=>{ setFAmount(""); setFDesc(""); setFDate(today()); setFType("in"); setView("add"); }}>+ Neu</button>
           </div>
@@ -5394,16 +5434,14 @@ function KassenbuchApp({profile, onBack}) {
                 <div style={KB.hint}>← wischen zum Löschen</div>
                 {list.map(e=>(
                   <div key={e.id} style={KB.entryWrap}>
-                    <div style={KB.delBtn} onClick={()=>setPendingDel(e)}>🗑️</div>
+                    <div style={KB.delBtn} onClick={()=>setPendingDel(e)} className="tap-div">🗑️</div>
                     <div
+                      ref={el=>{ if(el) rowRefs.current.set(e.id,el); else rowRefs.current.delete(e.id); }}
                       style={KB.entry(swipedId===e.id)}
-                      onTouchStart={ev=>onSwipeStart(e.id,ev.touches[0].clientX)}
-                      onTouchMove={ev=>onSwipeMove(e.id,ev.touches[0].clientX)}
-                      onTouchEnd={ev=>onSwipeEnd(e.id,ev.changedTouches[0].clientX)}
-                      onMouseDown={ev=>onSwipeStart(e.id,ev.clientX)}
-                      onMouseMove={ev=>onSwipeMove(e.id,ev.clientX)}
-                      onMouseUp={ev=>onSwipeEnd(e.id,ev.clientX)}
-                      onMouseLeave={ev=>onSwipeEnd(e.id,ev.clientX)}
+                      onPointerDown={ev=>onSwipeDown(ev,e.id)}
+                      onPointerMove={ev=>onSwipeMoveEv(ev,e.id)}
+                      onPointerUp={ev=>onSwipeUp(ev,e.id)}
+                      onPointerCancel={ev=>onSwipeUp(ev,e.id)}
                     >
                       <div style={KB.icon(e.type)}>{e.type==="in"?"+":"−"}</div>
                       <div style={{flex:1,minWidth:0}}>
@@ -5454,7 +5492,7 @@ const S={
   logoText:{fontWeight:800,fontSize:17,letterSpacing:-.5},
   nav:{flex:1,padding:"14px 0"},
   navBtn:{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"10px 20px",background:"none",border:"none",color:T.textMuted,fontSize:13,cursor:"pointer",textAlign:"left"},
-  navBtnActive:{background:T.bgCard,color:"#4ADE80",borderLeft:"3px solid #4ADE80"},
+  navBtnActive:{background:T.bgCard,color:"var(--accent-strong)",borderLeft:"3px solid var(--accent-strong)"},
   sidebarBottom:{padding:"16px 20px",borderTop:`1px solid ${T.bgBorder}`},
   userChip:{display:"flex",alignItems:"center",gap:10,marginBottom:12},
   main:{flex:1,overflowY:"auto"},
@@ -5472,8 +5510,8 @@ const S={
   slotBtn:{width:"100%",padding:"5px 4px",border:`1px solid ${T.bgBorder}`,borderRadius:5,background:T.bgInput,cursor:"pointer",fontSize:11,fontWeight:500,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:"100%",display:"block"},
   slotPast:{background:T.bgInput,color:T.textMuted,cursor:"not-allowed"},
   card:{background:T.bgCard,borderRadius:10,padding:"14px 16px",marginBottom:10,boxShadow:"0 1px 3px rgba(0,0,0,.05)"},
-  overlay:{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999},
-  modal:{background:T.bgCard,borderRadius:14,padding:28,width:380,boxShadow:"0 20px 60px rgba(0,0,0,.2)"},
+  overlay:{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999},
+  modal:{background:T.bgCard,borderRadius:14,padding:28,width:380,boxShadow:"0 20px 60px rgba(0,0,0,.2)",animation:"modal-in .22s cubic-bezier(.2,.85,.25,1)"},
   modalHeader:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:18},
   modalTitle:{fontWeight:800,fontSize:18,letterSpacing:-.3},
   modalSub:{color:T.textSecondary,fontSize:13,marginTop:2},
@@ -5481,10 +5519,10 @@ const S={
   loginWrap:{minHeight:"100vh",background:`linear-gradient(135deg,${T.bgPage},${T.bgCard})`,display:"flex",alignItems:"center",justifyContent:"center"},
   loginCard:{background:T.bgCard,borderRadius:16,padding:32,width:340,boxShadow:"0 8px 40px rgba(0,0,0,.10)"},
   input:{padding:"10px 12px",border:`1.5px solid ${T.bgBorder}`,borderRadius:8,fontSize:13,outline:"none",width:"100%",boxSizing:"border-box",background:T.bgInput},
-  primaryBtn:{padding:"11px 20px",background:T.bgPage,color:"#4ADE80",border:"none",borderRadius:8,fontWeight:700,cursor:"pointer",fontSize:14},
+  primaryBtn:{padding:"11px 20px",background:T.bgPage,color:"var(--accent-strong)",border:"none",borderRadius:8,fontWeight:700,cursor:"pointer",fontSize:14},
   ghostBtn:{padding:"11px 20px",background:T.bgInput,color:T.textPrimary,border:`1px solid ${T.bgBorder}`,borderRadius:8,fontWeight:600,cursor:"pointer",fontSize:14},
-  cancelBtn:{padding:"7px 14px",background:"#FEE2E2",color:"#DC2626",border:"none",borderRadius:6,fontWeight:600,cursor:"pointer",fontSize:13,flexShrink:0},
+  cancelBtn:{padding:"7px 14px",background:"#EF444418",color:"#DC2626",border:"1px solid #EF444444",borderRadius:6,fontWeight:600,cursor:"pointer",fontSize:13,flexShrink:0},
   tabBtn:{padding:"8px 16px",border:`1.5px solid ${T.bgBorder}`,borderRadius:7,cursor:"pointer",background:T.bgCard,fontSize:13,fontWeight:500},
-  tabBtnActive:{background:T.bgPage,color:"#4ADE80",borderColor:T.bgPage},
+  tabBtnActive:{background:T.bgPage,color:"var(--accent-strong)",borderColor:T.bgPage},
   toast:{position:"fixed",bottom:24,right:24,padding:"12px 20px",borderRadius:10,color:"#fff",fontWeight:600,fontSize:14,boxShadow:"0 4px 20px rgba(0,0,0,.2)",zIndex:9999},
 };

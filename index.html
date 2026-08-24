@@ -26,6 +26,7 @@
         --text-muted:     #64748B;
         --text-on-accent: #F1F5F9;
         --glow-color:     #22C55E14;
+        --accent-strong:  #4ADE80;
       }
       /* ── DESIGN TOKENS: Hell ── */
       :root.theme-light {
@@ -38,6 +39,7 @@
         --text-muted:     #94A3B8;
         --text-on-accent: #FFFFFF;
         --glow-color:     #22C55E0A;
+        --accent-strong:  #15803D;
       }
       /* ── DESIGN TOKENS: French Open (Roland Garros) ── */
       :root.theme-frenchopen {
@@ -50,6 +52,7 @@
         --text-muted:     #8A5040;
         --text-on-accent: #FFFFFF;
         --glow-color:     #C1440E18;
+        --accent-strong:  #4ADE80;
       }
       /* ── DESIGN TOKENS: Australian Open ── */
       :root.theme-australianopen {
@@ -62,6 +65,7 @@
         --text-muted:     #4A8FB5;
         --text-on-accent: #FFFFFF;
         --glow-color:     #0087C218;
+        --accent-strong:  #4ADE80;
       }
       /* ── DESIGN TOKENS: US Open ── */
       :root.theme-usopen {
@@ -74,6 +78,7 @@
         --text-muted:     #4A6BA5;
         --text-on-accent: #FFFFFF;
         --glow-color:     #4472C418;
+        --accent-strong:  #4ADE80;
       }
       /* ── DESIGN TOKENS: Wimbledon (Grün/Lila) ── */
       :root.theme-wimbledon {
@@ -86,13 +91,18 @@
         --text-muted:     #4D8A6A;
         --text-on-accent: #FFFFFF;
         --glow-color:     #00674718;
+        --accent-strong:  #4ADE80;
       }
+      /* Materialize: Overlays faden/skalieren beim Erscheinen ein statt hart zu schneiden */
+      @keyframes modal-in { from { opacity:0; transform:scale(.96) translateY(8px); } to { opacity:1; transform:scale(1) translateY(0); } }
       * { margin:0; padding:0; box-sizing:border-box; }
       body { font-family: 'DM Sans', sans-serif; background: var(--bg-page); }
       :focus-visible { outline: 2px solid #22C55E; outline-offset: 2px; border-radius: 4px; }
       button { font-family: inherit; }
       .widget-btn:hover { box-shadow: 0 0 0 2px #22C55E33; border-color: #22C55E55 !important; }
       .widget-btn:active { transform: scale(.99); }
+      /* Response: sofortiges Feedback beim Antippen statt erst bei Release (:active reagiert bereits auf touchstart/mousedown) */
+      button:active, .tap-div:active { transform: scale(.97); transition: transform 100ms ease-out; }
       @media (prefers-reduced-motion: reduce) {
         *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
       }
@@ -168,6 +178,8 @@
           document.documentElement.classList.add("theme-light");
         }
       })();
+      // iOS Safari feuert :active sonst nicht zuverlässig auf touchstart — bekannter WebKit-Kniff
+      document.addEventListener("touchstart", function(){}, false);
     </script>
     <script type="module" src="/src/main.jsx"></script>
     <script>
