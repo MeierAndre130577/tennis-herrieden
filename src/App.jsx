@@ -118,8 +118,8 @@ function SharedDisplayEdit() {
   return (
     <div style={{minHeight:"100dvh",background:"#F1F5F9",display:"flex",flexDirection:"column"}}>
       <div style={{background:"#0F172A",padding:"10px 16px",display:"flex",alignItems:"center",gap:10}}>
-        <span style={{fontSize:18}}>🎾</span>
-        <span style={{color:"#fff",fontWeight:700,fontSize:14}}>SG Herrieden – Display bearbeiten</span>
+        <span style={{fontSize:"1.125rem"}}>🎾</span>
+        <span style={{color:"#fff",fontWeight:700,fontSize:"0.875rem"}}>SG Herrieden – Display bearbeiten</span>
       </div>
       <div style={{flex:1,padding:"16px",maxWidth:700,margin:"0 auto",width:"100%",boxSizing:"border-box"}}>
         <HeimspieleEdit onToast={showToast} onSaved={()=>{}} reloadKey={0} hideShare/>
@@ -127,7 +127,7 @@ function SharedDisplayEdit() {
       {toast&&(
         <div style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",
           background:toast.type==="error"?"#EF4444":"#059669",color:"#fff",
-          padding:"10px 20px",borderRadius:8,fontSize:13,fontWeight:600,
+          padding:"10px 20px",borderRadius:8,fontSize:"0.8125rem",fontWeight:600,
           boxShadow:"0 4px 12px rgba(0,0,0,.25)",zIndex:9999}}>
           {toast.msg}
         </div>
@@ -143,17 +143,17 @@ export default function App() {
   if(!SUPABASE_URL) return (
     <div style={{minHeight:"100vh",background:"#0F172A",display:"flex",alignItems:"center",justifyContent:"center",padding:24,fontFamily:"system-ui,sans-serif"}}>
       <div style={{maxWidth:380,textAlign:"center"}}>
-        <div style={{fontSize:56,marginBottom:16}}>🎾</div>
-        <h1 style={{color:T.textPrimary,fontSize:22,fontWeight:800,margin:"0 0 12px"}}>SG Herrieden Tennis</h1>
-        <p style={{color:T.textMuted,fontSize:15,lineHeight:1.6,margin:"0 0 24px"}}>
+        <div style={{fontSize:"3.5rem",marginBottom:16}}>🎾</div>
+        <h1 style={{color:T.textPrimary,fontSize:"1.375rem",fontWeight:800,margin:"0 0 12px"}}>SG Herrieden Tennis</h1>
+        <p style={{color:T.textMuted,fontSize:"0.9375rem",lineHeight:1.6,margin:"0 0 24px"}}>
           Diese App wurde auf eine neue Plattform umgezogen.
           Bitte registriere dich dort neu — deine Daten sind sicher übertragen.
         </p>
         <a href="https://www.tennis-herrieden.de"
-          style={{display:"inline-block",background:"#22C55E",color:"#fff",fontWeight:700,fontSize:15,padding:"13px 28px",borderRadius:12,textDecoration:"none"}}>
+          style={{display:"inline-block",background:"#22C55E",color:"#fff",fontWeight:700,fontSize:"0.9375rem",padding:"13px 28px",borderRadius:12,textDecoration:"none"}}>
           → Zur neuen App
         </a>
-        <p style={{color:T.textSecondary,fontSize:12,marginTop:20}}>
+        <p style={{color:T.textSecondary,fontSize:"0.75rem",marginTop:20}}>
           Bei Fragen wende dich an den Vereinsvorstand.
         </p>
       </div>
@@ -314,9 +314,9 @@ function UserWidget({profile}) {
       <div style={{position:"fixed",bottom:24,right:20,zIndex:9999,display:"flex",flexDirection:"column",alignItems:"flex-end",gap:8}}>
         {open&&(
           <div style={{background:T.bgCard,border:`1px solid ${T.bgBorder}`,borderRadius:T.rLg,padding:16,width:220,boxShadow:"0 8px 32px rgba(0,0,0,.5)"}}>
-            {profile?.name&&<div style={{fontSize:12,fontWeight:700,color:T.textMuted,marginBottom:12,paddingBottom:10,borderBottom:`1px solid ${T.bgBorder}`}}>👤 {profile.name}</div>}
+            {profile?.name&&<div style={{fontSize:"0.75rem",fontWeight:700,color:T.textMuted,marginBottom:12,paddingBottom:10,borderBottom:`1px solid ${T.bgBorder}`}}>👤 {profile.name}</div>}
 
-            <div style={{fontSize:10,fontWeight:700,color:T.textMuted,textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>Design</div>
+            <div style={{fontSize:"0.625rem",fontWeight:700,color:T.textMuted,textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>Design</div>
             <div style={{display:"flex",flexDirection:"column",gap:5,marginBottom:14}}>
               {THEMES.map(t=>(
                 <button key={t.id} onClick={()=>handleTheme(t.id)} style={{
@@ -329,44 +329,44 @@ function UserWidget({profile}) {
                     <div style={{flex:1,background:t.bg}}/>
                     <div style={{width:10,background:t.card}}/>
                   </div>
-                  <span style={{fontSize:13,fontWeight:600,color:T.textPrimary,flex:1}}>{t.label}</span>
-                  {theme===t.id&&<span style={{fontSize:11,color:T.success}}>✓</span>}
+                  <span style={{fontSize:"0.8125rem",fontWeight:600,color:T.textPrimary,flex:1}}>{t.label}</span>
+                  {theme===t.id&&<span style={{fontSize:"0.6875rem",color:T.success}}>✓</span>}
                 </button>
               ))}
             </div>
 
             {isDesktop&&(
               <div style={{borderTop:`1px solid ${T.bgBorder}`,paddingTop:12}}>
-                <div style={{fontSize:10,fontWeight:700,color:T.textMuted,textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>Ansicht</div>
+                <div style={{fontSize:"0.625rem",fontWeight:700,color:T.textMuted,textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>Ansicht</div>
                 <button onClick={handleLayout} style={{
                   width:"100%",padding:"8px 10px",borderRadius:T.rSm,cursor:"pointer",
                   border:`1px solid ${T.bgBorder}`,background:"transparent",
-                  color:T.textSecondary,fontSize:13,fontWeight:600,
+                  color:T.textSecondary,fontSize:"0.8125rem",fontWeight:600,
                   display:"flex",alignItems:"center",gap:8,
                 }}>
                   <span>{forceMobile?"📱":"🖥️"}</span>
                   <span style={{flex:1,textAlign:"left"}}>{forceMobile?"Mobile Ansicht":"System-Ansicht"}</span>
-                  {forceMobile&&<span style={{fontSize:10,color:T.warning}}>temp.</span>}
+                  {forceMobile&&<span style={{fontSize:"0.625rem",color:T.warning}}>temp.</span>}
                 </button>
-                {forceMobile&&<div style={{fontSize:10,color:T.textMuted,marginTop:4,paddingLeft:2}}>Wird beim Neuladen zurückgesetzt</div>}
+                {forceMobile&&<div style={{fontSize:"0.625rem",color:T.textMuted,marginTop:4,paddingLeft:2}}>Wird beim Neuladen zurückgesetzt</div>}
               </div>
             )}
 
             {profile?.role!=="admin"&&(
               <div style={{borderTop:`1px solid ${T.bgBorder}`,paddingTop:12,marginTop:4}}>
-                <div style={{fontSize:10,fontWeight:700,color:T.textMuted,textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>Buchungen</div>
+                <div style={{fontSize:"0.625rem",fontWeight:700,color:T.textMuted,textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>Buchungen</div>
                 <button onClick={toggleAnon} style={{
                   width:"100%",padding:"8px 10px",borderRadius:T.rSm,cursor:"pointer",
                   border:anonBookings?`1.5px solid ${T.info}`:`1px solid ${T.bgBorder}`,
                   background:anonBookings?T.info+"18":"transparent",
-                  color:anonBookings?T.info:T.textSecondary,fontSize:13,fontWeight:600,
+                  color:anonBookings?T.info:T.textSecondary,fontSize:"0.8125rem",fontWeight:600,
                   display:"flex",alignItems:"center",gap:8,
                 }}>
                   <span>{anonBookings?"🕵️":"👤"}</span>
                   <span style={{flex:1,textAlign:"left"}}>Anonym buchen</span>
-                  {anonBookings&&<span style={{fontSize:10,color:T.info}}>✓</span>}
+                  {anonBookings&&<span style={{fontSize:"0.625rem",color:T.info}}>✓</span>}
                 </button>
-                {anonBookings&&<div style={{fontSize:10,color:T.textMuted,marginTop:4,paddingLeft:2}}>Andere sehen nur deine Initialen</div>}
+                {anonBookings&&<div style={{fontSize:"0.625rem",color:T.textMuted,marginTop:4,paddingLeft:2}}>Andere sehen nur deine Initialen</div>}
               </div>
             )}
 
@@ -374,7 +374,7 @@ function UserWidget({profile}) {
               <button onClick={()=>sb.auth.signOut()} style={{
                 width:"100%",padding:"8px 10px",borderRadius:T.rSm,cursor:"pointer",
                 border:`1px solid #EF444430`,background:"#EF444410",
-                color:"#EF4444",fontSize:13,fontWeight:600,
+                color:"#EF4444",fontSize:"0.8125rem",fontWeight:600,
                 display:"flex",alignItems:"center",justifyContent:"center",gap:8,
               }}>
                 <span>⏏</span> Abmelden
@@ -384,7 +384,7 @@ function UserWidget({profile}) {
         )}
         <button onClick={()=>setOpen(o=>!o)} style={{
           width:40,height:40,borderRadius:"50%",background:T.success,border:"none",
-          color:"#fff",fontWeight:800,fontSize:14,cursor:"pointer",
+          color:"#fff",fontWeight:800,fontSize:"0.875rem",cursor:"pointer",
           boxShadow:"0 2px 12px rgba(0,0,0,.4)",letterSpacing:-.5,
           display:"flex",alignItems:"center",justifyContent:"center",
         }}>
@@ -409,7 +409,7 @@ function EventsCalendarCopyButton() {
   return (
     <div style={{marginTop:8,marginBottom:4,display:"flex",alignItems:"center",justifyContent:"center"}}>
       <button onClick={copy}
-        style={{display:"flex",alignItems:"center",gap:8,padding:"8px 18px",borderRadius:10,border:"1.5px solid #8B5CF644",background:copied?"#F5F3FF":"#8B5CF610",color:copied?"#7C3AED":"#A78BFA",fontWeight:700,fontSize:13,cursor:"pointer",transition:"all .2s"}}>
+        style={{display:"flex",alignItems:"center",gap:8,padding:"8px 18px",borderRadius:10,border:"1.5px solid #8B5CF644",background:copied?"#F5F3FF":"#8B5CF610",color:copied?"#7C3AED":"#A78BFA",fontWeight:700,fontSize:"0.8125rem",cursor:"pointer",transition:"all .2s"}}>
         <span>{copied ? "✓" : "📅"}</span>
         {copied ? "Link kopiert!" : "Termine als Kalenderabo"}
       </button>
@@ -429,7 +429,7 @@ function CalendarCopyButton() {
   return (
     <div style={{marginTop:24,paddingTop:16,borderTop:"1px solid #E2E8F0",display:"flex",alignItems:"center",justifyContent:"center"}}>
       <button onClick={copy}
-        style={{display:"flex",alignItems:"center",gap:8,padding:"10px 20px",borderRadius:10,border:"1.5px solid #CBD5E1",background:copied?"#F0FDF4":"#F8FAFC",color:copied?"#16A34A":"#475569",fontWeight:700,fontSize:13,cursor:"pointer",transition:"all .2s"}}>
+        style={{display:"flex",alignItems:"center",gap:8,padding:"10px 20px",borderRadius:10,border:"1.5px solid #CBD5E1",background:copied?"#F0FDF4":"#F8FAFC",color:copied?"#16A34A":"#475569",fontWeight:700,fontSize:"0.8125rem",cursor:"pointer",transition:"all .2s"}}>
         <span>{copied ? "✓" : "📅"}</span>
         {copied ? "Link kopiert!" : "Kalenderabo-Link kopieren"}
       </button>
@@ -579,7 +579,7 @@ function HeimspielwocheScreen({onBack, profile}) {
             <button style={H.backBtn} onClick={onBack}>‹ Zurück</button>
           </div>
           <div style={{...H.header,paddingTop:12}}>
-            <h1 style={{...H.title,fontSize:22}}>📅 Spielwoche</h1>
+            <h1 style={{...H.title,fontSize:"1.375rem"}}>📅 Spielwoche</h1>
             <p style={H.greeting}>{filter==="gesamt"?"Alle Spiele der Saison":"Heim- & Auswärtsspiele der nächsten 7 Tage"}</p>
           </div>
         </div>
@@ -605,8 +605,8 @@ function HeimspielwocheScreen({onBack, profile}) {
             <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:12,
               background: stale?T.warning+"18":T.success+"18", border:`1px solid ${stale?T.warning:T.success}44`,
               borderRadius:8, padding:"6px 10px"}}>
-              <span style={{fontSize:13}}>{stale?"⚠️":"✅"}</span>
-              <span style={{fontSize:11,color: stale?T.warning:T.success}}>
+              <span style={{fontSize:"0.8125rem"}}>{stale?"⚠️":"✅"}</span>
+              <span style={{fontSize:"0.6875rem",color: stale?T.warning:T.success}}>
                 Aktualisiert: {label}{stale?" – veraltet!":""}
               </span>
             </div>
@@ -619,17 +619,17 @@ function HeimspielwocheScreen({onBack, profile}) {
         {!loading && filter==="gesamt" && (
           <div style={{display:"flex",flexDirection:"column",gap:0}}>
             {kwGroups.length===0 && (
-              <div style={{textAlign:"center",color:T.textMuted,padding:32,fontSize:15}}>Keine Spiele gefunden</div>
+              <div style={{textAlign:"center",color:T.textMuted,padding:32,fontSize:"0.9375rem"}}>Keine Spiele gefunden</div>
             )}
             {kwGroups.map((grp,gi)=>{
               const isCurrentKW = grp.kw===todayKW && grp.kwy===todayKWY;
               return (
                 <div key={gi}>
                   {gi>0 && <div style={{height:1,background:"#ffffff10",margin:"8px 0"}}/>}
-                  <div style={{fontSize:10,fontWeight:700,color: isCurrentKW?T.warning:T.textMuted,
+                  <div style={{fontSize:"0.625rem",fontWeight:700,color: isCurrentKW?T.warning:T.textMuted,
                     textTransform:"uppercase",letterSpacing:.9,padding:"6px 0 4px"}}>
                     KW {grp.kw} · {kwMonday(grp.firstDate)} – {kwSunday(grp.firstDate)}
-                    {isCurrentKW && <span style={{marginLeft:6,fontSize:9,color:T.warning}}>← diese Woche</span>}
+                    {isCurrentKW && <span style={{marginLeft:6,fontSize:"0.5625rem",color:T.warning}}>← diese Woche</span>}
                   </div>
                   <div style={{display:"flex",flexDirection:"column",gap:5}}>
                     {grp.games.map((g,i)=>{
@@ -641,20 +641,20 @@ function HeimspielwocheScreen({onBack, profile}) {
                           border: isCurrentKW&&!played ? `1px solid ${T.warning}44` : `1px solid ${T.bgBorder}`,
                           padding:"8px 12px", opacity: played?0.5:1}}>
                           <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8}}>
-                            <div style={{fontSize:13,fontWeight:700,color:T.textPrimary,flex:1,minWidth:0,
+                            <div style={{fontSize:"0.8125rem",fontWeight:700,color:T.textPrimary,flex:1,minWidth:0,
                               overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                               <span style={{color:T.textMuted,fontWeight:400}}>{g.isHome?"(H)":"(A)"} </span>{g.team}
                             </div>
                             {played
                               ? score
-                                ? <span style={{fontSize:13,fontWeight:700,color:T.textPrimary,flexShrink:0}}>{score.homeScore}:{score.awayScore}</span>
-                                : <span style={{fontSize:10,color:T.textMuted,fontStyle:"italic",flexShrink:0}}>Gespielt</span>
-                              : g.time && <span style={{fontSize:11,color:T.warning,flexShrink:0}}>{g.time} Uhr</span>
+                                ? <span style={{fontSize:"0.8125rem",fontWeight:700,color:T.textPrimary,flexShrink:0}}>{score.homeScore}:{score.awayScore}</span>
+                                : <span style={{fontSize:"0.625rem",color:T.textMuted,fontStyle:"italic",flexShrink:0}}>Gespielt</span>
+                              : g.time && <span style={{fontSize:"0.6875rem",color:T.warning,flexShrink:0}}>{g.time} Uhr</span>
                             }
                           </div>
-                          <div style={{fontSize:12,color:T.textSecondary,marginTop:2}}>
+                          <div style={{fontSize:"0.75rem",color:T.textSecondary,marginTop:2}}>
                             {g.isHome?"vs.":"@"} {g.opponent}
-                            <span style={{marginLeft:8,fontSize:11,color:T.textMuted}}>
+                            <span style={{marginLeft:8,fontSize:"0.6875rem",color:T.textMuted}}>
                               {fmtGameDate(g.date)}
                             </span>
                           </div>
@@ -677,7 +677,7 @@ function HeimspielwocheScreen({onBack, profile}) {
         {!loading && filter!=="gesamt" && (
           <>
           {groups.length===0 && (
-            <div style={{textAlign:"center",color:T.textMuted,padding:32,fontSize:15}}>
+            <div style={{textAlign:"center",color:T.textMuted,padding:32,fontSize:"0.9375rem"}}>
               Keine {filter==="heim"?"Heim":filter==="auswaerts"?"Auswärts":""}spiele in den nächsten 7 Tagen
             </div>
           )}
@@ -753,7 +753,7 @@ function BtvLinksScreen({onBack}) {
             <button style={H.backBtn} onClick={onBack}>‹ Zurück</button>
           </div>
           <div style={{...H.header,paddingTop:12}}>
-            <h1 style={{...H.title,fontSize:22}}>🔗 BTV Links</h1>
+            <h1 style={{...H.title,fontSize:"1.375rem"}}>🔗 BTV Links</h1>
             <p style={H.greeting}>Direktlinks zu den BTV-Seiten der Mannschaften</p>
           </div>
         </div>
@@ -828,10 +828,10 @@ function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassen
             const b=badges[profile.role]||badges.pending;
             return <div style={{display:"flex",flexDirection:"column",alignItems:"flex-start",gap:6,marginTop:6}}>
               <div style={{display:"inline-flex",alignItems:"center",gap:5,padding:"3px 10px",borderRadius:20,background:b.bg,border:`1px solid ${b.color}44`}}>
-                <span style={{fontSize:12}}>{b.icon}</span>
-                <span style={{fontSize:11,fontWeight:700,color:b.color,letterSpacing:.4}}>{b.label}</span>
+                <span style={{fontSize:"0.75rem"}}>{b.icon}</span>
+                <span style={{fontSize:"0.6875rem",fontWeight:700,color:b.color,letterSpacing:.4}}>{b.label}</span>
               </div>
-              {isGuest&&<button onClick={onLogin} style={{fontSize:12,fontWeight:700,padding:"5px 14px",borderRadius:20,border:"1px solid #22C55E44",background:"#22C55E18",color:"#4ADE80",cursor:"pointer"}}>→ Anmelden / Registrieren</button>}
+              {isGuest&&<button onClick={onLogin} style={{fontSize:"0.75rem",fontWeight:700,padding:"5px 14px",borderRadius:20,border:"1px solid #22C55E44",background:"#22C55E18",color:"#4ADE80",cursor:"pointer"}}>→ Anmelden / Registrieren</button>}
             </div>;
           })()}
         </div>
@@ -840,10 +840,10 @@ function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassen
         {profile.role==="pending"&&(
           <div style={{background:T.bgCard,border:`1.5px solid #F59E0B55`,borderRadius:T.rLg,padding:"18px 20px",display:"flex",flexDirection:"column",gap:12}}>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
-              <div style={{width:36,height:36,borderRadius:"50%",background:"#F59E0B18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>⏳</div>
+              <div style={{width:36,height:36,borderRadius:"50%",background:"#F59E0B18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.125rem",flexShrink:0}}>⏳</div>
               <div>
-                <div style={{fontWeight:800,fontSize:15,color:T.textPrimary}}>Dein Konto wird freigegeben</div>
-                <div style={{fontSize:13,color:T.textSecondary,marginTop:2}}>Registrierung erfolgreich — kurz warten</div>
+                <div style={{fontWeight:800,fontSize:"0.9375rem",color:T.textPrimary}}>Dein Konto wird freigegeben</div>
+                <div style={{fontSize:"0.8125rem",color:T.textSecondary,marginTop:2}}>Registrierung erfolgreich — kurz warten</div>
               </div>
             </div>
             <div style={{display:"flex",flexDirection:"column",gap:8}}>
@@ -853,12 +853,12 @@ function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassen
                 {n:3,text:"Du erhältst Zugang zu Buchung & mehr",done:false},
               ].map(s=>(
                 <div key={s.n} style={{display:"flex",alignItems:"center",gap:10}}>
-                  <div style={{width:22,height:22,borderRadius:"50%",background:s.done?"#14532D":"#F59E0B18",border:`1.5px solid ${s.done?"#22C55E":"#F59E0B44"}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:s.done?"#4ADE80":"#F59E0B",flexShrink:0}}>{s.done?"✓":s.n}</div>
-                  <span style={{fontSize:13,color:s.done?T.textSecondary:T.textPrimary}}>{s.text}</span>
+                  <div style={{width:22,height:22,borderRadius:"50%",background:s.done?"#14532D":"#F59E0B18",border:`1.5px solid ${s.done?"#22C55E":"#F59E0B44"}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.6875rem",fontWeight:800,color:s.done?"#4ADE80":"#F59E0B",flexShrink:0}}>{s.done?"✓":s.n}</div>
+                  <span style={{fontSize:"0.8125rem",color:s.done?T.textSecondary:T.textPrimary}}>{s.text}</span>
                 </div>
               ))}
             </div>
-            <div style={{fontSize:12,color:T.textMuted,borderTop:`1px solid ${T.bgBorder}`,paddingTop:10,marginTop:2}}>
+            <div style={{fontSize:"0.75rem",color:T.textMuted,borderTop:`1px solid ${T.bgBorder}`,paddingTop:10,marginTop:2}}>
               Fragen? Wende dich an den Vereinsvorstand oder schreib uns eine E-Mail.
             </div>
           </div>
@@ -871,23 +871,23 @@ function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassen
           {canDo("booking")&&<button className="widget-btn" style={H.widget} onClick={onGoBooking}>
             <div style={H.widgetLabel}><Ico name="ti-calendar" size={11} style={{marginRight:4}}/>Nächste Buchungen</div>
             {nextBookings.length===0
-              ? <div style={{fontSize:13,color:T.textSecondary,padding:"6px 0"}}>Keine bevorstehenden Buchungen</div>
+              ? <div style={{fontSize:"0.8125rem",color:T.textSecondary,padding:"6px 0"}}>Keine bevorstehenden Buchungen</div>
               : nextBookings.map(b=>{
                   const t=BOOKING_TYPE_MAP[b.type]||BOOKING_TYPE_MAP.regular;
                   return (
                     <div key={b.id} style={H.bookingRow}>
                       <div style={{...H.bookingDot,background:t.color+"22",border:`1.5px solid ${t.color}44`}}>
-                        <span style={{fontSize:15}}>{t.icon}</span>
+                        <span style={{fontSize:"0.9375rem"}}>{t.icon}</span>
                       </div>
                       <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontWeight:700,fontSize:13,color:T.textPrimary,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                        <div style={{fontWeight:700,fontSize:"0.8125rem",color:T.textPrimary,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                           {b.label||b.courts?.name||"?"} · {b.slot} Uhr
                         </div>
-                        <div style={{fontSize:11,color:T.textMuted,marginTop:1}}>
+                        <div style={{fontSize:"0.6875rem",color:T.textMuted,marginTop:1}}>
                           {fmtDateShort(b.date)} · {b.courts?.name} · {b.courts?.surface}
                         </div>
                       </div>
-                      <div style={{fontSize:11,fontWeight:700,color:t.color,background:t.color+"18",borderRadius:20,padding:"3px 8px",flexShrink:0}}>
+                      <div style={{fontSize:"0.6875rem",fontWeight:700,color:t.color,background:t.color+"18",borderRadius:20,padding:"3px 8px",flexShrink:0}}>
                         {daysUntil(b.date)}
                       </div>
                     </div>
@@ -903,7 +903,7 @@ function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassen
               <Ico name="ti-news" size={18} color="#4ADE80"/>
               <div style={{flex:1}}>
                 <div style={{fontSize:T.fzLabel,fontWeight:700,color:T.textSecondary,textTransform:"uppercase",letterSpacing:.7}}>Clubstream</div>
-                <div style={{fontSize:13,fontWeight:600,color:"#4ADE80"}}>News & Termine</div>
+                <div style={{fontSize:"0.8125rem",fontWeight:600,color:"#4ADE80"}}>News & Termine</div>
               </div>
               <Ico name="ti-arrow-right" size={16} color="#4ADE80"/>
             </div>
@@ -915,7 +915,7 @@ function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassen
               <Ico name="ti-link" size={18} color="#93C5FD"/>
               <div style={{flex:1}}>
                 <div style={{fontSize:T.fzLabel,fontWeight:700,color:T.textSecondary,textTransform:"uppercase",letterSpacing:.7}}>BTV Links</div>
-                <div style={{fontSize:13,fontWeight:600,color:"#93C5FD"}}>{btvTeams.length} Mannschaften</div>
+                <div style={{fontSize:"0.8125rem",fontWeight:600,color:"#93C5FD"}}>{btvTeams.length} Mannschaften</div>
               </div>
               <Ico name="ti-arrow-right" size={16} color="#93C5FD"/>
             </div>
@@ -927,7 +927,7 @@ function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassen
               <Ico name="ti-trophy" size={18} color="#FCD34D"/>
               <div style={{flex:1}}>
                 <div style={{fontSize:T.fzLabel,fontWeight:700,color:T.textSecondary,textTransform:"uppercase",letterSpacing:.7}}>Spielwoche</div>
-                <div style={{fontSize:13,fontWeight:600,color:"#FCD34D"}}>
+                <div style={{fontSize:"0.8125rem",fontWeight:600,color:"#FCD34D"}}>
                   {heimspielCount>0 ? `${heimspielCount} Spiel${heimspielCount!==1?"e":""} in den nächsten 7 Tagen` : "Keine Spiele diese Woche"}
                 </div>
               </div>
@@ -942,8 +942,8 @@ function HomeScreen({profile,canDo,onGoBooking,onGoKasse,onGoSettings,onGoKassen
               <div style={{flex:1}}>
                 <div style={{fontSize:T.fzLabel,fontWeight:700,color:T.textSecondary,textTransform:"uppercase",letterSpacing:.7}}>Offene Getränke</div>
                 {openLog.length===0
-                  ? <span style={{fontSize:13,fontWeight:700,color:"#4ADE80",display:"flex",alignItems:"center",gap:4}}><Ico name="ti-check" size={14}/> Alles bezahlt</span>
-                  : <span style={{fontSize:18,fontWeight:800,color:"#F59E0B"}}>{eur(openTotal)} <span style={{fontSize:12,fontWeight:500,color:"#92400E"}}>({openLog.length})</span></span>
+                  ? <span style={{fontSize:"0.8125rem",fontWeight:700,color:"#4ADE80",display:"flex",alignItems:"center",gap:4}}><Ico name="ti-check" size={14}/> Alles bezahlt</span>
+                  : <span style={{fontSize:"1.125rem",fontWeight:800,color:"#F59E0B"}}>{eur(openTotal)} <span style={{fontSize:"0.75rem",fontWeight:500,color:"#92400E"}}>({openLog.length})</span></span>
                 }
               </div>
               <Ico name="ti-arrow-right" size={12} color={openLog.length>0?"#D97706":T.textSecondary}/>
@@ -994,7 +994,7 @@ const H={
   navTile:      {background:T.bgCard,border:`1.5px solid ${T.bgBorder}`,borderRadius:T.rMd,padding:"18px 12px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:6},
   navTileLabel: {fontSize:T.fzBody,fontWeight:700,color:T.textSecondary},
   navTileSub:   {fontSize:T.fzLabel,color:T.textMuted},
-  backBtn:      {background:"none",border:"none",color:T.textSecondary,fontSize:15,fontWeight:700,cursor:"pointer",lineHeight:1,flexShrink:0,minWidth:44,minHeight:44,display:"flex",alignItems:"center",justifyContent:"center",gap:3},
+  backBtn:      {background:"none",border:"none",color:T.textSecondary,fontSize:"0.9375rem",fontWeight:700,cursor:"pointer",lineHeight:1,flexShrink:0,minWidth:44,minHeight:44,display:"flex",alignItems:"center",justifyContent:"center",gap:3},
 };
 
 // Einheitlicher Screen-Header mit Back-Button + Titel
@@ -1051,14 +1051,14 @@ function ClubstreamDetail({item,onBack}) {
         <div style={{background:T.bgCard,border:`1.5px solid ${color}44`,borderRadius:14,padding:"16px 14px",display:"flex",flexDirection:"column",gap:10}}>
           {/* Typ-Badge */}
           <div style={{display:"flex",alignItems:"center",gap:8}}>
-            <span style={{fontSize:22}}>{icon}</span>
-            <span style={{fontSize:11,fontWeight:700,color,textTransform:"uppercase",letterSpacing:.8}}>{label}</span>
-            {item.is_pinned&&<span style={{fontSize:11,color:"#EAB308"}}>📌 Angeheftet</span>}
-            {item.priority==="urgent"&&<span style={{fontSize:11,color:"#EF4444",fontWeight:800}}>DRINGEND</span>}
+            <span style={{fontSize:"1.375rem"}}>{icon}</span>
+            <span style={{fontSize:"0.6875rem",fontWeight:700,color,textTransform:"uppercase",letterSpacing:.8}}>{label}</span>
+            {item.is_pinned&&<span style={{fontSize:"0.6875rem",color:"#EAB308"}}>📌 Angeheftet</span>}
+            {item.priority==="urgent"&&<span style={{fontSize:"0.6875rem",color:"#EF4444",fontWeight:800}}>DRINGEND</span>}
           </div>
 
           {/* Titel */}
-          <h2 style={{fontSize:18,fontWeight:800,color:T.textPrimary,margin:0,lineHeight:1.3}}>{item.title}</h2>
+          <h2 style={{fontSize:"1.125rem",fontWeight:800,color:T.textPrimary,margin:0,lineHeight:1.3}}>{item.title}</h2>
 
           {/* Termin-Infos */}
           {item.event_start&&(()=>{
@@ -1071,24 +1071,24 @@ function ClubstreamDetail({item,onBack}) {
             const sHasTime=new Date(item.event_start).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit",timeZone:"UTC"})!=="00:00";
             const eHasTime=item.event_end&&new Date(item.event_end).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit",timeZone:"UTC"})!=="00:00";
             return(
-              <p style={{fontSize:13,color:"#8B5CF6",margin:0,fontWeight:600}}>
+              <p style={{fontSize:"0.8125rem",color:"#8B5CF6",margin:0,fontWeight:600}}>
                 {fmt(item.event_start,sHasTime)}
                 {item.event_end&&<span style={{color:T.textMuted,fontWeight:400}}> – {fmt(item.event_end,eHasTime)}</span>}
               </p>
             );
           })()}
-          {item.event_location&&<p style={{fontSize:13,color:T.textMuted,margin:0}}>📍 {item.event_location}</p>}
+          {item.event_location&&<p style={{fontSize:"0.8125rem",color:T.textMuted,margin:0}}>📍 {item.event_location}</p>}
 
           {/* Spielergebnis */}
           {item.result_home!=null&&item.result_away!=null&&(
             <div style={{textAlign:"center",padding:"12px 10px",background:T.bgPage,borderRadius:10}}>
-              <span style={{fontSize:32,fontWeight:900,color:item.result_home>item.result_away?"#22C55E":"#EF4444"}}>
+              <span style={{fontSize:"2rem",fontWeight:900,color:item.result_home>item.result_away?"#22C55E":"#EF4444"}}>
                 {item.result_home} : {item.result_away}
               </span>
               {(item.team_name||item.opponent)&&(
-                <p style={{fontSize:12,color:T.textMuted,margin:"6px 0 0"}}>{item.team_name||"SG Herrieden"} vs. {item.opponent||"?"}</p>
+                <p style={{fontSize:"0.75rem",color:T.textMuted,margin:"6px 0 0"}}>{item.team_name||"SG Herrieden"} vs. {item.opponent||"?"}</p>
               )}
-              {item.league&&<p style={{fontSize:11,color:T.textSecondary,margin:"2px 0 0"}}>{item.league}{item.age_group?` · ${item.age_group}`:""}</p>}
+              {item.league&&<p style={{fontSize:"0.6875rem",color:T.textSecondary,margin:"2px 0 0"}}>{item.league}{item.age_group?` · ${item.age_group}`:""}</p>}
             </div>
           )}
 
@@ -1106,12 +1106,12 @@ function ClubstreamDetail({item,onBack}) {
                     <div key={i} style={{background:T.bgPage,padding:"10px 14px",display:"flex",alignItems:"center",gap:10}}>
                       <div style={{width:3,height:36,borderRadius:2,background:clr,flexShrink:0}}/>
                       <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontSize:12,fontWeight:700,color:T.textPrimary}}>{g.team}</div>
-                        <div style={{fontSize:11,color:T.textMuted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{g.isHome?"vs.":"@"} {g.opponent}</div>
+                        <div style={{fontSize:"0.75rem",fontWeight:700,color:T.textPrimary}}>{g.team}</div>
+                        <div style={{fontSize:"0.6875rem",color:T.textMuted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{g.isHome?"vs.":"@"} {g.opponent}</div>
                       </div>
                       <div style={{textAlign:"right"}}>
-                        <div style={{fontSize:18,fontWeight:900,color:clr,letterSpacing:1}}>{g.homeScore}:{g.awayScore}</div>
-                        <div style={{fontSize:10,color:clr}}>{lbl}</div>
+                        <div style={{fontSize:"1.125rem",fontWeight:900,color:clr,letterSpacing:1}}>{g.homeScore}:{g.awayScore}</div>
+                        <div style={{fontSize:"0.625rem",color:clr}}>{lbl}</div>
                       </div>
                     </div>
                   );
@@ -1127,19 +1127,19 @@ function ClubstreamDetail({item,onBack}) {
 
           {/* Haupttext */}
           {bodyText&&(
-            <p style={{fontSize:14,color:T.textMuted,lineHeight:1.7,margin:0,whiteSpace:"pre-line"}}>{bodyText}</p>
+            <p style={{fontSize:"0.875rem",color:T.textMuted,lineHeight:1.7,margin:0,whiteSpace:"pre-line"}}>{bodyText}</p>
           )}
 
           {/* Gültigkeitszeitraum */}
           {(item.valid_from||item.valid_until)&&(
-            <div style={{display:"flex",gap:12,fontSize:12,color:"#F97316"}}>
+            <div style={{display:"flex",gap:12,fontSize:"0.75rem",color:"#F97316"}}>
               {item.valid_from&&<span>Ab: {new Date(item.valid_from).toLocaleDateString("de-DE",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})} Uhr</span>}
               {item.valid_until&&<span>Bis: {new Date(item.valid_until).toLocaleDateString("de-DE",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})} Uhr</span>}
             </div>
           )}
 
           {/* Zeitstempel */}
-          <p style={{fontSize:11,color:T.textSecondary,margin:0,borderTop:"1px solid #334155",paddingTop:8}}>{csTimeAgo(item.published_at)}</p>
+          <p style={{fontSize:"0.6875rem",color:T.textSecondary,margin:0,borderTop:"1px solid #334155",paddingTop:8}}>{csTimeAgo(item.published_at)}</p>
         </div>
 
       </div>
@@ -1266,7 +1266,7 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
             <button style={H.backBtn} onClick={onBack}>‹ Zurück</button>
             <div style={{flex:1}}/>
             {pending>0&&(
-              <span style={{fontSize:11,fontWeight:700,color:"#F59E0B",background:"#F59E0B18",border:"1px solid #F59E0B44",borderRadius:20,padding:"3px 10px"}}>
+              <span style={{fontSize:"0.6875rem",fontWeight:700,color:"#F59E0B",background:"#F59E0B18",border:"1px solid #F59E0B44",borderRadius:20,padding:"3px 10px"}}>
                 ⏳ {pending} ausstehend
               </span>
             )}
@@ -1278,13 +1278,13 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
                   ?`${base}/#access_token=${session.access_token}&refresh_token=${session.refresh_token}&token_type=bearer`
                   :base;
                 window.open(url,"_blank");
-              }} style={{fontSize:11,fontWeight:700,padding:"4px 12px",borderRadius:20,border:"1px solid #8B5CF644",background:"#8B5CF618",color:"#A78BFA",cursor:"pointer"}}>
+              }} style={{fontSize:"0.6875rem",fontWeight:700,padding:"4px 12px",borderRadius:20,border:"1px solid #8B5CF644",background:"#8B5CF618",color:"#A78BFA",cursor:"pointer"}}>
                 ⚙️ Admin
               </button>
             )}
           </div>
           <div style={{...H.header,paddingTop:12}}>
-            <h1 style={{...H.title,fontSize:22}}>📰 Clubstream</h1>
+            <h1 style={{...H.title,fontSize:"1.375rem"}}>📰 Clubstream</h1>
             <p style={H.greeting}>SG Herrieden · News & Vereinsmeldungen</p>
           </div>
         </div>
@@ -1330,15 +1330,15 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
             <img src={lbPhotos[lbIdx]?.image_url||lbPhotos[lbIdx]?.url} alt={lbPhotos[lbIdx]?.caption||""}
               style={{maxWidth:"100%",maxHeight:"78vh",borderRadius:10,objectFit:"contain"}}
               onClick={e=>e.stopPropagation()}/>
-            {lbPhotos[lbIdx]?.caption&&<p style={{color:T.textPrimary,fontSize:13,marginTop:10,textAlign:"center",maxWidth:400,padding:"0 8px"}}>{lbPhotos[lbIdx].caption}</p>}
+            {lbPhotos[lbIdx]?.caption&&<p style={{color:T.textPrimary,fontSize:"0.8125rem",marginTop:10,textAlign:"center",maxWidth:400,padding:"0 8px"}}>{lbPhotos[lbIdx].caption}</p>}
             <div style={{display:"flex",alignItems:"center",gap:16,marginTop:12}}>
               <button onClick={e=>{e.stopPropagation();setLbIdx(i=>Math.max(0,i-1));}} disabled={lbIdx===0}
-                style={{background:"#ffffff22",border:"none",color:"#fff",fontSize:22,borderRadius:"50%",width:44,height:44,cursor:lbIdx===0?"default":"pointer",opacity:lbIdx===0?.3:1}}>‹</button>
-              <span style={{color:T.textMuted,fontSize:12}}>{lbIdx+1} / {lbPhotos.length}</span>
+                style={{background:"#ffffff22",border:"none",color:"#fff",fontSize:"1.375rem",borderRadius:"50%",width:44,height:44,cursor:lbIdx===0?"default":"pointer",opacity:lbIdx===0?.3:1}}>‹</button>
+              <span style={{color:T.textMuted,fontSize:"0.75rem"}}>{lbIdx+1} / {lbPhotos.length}</span>
               <button onClick={e=>{e.stopPropagation();setLbIdx(i=>Math.min(lbPhotos.length-1,i+1));}} disabled={lbIdx===lbPhotos.length-1}
-                style={{background:"#ffffff22",border:"none",color:"#fff",fontSize:22,borderRadius:"50%",width:44,height:44,cursor:lbIdx===lbPhotos.length-1?"default":"pointer",opacity:lbIdx===lbPhotos.length-1?.3:1}}>›</button>
+                style={{background:"#ffffff22",border:"none",color:"#fff",fontSize:"1.375rem",borderRadius:"50%",width:44,height:44,cursor:lbIdx===lbPhotos.length-1?"default":"pointer",opacity:lbIdx===lbPhotos.length-1?.3:1}}>›</button>
             </div>
-            <button onClick={()=>setLbPhotos([])} style={{marginTop:10,color:T.textMuted,fontSize:12,background:"none",border:"none",cursor:"pointer"}}>✕ Schließen</button>
+            <button onClick={()=>setLbPhotos([])} style={{marginTop:10,color:T.textMuted,fontSize:"0.75rem",background:"none",border:"none",cursor:"pointer"}}>✕ Schließen</button>
           </div>
         )}
 
@@ -1350,16 +1350,16 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
               <input
                 value={pendingCaption} onChange={e=>setPendingCaption(e.target.value)}
                 placeholder="Kommentar zum Foto (optional)"
-                style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid #334155",background:"#0F172A",color:"#F1F5F9",fontSize:13,boxSizing:"border-box",marginBottom:10}}
+                style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid #334155",background:"#0F172A",color:"#F1F5F9",fontSize:"0.8125rem",boxSizing:"border-box",marginBottom:10}}
               />
-              {uploadErr&&<div style={{fontSize:12,color:"#EF4444",marginBottom:8}}>{uploadErr}</div>}
+              {uploadErr&&<div style={{fontSize:"0.75rem",color:"#EF4444",marginBottom:8}}>{uploadErr}</div>}
               <div style={{display:"flex",gap:8}}>
                 <button onClick={()=>{setPendingFile(null);setPendingCaption("");setUploadErr(null);}}
-                  style={{flex:1,padding:"10px",borderRadius:10,border:"1.5px solid #334155",background:"transparent",color:T.textMuted,fontSize:13,cursor:"pointer"}}>
+                  style={{flex:1,padding:"10px",borderRadius:10,border:"1.5px solid #334155",background:"transparent",color:T.textMuted,fontSize:"0.8125rem",cursor:"pointer"}}>
                   Abbrechen
                 </button>
                 <button onClick={()=>uploadPhoto(pendingFile,pendingCaption)} disabled={uploading}
-                  style={{flex:2,padding:"10px",borderRadius:10,border:"none",background:"#EC4899",color:"#fff",fontSize:13,fontWeight:700,cursor:uploading?"wait":"pointer"}}>
+                  style={{flex:2,padding:"10px",borderRadius:10,border:"none",background:"#EC4899",color:"#fff",fontSize:"0.8125rem",fontWeight:700,cursor:uploading?"wait":"pointer"}}>
                   {uploading?"⏳ Hochladen…":"📤 Hochladen"}
                 </button>
               </div>
@@ -1372,8 +1372,8 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
           <div style={{display:"flex",flexDirection:"column",gap:20}}>
             {kwGroups.length===0&&(
               <div style={{background:"#1E293B",border:"1.5px solid #334155",borderRadius:14,padding:"32px 14px",textAlign:"center"}}>
-                <span style={{fontSize:32}}>🖼️</span>
-                <p style={{color:T.textSecondary,fontSize:13,marginTop:8}}>Noch keine Fotos hochgeladen</p>
+                <span style={{fontSize:"2rem"}}>🖼️</span>
+                <p style={{color:T.textSecondary,fontSize:"0.8125rem",marginTop:8}}>Noch keine Fotos hochgeladen</p>
               </div>
             )}
             {kwGroups.map(({label,photos:kphotos})=>{
@@ -1383,7 +1383,7 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
               const next = ()=>setKwIdxMap(m=>({...m,[label]:Math.min(kphotos.length-1,(m[label]||0)+1)}));
               return (
                 <div key={label}>
-                  <div style={{fontSize:12,fontWeight:700,color:"#EC4899",textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>
+                  <div style={{fontSize:"0.75rem",fontWeight:700,color:"#EC4899",textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>
                     🗓 {label} · {kphotos.length} {kphotos.length===1?"Foto":"Fotos"}
                   </div>
                   <div style={{position:"relative",borderRadius:14,overflow:"hidden",background:"#0F172A",border:"1.5px solid #EC489933"}}
@@ -1392,18 +1392,18 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
                     <img src={cur.image_url||cur.url} alt={cur.caption||""}
                       style={{width:"100%",height:240,objectFit:"cover",display:"block",cursor:"pointer"}}
                       onClick={()=>{setLbPhotos(kphotos);setLbIdx(idx);}}/>
-                    {idx>0&&<button onClick={prev} style={{position:"absolute",left:8,top:"50%",transform:"translateY(-50%)",background:"#00000088",border:"none",color:"#fff",fontSize:20,borderRadius:"50%",width:34,height:34,cursor:"pointer"}}>‹</button>}
-                    {idx<kphotos.length-1&&<button onClick={next} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"#00000088",border:"none",color:"#fff",fontSize:20,borderRadius:"50%",width:34,height:34,cursor:"pointer"}}>›</button>}
-                    <div style={{position:"absolute",bottom:8,right:10,background:"#00000088",borderRadius:20,padding:"2px 8px",fontSize:11,color:"#fff",fontWeight:700}}>{idx+1}/{kphotos.length}</div>
+                    {idx>0&&<button onClick={prev} style={{position:"absolute",left:8,top:"50%",transform:"translateY(-50%)",background:"#00000088",border:"none",color:"#fff",fontSize:"1.25rem",borderRadius:"50%",width:34,height:34,cursor:"pointer"}}>‹</button>}
+                    {idx<kphotos.length-1&&<button onClick={next} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"#00000088",border:"none",color:"#fff",fontSize:"1.25rem",borderRadius:"50%",width:34,height:34,cursor:"pointer"}}>›</button>}
+                    <div style={{position:"absolute",bottom:8,right:10,background:"#00000088",borderRadius:20,padding:"2px 8px",fontSize:"0.6875rem",color:"#fff",fontWeight:700}}>{idx+1}/{kphotos.length}</div>
                     {(cur.user_id===profile.id||profile.role==="admin")&&(
                       <button onClick={e=>{e.stopPropagation();deletePhoto(cur);}}
-                        style={{position:"absolute",top:8,right:8,background:"#EF444488",border:"none",color:"#fff",fontSize:14,borderRadius:"50%",width:30,height:30,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                        style={{position:"absolute",top:8,right:8,background:"#EF444488",border:"none",color:"#fff",fontSize:"0.875rem",borderRadius:"50%",width:30,height:30,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
                         🗑
                       </button>
                     )}
                   </div>
-                  {cur.caption&&<div style={{marginTop:6,fontSize:13,color:T.textMuted,padding:"0 2px"}}>{cur.caption}</div>}
-                  <div style={{marginTop:3,fontSize:11,color:T.textSecondary}}>{new Date(cur.created_at).toLocaleDateString("de-DE",{day:"numeric",month:"long",year:"numeric"})}</div>
+                  {cur.caption&&<div style={{marginTop:6,fontSize:"0.8125rem",color:T.textMuted,padding:"0 2px"}}>{cur.caption}</div>}
+                  <div style={{marginTop:3,fontSize:"0.6875rem",color:T.textSecondary}}>{new Date(cur.created_at).toLocaleDateString("de-DE",{day:"numeric",month:"long",year:"numeric"})}</div>
                   <div style={{display:"flex",gap:4,marginTop:8,overflowX:"auto",paddingBottom:2}}>
                     {kphotos.map((p,i)=>(
                       <div key={p.id} onClick={()=>setKwIdxMap(m=>({...m,[label]:i}))} className="tap-div"
@@ -1417,7 +1417,7 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
             })}
             <input ref={fileInputRef} type="file" accept="image/*" style={{display:"none"}} onChange={e=>{if(e.target.files[0]){setPendingFile(e.target.files[0]);e.target.value="";}}}/>
             <button onClick={()=>fileInputRef.current.click()}
-              style={{width:"100%",padding:"12px",borderRadius:12,border:"1.5px dashed #EC489966",background:"#EC489908",color:"#F472B6",fontSize:13,fontWeight:700,cursor:"pointer"}}>
+              style={{width:"100%",padding:"12px",borderRadius:12,border:"1.5px dashed #EC489966",background:"#EC489908",color:"#F472B6",fontSize:"0.8125rem",fontWeight:700,cursor:"pointer"}}>
               📷 Foto hochladen
             </button>
           </div>
@@ -1432,7 +1432,7 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
           </div>
         ):filtered.length===0?(
           <div style={{background:T.bgCard,border:`1.5px solid ${T.bgBorder}`,borderRadius:T.rMd,padding:"32px 14px",textAlign:"center"}}>
-            <span style={{fontSize:32}}>📭</span>
+            <span style={{fontSize:"2rem"}}>📭</span>
             <p style={{color:T.textMuted,fontSize:T.fzBody,marginTop:8}}>{typeFilter?"Keine Beiträge in dieser Kategorie":"Noch keine veröffentlichten News"}</p>
           </div>
         ):(
@@ -1454,8 +1454,8 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
                       onClick={()=>{if(!allSwiped.current){setLbPhotos(kwPhotos);setLbIdx(idx);}}}
                     >
                       {src&&<img src={src} alt={cur.caption||""} style={{width:"100%",height:220,objectFit:"cover",display:"block",cursor:"pointer"}}/>}
-                      {idx>0&&<button onMouseDown={goPrev} style={{position:"absolute",left:8,top:"50%",transform:"translateY(-50%)",background:"#00000077",border:"none",color:"#fff",fontSize:20,borderRadius:"50%",width:32,height:32,cursor:"pointer",lineHeight:"32px",textAlign:"center"}}>‹</button>}
-                      {idx<kwPhotos.length-1&&<button onMouseDown={goNext} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"#00000077",border:"none",color:"#fff",fontSize:20,borderRadius:"50%",width:32,height:32,cursor:"pointer",lineHeight:"32px",textAlign:"center"}}>›</button>}
+                      {idx>0&&<button onMouseDown={goPrev} style={{position:"absolute",left:8,top:"50%",transform:"translateY(-50%)",background:"#00000077",border:"none",color:"#fff",fontSize:"1.25rem",borderRadius:"50%",width:32,height:32,cursor:"pointer",lineHeight:"32px",textAlign:"center"}}>‹</button>}
+                      {idx<kwPhotos.length-1&&<button onMouseDown={goNext} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"#00000077",border:"none",color:"#fff",fontSize:"1.25rem",borderRadius:"50%",width:32,height:32,cursor:"pointer",lineHeight:"32px",textAlign:"center"}}>›</button>}
                     </div>
                     {/* Instagram-Punkte */}
                     {kwPhotos.length>1&&(
@@ -1468,10 +1468,10 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
                     {/* Info-Zeile */}
                     <div style={{padding:"8px 14px 12px",display:"flex",alignItems:"center",gap:8}}>
                       <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontSize:10,fontWeight:700,color:"#EC4899",textTransform:"uppercase",letterSpacing:.7,marginBottom:2}}>📸 {item._kwLabel}</div>
-                        {cur.caption&&<div style={{fontSize:13,color:T.textMuted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{cur.caption}</div>}
+                        <div style={{fontSize:"0.625rem",fontWeight:700,color:"#EC4899",textTransform:"uppercase",letterSpacing:.7,marginBottom:2}}>📸 {item._kwLabel}</div>
+                        {cur.caption&&<div style={{fontSize:"0.8125rem",color:T.textMuted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{cur.caption}</div>}
                       </div>
-                      <div style={{fontSize:11,color:T.textSecondary,flexShrink:0}}>{csTimeAgo(cur.created_at)}</div>
+                      <div style={{fontSize:"0.6875rem",color:T.textSecondary,flexShrink:0}}>{csTimeAgo(cur.created_at)}</div>
                     </div>
                   </div>
                 );
@@ -1489,12 +1489,12 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
                   )}
                   <div style={{padding:"12px 14px"}}>
                   <div style={{display:"flex",alignItems:"flex-start",gap:10}}>
-                    <span style={{fontSize:20,lineHeight:1.2,flexShrink:0}}>{icon}</span>
+                    <span style={{fontSize:"1.25rem",lineHeight:1.2,flexShrink:0}}>{icon}</span>
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
-                        <span style={{fontSize:10,fontWeight:700,color,textTransform:"uppercase",letterSpacing:.7}}>{label}</span>
-                        {item.is_pinned&&<span style={{fontSize:10,color:"#EAB308"}}>📌</span>}
-                        {item.priority==="urgent"&&<span style={{fontSize:10,color:"#EF4444",fontWeight:700}}>DRINGEND</span>}
+                        <span style={{fontSize:"0.625rem",fontWeight:700,color,textTransform:"uppercase",letterSpacing:.7}}>{label}</span>
+                        {item.is_pinned&&<span style={{fontSize:"0.625rem",color:"#EAB308"}}>📌</span>}
+                        {item.priority==="urgent"&&<span style={{fontSize:"0.625rem",color:"#EF4444",fontWeight:700}}>DRINGEND</span>}
                       </div>
                       <div style={{fontWeight:700,fontSize:T.fzBody,color:T.textPrimary,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.title}</div>
                       {item.summary&&<div style={{fontSize:T.fzSm,color:T.textMuted,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.summary}</div>}
@@ -1503,14 +1503,14 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
                   </div>
                   {item.type==="match_result"&&item.result_home!=null&&(
                     <div style={{marginTop:8,padding:"6px 10px",background:T.bgPage,borderRadius:T.rSm,textAlign:"center"}}>
-                      <span style={{fontSize:18,fontWeight:900,color:item.result_home>item.result_away?"#22C55E":"#EF4444"}}>
+                      <span style={{fontSize:"1.125rem",fontWeight:900,color:item.result_home>item.result_away?"#22C55E":"#EF4444"}}>
                         {item.result_home} : {item.result_away}
                       </span>
-                      {item.opponent&&<span style={{fontSize:11,color:T.textMuted,marginLeft:8}}>vs. {item.opponent}</span>}
+                      {item.opponent&&<span style={{fontSize:"0.6875rem",color:T.textMuted,marginLeft:8}}>vs. {item.opponent}</span>}
                     </div>
                   )}
                   {item.type==="event"&&item.event_start&&(
-                    <div style={{marginTop:6,fontSize:12,color:"#8B5CF6",fontWeight:600}}>
+                    <div style={{marginTop:6,fontSize:"0.75rem",color:"#8B5CF6",fontWeight:600}}>
                       {new Date(item.event_start).toLocaleDateString("de-DE",{weekday:"short",day:"numeric",month:"short",timeZone:"UTC"})}
                       {item.event_location&&<span style={{color:T.textMuted,fontWeight:400}}> · 📍 {item.event_location}</span>}
                     </div>
@@ -1641,7 +1641,7 @@ function BookingApp({profile,perms={},onBack}) {
             <button style={H.backBtn} onClick={onBack}>‹ Zurück</button>
           </div>
           <div style={{...H.header,paddingTop:12}}>
-            <h1 style={{...H.title,fontSize:22}}><Ico name="ti-calendar" size={20} style={{marginRight:6}}/> Buchung</h1>
+            <h1 style={{...H.title,fontSize:"1.375rem"}}><Ico name="ti-calendar" size={20} style={{marginRight:6}}/> Buchung</h1>
             <p style={H.greeting}>Plätze buchen · Reservierungen verwalten</p>
           </div>
         </div>
@@ -1755,13 +1755,13 @@ function KasseApp({profile,perms={},onBack}) {
             <button style={H.backBtn} onClick={onBack}>‹ Zurück</button>
             <div style={{flex:1}}/>
             {myOpen.length>0&&(
-              <span style={{fontSize:11,fontWeight:700,color:"#F59E0B",background:"#F59E0B18",border:"1px solid #F59E0B44",borderRadius:20,padding:"3px 10px"}}>
+              <span style={{fontSize:"0.6875rem",fontWeight:700,color:"#F59E0B",background:"#F59E0B18",border:"1px solid #F59E0B44",borderRadius:20,padding:"3px 10px"}}>
                 ⚠️ {eur(myTotal)} offen
               </span>
             )}
           </div>
           <div style={{...H.header,paddingTop:12}}>
-            <h1 style={{...H.title,fontSize:22}}>🧾 Getränke</h1>
+            <h1 style={{...H.title,fontSize:"1.375rem"}}>🧾 Getränke</h1>
             <p style={H.greeting}>Getränke buchen · offene Beträge verwalten</p>
           </div>
         </div>
@@ -1773,7 +1773,7 @@ function KasseApp({profile,perms={},onBack}) {
             <button key={t.id} onClick={()=>setTab(t.id)}
               style={{...ftab(tab===t.id, T.success, true),position:"relative"}}>
               {t.icon} {t.label}
-              {t.badge>0&&<span style={{position:"absolute",top:-4,right:-4,background:"#EF4444",borderRadius:10,fontSize:9,fontWeight:700,color:"#fff",padding:"1px 5px",minWidth:14,textAlign:"center"}}>{t.badge}</span>}
+              {t.badge>0&&<span style={{position:"absolute",top:-4,right:-4,background:"#EF4444",borderRadius:10,fontSize:"0.5625rem",fontWeight:700,color:"#fff",padding:"1px 5px",minWidth:14,textAlign:"center"}}>{t.badge}</span>}
             </button>
           ))}
         </div>
@@ -1832,9 +1832,9 @@ function KasseDrinksTab({favs,onLogDrink,onDeleteEntry,onGoSettings}) {
       {undoEntry&&(
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",
           background:T.bgCard,borderRadius:10,padding:"10px 14px",marginBottom:16}}>
-          <span style={{color:T.textPrimary,fontSize:13}}>{undoEntry.emoji} {undoEntry.name} eingetragen</span>
+          <span style={{color:T.textPrimary,fontSize:"0.8125rem"}}>{undoEntry.emoji} {undoEntry.name} eingetragen</span>
           <button onClick={handleUndo}
-            style={{background:"none",border:"none",color:"#4ADE80",fontWeight:700,fontSize:13,cursor:"pointer",padding:0}}>
+            style={{background:"none",border:"none",color:"#4ADE80",fontWeight:700,fontSize:"0.8125rem",cursor:"pointer",padding:0}}>
             Rückgängig
           </button>
         </div>
@@ -1842,9 +1842,9 @@ function KasseDrinksTab({favs,onLogDrink,onDeleteEntry,onGoSettings}) {
 
       {favs.length===0?(
         <div style={{...S.card,textAlign:"center",padding:"40px 20px",borderStyle:"dashed"}}>
-          <div style={{fontSize:40,marginBottom:12}}>🥤</div>
+          <div style={{fontSize:"2.5rem",marginBottom:12}}>🥤</div>
           <div style={{fontWeight:700,marginBottom:6}}>Noch keine Getränke</div>
-          <div style={{fontSize:13,color:T.textMuted,marginBottom:16}}>Lege deine Getränke unter „Verwalten" an.</div>
+          <div style={{fontSize:"0.8125rem",color:T.textMuted,marginBottom:16}}>Lege deine Getränke unter „Verwalten" an.</div>
           <button style={S.primaryBtn} onClick={onGoSettings}>Getränke anlegen →</button>
         </div>
       ):(
@@ -1854,16 +1854,16 @@ function KasseDrinksTab({favs,onLogDrink,onDeleteEntry,onGoSettings}) {
             return (
               <div key={f.id} onClick={()=>handleTap(f)} className="tap-div"
                 style={{...K.drinkTile,...(done?K.drinkTileDone:{}),cursor:"pointer",userSelect:"none"}}>
-                <span style={{fontSize:40,lineHeight:1}}>{done?"✓":f.emoji}</span>
-                <span style={{fontWeight:700,fontSize:13,color:done?"#16A34A":T.textPrimary,marginTop:6}}>{f.name}</span>
-                <span style={{fontSize:13,fontWeight:700,color:done?"#16A34A":"#22C55E"}}>{eur(f.price)}</span>
+                <span style={{fontSize:"2.5rem",lineHeight:1}}>{done?"✓":f.emoji}</span>
+                <span style={{fontWeight:700,fontSize:"0.8125rem",color:done?"#16A34A":T.textPrimary,marginTop:6}}>{f.name}</span>
+                <span style={{fontSize:"0.8125rem",fontWeight:700,color:done?"#16A34A":"#22C55E"}}>{eur(f.price)}</span>
               </div>
             );
           })}
           <div style={{...K.drinkTile,borderStyle:"dashed",borderColor:T.bgBorder,background:T.bgInput,cursor:"pointer",justifyContent:"center"}}
             onClick={()=>setQuickModal(true)}>
-            <span style={{fontSize:28,color:T.textMuted}}>+</span>
-            <span style={{fontSize:12,color:T.textMuted,marginTop:4}}>Weiteres</span>
+            <span style={{fontSize:"1.75rem",color:T.textMuted}}>+</span>
+            <span style={{fontSize:"0.75rem",color:T.textMuted,marginTop:4}}>Weiteres</span>
           </div>
         </div>
       )}
@@ -1876,11 +1876,11 @@ function KasseDrinksTab({favs,onLogDrink,onDeleteEntry,onGoSettings}) {
               <button style={S.closeBtn} onClick={()=>setConfirmDrink(null)}>✕</button>
             </div>
             <div style={{textAlign:"center",padding:"20px 0 24px"}}>
-              <div style={{fontSize:56,lineHeight:1,marginBottom:10}}>{confirmDrink.emoji}</div>
-              <div style={{fontWeight:800,fontSize:20,color:T.textPrimary,marginBottom:4}}>{confirmDrink.name}</div>
-              <div style={{fontSize:28,fontWeight:800,color:"#22C55E"}}>{eur(confirmDrink.price)}</div>
+              <div style={{fontSize:"3.5rem",lineHeight:1,marginBottom:10}}>{confirmDrink.emoji}</div>
+              <div style={{fontWeight:800,fontSize:"1.25rem",color:T.textPrimary,marginBottom:4}}>{confirmDrink.name}</div>
+              <div style={{fontSize:"1.75rem",fontWeight:800,color:"#22C55E"}}>{eur(confirmDrink.price)}</div>
             </div>
-            <button style={{...S.primaryBtn,width:"100%",background:"#22C55E",color:"#fff",marginBottom:8,fontSize:15,padding:"14px"}}
+            <button style={{...S.primaryBtn,width:"100%",background:"#22C55E",color:"#fff",marginBottom:8,fontSize:"0.9375rem",padding:"14px"}}
               onClick={handleConfirm}>✓ Ja, notieren</button>
             <button style={{...S.ghostBtn,width:"100%"}} onClick={()=>setConfirmDrink(null)}>Abbrechen</button>
           </div>
@@ -1913,9 +1913,9 @@ function KasseLogTab({myLog,myOpen,myTotal,onMarkPaid,onDeleteEntry}) {
       {myOpen.length>0&&(
         <div style={K.summaryBar}>
           <div>
-            <div style={{fontSize:11,fontWeight:700,color:T.textMuted}}>OFFEN</div>
-            <div style={{fontSize:28,fontWeight:800,color:"#F59E0B"}}>{eur(myTotal)}</div>
-            <div style={{fontSize:12,color:T.textMuted}}>{myOpen.length} {myOpen.length===1?"Getränk":"Getränke"}</div>
+            <div style={{fontSize:"0.6875rem",fontWeight:700,color:T.textMuted}}>OFFEN</div>
+            <div style={{fontSize:"1.75rem",fontWeight:800,color:"#F59E0B"}}>{eur(myTotal)}</div>
+            <div style={{fontSize:"0.75rem",color:T.textMuted}}>{myOpen.length} {myOpen.length===1?"Getränk":"Getränke"}</div>
           </div>
           <button style={K.payBtn} onClick={()=>setShowConfirm(true)}>✓ Bezahlen</button>
         </div>
@@ -1923,23 +1923,23 @@ function KasseLogTab({myLog,myOpen,myTotal,onMarkPaid,onDeleteEntry}) {
 
       {myOpen.length===0&&!showPaid&&(
         <div style={{textAlign:"center",padding:"40px 0",color:T.textMuted}}>
-          <div style={{fontSize:44}}>✅</div>
+          <div style={{fontSize:"2.75rem"}}>✅</div>
           <div style={{fontWeight:700,marginTop:8,color:T.textSecondary}}>Alles bezahlt!</div>
         </div>
       )}
 
       {sortedDates.map(date=>(
         <div key={date} style={{marginBottom:20}}>
-          <div style={{fontSize:11,fontWeight:700,color:T.textMuted,textTransform:"uppercase",letterSpacing:.8,marginBottom:6}}>{fmtDateShort(date)}</div>
+          <div style={{fontSize:"0.6875rem",fontWeight:700,color:T.textMuted,textTransform:"uppercase",letterSpacing:.8,marginBottom:6}}>{fmtDateShort(date)}</div>
           {byDate[date].map(entry=>(
             <div key={entry.id} style={{...S.card,background:"#F59E0B0D",border:`1px solid #F59E0B33`,display:"flex",alignItems:"center",gap:12}}>
-              <span style={{fontSize:24}}>{entry.emoji}</span>
-              <div style={{flex:1}}><div style={{fontWeight:700,fontSize:14}}>{entry.drink_name}</div></div>
-              <div style={{fontWeight:800,fontSize:15}}>{eur(entry.price)}</div>
-              <button style={{background:"none",border:"none",color:T.textMuted,cursor:"pointer",fontSize:14,fontWeight:700}} aria-label={`${entry.drink_name} löschen`} onClick={()=>setConfirmDel(entry)}>✕</button>
+              <span style={{fontSize:"1.5rem"}}>{entry.emoji}</span>
+              <div style={{flex:1}}><div style={{fontWeight:700,fontSize:"0.875rem"}}>{entry.drink_name}</div></div>
+              <div style={{fontWeight:800,fontSize:"0.9375rem"}}>{eur(entry.price)}</div>
+              <button style={{background:"none",border:"none",color:T.textMuted,cursor:"pointer",fontSize:"0.875rem",fontWeight:700}} aria-label={`${entry.drink_name} löschen`} onClick={()=>setConfirmDel(entry)}>✕</button>
             </div>
           ))}
-          <div style={{fontSize:12,color:T.textSecondary,textAlign:"right",marginTop:4,paddingRight:36}}>
+          <div style={{fontSize:"0.75rem",color:T.textSecondary,textAlign:"right",marginTop:4,paddingRight:36}}>
             Summe: <strong>{eur(byDate[date].reduce((s,l)=>s+l.price,0))}</strong>
           </div>
         </div>
@@ -1947,14 +1947,14 @@ function KasseLogTab({myLog,myOpen,myTotal,onMarkPaid,onDeleteEntry}) {
 
       {paid.length>0&&(
         <div style={{marginTop:8}}>
-          <button style={{background:"none",border:"none",color:T.textMuted,cursor:"pointer",fontSize:13,padding:"4px 0",marginBottom:8}} onClick={()=>setShowPaid(p=>!p)}>
+          <button style={{background:"none",border:"none",color:T.textMuted,cursor:"pointer",fontSize:"0.8125rem",padding:"4px 0",marginBottom:8}} onClick={()=>setShowPaid(p=>!p)}>
             {showPaid?"▲ Bezahlte ausblenden":`▼ Bezahlte anzeigen (${paid.length})`}
           </button>
           {showPaid&&paid.map(entry=>(
             <div key={entry.id} style={{...S.card,display:"flex",alignItems:"center",gap:12,opacity:.6}}>
-              <span style={{fontSize:24}}>{entry.emoji}</span>
-              <div style={{flex:1}}><div style={{fontWeight:700,fontSize:14}}>{entry.drink_name}</div><div style={{fontSize:11,color:T.textMuted}}>Bezahlt ✓</div></div>
-              <div style={{fontWeight:800,fontSize:15,color:T.textMuted}}>{eur(entry.price)}</div>
+              <span style={{fontSize:"1.5rem"}}>{entry.emoji}</span>
+              <div style={{flex:1}}><div style={{fontWeight:700,fontSize:"0.875rem"}}>{entry.drink_name}</div><div style={{fontSize:"0.6875rem",color:T.textMuted}}>Bezahlt ✓</div></div>
+              <div style={{fontWeight:800,fontSize:"0.9375rem",color:T.textMuted}}>{eur(entry.price)}</div>
             </div>
           ))}
         </div>
@@ -1964,11 +1964,11 @@ function KasseLogTab({myLog,myOpen,myTotal,onMarkPaid,onDeleteEntry}) {
         <div style={S.overlay} onClick={()=>setShowConfirm(false)}>
           <div style={S.modal} onClick={e=>e.stopPropagation()}>
             <div style={S.modalHeader}><div style={S.modalTitle}>Bezahlung bestätigen</div><button style={S.closeBtn} onClick={()=>setShowConfirm(false)}>✕</button></div>
-            <p style={{color:T.textSecondary,fontSize:13,marginBottom:16}}>Bitte bestätige, dass du die Getränke beim Kassenwart bezahlt hast.</p>
+            <p style={{color:T.textSecondary,fontSize:"0.8125rem",marginBottom:16}}>Bitte bestätige, dass du die Getränke beim Kassenwart bezahlt hast.</p>
             <div style={{background:"#FEF3C7",borderRadius:10,padding:14,textAlign:"center",marginBottom:20}}>
-              <div style={{fontSize:11,color:"#92400E",fontWeight:700,marginBottom:4}}>BETRAG</div>
-              <div style={{fontSize:32,fontWeight:800}}>{eur(myTotal)}</div>
-              <div style={{fontSize:12,color:T.textSecondary,marginTop:4}}>{myOpen.length} Getränke</div>
+              <div style={{fontSize:"0.6875rem",color:"#92400E",fontWeight:700,marginBottom:4}}>BETRAG</div>
+              <div style={{fontSize:"2rem",fontWeight:800}}>{eur(myTotal)}</div>
+              <div style={{fontSize:"0.75rem",color:T.textSecondary,marginTop:4}}>{myOpen.length} Getränke</div>
             </div>
             <button style={{...S.primaryBtn,width:"100%",background:"#22C55E",color:"#fff",marginBottom:8}} onClick={()=>{onMarkPaid();setShowConfirm(false);}}>✓ Ja, bezahlt</button>
             <button style={{...S.ghostBtn,width:"100%"}} onClick={()=>setShowConfirm(false)}>Abbrechen</button>
@@ -1981,10 +1981,10 @@ function KasseLogTab({myLog,myOpen,myTotal,onMarkPaid,onDeleteEntry}) {
           <div style={S.modal} onClick={e=>e.stopPropagation()}>
             <div style={S.modalHeader}><div style={S.modalTitle}>Eintrag löschen?</div><button style={S.closeBtn} onClick={()=>setConfirmDel(null)}>✕</button></div>
             <div style={{display:"flex",alignItems:"center",gap:12,background:T.bgCard,borderRadius:10,padding:"14px 16px",marginBottom:20,border:`1px solid ${T.bgBorder}`}}>
-              <span style={{fontSize:28}}>{confirmDel.emoji}</span>
+              <span style={{fontSize:"1.75rem"}}>{confirmDel.emoji}</span>
               <div>
-                <div style={{fontWeight:700,fontSize:14,color:T.textPrimary}}>{confirmDel.drink_name}</div>
-                <div style={{fontSize:13,color:"#F59E0B",fontWeight:700}}>{eur(confirmDel.price)}</div>
+                <div style={{fontWeight:700,fontSize:"0.875rem",color:T.textPrimary}}>{confirmDel.drink_name}</div>
+                <div style={{fontSize:"0.8125rem",color:"#F59E0B",fontWeight:700}}>{eur(confirmDel.price)}</div>
               </div>
             </div>
             <button style={{...S.primaryBtn,width:"100%",background:"#DC2626",color:"#fff",marginBottom:8}} onClick={()=>{onDeleteEntry(confirmDel.id);setConfirmDel(null);}}>Löschen</button>
@@ -2026,7 +2026,7 @@ function KasseSettingsTab({favs,onAddFav,onUpdateFav,onDeleteFav}) {
           <div style={{marginBottom:12}}>
             <Lbl>Emoji</Lbl>
             <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
-              {KASSE_EMOJIS.map(e=>(<button key={e} onClick={()=>setEmoji(e)} style={{fontSize:18,padding:"4px 6px",border:`2px solid ${emoji===e?"#22C55E":"#E5E7EB"}`,borderRadius:6,background:emoji===e?"#DCFCE7":"#fff",cursor:"pointer"}}>{e}</button>))}
+              {KASSE_EMOJIS.map(e=>(<button key={e} onClick={()=>setEmoji(e)} style={{fontSize:"1.125rem",padding:"4px 6px",border:`2px solid ${emoji===e?"#22C55E":"#E5E7EB"}`,borderRadius:6,background:emoji===e?"#DCFCE7":"#fff",cursor:"pointer"}}>{e}</button>))}
             </div>
           </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr auto auto",gap:10,alignItems:"flex-end"}}>
@@ -2042,7 +2042,7 @@ function KasseSettingsTab({favs,onAddFav,onUpdateFav,onDeleteFav}) {
 
       {favs.length===0&&!showForm&&(
         <div style={{textAlign:"center",padding:"40px 0",color:T.textMuted}}>
-          <div style={{fontSize:36}}>🥤</div>
+          <div style={{fontSize:"2.25rem"}}>🥤</div>
           <div style={{marginTop:8}}>Noch keine Favoriten</div>
         </div>
       )}
@@ -2050,11 +2050,11 @@ function KasseSettingsTab({favs,onAddFav,onUpdateFav,onDeleteFav}) {
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:10}}>
         {favs.map(f=>(
           <div key={f.id} style={{...S.card,display:"flex",alignItems:"center",gap:12}}>
-            <span style={{fontSize:30}}>{f.emoji}</span>
-            <div style={{flex:1}}><div style={{fontWeight:700}}>{f.name}</div><div style={{fontSize:13,color:T.textSecondary}}>{eur(f.price)}</div></div>
+            <span style={{fontSize:"1.875rem"}}>{f.emoji}</span>
+            <div style={{flex:1}}><div style={{fontWeight:700}}>{f.name}</div><div style={{fontSize:"0.8125rem",color:T.textSecondary}}>{eur(f.price)}</div></div>
             <div style={{display:"flex",gap:4}}>
-              <button style={{background:"none",border:"1px solid #E5E7EB",borderRadius:6,cursor:"pointer",fontSize:14,padding:"4px 7px"}} onClick={()=>openEdit(f)}>✏️</button>
-              <button style={{...S.cancelBtn,padding:"4px 8px",fontSize:13}} onClick={()=>onDeleteFav(f.id)}>✕</button>
+              <button style={{background:"none",border:"1px solid #E5E7EB",borderRadius:6,cursor:"pointer",fontSize:"0.875rem",padding:"4px 7px"}} onClick={()=>openEdit(f)}>✏️</button>
+              <button style={{...S.cancelBtn,padding:"4px 8px",fontSize:"0.8125rem"}} onClick={()=>onDeleteFav(f.id)}>✕</button>
             </div>
           </div>
         ))}
@@ -2087,10 +2087,10 @@ function KasseAdminTab({log,onMarkPaid}) {
 
       <div style={{background:"#0F172A",borderRadius:12,padding:"16px 20px",marginBottom:20,display:"flex",alignItems:"center",gap:16,marginTop:16}}>
         <div>
-          <div style={{fontSize:11,color:T.textMuted,fontWeight:700}}>GESAMT OFFEN</div>
-          <div style={{fontSize:30,fontWeight:800,color:"#F59E0B"}}>{eur(totalOpen)}</div>
+          <div style={{fontSize:"0.6875rem",color:T.textMuted,fontWeight:700}}>GESAMT OFFEN</div>
+          <div style={{fontSize:"1.875rem",fontWeight:800,color:"#F59E0B"}}>{eur(totalOpen)}</div>
         </div>
-        <div style={{fontSize:12,color:T.textSecondary,borderLeft:"1px solid #334155",paddingLeft:16}}>
+        <div style={{fontSize:"0.75rem",color:T.textSecondary,borderLeft:"1px solid #334155",paddingLeft:16}}>
           {userStats.filter(u=>u.openCount>0).length} Mitglieder mit offenen Getränken
         </div>
       </div>
@@ -2103,27 +2103,27 @@ function KasseAdminTab({log,onMarkPaid}) {
         <div key={u.uid} style={{...S.card,border:`1.5px solid #F59E0B44`,background:"#F59E0B08",marginBottom:10}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
             <div>
-              <div style={{fontWeight:700,fontSize:15}}>{u.name}</div>
-              <div style={{fontSize:12,color:T.textSecondary}}>{u.openCount} offene Getränke</div>
+              <div style={{fontWeight:700,fontSize:"0.9375rem"}}>{u.name}</div>
+              <div style={{fontSize:"0.75rem",color:T.textSecondary}}>{u.openCount} offene Getränke</div>
             </div>
             <div style={{textAlign:"right"}}>
-              <div style={{fontWeight:800,fontSize:20,color:"#D97706"}}>{eur(u.openTotal)}</div>
-              <button style={{fontSize:11,padding:"3px 8px",background:"#DCFCE7",color:"#16A34A",border:"none",borderRadius:20,cursor:"pointer",fontWeight:700,marginTop:3}} onClick={()=>setConfirmPay(u)}>Als bezahlt markieren</button>
+              <div style={{fontWeight:800,fontSize:"1.25rem",color:"#D97706"}}>{eur(u.openTotal)}</div>
+              <button style={{fontSize:"0.6875rem",padding:"3px 8px",background:"#DCFCE7",color:"#16A34A",border:"none",borderRadius:20,cursor:"pointer",fontWeight:700,marginTop:3}} onClick={()=>setConfirmPay(u)}>Als bezahlt markieren</button>
             </div>
           </div>
           <div style={{borderTop:"1px solid #F3F4F6",paddingTop:8,display:"flex",flexWrap:"wrap",gap:6}}>
-            {u.openItems.map(item=>(<div key={item.id} style={{fontSize:12,background:"#FEF3C7",borderRadius:20,padding:"3px 10px",color:"#92400E",fontWeight:600}}>{item.emoji} {item.drink_name} · {eur(item.price)}</div>))}
+            {u.openItems.map(item=>(<div key={item.id} style={{fontSize:"0.75rem",background:"#FEF3C7",borderRadius:20,padding:"3px 10px",color:"#92400E",fontWeight:600}}>{item.emoji} {item.drink_name} · {eur(item.price)}</div>))}
           </div>
         </div>
       ))}
       {subtab==="open"&&userStats.filter(u=>u.openCount>0).length===0&&(
-        <div style={{textAlign:"center",padding:"40px 0",color:T.textMuted}}><div style={{fontSize:36}}>✅</div><div style={{marginTop:8}}>Alle auf dem neusten Stand!</div></div>
+        <div style={{textAlign:"center",padding:"40px 0",color:T.textMuted}}><div style={{fontSize:"2.25rem"}}>✅</div><div style={{marginTop:8}}>Alle auf dem neusten Stand!</div></div>
       )}
 
       {subtab==="history"&&userStats.map(u=>(
         <div key={u.uid} style={{...S.card,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div style={{fontWeight:700}}>{u.name}</div>
-          <div style={{display:"flex",gap:16,fontSize:13}}>
+          <div style={{display:"flex",gap:16,fontSize:"0.8125rem"}}>
             <div style={{color:"#D97706",fontWeight:700}}>{eur(u.openTotal)} offen</div>
             <div style={{color:"#22C55E",fontWeight:700}}>{eur(u.paidTotal)} bezahlt</div>
           </div>
@@ -2134,10 +2134,10 @@ function KasseAdminTab({log,onMarkPaid}) {
         <div style={S.overlay} onClick={()=>setConfirmPay(null)}>
           <div style={S.modal} onClick={e=>e.stopPropagation()}>
             <div style={S.modalHeader}><div style={S.modalTitle}>Zahlung bestätigen</div><button style={S.closeBtn} onClick={()=>setConfirmPay(null)}>✕</button></div>
-            <p style={{color:T.textSecondary,fontSize:13,marginBottom:16}}>{confirmPay.name} als bezahlt markieren?</p>
+            <p style={{color:T.textSecondary,fontSize:"0.8125rem",marginBottom:16}}>{confirmPay.name} als bezahlt markieren?</p>
             <div style={{background:"#FEF3C7",borderRadius:10,padding:14,textAlign:"center",marginBottom:20}}>
-              <div style={{fontSize:11,color:"#92400E",fontWeight:700,marginBottom:4}}>BETRAG</div>
-              <div style={{fontSize:32,fontWeight:800}}>{eur(confirmPay.openTotal)}</div>
+              <div style={{fontSize:"0.6875rem",color:"#92400E",fontWeight:700,marginBottom:4}}>BETRAG</div>
+              <div style={{fontSize:"2rem",fontWeight:800}}>{eur(confirmPay.openTotal)}</div>
             </div>
             <button style={{...S.primaryBtn,width:"100%",background:"#22C55E",color:"#fff",marginBottom:8}} onClick={()=>{onMarkPaid(confirmPay.uid);setConfirmPay(null);}}>✓ Als bezahlt markieren</button>
             <button style={{...S.ghostBtn,width:"100%"}} onClick={()=>setConfirmPay(null)}>Abbrechen</button>
@@ -2168,7 +2168,7 @@ function KasseQuickModal({onLog,onClose}) {
         <div style={{marginBottom:14}}>
           <Lbl>Emoji</Lbl>
           <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
-            {KASSE_EMOJIS.map(e=>(<button key={e} onClick={()=>setEmoji(e)} style={{fontSize:18,padding:"4px 6px",border:`2px solid ${emoji===e?"#22C55E":"#E5E7EB"}`,borderRadius:6,background:emoji===e?"#DCFCE7":"#fff",cursor:"pointer"}}>{e}</button>))}
+            {KASSE_EMOJIS.map(e=>(<button key={e} onClick={()=>setEmoji(e)} style={{fontSize:"1.125rem",padding:"4px 6px",border:`2px solid ${emoji===e?"#22C55E":"#E5E7EB"}`,borderRadius:6,background:emoji===e?"#DCFCE7":"#fff",cursor:"pointer"}}>{e}</button>))}
           </div>
         </div>
         <div style={{marginBottom:14}}>
@@ -2183,14 +2183,14 @@ function KasseQuickModal({onLog,onClose}) {
           <div>
             <Lbl>Anzahl</Lbl>
             <div style={{display:"flex",alignItems:"center",border:"1.5px solid #E5E7EB",borderRadius:8,overflow:"hidden",height:40}}>
-              <button style={{width:36,height:"100%",border:"none",background:"#F3F4F6",color:"#374151",fontSize:18,fontWeight:700,cursor:"pointer"}} onClick={()=>setQty(q=>Math.max(1,q-1))}>−</button>
-              <span style={{width:36,textAlign:"center",fontWeight:800,fontSize:16}}>{qty}</span>
-              <button style={{width:36,height:"100%",border:"none",background:"#F3F4F6",color:"#374151",fontSize:18,fontWeight:700,cursor:"pointer"}} onClick={()=>setQty(q=>q+1)}>+</button>
+              <button style={{width:36,height:"100%",border:"none",background:"#F3F4F6",color:"#374151",fontSize:"1.125rem",fontWeight:700,cursor:"pointer"}} onClick={()=>setQty(q=>Math.max(1,q-1))}>−</button>
+              <span style={{width:36,textAlign:"center",fontWeight:800,fontSize:"1rem"}}>{qty}</span>
+              <button style={{width:36,height:"100%",border:"none",background:"#F3F4F6",color:"#374151",fontSize:"1.125rem",fontWeight:700,cursor:"pointer"}} onClick={()=>setQty(q=>q+1)}>+</button>
             </div>
           </div>
         </div>
         {price&&!isNaN(parseFloat(price.replace(",","."))&&(
-          <div style={{background:"#F9FAFB",borderRadius:8,padding:"10px 14px",marginBottom:16,display:"flex",justifyContent:"space-between",fontSize:13}}>
+          <div style={{background:"#F9FAFB",borderRadius:8,padding:"10px 14px",marginBottom:16,display:"flex",justifyContent:"space-between",fontSize:"0.8125rem"}}>
             <span style={{color:T.textSecondary}}>{qty}× {eur(parseFloat(price.replace(",",".")))}</span>
             <span style={{fontWeight:800}}>= {eur(qty*parseFloat(price.replace(",",".")))}</span>
           </div>
@@ -2229,7 +2229,7 @@ function SettingsApp({profile,onBack}) {
             <button style={H.backBtn} onClick={onBack}>‹ Zurück</button>
           </div>
           <div style={{...H.header,paddingTop:12}}>
-            <h1 style={{...H.title,fontSize:22}}>⚙️ Einstellungen</h1>
+            <h1 style={{...H.title,fontSize:"1.375rem"}}>⚙️ Einstellungen</h1>
             <p style={H.greeting}>Betrieb · Mitglieder · Berechtigungen</p>
           </div>
         </div>
@@ -2251,7 +2251,7 @@ function SettingsApp({profile,onBack}) {
             <div style={{display:"flex",gap:20,borderBottom:`1.5px solid ${T.bgBorder}`,marginBottom:16,flexWrap:"wrap"}}>
               {[{id:"booking",icon:"📅",label:"Buchung"},{id:"courts",icon:"🎾",label:"Plätze"},{id:"jobs",icon:"⚡",label:"Hintergrund"}].map(t=>(
                 <button key={t.id} onClick={()=>setBetriebTabP(t.id)}
-                  style={{padding:"6px 2px 10px",border:"none",borderBottom:betriebTab===t.id?`2px solid ${T.purple}`:"2px solid transparent",background:"none",color:betriebTab===t.id?T.textPrimary:T.textMuted,fontSize:13,fontWeight:betriebTab===t.id?700:600,cursor:"pointer"}}>
+                  style={{padding:"6px 2px 10px",border:"none",borderBottom:betriebTab===t.id?`2px solid ${T.purple}`:"2px solid transparent",background:"none",color:betriebTab===t.id?T.textPrimary:T.textMuted,fontSize:"0.8125rem",fontWeight:betriebTab===t.id?700:600,cursor:"pointer"}}>
                   {t.icon} {t.label}
                 </button>
               ))}
@@ -2297,8 +2297,8 @@ function SettingsBookingTab({onToast}) {
   return (
     <div style={K.page}>
       <div style={{...S.card,border:`1.5px solid #8B5CF644`,background:"#8B5CF608",marginTop:4}}>
-        <div style={{fontWeight:700,fontSize:15,marginBottom:4}}>Gästegebühr</div>
-        <div style={{fontSize:13,color:T.textSecondary,marginBottom:16}}>Betrag pro Buchung mit Gastspieler – wird am Jahresende abgerechnet</div>
+        <div style={{fontWeight:700,fontSize:"0.9375rem",marginBottom:4}}>Gästegebühr</div>
+        <div style={{fontSize:"0.8125rem",color:T.textSecondary,marginBottom:16}}>Betrag pro Buchung mit Gastspieler – wird am Jahresende abgerechnet</div>
         <div style={{display:"flex",alignItems:"flex-end",gap:12}}>
           <div style={{flex:1,maxWidth:160}}>
             <Lbl>Betrag (€)</Lbl>
@@ -2359,17 +2359,17 @@ function SettingsCourtsTab({onToast}) {
       )}
 
       {courts.length===0&&!showForm&&(
-        <div style={{textAlign:"center",padding:"40px 0",color:T.textMuted}}><div style={{fontSize:36}}>🎾</div><div style={{marginTop:8}}>Noch keine Plätze angelegt</div></div>
+        <div style={{textAlign:"center",padding:"40px 0",color:T.textMuted}}><div style={{fontSize:"2.25rem"}}>🎾</div><div style={{marginTop:8}}>Noch keine Plätze angelegt</div></div>
       )}
 
       <div style={{display:"flex",flexDirection:"column",gap:8}}>
         {courts.map((c,i)=>(
           <div key={c.id} style={{...S.card,display:"flex",alignItems:"center",gap:14}}>
             <div style={{width:10,height:10,borderRadius:"50%",background:COURT_COLORS[i%COURT_COLORS.length],flexShrink:0}}/>
-            <div style={{flex:1}}><div style={{fontWeight:700}}>{c.name}</div><div style={{fontSize:12,color:T.textSecondary}}>{c.surface}</div></div>
+            <div style={{flex:1}}><div style={{fontWeight:700}}>{c.name}</div><div style={{fontSize:"0.75rem",color:T.textSecondary}}>{c.surface}</div></div>
             <div style={{display:"flex",gap:6}}>
-              <button style={{background:"none",border:"1px solid #E5E7EB",borderRadius:6,cursor:"pointer",fontSize:14,padding:"4px 7px"}} onClick={()=>openEdit(c)}>✏️</button>
-              <button style={{...S.cancelBtn,padding:"4px 8px",fontSize:13}} onClick={()=>handleDelete(c.id,c.name)}>✕</button>
+              <button style={{background:"none",border:"1px solid #E5E7EB",borderRadius:6,cursor:"pointer",fontSize:"0.875rem",padding:"4px 7px"}} onClick={()=>openEdit(c)}>✏️</button>
+              <button style={{...S.cancelBtn,padding:"4px 8px",fontSize:"0.8125rem"}} onClick={()=>handleDelete(c.id,c.name)}>✕</button>
             </div>
           </div>
         ))}
@@ -2428,7 +2428,7 @@ function SettingsMembersTab({onToast}) {
 
   const Arrow=({col})=>sort.col!==col?<span style={{color:T.textMuted}}>⇅</span>:<span style={{color:T.textSecondary}}>{sort.dir===1?"↑":"↓"}</span>;
   const Th=({col,label,w})=>(
-    <th onClick={()=>toggleSort(col)} style={{textAlign:"left",padding:"9px 10px",fontSize:11,fontWeight:700,color:T.textSecondary,textTransform:"uppercase",letterSpacing:.6,cursor:"pointer",userSelect:"none",whiteSpace:"nowrap",width:w}}>
+    <th onClick={()=>toggleSort(col)} style={{textAlign:"left",padding:"9px 10px",fontSize:"0.6875rem",fontWeight:700,color:T.textSecondary,textTransform:"uppercase",letterSpacing:.6,cursor:"pointer",userSelect:"none",whiteSpace:"nowrap",width:w}}>
       {label} <Arrow col={col}/>
     </th>
   );
@@ -2446,7 +2446,7 @@ function SettingsMembersTab({onToast}) {
         <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
           {["all","pending","known","member","member2","admin"].map(r=>(
             <button key={r} onClick={()=>setRoleFilter(r)}
-              style={{padding:"6px 12px",borderRadius:20,border:`1.5px solid ${roleFilter===r?"#374151":"#E5E7EB"}`,background:roleFilter===r?"#374151":"#fff",color:roleFilter===r?"#fff":"#374151",fontSize:12,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}}>
+              style={{padding:"6px 12px",borderRadius:20,border:`1.5px solid ${roleFilter===r?"#374151":"#E5E7EB"}`,background:roleFilter===r?"#374151":"#fff",color:roleFilter===r?"#fff":"#374151",fontSize:"0.75rem",fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}}>
               {ROLE_FILTER_LABELS[r]}{r!=="all"&&<span style={{marginLeft:4,opacity:.65}}>({members.filter(m=>m.role===r).length})</span>}
             </button>
           ))}
@@ -2454,7 +2454,7 @@ function SettingsMembersTab({onToast}) {
       </div>
 
       <div style={{marginTop:14,overflowX:"auto",border:"1.5px solid #E5E7EB",borderRadius:10}}>
-        <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:"0.8125rem"}}>
           <thead style={{background:"#F9FAFB",borderBottom:"1.5px solid #E5E7EB"}}>
             <tr>
               <Th col="vorname"  label="Vorname"  w="16%"/>
@@ -2477,7 +2477,7 @@ function SettingsMembersTab({onToast}) {
                   <td style={{padding:"10px 10px",color:T.textSecondary,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.email||"–"}</td>
                   <td style={{padding:"10px 10px"}}>
                     <select value={m.role||"pending"} disabled={saving===m.id} onChange={e=>changeRole(m.id,e.target.value)}
-                      style={{border:`1.5px solid ${c.border}`,borderRadius:20,padding:"4px 8px",fontSize:11,fontWeight:700,cursor:"pointer",background:c.bg,color:c.color,width:"100%",maxWidth:140}}>
+                      style={{border:`1.5px solid ${c.border}`,borderRadius:20,padding:"4px 8px",fontSize:"0.6875rem",fontWeight:700,cursor:"pointer",background:c.bg,color:c.color,width:"100%",maxWidth:140}}>
                       <option value="pending">⏳ Ausstehend</option>
                       <option value="known">🤝 Bekannt</option>
                       <option value="member">Mitglied</option>
@@ -2486,7 +2486,7 @@ function SettingsMembersTab({onToast}) {
                     </select>
                   </td>
                   <td style={{padding:"10px 10px",textAlign:"right"}}>
-                    <button style={{...S.cancelBtn,padding:"4px 10px",fontSize:12}} onClick={()=>deleteMember(m.id,m.name)}>Löschen</button>
+                    <button style={{...S.cancelBtn,padding:"4px 10px",fontSize:"0.75rem"}} onClick={()=>deleteMember(m.id,m.name)}>Löschen</button>
                   </td>
                 </tr>
               );
@@ -2543,17 +2543,17 @@ function SettingsPermissionsTab({onToast}) {
 
   const PermTable = ({title, rows, getValue, onToggle, rowLabel}) => (
     <div style={{marginTop:24,padding:"16px 18px",background:T.bgCard,border:`1px solid ${T.bgBorder}`,borderRadius:T.rMd,overflowX:"auto"}}>
-      <div style={{fontSize:12,fontWeight:700,color:T.textSecondary,textTransform:"uppercase",letterSpacing:.7,marginBottom:10}}>{title}</div>
-      <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+      <div style={{fontSize:"0.75rem",fontWeight:700,color:T.textSecondary,textTransform:"uppercase",letterSpacing:.7,marginBottom:10}}>{title}</div>
+      <table style={{width:"100%",borderCollapse:"collapse",fontSize:"0.8125rem"}}>
         <thead>
           <tr>
-            <th style={{textAlign:"left",padding:"8px 10px",color:T.textSecondary,fontWeight:700,fontSize:11,textTransform:"uppercase",letterSpacing:.7}}>{rowLabel}</th>
+            <th style={{textAlign:"left",padding:"8px 10px",color:T.textSecondary,fontWeight:700,fontSize:"0.6875rem",textTransform:"uppercase",letterSpacing:.7}}>{rowLabel}</th>
             {PERM_ROLES.map(r=>(
-              <th key={r} style={{padding:"6px 8px",color:roleColors[r],fontWeight:700,fontSize:10,textTransform:"uppercase",letterSpacing:.5,textAlign:"center",whiteSpace:"nowrap"}}>
+              <th key={r} style={{padding:"6px 8px",color:roleColors[r],fontWeight:700,fontSize:"0.625rem",textTransform:"uppercase",letterSpacing:.5,textAlign:"center",whiteSpace:"nowrap"}}>
                 {roleLabels[r]}
               </th>
             ))}
-            <th style={{padding:"6px 8px",color:"#8B5CF6",fontWeight:700,fontSize:10,textTransform:"uppercase",letterSpacing:.5,textAlign:"center"}}>Admin</th>
+            <th style={{padding:"6px 8px",color:"#8B5CF6",fontWeight:700,fontSize:"0.625rem",textTransform:"uppercase",letterSpacing:.5,textAlign:"center"}}>Admin</th>
           </tr>
         </thead>
         <tbody>
@@ -2597,7 +2597,7 @@ function SettingsPermissionsTab({onToast}) {
 
       <div style={{marginTop:24,textAlign:"right"}}>
         <button onClick={save} disabled={saving}
-          style={{background:"#22C55E",color:"#fff",border:"none",borderRadius:8,padding:"10px 24px",fontWeight:700,fontSize:14,cursor:"pointer",opacity:saving?.6:1}}>
+          style={{background:"#22C55E",color:"#fff",border:"none",borderRadius:8,padding:"10px 24px",fontWeight:700,fontSize:"0.875rem",cursor:"pointer",opacity:saving?.6:1}}>
           {saving?"Wird gespeichert…":"Speichern"}
         </button>
       </div>
@@ -2723,7 +2723,7 @@ function RubberModal({rubber, homePlayers, awayPlayers, onSave, onClose}) {
   ];
   const curR = RESULTS.find(r=>r.v===result)||RESULTS[0];
 
-  const selStyle = {width:"100%",fontSize:12,border:"1.5px solid #E5E7EB",borderRadius:6,
+  const selStyle = {width:"100%",fontSize:"0.75rem",border:"1.5px solid #E5E7EB",borderRadius:6,
     padding:"5px 6px",boxSizing:"border-box",background:"#fff"};
 
   const renderSel = (val, setVal, players, placeholder) => {
@@ -2745,7 +2745,7 @@ function RubberModal({rubber, homePlayers, awayPlayers, onSave, onClose}) {
           <button key={n} onClick={()=>onChange(String(n))}
             style={{width:32,height:32,borderRadius:6,border:`2px solid ${sel?color:"#E5E7EB"}`,
               background:sel?color:"#fff",color:sel?"#fff":"#374151",
-              fontSize:13,fontWeight:800,cursor:"pointer",padding:0,transition:"all .1s"}}>
+              fontSize:"0.8125rem",fontWeight:800,cursor:"pointer",padding:0,transition:"all .1s"}}>
             {n}
           </button>
         );
@@ -2760,7 +2760,7 @@ function RubberModal({rubber, homePlayers, awayPlayers, onSave, onClose}) {
         <div style={S.modalHeader}>
           <div style={{...S.modalTitle,display:"flex",alignItems:"center",gap:8}}>
             <span style={{background:"#1D4ED8",color:"#fff",borderRadius:6,
-              padding:"2px 8px",fontSize:13,fontWeight:800}}>{rubber.id}</span>
+              padding:"2px 8px",fontSize:"0.8125rem",fontWeight:800}}>{rubber.id}</span>
             <span>{isD?"Doppel":"Einzel"}</span>
           </div>
           <button style={S.closeBtn} onClick={onClose}>✕</button>
@@ -2768,17 +2768,17 @@ function RubberModal({rubber, homePlayers, awayPlayers, onSave, onClose}) {
 
         {/* Spieler */}
         <div style={{marginBottom:14}}>
-          <div style={{fontSize:10,fontWeight:700,color:T.textSecondary,marginBottom:6}}>SPIELER</div>
+          <div style={{fontSize:"0.625rem",fontWeight:700,color:T.textSecondary,marginBottom:6}}>SPIELER</div>
           <div style={{display:"flex",flexDirection:"column",gap:5}}>
             <div style={{display:"flex",alignItems:"center",gap:6}}>
-              <span style={{fontSize:10,fontWeight:700,color:"#1D4ED8",width:30,flexShrink:0}}>Heim</span>
+              <span style={{fontSize:"0.625rem",fontWeight:700,color:"#1D4ED8",width:30,flexShrink:0}}>Heim</span>
               {isD?<div style={{display:"flex",gap:4,flex:1}}>
                 {renderSel(h1,setH1,homePlayers,"H1")}
                 {renderSel(h2,setH2,homePlayers,"H2")}
               </div>:renderSel(h1,setH1,homePlayers,"Heim-Spieler")}
             </div>
             <div style={{display:"flex",alignItems:"center",gap:6}}>
-              <span style={{fontSize:10,fontWeight:700,color:T.textSecondary,width:30,flexShrink:0}}>Gast</span>
+              <span style={{fontSize:"0.625rem",fontWeight:700,color:T.textSecondary,width:30,flexShrink:0}}>Gast</span>
               {isD?<div style={{display:"flex",gap:4,flex:1}}>
                 {renderSel(a1,setA1,awayPlayers,"G1")}
                 {renderSel(a2,setA2,awayPlayers,"G2")}
@@ -2797,10 +2797,10 @@ function RubberModal({rubber, homePlayers, awayPlayers, onSave, onClose}) {
               background:isTb?"#F8FAFC":"#fff",
               border:`1.5px solid ${sw==="home"?"#BBF7D0":sw==="away"?"#FECACA":"#E5E7EB"}`}}>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:isTb?8:10}}>
-                <span style={{fontSize:11,fontWeight:700,color:isTb?"#9CA3AF":"#374151"}}>
+                <span style={{fontSize:"0.6875rem",fontWeight:700,color:isTb?"#9CA3AF":"#374151"}}>
                   {isTb?"3. Satz · Super-Tiebreak (opt.)":`${i+1}. Satz`}
                 </span>
-                <span style={{fontSize:18,fontWeight:800,fontFamily:"monospace",
+                <span style={{fontSize:"1.125rem",fontWeight:800,fontFamily:"monospace",
                   color:sw==="home"?"#059669":sw==="away"?"#DC2626":"#9CA3AF"}}>
                   {sets[i].home!==""||sets[i].away!==""
                     ? `${sets[i].home}:${sets[i].away}` : "–:–"}
@@ -2809,30 +2809,30 @@ function RubberModal({rubber, homePlayers, awayPlayers, onSave, onClose}) {
               {isTb ? (
                 <div style={{display:"flex",alignItems:"center",gap:10,justifyContent:"center"}}>
                   <div style={{textAlign:"center"}}>
-                    <div style={{fontSize:10,fontWeight:700,color:"#1D4ED8",marginBottom:4}}>HEIM</div>
+                    <div style={{fontSize:"0.625rem",fontWeight:700,color:"#1D4ED8",marginBottom:4}}>HEIM</div>
                     <input type="number" min={0} value={sets[i].home}
                       onChange={e=>updSet(i,"home",e.target.value)}
-                      style={{width:60,textAlign:"center",fontSize:22,fontWeight:800,
+                      style={{width:60,textAlign:"center",fontSize:"1.375rem",fontWeight:800,
                         border:"1.5px solid #E5E7EB",borderRadius:8,padding:"6px 0",background:"#F8FAFC"}}/>
                   </div>
-                  <span style={{fontSize:22,color:T.textMuted,fontWeight:700,marginTop:18}}>:</span>
+                  <span style={{fontSize:"1.375rem",color:T.textMuted,fontWeight:700,marginTop:18}}>:</span>
                   <div style={{textAlign:"center"}}>
-                    <div style={{fontSize:10,fontWeight:700,color:T.textSecondary,marginBottom:4}}>GAST</div>
+                    <div style={{fontSize:"0.625rem",fontWeight:700,color:T.textSecondary,marginBottom:4}}>GAST</div>
                     <input type="number" min={0} value={sets[i].away}
                       onChange={e=>updSet(i,"away",e.target.value)}
-                      style={{width:60,textAlign:"center",fontSize:22,fontWeight:800,
+                      style={{width:60,textAlign:"center",fontSize:"1.375rem",fontWeight:800,
                         border:"1.5px solid #E5E7EB",borderRadius:8,padding:"6px 0",background:"#F8FAFC"}}/>
                   </div>
                 </div>
               ) : (
                 <div style={{display:"flex",flexDirection:"column",gap:6}}>
                   <div>
-                    <div style={{fontSize:10,fontWeight:700,color:"#1D4ED8",marginBottom:4}}>HEIM</div>
+                    <div style={{fontSize:"0.625rem",fontWeight:700,color:"#1D4ED8",marginBottom:4}}>HEIM</div>
                     <NumBtns max={7} val={sets[i].home} color="#1D4ED8"
                       onChange={v=>updSet(i,"home",v)}/>
                   </div>
                   <div>
-                    <div style={{fontSize:10,fontWeight:700,color:T.textSecondary,marginBottom:4}}>GAST</div>
+                    <div style={{fontSize:"0.625rem",fontWeight:700,color:T.textSecondary,marginBottom:4}}>GAST</div>
                     <NumBtns max={7} val={sets[i].away} color="#6B7280"
                       onChange={v=>updSet(i,"away",v)}/>
                   </div>
@@ -2848,12 +2848,12 @@ function RubberModal({rubber, homePlayers, awayPlayers, onSave, onClose}) {
           border:`1.5px solid ${wo?"#FBBF24":"#E5E7EB"}`,
           background:wo?"#FFFBEB":"#FAFAFA"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-            <div style={{fontSize:10,fontWeight:700,color:wo?"#92400E":"#6B7280"}}>
+            <div style={{fontSize:"0.625rem",fontWeight:700,color:wo?"#92400E":"#6B7280"}}>
               AUFGABE / W.O.{wo?" — AKTIV":""}
             </div>
             {wo&&(
               <button onClick={()=>{setWo(null);setManualResult(false);setResult(calcResult(sets));}}
-                style={{fontSize:10,color:"#6366F1",background:"none",border:"none",
+                style={{fontSize:"0.625rem",color:"#6366F1",background:"none",border:"none",
                   cursor:"pointer",textDecoration:"underline"}}>
                 Aufheben
               </button>
@@ -2861,14 +2861,14 @@ function RubberModal({rubber, homePlayers, awayPlayers, onSave, onClose}) {
           </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
             <button onClick={()=>{setWo("home");setResult("loss");setManualResult(true);}}
-              style={{padding:"9px 0",fontSize:12,fontWeight:700,borderRadius:8,cursor:"pointer",
+              style={{padding:"9px 0",fontSize:"0.75rem",fontWeight:700,borderRadius:8,cursor:"pointer",
                 border:`2px solid ${wo==="home"?"#FECACA":"#E5E7EB"}`,
                 background:wo==="home"?"#FEF2F2":"#fff",
                 color:wo==="home"?"#DC2626":"#9CA3AF",transition:"all .12s"}}>
               Heim gibt auf
             </button>
             <button onClick={()=>{setWo("away");setResult("win");setManualResult(true);}}
-              style={{padding:"9px 0",fontSize:12,fontWeight:700,borderRadius:8,cursor:"pointer",
+              style={{padding:"9px 0",fontSize:"0.75rem",fontWeight:700,borderRadius:8,cursor:"pointer",
                 border:`2px solid ${wo==="away"?"#BBF7D0":"#E5E7EB"}`,
                 background:wo==="away"?"#F0FDF4":"#fff",
                 color:wo==="away"?"#059669":"#9CA3AF",transition:"all .12s"}}>
@@ -2880,10 +2880,10 @@ function RubberModal({rubber, homePlayers, awayPlayers, onSave, onClose}) {
         {/* Status — auto + manuell überschreibbar */}
         <div style={{marginBottom:16}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-            <div style={{fontSize:10,fontWeight:700,color:T.textSecondary}}>ERGEBNIS</div>
+            <div style={{fontSize:"0.625rem",fontWeight:700,color:T.textSecondary}}>ERGEBNIS</div>
             {manualResult&&(
               <button onClick={()=>{setManualResult(false);setResult(calcResult(sets));}}
-                style={{fontSize:10,color:"#6366F1",background:"none",border:"none",
+                style={{fontSize:"0.625rem",color:"#6366F1",background:"none",border:"none",
                   cursor:"pointer",textDecoration:"underline"}}>
                 Auto-Erkennung
               </button>
@@ -2892,7 +2892,7 @@ function RubberModal({rubber, homePlayers, awayPlayers, onSave, onClose}) {
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
             {RESULTS.map(r=>(
               <button key={r.v} onClick={()=>{setResult(r.v);setManualResult(true);}}
-                style={{padding:"11px 0",fontSize:12,fontWeight:700,borderRadius:8,cursor:"pointer",
+                style={{padding:"11px 0",fontSize:"0.75rem",fontWeight:700,borderRadius:8,cursor:"pointer",
                   border:`2px solid ${result===r.v?r.border:"#E5E7EB"}`,
                   background:result===r.v?r.bg:"#fff",
                   color:result===r.v?r.color:"#9CA3AF",transition:"all .12s"}}>
@@ -2904,7 +2904,7 @@ function RubberModal({rubber, homePlayers, awayPlayers, onSave, onClose}) {
 
         <button onClick={handleSave}
           style={{...S.primaryBtn,width:"100%",background:curR.color,color:"#fff",
-            fontSize:14,padding:"13px"}}>
+            fontSize:"0.875rem",padding:"13px"}}>
           {curR.label === "Offen" || curR.label === "● Läuft" ? "Übernehmen" : `${curR.label} speichern`}
         </button>
       </div>
@@ -3040,7 +3040,7 @@ function HeimspieleEdit({onToast, onSaved, reloadKey, hideShare=false}) {
   })();
 
   if (loading) return (
-    <div style={{padding:"16px",fontSize:12,color:T.textMuted,textAlign:"center"}}>Lade Daten…</div>
+    <div style={{padding:"16px",fontSize:"0.75rem",color:T.textMuted,textAlign:"center"}}>Lade Daten…</div>
   );
 
   const hasP = rubbers.some(r=>(r.home||"").trim()||(r.away||"").trim());
@@ -3049,8 +3049,8 @@ function HeimspieleEdit({onToast, onSaved, reloadKey, hideShare=false}) {
   const resColor = r => ({win:"#059669",loss:"#EF4444",live:"#F59E0B",open:"#9CA3AF"}[r]||"#9CA3AF");
   const statusLabel = s => ({upcoming:"geplant",live:"läuft 🔴",done:"fertig ✓"}[s]||"–");
   const statusColor = s => ({upcoming:"#6B7280",live:"#059669",done:"#1D4ED8"}[s]||"#6B7280");
-  const inp = {width:"100%",fontSize:12,border:"1.5px solid #E5E7EB",borderRadius:6,padding:"4px 8px",boxSizing:"border-box"};
-  const sel = {width:"100%",fontSize:11,border:"1.5px solid #E5E7EB",borderRadius:6,padding:"4px 6px",boxSizing:"border-box",background:"#fff",color:T.textSecondary};
+  const inp = {width:"100%",fontSize:"0.75rem",border:"1.5px solid #E5E7EB",borderRadius:6,padding:"4px 8px",boxSizing:"border-box"};
+  const sel = {width:"100%",fontSize:"0.6875rem",border:"1.5px solid #E5E7EB",borderRadius:6,padding:"4px 6px",boxSizing:"border-box",background:"#fff",color:T.textSecondary};
 
   const renderSide = (r, side, players) => {
     const isD = r.id.startsWith("D");
@@ -3092,10 +3092,10 @@ function HeimspieleEdit({onToast, onSaved, reloadKey, hideShare=false}) {
       {dirty&&(
         <div style={{background:"#FFFBEB",borderBottom:"1px solid #FDE68A",
           padding:"8px 12px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-          <span style={{fontSize:11,color:"#92400E",fontWeight:600}}>● Ungespeicherte Änderungen</span>
+          <span style={{fontSize:"0.6875rem",color:"#92400E",fontWeight:600}}>● Ungespeicherte Änderungen</span>
           <button onClick={save} disabled={saving}
             style={{background:"#D97706",color:"#fff",border:"none",borderRadius:6,
-              padding:"5px 14px",fontSize:12,fontWeight:700,cursor:"pointer",opacity:saving?0.6:1}}>
+              padding:"5px 14px",fontSize:"0.75rem",fontWeight:700,cursor:"pointer",opacity:saving?0.6:1}}>
             {saving?"Speichern…":"📲 Auf Display übertragen"}
           </button>
         </div>
@@ -3105,24 +3105,24 @@ function HeimspieleEdit({onToast, onSaved, reloadKey, hideShare=false}) {
       <div style={{padding:"12px",background:"#fff",borderBottom:"1px solid #E2E8F0"}}>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
           <div>
-            <div style={{fontSize:10,fontWeight:700,color:T.textSecondary,marginBottom:3}}>HEIMTEAM</div>
+            <div style={{fontSize:"0.625rem",fontWeight:700,color:T.textSecondary,marginBottom:3}}>HEIMTEAM</div>
             <input value={homeTeam} onChange={e=>{setHomeTeam(e.target.value);setDirty(true);}} style={inp} placeholder="TC Herrieden I"/>
           </div>
           <div>
-            <div style={{fontSize:10,fontWeight:700,color:T.textSecondary,marginBottom:3}}>GASTTEAM</div>
+            <div style={{fontSize:"0.625rem",fontWeight:700,color:T.textSecondary,marginBottom:3}}>GASTTEAM</div>
             <input value={awayTeam} onChange={e=>{setAwayTeam(e.target.value);setDirty(true);}} style={inp} placeholder="TC Gegner"/>
           </div>
           <div>
-            <div style={{fontSize:10,fontWeight:700,color:T.textSecondary,marginBottom:3}}>LIGA</div>
+            <div style={{fontSize:"0.625rem",fontWeight:700,color:T.textSecondary,marginBottom:3}}>LIGA</div>
             <input value={league} onChange={e=>{setLeague(e.target.value);setDirty(true);}} style={inp} placeholder="Bezirksliga"/>
           </div>
           <div style={{display:"flex",gap:6}}>
             <div style={{flex:2}}>
-              <div style={{fontSize:10,fontWeight:700,color:T.textSecondary,marginBottom:3}}>DATUM</div>
+              <div style={{fontSize:"0.625rem",fontWeight:700,color:T.textSecondary,marginBottom:3}}>DATUM</div>
               <input type="date" value={matchDate} onChange={e=>{setMatchDate(e.target.value);setDirty(true);}} style={inp}/>
             </div>
             <div style={{flex:1}}>
-              <div style={{fontSize:10,fontWeight:700,color:T.textSecondary,marginBottom:3}}>UHRZEIT</div>
+              <div style={{fontSize:"0.625rem",fontWeight:700,color:T.textSecondary,marginBottom:3}}>UHRZEIT</div>
               <input type="time" value={matchTime} onChange={e=>{setMatchTime(e.target.value);setDirty(true);}} style={inp}/>
             </div>
           </div>
@@ -3134,7 +3134,7 @@ function HeimspieleEdit({onToast, onSaved, reloadKey, hideShare=false}) {
           <div style={{display:"flex",gap:4}}>
             {["4er","6er"].map(f=>(
               <button key={f} onClick={()=>switchFormat(f)}
-                style={{padding:"3px 10px",fontSize:11,fontWeight:700,borderRadius:5,cursor:"pointer",
+                style={{padding:"3px 10px",fontSize:"0.6875rem",fontWeight:700,borderRadius:5,cursor:"pointer",
                   background:format===f?"#1D4ED8":"#fff",color:format===f?"#fff":"#6B7280",
                   border:`1.5px solid ${format===f?"#1D4ED8":"#E5E7EB"}`}}>
                 {f}
@@ -3142,14 +3142,14 @@ function HeimspieleEdit({onToast, onSaved, reloadKey, hideShare=false}) {
             ))}
           </div>
           <div style={{flex:1}}/>
-          <span style={{fontSize:11,fontWeight:700,color:statusColor(currentStatus)}}>
+          <span style={{fontSize:"0.6875rem",fontWeight:700,color:statusColor(currentStatus)}}>
             {statusLabel(currentStatus)}
           </span>
           <div style={{display:"flex",alignItems:"center",gap:4}}>
-            <span style={{fontSize:22,fontWeight:800,color:T.textPrimary,fontFamily:"monospace",
+            <span style={{fontSize:"1.375rem",fontWeight:800,color:T.textPrimary,fontFamily:"monospace",
               minWidth:20,textAlign:"center"}}>{rubbers.filter(r=>r.result==="win").length}</span>
-            <span style={{fontSize:16,color:T.textMuted,fontWeight:700}}>:</span>
-            <span style={{fontSize:22,fontWeight:800,color:T.textPrimary,fontFamily:"monospace",
+            <span style={{fontSize:"1rem",color:T.textMuted,fontWeight:700}}>:</span>
+            <span style={{fontSize:"1.375rem",fontWeight:800,color:T.textPrimary,fontFamily:"monospace",
               minWidth:20,textAlign:"center"}}>{rubbers.filter(r=>r.result==="loss").length}</span>
           </div>
         </div>
@@ -3180,7 +3180,7 @@ function HeimspieleEdit({onToast, onSaved, reloadKey, hideShare=false}) {
                 onMouseEnter={e=>e.currentTarget.style.boxShadow="0 2px 8px rgba(0,0,0,.08)"}
                 onMouseLeave={e=>e.currentTarget.style.boxShadow="none"}>
                 {/* ID Badge */}
-                <span style={{fontSize:12,fontWeight:800,color:"#fff",
+                <span style={{fontSize:"0.75rem",fontWeight:800,color:"#fff",
                   background:textCol,borderRadius:5,padding:"2px 7px",
                   minWidth:28,textAlign:"center",flexShrink:0}}>
                   {r.id}
@@ -3189,33 +3189,33 @@ function HeimspieleEdit({onToast, onSaved, reloadKey, hideShare=false}) {
                 <div style={{flex:1,minWidth:0}}>
                   {r.home||r.away ? (
                     <>
-                      <div style={{fontSize:12,fontWeight:600,color:"#1D4ED8",
+                      <div style={{fontSize:"0.75rem",fontWeight:600,color:"#1D4ED8",
                         overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                         {shortName(r.home)||"—"}
                       </div>
-                      <div style={{fontSize:11,color:T.textSecondary,
+                      <div style={{fontSize:"0.6875rem",color:T.textSecondary,
                         overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                         {shortName(r.away)||"—"}
                       </div>
                     </>
                   ):(
-                    <div style={{fontSize:12,color:T.textMuted,fontStyle:"italic"}}>Tippen zum Eintragen</div>
+                    <div style={{fontSize:"0.75rem",color:T.textMuted,fontStyle:"italic"}}>Tippen zum Eintragen</div>
                   )}
                 </div>
                 {/* Score + Status */}
                 <div style={{textAlign:"right",flexShrink:0}}>
                   {r.wo?(
-                    <div style={{fontSize:12,fontWeight:700,color:T.textMuted,fontStyle:"italic"}}>w.o.</div>
+                    <div style={{fontSize:"0.75rem",fontWeight:700,color:T.textMuted,fontStyle:"italic"}}>w.o.</div>
                   ):r.score?(
-                    <div style={{fontSize:13,fontWeight:800,color:T.textPrimary,fontFamily:"monospace"}}>
+                    <div style={{fontSize:"0.8125rem",fontWeight:800,color:T.textPrimary,fontFamily:"monospace"}}>
                       {r.score}
                     </div>
-                  ):<div style={{fontSize:12,color:T.textMuted}}>–:–</div>}
-                  <div style={{fontSize:10,fontWeight:700,color:textCol,marginTop:1}}>
+                  ):<div style={{fontSize:"0.75rem",color:T.textMuted}}>–:–</div>}
+                  <div style={{fontSize:"0.625rem",fontWeight:700,color:textCol,marginTop:1}}>
                     {RL[r.result]||"Offen"}
                   </div>
                 </div>
-                <span style={{fontSize:14,color:T.textMuted,flexShrink:0}}>›</span>
+                <span style={{fontSize:"0.875rem",color:T.textMuted,flexShrink:0}}>›</span>
               </div>
             );
           });
@@ -3241,7 +3241,7 @@ function HeimspieleEdit({onToast, onSaved, reloadKey, hideShare=false}) {
         display:"flex",gap:8,alignItems:"stretch"}}>
         <button onClick={save} disabled={saving||!dirty}
           style={{flex:1,background:dirty?"#D97706":"#059669",color:"#fff",border:"none",
-            borderRadius:8,padding:"10px 0",fontSize:13,fontWeight:700,
+            borderRadius:8,padding:"10px 0",fontSize:"0.8125rem",fontWeight:700,
             cursor:dirty?"pointer":"default",opacity:saving?0.6:1,transition:"background .2s"}}>
           {saving?"Speichern…":dirty?"📲 Auf Display übertragen":"✓ Aktuell auf Display"}
         </button>
@@ -3249,7 +3249,7 @@ function HeimspieleEdit({onToast, onSaved, reloadKey, hideShare=false}) {
           <button onClick={()=>setSharePanel(p=>!p)}
             style={{background:sharePanel?"#1E293B":shareToken?"#F0FDF4":"#F3F4F6",
               border:`1px solid ${sharePanel?"#1E293B":shareToken?"#BBF7D0":"#E5E7EB"}`,
-              borderRadius:8,cursor:"pointer",fontSize:11,padding:"0 14px",
+              borderRadius:8,cursor:"pointer",fontSize:"0.6875rem",padding:"0 14px",
               color:sharePanel?"#fff":shareToken?"#059669":"#6B7280",
               fontWeight:600,whiteSpace:"nowrap"}}>
             🔗 {shareToken?"Aktiv":"Teilen"}
@@ -3261,12 +3261,12 @@ function HeimspieleEdit({onToast, onSaved, reloadKey, hideShare=false}) {
       {!hideShare&&sharePanel&&(
         <div style={{padding:"12px",borderTop:"1px solid #E2E8F0",background:"#F8FAFC"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-            <span style={{fontSize:12,fontWeight:700,color:T.textSecondary}}>🔗 Zugriffs-Link</span>
+            <span style={{fontSize:"0.75rem",fontWeight:700,color:T.textSecondary}}>🔗 Zugriffs-Link</span>
             <ToggleSwitch on={!!shareToken} onToggle={toggleShare}/>
           </div>
           {shareToken ? (
             <>
-              <div style={{fontSize:11,color:T.textSecondary,marginBottom:6}}>
+              <div style={{fontSize:"0.6875rem",color:T.textSecondary,marginBottom:6}}>
                 Personen mit diesem Link können das Display bearbeiten — ohne Login.
                 Toggle aus = Link sofort ungültig.
               </div>
@@ -3274,19 +3274,19 @@ function HeimspieleEdit({onToast, onSaved, reloadKey, hideShare=false}) {
                 <input readOnly
                   value={`${window.location.origin}${window.location.pathname}?share=${shareToken}`}
                   onClick={e=>e.target.select()}
-                  style={{flex:1,fontSize:10,fontFamily:"monospace",
+                  style={{flex:1,fontSize:"0.625rem",fontFamily:"monospace",
                     border:"1px solid #BBF7D0",borderRadius:4,padding:"5px 7px",
                     background:"#fff",color:"#374151"}}/>
                 <button
                   onClick={()=>navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?share=${shareToken}`).then(()=>onToast("Link kopiert ✓"))}
                   style={{background:"#059669",color:"#fff",border:"none",borderRadius:6,
-                    padding:"5px 10px",fontSize:11,cursor:"pointer",whiteSpace:"nowrap",fontWeight:600}}>
+                    padding:"5px 10px",fontSize:"0.6875rem",cursor:"pointer",whiteSpace:"nowrap",fontWeight:600}}>
                   Kopieren
                 </button>
               </div>
             </>
           ) : (
-            <div style={{fontSize:11,color:T.textMuted}}>
+            <div style={{fontSize:"0.6875rem",color:T.textMuted}}>
               Toggle aktivieren um einen neuen Link zu generieren.
             </div>
           )}
@@ -3334,34 +3334,34 @@ function ZeitSchaltung({sched, setSched}) {
   return (
     <div style={{marginBottom:16,padding:"12px 14px",background:"#F9FAFB",
       borderRadius:8,border:`1px solid ${isActive?"#86EFAC":"#E5E7EB"}`}}>
-      <div style={{fontSize:11,fontWeight:700,color:T.textSecondary,marginBottom:10,
+      <div style={{fontSize:"0.6875rem",fontWeight:700,color:T.textSecondary,marginBottom:10,
         display:"flex",alignItems:"center",gap:8}}>
         ⏰ ZEITSCHALTUNG <span style={{fontWeight:400}}>(optional)</span>
-        {isActive&&<span style={{fontSize:10,background:"#DCFCE7",color:"#16A34A",
+        {isActive&&<span style={{fontSize:"0.625rem",background:"#DCFCE7",color:"#16A34A",
           padding:"1px 7px",borderRadius:10,fontWeight:700}}>AKTIV JETZT</span>}
       </div>
       <div style={{display:"flex",gap:8,alignItems:"stretch"}}>
         <button style={btnStyle(!!sched.from)} onClick={()=>openPicker("from")}>
-          <div style={{fontSize:10,color:T.textMuted,fontWeight:700,marginBottom:2}}>VON</div>
-          <div style={{fontSize:12,fontWeight:sched.from?600:400,color:sched.from?"#374151":"#9CA3AF"}}>
+          <div style={{fontSize:"0.625rem",color:T.textMuted,fontWeight:700,marginBottom:2}}>VON</div>
+          <div style={{fontSize:"0.75rem",fontWeight:sched.from?600:400,color:sched.from?"#374151":"#9CA3AF"}}>
             {fmtDT(sched.from)||"nicht gesetzt"}
           </div>
         </button>
         <button style={btnStyle(!!sched.to)} onClick={()=>openPicker("to")}>
-          <div style={{fontSize:10,color:T.textMuted,fontWeight:700,marginBottom:2}}>BIS</div>
-          <div style={{fontSize:12,fontWeight:sched.to?600:400,color:sched.to?"#374151":"#9CA3AF"}}>
+          <div style={{fontSize:"0.625rem",color:T.textMuted,fontWeight:700,marginBottom:2}}>BIS</div>
+          <div style={{fontSize:"0.75rem",fontWeight:sched.to?600:400,color:sched.to?"#374151":"#9CA3AF"}}>
             {fmtDT(sched.to)||"nicht gesetzt"}
           </div>
         </button>
         {(sched.from||sched.to)&&(
           <button onClick={()=>setSched({from:"",to:""})}
-            style={{padding:"8px 10px",fontSize:13,color:"#EF4444",background:"none",
+            style={{padding:"8px 10px",fontSize:"0.8125rem",color:"#EF4444",background:"none",
               border:"1px solid #FECACA",borderRadius:8,cursor:"pointer",alignSelf:"stretch"}}>
             ✕
           </button>
         )}
       </div>
-      <div style={{fontSize:10,color:T.textMuted,marginTop:6}}>
+      <div style={{fontSize:"0.625rem",color:T.textMuted,marginTop:6}}>
         Innerhalb dieser Zeit wird dieser Modus automatisch aktiviert
       </div>
 
@@ -3373,8 +3373,8 @@ function ZeitSchaltung({sched, setSched}) {
               <button style={S.closeBtn} onClick={()=>setPicking(null)}>✕</button>
             </div>
             <input type="datetime-local" value={tempVal} onChange={e=>setTempVal(e.target.value)}
-              style={{...S.input,width:"100%",marginBottom:16,fontSize:15}}/>
-            {tempVal&&<div style={{fontSize:12,color:T.textSecondary,marginBottom:16,textAlign:"center"}}>
+              style={{...S.input,width:"100%",marginBottom:16,fontSize:"0.9375rem"}}/>
+            {tempVal&&<div style={{fontSize:"0.75rem",color:T.textSecondary,marginBottom:16,textAlign:"center"}}>
               {new Date(tempVal).toLocaleString("de-DE",{weekday:"long",day:"2-digit",month:"long",year:"numeric",hour:"2-digit",minute:"2-digit"})} Uhr
             </div>}
             <div style={{display:"flex",gap:8}}>
@@ -3478,10 +3478,10 @@ function SettingsMannschaftenTab({onToast}) {
       <p style={S.pageSub}>Staffel-Konfiguration für Heimspielplan und BTV-Links</p>
 
       <div style={S.card}>
-        <div style={{fontSize:12,color:"#6B7280",marginBottom:16,lineHeight:1.6,
+        <div style={{fontSize:"0.75rem",color:"#6B7280",marginBottom:16,lineHeight:1.6,
           background:"#F8FAFC",borderRadius:8,padding:"10px 12px",border:"1px solid #E5E7EB"}}>
           Eine Zeile pro Mannschaft. Der BTV-Teamname muss exakt so stehen wie auf der Staffelseite (z.B. "SG Herrieden II").<br/>
-          Format URL: <code style={{background:"#E5E7EB",padding:"0 3px",borderRadius:3,fontSize:11}}>
+          Format URL: <code style={{background:"#E5E7EB",padding:"0 3px",borderRadius:3,fontSize:"0.6875rem"}}>
             https://www.btv.de/…?groupid=XXXXXXX
           </code>
         </div>
@@ -3489,7 +3489,7 @@ function SettingsMannschaftenTab({onToast}) {
         {/* Spaltenköpfe */}
         <div style={{display:"grid",gridTemplateColumns:"130px 140px 1fr 28px",gap:6,marginBottom:4,paddingLeft:2}}>
           {["Bezeichnung","BTV-Teamname","Staffel-URL",""].map(h=>(
-            <span key={h} style={{fontSize:10,fontWeight:700,color:T.textMuted,textTransform:"uppercase"}}>{h}</span>
+            <span key={h} style={{fontSize:"0.625rem",fontWeight:700,color:T.textMuted,textTransform:"uppercase"}}>{h}</span>
           ))}
         </div>
 
@@ -3500,25 +3500,25 @@ function SettingsMannschaftenTab({onToast}) {
               <div style={{display:"grid",gridTemplateColumns:"130px 140px 1fr 28px",gap:6,alignItems:"center",marginBottom:5}}>
                 <input placeholder="z.B. Herren 1" value={row.name||""}
                   onChange={e=>{const c=[...teamsConfig];c[i]={...c[i],name:e.target.value};setTeamsConfig(c);}}
-                  style={{padding:"6px 8px",border:"1px solid #D1D5DB",borderRadius:6,fontSize:12}}/>
+                  style={{padding:"6px 8px",border:"1px solid #D1D5DB",borderRadius:6,fontSize:"0.75rem"}}/>
                 <input placeholder="z.B. SG Herrieden" value={row.teamName||""}
                   onChange={e=>{const c=[...teamsConfig];c[i]={...c[i],teamName:e.target.value};setTeamsConfig(c);}}
-                  style={{padding:"6px 8px",border:"1px solid #D1D5DB",borderRadius:6,fontSize:12}}/>
+                  style={{padding:"6px 8px",border:"1px solid #D1D5DB",borderRadius:6,fontSize:"0.75rem"}}/>
                 <input placeholder="https://www.btv.de/…?groupid=…" value={row.url||""}
                   onChange={e=>{const c=[...teamsConfig];c[i]={...c[i],url:e.target.value};setTeamsConfig(c);}}
-                  style={{padding:"6px 8px",border:"1px solid #D1D5DB",borderRadius:6,fontSize:12}}/>
+                  style={{padding:"6px 8px",border:"1px solid #D1D5DB",borderRadius:6,fontSize:"0.75rem"}}/>
                 <button onClick={()=>setTeamsConfig(teamsConfig.filter((_,j)=>j!==i))}
                   style={{background:"none",border:"1px solid #FECACA",borderRadius:6,
-                    padding:"4px",cursor:"pointer",color:"#EF4444",fontSize:13,textAlign:"center"}}>✕</button>
+                    padding:"4px",cursor:"pointer",color:"#EF4444",fontSize:"0.8125rem",textAlign:"center"}}>✕</button>
               </div>
               <div style={{display:"flex",gap:6,alignItems:"center",marginTop:5}}>
                 <input placeholder="Liga / Staffel  z.B. Bezirksklasse Gruppe 3" value={row.liga||""}
                   onChange={e=>{const c=[...teamsConfig];c[i]={...c[i],liga:e.target.value};setTeamsConfig(c);}}
-                  style={{flex:1,padding:"5px 8px",border:"1px solid #D1D5DB",borderRadius:6,fontSize:11,
+                  style={{flex:1,padding:"5px 8px",border:"1px solid #D1D5DB",borderRadius:6,fontSize:"0.6875rem",
                     color:T.textSecondary}}/>
                 <select value={row.format||"6er"}
                   onChange={e=>{const c=[...teamsConfig];c[i]={...c[i],format:e.target.value};setTeamsConfig(c);}}
-                  style={{padding:"5px 8px",border:"1px solid #D1D5DB",borderRadius:6,fontSize:11,color:T.textSecondary,flexShrink:0,cursor:"pointer"}}>
+                  style={{padding:"5px 8px",border:"1px solid #D1D5DB",borderRadius:6,fontSize:"0.6875rem",color:T.textSecondary,flexShrink:0,cursor:"pointer"}}>
                   <option value="6er">6er</option>
                   <option value="4er">4er</option>
                 </select>
@@ -3537,7 +3537,7 @@ function SettingsMannschaftenTab({onToast}) {
                       title={playerCount>0?`${playerCount} Spieler geladen`:"Noch nicht geladen"}
                       style={{flexShrink:0,background:st==="running"?"#F3F4F6":playerCount>0?"#F0FDF4":"#F8FAFC",
                         border:`1px solid ${st==="running"?"#D1D5DB":playerCount>0?"#BBF7D0":"#E5E7EB"}`,
-                        borderRadius:6,padding:"4px 10px",fontSize:11,cursor:st==="running"?"not-allowed":"pointer",
+                        borderRadius:6,padding:"4px 10px",fontSize:"0.6875rem",cursor:st==="running"?"not-allowed":"pointer",
                         color:st==="running"?"#9CA3AF":playerCount>0?"#166534":"#6B7280",fontWeight:600,
                         whiteSpace:"nowrap"}}>
                       {st==="running"?"⏳ Lädt…":playerCount>0?`👤 ${playerCount} Spieler`:"👤 Spieler laden"}
@@ -3551,12 +3551,12 @@ function SettingsMannschaftenTab({onToast}) {
 
         <button onClick={()=>setTeamsConfig([...teamsConfig,{name:"",teamName:"",url:"",liga:""}])}
           style={{background:"none",border:"1px dashed #D1D5DB",borderRadius:6,
-            padding:"6px 14px",fontSize:12,cursor:"pointer",color:T.textSecondary,width:"100%",marginBottom:16}}>
+            padding:"6px 14px",fontSize:"0.75rem",cursor:"pointer",color:T.textSecondary,width:"100%",marginBottom:16}}>
           + Mannschaft hinzufügen
         </button>
 
         {teamsStatus&&typeof teamsStatus==="object"&&(
-          <div style={{marginBottom:12,padding:"8px 12px",borderRadius:6,fontSize:12,
+          <div style={{marginBottom:12,padding:"8px 12px",borderRadius:6,fontSize:"0.75rem",
             background:teamsStatus.ok?"#F0FDF4":"#FEF2F2",
             border:`1px solid ${teamsStatus.ok?"#BBF7D0":"#FECACA"}`,
             color:teamsStatus.ok?"#166534":"#DC2626"}}>
@@ -3567,23 +3567,23 @@ function SettingsMannschaftenTab({onToast}) {
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
           <button onClick={saveTeamsConfig} disabled={teamsSaving}
             style={{background:"#8B5CF6",color:"#fff",border:"none",borderRadius:6,
-              padding:"8px 16px",fontSize:12,cursor:"pointer",fontWeight:600,opacity:teamsSaving?0.6:1}}>
+              padding:"8px 16px",fontSize:"0.75rem",cursor:"pointer",fontWeight:600,opacity:teamsSaving?0.6:1}}>
             {teamsSaving?"Speichern…":"💾 Speichern"}
           </button>
           <button onClick={triggerTeamsLoad} disabled={teamsSaving||teamsStatus==="running"}
             style={{background:"#2563EB",color:"#fff",border:"none",borderRadius:6,
-              padding:"8px 16px",fontSize:12,cursor:"pointer",fontWeight:600,
+              padding:"8px 16px",fontSize:"0.75rem",cursor:"pointer",fontWeight:600,
               opacity:(teamsSaving||teamsStatus==="running")?0.6:1}}>
             {teamsStatus==="running"?"Lädt…":"▶ Mannschaften laden"}
           </button>
         </div>
         {scrapedAt&&(
-          <div style={{marginTop:10,fontSize:11,color:T.textMuted}}>
+          <div style={{marginTop:10,fontSize:"0.6875rem",color:T.textMuted}}>
             Letzter Abruf: {new Date(scrapedAt).toLocaleDateString("de-DE",{day:"numeric",month:"long",year:"numeric"})} um {new Date(scrapedAt).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})} Uhr
           </div>
         )}
         <div style={{marginTop:12,padding:"10px 12px",background:"#F8FAFC",border:"1px solid #E5E7EB",
-          borderRadius:8,fontSize:11,color:"#6B7280",lineHeight:1.7}}>
+          borderRadius:8,fontSize:"0.6875rem",color:"#6B7280",lineHeight:1.7}}>
           <div style={{fontWeight:700,color:T.textSecondary,marginBottom:4}}>Dieser Abruf aktualisiert:</div>
           <ul style={{margin:0,paddingLeft:16}}>
             <li><strong>Heimspielwoche-Widget</strong> — Spiele der nächsten 7 Tage auf dem Startbildschirm</li>
@@ -3609,19 +3609,19 @@ function SettingsMannschaftenTab({onToast}) {
                 maxHeight:"80vh",overflow:"auto",boxShadow:"0 8px 32px rgba(0,0,0,0.18)",animation:"modal-in .22s cubic-bezier(.2,.85,.25,1)"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
                 <div>
-                  <div style={{fontWeight:700,fontSize:14,color:T.textPrimary}}>{label}</div>
-                  <div style={{fontSize:11,color:T.textMuted}}>{players.length} Spieler</div>
+                  <div style={{fontWeight:700,fontSize:"0.875rem",color:T.textPrimary}}>{label}</div>
+                  <div style={{fontSize:"0.6875rem",color:T.textMuted}}>{players.length} Spieler</div>
                 </div>
                 <button onClick={()=>setPlayersPopup(null)}
-                  style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:T.textMuted,lineHeight:1}}>✕</button>
+                  style={{background:"none",border:"none",fontSize:"1.125rem",cursor:"pointer",color:T.textMuted,lineHeight:1}}>✕</button>
               </div>
               {players.length===0
-                ? <div style={{fontSize:12,color:T.textMuted}}>Keine Spieler geladen.</div>
+                ? <div style={{fontSize:"0.75rem",color:T.textMuted}}>Keine Spieler geladen.</div>
                 : players.map((p,i)=>(
                   <div key={i} style={{display:"flex",alignItems:"center",gap:8,
                     padding:"6px 0",borderBottom:"1px solid #F3F4F6"}}>
-                    <span style={{fontSize:11,color:T.textMuted,minWidth:20,textAlign:"right"}}>{i+1}</span>
-                    <span style={{fontSize:13,color:T.textPrimary}}>{p}</span>
+                    <span style={{fontSize:"0.6875rem",color:T.textMuted,minWidth:20,textAlign:"right"}}>{i+1}</span>
+                    <span style={{fontSize:"0.8125rem",color:T.textPrimary}}>{p}</span>
                   </div>
                 ))
               }
@@ -3632,14 +3632,14 @@ function SettingsMannschaftenTab({onToast}) {
 
       {/* ── Spieler-Übersicht ── */}
       <div style={S.card}>
-        <div style={{fontWeight:700,color:T.textSecondary,fontSize:13,marginBottom:4}}>Meldelisten (Spieler)</div>
-        <p style={{fontSize:12,color:T.textSecondary,marginBottom:12,lineHeight:1.6}}>
+        <div style={{fontWeight:700,color:T.textSecondary,fontSize:"0.8125rem",marginBottom:4}}>Meldelisten (Spieler)</div>
+        <p style={{fontSize:"0.75rem",color:T.textSecondary,marginBottom:12,lineHeight:1.6}}>
           Pro Mannschaft "👤 Spieler laden" klicken — lädt Heimteam + alle Gegner dieser Staffel (ca. 3–5 Min.).
           Einmal pro Saison ausreichend.
         </p>
 
         {!playersData&&(
-          <div style={{fontSize:11,color:T.textMuted,fontStyle:"italic",marginBottom:8}}>
+          <div style={{fontSize:"0.6875rem",color:T.textMuted,fontStyle:"italic",marginBottom:8}}>
             Noch keine Spielerdaten geladen — "👤 Spieler laden" bei einer Mannschaft klicken.
           </div>
         )}
@@ -3652,7 +3652,7 @@ function SettingsMannschaftenTab({onToast}) {
           return (
             <div>
               {ts&&(
-                <div style={{fontSize:11,color:T.textMuted,marginBottom:10}}>
+                <div style={{fontSize:"0.6875rem",color:T.textMuted,marginBottom:10}}>
                   Geladen am {ts.toLocaleDateString("de-DE",{day:"numeric",month:"long",year:"numeric"})} um {ts.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})} Uhr
                 </div>
               )}
@@ -3663,22 +3663,22 @@ function SettingsMannschaftenTab({onToast}) {
                 return (
                   <div key={entry.name} style={{marginBottom:12,padding:"10px 12px",
                     background:"#F8FAFC",border:"1px solid #E5E7EB",borderRadius:8}}>
-                    <div style={{fontWeight:600,color:T.textSecondary,fontSize:12,marginBottom:6}}>
+                    <div style={{fontWeight:600,color:T.textSecondary,fontSize:"0.75rem",marginBottom:6}}>
                       {entry.name}
                       <span style={{fontWeight:400,color:T.textSecondary,marginLeft:6}}>({entry.teamName})</span>
                     </div>
                     {/* Heimteam */}
                     <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
-                      <span style={{fontSize:10,background:"#DBEAFE",color:"#1E40AF",
+                      <span style={{fontSize:"0.625rem",background:"#DBEAFE",color:"#1E40AF",
                         padding:"1px 6px",borderRadius:4,fontWeight:600}}>Heim</span>
                       <span
                         onClick={homeCount>0?()=>setPlayersPopup({key:homeKey,name:entry.teamName}):undefined}
-                        style={{fontSize:11,color:T.textSecondary,cursor:homeCount>0?"pointer":"default"}}>
+                        style={{fontSize:"0.6875rem",color:T.textSecondary,cursor:homeCount>0?"pointer":"default"}}>
                         {entry.teamName}
                       </span>
                       <span
                         onClick={homeCount>0?()=>setPlayersPopup({key:homeKey,name:entry.teamName}):undefined}
-                        style={{fontSize:11,fontWeight:600,cursor:homeCount>0?"pointer":"default",
+                        style={{fontSize:"0.6875rem",fontWeight:600,cursor:homeCount>0?"pointer":"default",
                           color:homeCount>0?"#059669":"#9CA3AF",
                           textDecoration:homeCount>0?"underline dotted":"none"}}>
                         {homeCount>0?`✓ ${homeCount} Spieler`:"nicht geladen"}
@@ -3693,7 +3693,7 @@ function SettingsMannschaftenTab({onToast}) {
                           return (
                             <span key={opp}
                               onClick={cnt>0?()=>setPlayersPopup({key:oppKey,name:opp}):undefined}
-                              style={{fontSize:10,padding:"2px 7px",borderRadius:4,
+                              style={{fontSize:"0.625rem",padding:"2px 7px",borderRadius:4,
                                 cursor:cnt>0?"pointer":"default",
                                 background:cnt>0?"#F0FDF4":"#F9FAFB",
                                 border:`1px solid ${cnt>0?"#BBF7D0":"#E5E7EB"}`,
@@ -3707,7 +3707,7 @@ function SettingsMannschaftenTab({onToast}) {
                 );
               })}
               {cfg.length===0&&Object.keys(teams).length>0&&(
-                <div style={{fontSize:12,color:T.textSecondary}}>
+                <div style={{fontSize:"0.75rem",color:T.textSecondary}}>
                   {Object.keys(teams).length} Teams geladen (altes Format — einmal neu laden).
                 </div>
               )}
@@ -3821,31 +3821,31 @@ function SettingsJobsTab() {
         <div key={job.name} style={{marginBottom:16,padding:"14px 16px",background:"#fff",
           border:"1px solid #E5E7EB",borderRadius:10,boxShadow:"0 1px 3px rgba(0,0,0,0.05)"}}>
           <div style={{display:"flex",alignItems:"flex-start",gap:12}}>
-            <div style={{fontSize:22,lineHeight:1}}>{job.icon}</div>
+            <div style={{fontSize:"1.375rem",lineHeight:1}}>{job.icon}</div>
             <div style={{flex:1,minWidth:0}}>
               <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:4}}>
-                <span style={{fontWeight:700,fontSize:14,color:T.textPrimary}}>{job.name}</span>
-                <span style={{fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:20,
+                <span style={{fontWeight:700,fontSize:"0.875rem",color:T.textPrimary}}>{job.name}</span>
+                <span style={{fontSize:"0.625rem",fontWeight:700,padding:"2px 8px",borderRadius:20,
                   background:job.bg,color:job.color,border:`1px solid ${job.border}`}}>
                   {job.trigger}
                 </span>
               </div>
-              <div style={{fontSize:11,color:T.textSecondary,marginBottom:6}}>🕐 {job.schedule}</div>
-              <div style={{fontSize:12,color:T.textSecondary,lineHeight:1.6,marginBottom:8}}>{job.desc}</div>
+              <div style={{fontSize:"0.6875rem",color:T.textSecondary,marginBottom:6}}>🕐 {job.schedule}</div>
+              <div style={{fontSize:"0.75rem",color:T.textSecondary,lineHeight:1.6,marginBottom:8}}>{job.desc}</div>
 
               {/* Letzter Lauf */}
               <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-                <span style={{fontSize:11,color:T.textMuted}}>Zuletzt:</span>
+                <span style={{fontSize:"0.6875rem",color:T.textMuted}}>Zuletzt:</span>
                 {job.lastRun
-                  ? <span style={{fontSize:11,fontWeight:600,color:"#059669"}}>✓ {fmt(job.lastRun)}</span>
-                  : <span style={{fontSize:11,color:T.textMuted}}>noch nie gelaufen</span>
+                  ? <span style={{fontSize:"0.6875rem",fontWeight:600,color:"#059669"}}>✓ {fmt(job.lastRun)}</span>
+                  : <span style={{fontSize:"0.6875rem",color:T.textMuted}}>noch nie gelaufen</span>
                 }
               </div>
 
               {/* Fehler */}
               {job.error&&(
                 <div style={{marginTop:8,padding:"6px 10px",background:"#FEF2F2",
-                  border:"1px solid #FECACA",borderRadius:6,fontSize:11,color:"#DC2626"}}>
+                  border:"1px solid #FECACA",borderRadius:6,fontSize:"0.6875rem",color:"#DC2626"}}>
                   ⚠ {job.error}
                 </div>
               )}
@@ -3853,7 +3853,7 @@ function SettingsJobsTab() {
               {/* Gespeicherte Keys */}
               <div style={{marginTop:8,display:"flex",gap:4,flexWrap:"wrap"}}>
                 {job.saves.map(k=>(
-                  <span key={k} style={{fontSize:10,fontFamily:"monospace",
+                  <span key={k} style={{fontSize:"0.625rem",fontFamily:"monospace",
                     background:"#F3F4F6",color:"#6B7280",padding:"1px 6px",borderRadius:4,
                     border:"1px solid #E5E7EB"}}>{k}</span>
                 ))}
@@ -3863,7 +3863,7 @@ function SettingsJobsTab() {
               {job.name==="BTV Spielplan" && (
                 <div style={{marginTop:10}}>
                   <button onClick={triggerSpielplan} disabled={spielplanStatus==="running"}
-                    style={{fontSize:12,fontWeight:700,padding:"6px 14px",borderRadius:8,cursor:"pointer",
+                    style={{fontSize:"0.75rem",fontWeight:700,padding:"6px 14px",borderRadius:8,cursor:"pointer",
                       border:"1.5px solid #059669",
                       background: spielplanStatus==="running"?"#F0FDF4":"#059669",
                       color: spielplanStatus==="running"?"#059669":"#fff",
@@ -3872,12 +3872,12 @@ function SettingsJobsTab() {
                     {spielplanStatus==="running" ? "⏳ Läuft…" : "▶ Jetzt holen"}
                   </button>
                   {spielplanStatus==="ok" && (
-                    <span style={{marginLeft:10,fontSize:12,color:"#059669",fontWeight:600}}>
+                    <span style={{marginLeft:10,fontSize:"0.75rem",color:"#059669",fontWeight:600}}>
                       ✅ Gestartet – dauert ~3 Min.
                     </span>
                   )}
                   {spielplanStatus==="error" && (
-                    <span style={{marginLeft:10,fontSize:12,color:"#DC2626",fontWeight:600}}>
+                    <span style={{marginLeft:10,fontSize:"0.75rem",color:"#DC2626",fontWeight:600}}>
                       ⚠ Fehler – PAT prüfen
                     </span>
                   )}
@@ -3888,7 +3888,7 @@ function SettingsJobsTab() {
         </div>
       ))}
 
-      <p style={{fontSize:11,color:T.textMuted,marginTop:8,lineHeight:1.6}}>
+      <p style={{fontSize:"0.6875rem",color:T.textMuted,marginTop:8,lineHeight:1.6}}>
         Alle Jobs laufen auf GitHub Actions. Logs und manuelle Starts unter{" "}
         <span style={{fontFamily:"monospace"}}>Actions → BTV Daten holen</span>.
       </p>
@@ -4124,10 +4124,10 @@ function SettingsDisplayTab({onToast}) {
         background:mode===modeId?"#F5F3FF":"#F9FAFB",
         border:`1.5px solid ${mode===modeId?"#8B5CF6":"#E5E7EB"}`}}>
       <div>
-        <div style={{fontWeight:700,fontSize:13,color:mode===modeId?"#7C3AED":"#374151"}}>
+        <div style={{fontWeight:700,fontSize:"0.8125rem",color:mode===modeId?"#7C3AED":"#374151"}}>
           {label || "Auf Display anzeigen"}
         </div>
-        <div style={{fontSize:11,color:T.textSecondary,marginTop:2}}>
+        <div style={{fontSize:"0.6875rem",color:T.textSecondary,marginTop:2}}>
           {mode===modeId ? "✓ Aktuell aktiver Modus" : "Klicken zum Aktivieren"}
         </div>
       </div>
@@ -4144,7 +4144,7 @@ function SettingsDisplayTab({onToast}) {
       <div style={{display:"flex",gap:6,marginTop:20,flexWrap:"wrap"}}>
         {TABS.map(t=>(
           <button key={t.id} onClick={()=>setActiveTab(t.id)}
-            style={{flexShrink:0,fontSize:11,fontWeight:700,padding:"4px 12px",borderRadius:20,
+            style={{flexShrink:0,fontSize:"0.6875rem",fontWeight:700,padding:"4px 12px",borderRadius:20,
               border:"1.5px solid #334155",cursor:"pointer",
               background:activeTab===t.id?"#334155":"transparent",
               color:activeTab===t.id?"#F1F5F9":"#64748B",
@@ -4162,7 +4162,7 @@ function SettingsDisplayTab({onToast}) {
         <div style={{display:"flex",gap:6,marginTop:10,flexWrap:"wrap"}}>
           {SUB_TABS[activeTab].map(s=>(
             <button key={s.id} onClick={()=>setSubTab(s.id)}
-              style={{flexShrink:0,fontSize:11,fontWeight:700,padding:"3px 10px",borderRadius:20,
+              style={{flexShrink:0,fontSize:"0.6875rem",fontWeight:700,padding:"3px 10px",borderRadius:20,
                 border:"1.5px solid #1E293B",cursor:"pointer",
                 background:subTab===s.id?"#1E293B":"transparent",
                 color:subTab===s.id?"#CBD5E1":"#475569",
@@ -4207,20 +4207,20 @@ function SettingsDisplayTab({onToast}) {
           return (
             <div>
               {/* Aktiver Modus */}
-              <p style={{fontSize:12,color:T.textSecondary,marginBottom:10}}>Wähle, welcher Modus aktuell auf dem Display angezeigt wird.</p>
+              <p style={{fontSize:"0.75rem",color:T.textSecondary,marginBottom:10}}>Wähle, welcher Modus aktuell auf dem Display angezeigt wird.</p>
               <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:24}}>
                 {MODES.map(m=><ModeRow key={m.id} modeId={m.id} label={`${m.icon} ${m.label}`}/>)}
               </div>
 
               {/* Zeitschaltung */}
               <div style={{borderTop:"1px solid #E5E7EB",paddingTop:16,marginBottom:14}}>
-                <div style={{fontSize:11,fontWeight:700,color:T.textSecondary,marginBottom:2}}>⏰ ZEITSCHALTUNG</div>
-                <p style={{fontSize:12,color:T.textMuted,marginBottom:14}}>Schalte ein Display automatisch für einen bestimmten Zeitraum ein. Mehrere Einträge möglich.</p>
+                <div style={{fontSize:"0.6875rem",fontWeight:700,color:T.textSecondary,marginBottom:2}}>⏰ ZEITSCHALTUNG</div>
+                <p style={{fontSize:"0.75rem",color:T.textMuted,marginBottom:14}}>Schalte ein Display automatisch für einen bestimmten Zeitraum ein. Mehrere Einträge möglich.</p>
 
                 {/* Formular */}
                 <div style={{background:"#F8FAFC",border:"1px solid #E2E8F0",borderRadius:10,padding:"14px",marginBottom:14}}>
                   <div style={{marginBottom:10}}>
-                    <div style={{fontSize:11,fontWeight:700,color:T.textSecondary,marginBottom:5}}>DISPLAY</div>
+                    <div style={{fontSize:"0.6875rem",fontWeight:700,color:T.textSecondary,marginBottom:5}}>DISPLAY</div>
                     <select value={newEntry.mode} onChange={e=>setNewEntry(n=>({...n,mode:e.target.value}))}
                       style={{...S.input,width:"100%"}}>
                       {MODES.map(m=><option key={m.id} value={m.id}>{m.icon} {m.label}</option>)}
@@ -4228,7 +4228,7 @@ function SettingsDisplayTab({onToast}) {
                   </div>
                   <div style={{display:"flex",gap:10,marginBottom:8}}>
                     <div style={{flex:1}}>
-                      <div style={{fontSize:11,fontWeight:700,color:T.textSecondary,marginBottom:5}}>VON</div>
+                      <div style={{fontSize:"0.6875rem",fontWeight:700,color:T.textSecondary,marginBottom:5}}>VON</div>
                       <div style={{display:"flex",gap:4}}>
                         <input type="date" value={newEntry.fromDate}
                           onChange={e=>setNewEntry(n=>({...n,fromDate:e.target.value}))}
@@ -4239,7 +4239,7 @@ function SettingsDisplayTab({onToast}) {
                       </div>
                     </div>
                     <div style={{flex:1}}>
-                      <div style={{fontSize:11,fontWeight:700,color:T.textSecondary,marginBottom:5}}>BIS</div>
+                      <div style={{fontSize:"0.6875rem",fontWeight:700,color:T.textSecondary,marginBottom:5}}>BIS</div>
                       <div style={{display:"flex",gap:4}}>
                         <input type="date" value={newEntry.toDate}
                           onChange={e=>setNewEntry(n=>({...n,toDate:e.target.value}))}
@@ -4251,10 +4251,10 @@ function SettingsDisplayTab({onToast}) {
                     </div>
                   </div>
                   <div style={{display:"flex",gap:5,marginBottom:12,alignItems:"center"}}>
-                    <span style={{fontSize:11,color:T.textMuted}}>Schnell:</span>
+                    <span style={{fontSize:"0.6875rem",color:T.textMuted}}>Schnell:</span>
                     {[{l:"Heute",d:today},{l:"Morgen",d:tomorrow}].map(p=>(
                       <button key={p.l} onClick={()=>setNewEntry(n=>({...n,fromDate:p.d,toDate:p.d}))}
-                        style={{fontSize:11,padding:"2px 9px",borderRadius:12,border:"1px solid #D1D5DB",
+                        style={{fontSize:"0.6875rem",padding:"2px 9px",borderRadius:12,border:"1px solid #D1D5DB",
                           background:"#fff",cursor:"pointer",color:"#374151"}}>
                         {p.l}
                       </button>
@@ -4268,7 +4268,7 @@ function SettingsDisplayTab({onToast}) {
 
                 {/* Eintrags-Liste */}
                 {timeEntries.length===0
-                  ? <div style={{fontSize:12,color:T.textMuted,textAlign:"center",padding:"18px 0"}}>Noch keine Einträge gesetzt</div>
+                  ? <div style={{fontSize:"0.75rem",color:T.textMuted,textAlign:"center",padding:"18px 0"}}>Noch keine Einträge gesetzt</div>
                   : <div style={{display:"flex",flexDirection:"column",gap:5}}>
                       {[...timeEntries].sort((a,b)=>new Date(a.from)-new Date(b.from)).map(e=>{
                         const st = entryStatus(e);
@@ -4283,19 +4283,19 @@ function SettingsDisplayTab({onToast}) {
                             padding:"9px 12px",borderRadius:8,
                             background:st==="active"?"#F0FDF4":st==="past"?"#F9FAFB":"#FAFBFF",
                             border:`1px solid ${st==="active"?"#86EFAC":st==="past"?"#E5E7EB":"#DBEAFE"}`}}>
-                            <span style={{fontSize:15}}>{m?.icon}</span>
-                            <span style={{fontSize:12,fontWeight:700,width:92,flexShrink:0,
+                            <span style={{fontSize:"0.9375rem"}}>{m?.icon}</span>
+                            <span style={{fontSize:"0.75rem",fontWeight:700,width:92,flexShrink:0,
                               color:st==="past"?"#9CA3AF":"#374151"}}>{m?.label}</span>
-                            <span style={{fontSize:10,fontWeight:700,padding:"1px 7px",borderRadius:10,
+                            <span style={{fontSize:"0.625rem",fontWeight:700,padding:"1px 7px",borderRadius:10,
                               flexShrink:0,background:badge.bg,color:badge.color}}>
                               {badge.text}
                             </span>
-                            <span style={{flex:1,fontSize:11,color:st==="past"?"#9CA3AF":"#64748B",
+                            <span style={{flex:1,fontSize:"0.6875rem",color:st==="past"?"#9CA3AF":"#64748B",
                               textAlign:"right",lineHeight:1.4}}>
                               {fmt(e.from)}<br/><span style={{color:T.textMuted}}>→</span> {fmt(e.to)}
                             </span>
                             <button onClick={()=>setTimeEntries(prev=>prev.filter(x=>x.id!==e.id))}
-                              style={{fontSize:13,color:"#EF4444",background:"none",border:"none",
+                              style={{fontSize:"0.8125rem",color:"#EF4444",background:"none",border:"none",
                                 cursor:"pointer",padding:"2px 4px",flexShrink:0}}>✕</button>
                           </div>
                         );
@@ -4310,7 +4310,7 @@ function SettingsDisplayTab({onToast}) {
         {/* ── EINSTELLUNGEN: Farbschema ── */}
         {activeTab==="einstellungen"&&subTab==="farbschema"&&(
           <div>
-            <p style={{fontSize:12,color:T.textSecondary,marginBottom:12}}>Gilt übergreifend für alle Anzeigemodi.</p>
+            <p style={{fontSize:"0.75rem",color:T.textSecondary,marginBottom:12}}>Gilt übergreifend für alle Anzeigemodi.</p>
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
               {themes.map(t=>(
                 <button key={t.id} onClick={()=>setTheme(t.id)}
@@ -4320,13 +4320,13 @@ function SettingsDisplayTab({onToast}) {
                   <div style={{width:36,height:36,borderRadius:8,background:t.bg,
                     border:"1.5px solid #D1D5DB",display:"flex",alignItems:"center",
                     justifyContent:"center",flexShrink:0}}>
-                    <span style={{color:t.fg,fontWeight:800,fontSize:13}}>Aa</span>
+                    <span style={{color:t.fg,fontWeight:800,fontSize:"0.8125rem"}}>Aa</span>
                   </div>
                   <div style={{flex:1}}>
-                    <div style={{fontWeight:700,fontSize:14}}>{t.label}</div>
-                    <div style={{fontSize:12,color:T.textSecondary,marginTop:2}}>{t.desc}</div>
+                    <div style={{fontWeight:700,fontSize:"0.875rem"}}>{t.label}</div>
+                    <div style={{fontSize:"0.75rem",color:T.textSecondary,marginTop:2}}>{t.desc}</div>
                   </div>
-                  {theme===t.id&&<span style={{color:"#8B5CF6",fontWeight:800,fontSize:18}}>✓</span>}
+                  {theme===t.id&&<span style={{color:"#8B5CF6",fontWeight:800,fontSize:"1.125rem"}}>✓</span>}
                 </button>
               ))}
             </div>
@@ -4338,7 +4338,7 @@ function SettingsDisplayTab({onToast}) {
           <div>
             <div style={{display:"flex",gap:12,marginBottom:16}}>
               <div style={{flex:1}}>
-                <div style={{fontSize:11,fontWeight:700,color:T.textSecondary,marginBottom:5}}>TAKT (MINUTEN)</div>
+                <div style={{fontSize:"0.6875rem",fontWeight:700,color:T.textSecondary,marginBottom:5}}>TAKT (MINUTEN)</div>
                 <select value={affeMinuten} onChange={e=>setAffeMinuten(Number(e.target.value))}
                   style={{...S.input,width:"100%"}}>
                   <option value={1}>Jede Minute (:01, :02, …)</option>
@@ -4347,13 +4347,13 @@ function SettingsDisplayTab({onToast}) {
                 </select>
               </div>
               <div style={{flex:1}}>
-                <div style={{fontSize:11,fontWeight:700,color:T.textSecondary,marginBottom:5}}>DAUER (SEKUNDEN)</div>
+                <div style={{fontSize:"0.6875rem",fontWeight:700,color:T.textSecondary,marginBottom:5}}>DAUER (SEKUNDEN)</div>
                 <input type="number" min="5" max="60" value={affeSekunden}
                   onChange={e=>setAffeSekunden(Math.max(5,Number(e.target.value)))}
                   style={{...S.input,width:"100%"}}/>
               </div>
             </div>
-            <div style={{fontSize:11,fontWeight:700,color:T.textSecondary,marginBottom:8}}>AUF WELCHEN DISPLAYS ERSCHEINT DER AFFE?</div>
+            <div style={{fontSize:"0.6875rem",fontWeight:700,color:T.textSecondary,marginBottom:8}}>AUF WELCHEN DISPLAYS ERSCHEINT DER AFFE?</div>
             <div style={{display:"flex",flexDirection:"column",gap:8}}>
               {[
                 {id:"schedule",  label:"Tagesbelegungsplan", icon:"📅"},
@@ -4366,9 +4366,9 @@ function SettingsDisplayTab({onToast}) {
                   <div key={m.id} onClick={()=>setAffeModes(prev=>on?prev.filter(x=>x!==m.id):[...prev,m.id])} className="tap-div"
                     style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:8,cursor:"pointer",
                       background:on?"#F5F3FF":"#F9FAFB",border:`1.5px solid ${on?"#8B5CF6":"#E5E7EB"}`}}>
-                    <span style={{fontSize:16}}>{m.icon}</span>
-                    <span style={{flex:1,fontSize:13,fontWeight:600,color:on?"#7C3AED":"#374151"}}>{m.label}</span>
-                    <span style={{fontSize:16}}>{on?"✓":""}</span>
+                    <span style={{fontSize:"1rem"}}>{m.icon}</span>
+                    <span style={{flex:1,fontSize:"0.8125rem",fontWeight:600,color:on?"#7C3AED":"#374151"}}>{m.label}</span>
+                    <span style={{fontSize:"1rem"}}>{on?"✓":""}</span>
                   </div>
                 );
               })}
@@ -4379,7 +4379,7 @@ function SettingsDisplayTab({onToast}) {
         {/* ── TAGESBELEGUNGSPLAN ── */}
         {activeTab==="schedule"&&(
           <div>
-            <p style={{fontSize:12,color:T.textMuted}}>Zeigt die heutigen Platzbuchungen in Echtzeit.</p>
+            <p style={{fontSize:"0.75rem",color:T.textMuted}}>Zeigt die heutigen Platzbuchungen in Echtzeit.</p>
           </div>
         )}
 
@@ -4390,15 +4390,15 @@ function SettingsDisplayTab({onToast}) {
             {teamsConfig.length>0&&clubTeams?.groups?.length>0?(
               <div style={{marginBottom:16,padding:"12px 14px",background:"#F0FDF4",
                 border:"1px solid #BBF7D0",borderRadius:8}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#166534",marginBottom:10}}>
+                <div style={{fontSize:"0.6875rem",fontWeight:700,color:"#166534",marginBottom:10}}>
                   ⚡ SPIEL LADEN
                 </div>
                 <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"flex-end"}}>
                   <div style={{flex:"1 1 160px"}}>
-                    <div style={{fontSize:10,color:"#166534",fontWeight:600,marginBottom:3}}>Mannschaft</div>
+                    <div style={{fontSize:"0.625rem",color:"#166534",fontWeight:600,marginBottom:3}}>Mannschaft</div>
                     <select value={selStaffel} onChange={e=>{setSelStaffel(e.target.value);setSelGegner("");}}
                       style={{width:"100%",padding:"7px 8px",border:"1px solid #BBF7D0",
-                        borderRadius:6,fontSize:12,background:"#fff"}}>
+                        borderRadius:6,fontSize:"0.75rem",background:"#fff"}}>
                       <option value="">— auswählen —</option>
                       {teamsConfig.map(t=>(
                         <option key={t.name} value={t.name}>{t.name}</option>
@@ -4406,11 +4406,11 @@ function SettingsDisplayTab({onToast}) {
                     </select>
                   </div>
                   <div style={{flex:"1 1 180px"}}>
-                    <div style={{fontSize:10,color:"#166534",fontWeight:600,marginBottom:3}}>Gegner</div>
+                    <div style={{fontSize:"0.625rem",color:"#166534",fontWeight:600,marginBottom:3}}>Gegner</div>
                     <select value={selGegner} onChange={e=>setSelGegner(e.target.value)}
                       disabled={!selStaffel}
                       style={{width:"100%",padding:"7px 8px",border:"1px solid #BBF7D0",
-                        borderRadius:6,fontSize:12,background:"#fff",opacity:selStaffel?1:0.5}}>
+                        borderRadius:6,fontSize:"0.75rem",background:"#fff",opacity:selStaffel?1:0.5}}>
                       <option value="">— auswählen —</option>
                       {(()=>{
                         const grp = clubTeams.groups.find(g=>g.name===selStaffel);
@@ -4423,7 +4423,7 @@ function SettingsDisplayTab({onToast}) {
                     </select>
                   </div>
                   <button onClick={quickFetch} disabled={!selStaffel||!selGegner}
-                    style={{padding:"7px 14px",fontSize:12,fontWeight:700,borderRadius:6,border:"none",
+                    style={{padding:"7px 14px",fontSize:"0.75rem",fontWeight:700,borderRadius:6,border:"none",
                       cursor:(!selStaffel||!selGegner)?"not-allowed":"pointer",
                       background:fetchStatus==="ok"?"#059669":"#15803D",
                       color:"#fff",opacity:(!selStaffel||!selGegner)?0.5:1,whiteSpace:"nowrap"}}>
@@ -4433,7 +4433,7 @@ function SettingsDisplayTab({onToast}) {
               </div>
             ):(
               <div style={{marginBottom:16,padding:"10px 12px",background:"#FEF3C7",
-                border:"1px solid #FDE68A",borderRadius:8,fontSize:12,color:"#92400E"}}>
+                border:"1px solid #FDE68A",borderRadius:8,fontSize:"0.75rem",color:"#92400E"}}>
                 ℹ️ BTV Spielplan noch nicht geladen — unter <strong>Mannschaften → Spielplan laden</strong> einmalig starten.
               </div>
             )}
@@ -4447,7 +4447,7 @@ function SettingsDisplayTab({onToast}) {
           <div>
             {/* Hinweis für KI-Bildgenerierung */}
             <div style={{marginBottom:14,padding:"10px 12px",background:"#F8FAFC",
-              border:"1px solid #E2E8F0",borderRadius:8,fontSize:11,color:"#6B7280",lineHeight:1.6}}>
+              border:"1px solid #E2E8F0",borderRadius:8,fontSize:"0.6875rem",color:"#6B7280",lineHeight:1.6}}>
               <div style={{fontWeight:700,color:T.textSecondary,marginBottom:4}}>📐 Ideales Format für KI-generierte Bilder</div>
               <div><strong>Querformat, mind. 1920 × 1080 px (16:9 oder breiter)</strong></div>
               <div style={{marginTop:4}}>Das Bild füllt immer den ganzen Bildschirm — Ränder werden automatisch beschnitten.</div>
@@ -4464,10 +4464,10 @@ function SettingsDisplayTab({onToast}) {
             {bildUrl&&(
               <div style={{marginTop:14}}>
                 <img src={bildUrl} alt="" style={{width:"100%",maxHeight:180,objectFit:"contain",borderRadius:8,background:"#E5E7EB"}}/>
-                <div style={{fontSize:11,color:T.textMuted,marginTop:6}}>Aktuell hinterlegtes Bild</div>
+                <div style={{fontSize:"0.6875rem",color:T.textMuted,marginTop:6}}>Aktuell hinterlegtes Bild</div>
               </div>
             )}
-            {!bildUrl&&<div style={{marginTop:10,fontSize:12,color:T.textMuted}}>Noch kein Bild hochgeladen.</div>}
+            {!bildUrl&&<div style={{marginTop:10,fontSize:"0.75rem",color:T.textMuted}}>Noch kein Bild hochgeladen.</div>}
           </div>
         )}
 
@@ -4475,20 +4475,20 @@ function SettingsDisplayTab({onToast}) {
         {activeTab==="fotos"&&(
           <div>
             <div style={{padding:"14px",background:"#F8FAFC",border:"1px solid #E2E8F0",
-              borderRadius:8,fontSize:12,color:"#6B7280",lineHeight:1.6,marginBottom:16}}>
+              borderRadius:8,fontSize:"0.75rem",color:"#6B7280",lineHeight:1.6,marginBottom:16}}>
               <div style={{fontWeight:700,color:T.textSecondary,marginBottom:4}}>📸 Fotos der aktuellen Woche</div>
               <div>Zeigt alle Fotos aus dem Clubstream die diese Woche (Mo–So) hochgeladen wurden.</div>
               <div style={{marginTop:4}}>Der Wechsel erfolgt automatisch — kein Tippen nötig.</div>
             </div>
             <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:8}}>
-              <label style={{fontSize:13,fontWeight:600,color:T.textSecondary,whiteSpace:"nowrap"}}>
+              <label style={{fontSize:"0.8125rem",fontWeight:600,color:T.textSecondary,whiteSpace:"nowrap"}}>
                 Wechsel alle
               </label>
               <input type="number" min={3} max={120} value={fotosInterval}
                 onChange={e=>setFotosInterval(Math.max(3,Number(e.target.value)))}
-                style={{width:64,fontSize:14,fontWeight:700,textAlign:"center",
+                style={{width:64,fontSize:"0.875rem",fontWeight:700,textAlign:"center",
                   border:"1.5px solid #E5E7EB",borderRadius:6,padding:"5px 8px"}}/>
-              <label style={{fontSize:13,color:T.textSecondary}}>Sekunden</label>
+              <label style={{fontSize:"0.8125rem",color:T.textSecondary}}>Sekunden</label>
             </div>
           </div>
         )}
@@ -4497,7 +4497,7 @@ function SettingsDisplayTab({onToast}) {
       {/* Fehler Zeitschaltung */}
       {schedError&&(
         <div style={{padding:"10px 14px",background:"#FEF2F2",border:"1px solid #FECACA",
-          borderRadius:8,fontSize:12,color:"#DC2626",marginBottom:16}}>
+          borderRadius:8,fontSize:"0.75rem",color:"#DC2626",marginBottom:16}}>
           ⚠️ {schedError}
         </div>
       )}
@@ -4510,7 +4510,7 @@ function SettingsDisplayTab({onToast}) {
           {saving?"Speichern…":"Einstellungen speichern"}
         </button>
         <a href="/display.html" target="_blank" rel="noopener noreferrer"
-          style={{color:"#8B5CF6",fontSize:13,fontWeight:600,textDecoration:"none"}}>
+          style={{color:"#8B5CF6",fontSize:"0.8125rem",fontWeight:600,textDecoration:"none"}}>
           Display öffnen ↗
         </a>
       </div>
@@ -4539,14 +4539,14 @@ function SlotModal({modal,data,user,guestFee,displayName,onBook,onCancel,onClose
         </div>
         {!existing&&(<>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:16}}>
-            {[["Platz",court?.name||"?"],["Uhrzeit",slot+" Uhr"],["Dauer","1 Std."]].map(([l,v])=>(<div key={l} style={{background:"#F8FAFC",borderRadius:8,padding:"10px",textAlign:"center"}}><div style={{fontSize:10,color:T.textMuted,fontWeight:700,marginBottom:3}}>{l}</div><div style={{fontSize:13,fontWeight:800,color:T.textPrimary}}>{v}</div></div>))}
+            {[["Platz",court?.name||"?"],["Uhrzeit",slot+" Uhr"],["Dauer","1 Std."]].map(([l,v])=>(<div key={l} style={{background:"#F8FAFC",borderRadius:8,padding:"10px",textAlign:"center"}}><div style={{fontSize:"0.625rem",color:T.textMuted,fontWeight:700,marginBottom:3}}>{l}</div><div style={{fontSize:"0.8125rem",fontWeight:800,color:T.textPrimary}}>{v}</div></div>))}
           </div>
           <div style={{background:"#FFFBEB",border:"1.5px solid #FDE68A",borderRadius:12,padding:14,marginBottom:16}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer"}} onClick={()=>setWithGuest(g=>!g)}>
-              <div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:22}}>👥</span><div><div style={{fontWeight:700,fontSize:14,color:T.textPrimary}}>Gastspieler</div><div style={{fontSize:11,color:"#92400E",marginTop:1}}>Gebühr wird am Jahresende abgerechnet</div></div></div>
+              <div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:"1.375rem"}}>👥</span><div><div style={{fontWeight:700,fontSize:"0.875rem",color:T.textPrimary}}>Gastspieler</div><div style={{fontSize:"0.6875rem",color:"#92400E",marginTop:1}}>Gebühr wird am Jahresende abgerechnet</div></div></div>
               <div style={{width:44,height:24,background:withGuest?"#F59E0B":"#E5E7EB",borderRadius:12,position:"relative",transition:"background .2s",flexShrink:0}}><div style={{width:20,height:20,background:"#fff",borderRadius:"50%",position:"absolute",top:2,left:2,transform:`translateX(${withGuest?20:0}px)`,transition:"transform .2s",willChange:"transform",boxShadow:"0 1px 4px rgba(0,0,0,.2)"}}></div></div>
             </div>
-            {withGuest&&(<div style={{marginTop:10,padding:"10px 12px",background:"#FEF3C7",borderRadius:8,fontSize:12,color:"#92400E",fontWeight:600}}>💶 Gebühr: <strong>{eur(guestFee)}</strong> – wird in deinem Konto vorgemerkt</div>)}
+            {withGuest&&(<div style={{marginTop:10,padding:"10px 12px",background:"#FEF3C7",borderRadius:8,fontSize:"0.75rem",color:"#92400E",fontWeight:600}}>💶 Gebühr: <strong>{eur(guestFee)}</strong> – wird in deinem Konto vorgemerkt</div>)}
           </div>
           <div style={{display:"flex",gap:10}}>
             <button style={{...S.primaryBtn,flex:1}} onClick={()=>onBook(courtId,date,slot,"regular","",withGuest)}>{withGuest?"Mit Gastspieler buchen":"Jetzt buchen"}</button>
@@ -4555,14 +4555,14 @@ function SlotModal({modal,data,user,guestFee,displayName,onBook,onCancel,onClose
         </>)}
         {existing&&(<>
           <div style={{background:"#F9FAFB",borderRadius:8,padding:"12px 14px",marginBottom:16}}>
-            <div style={{fontSize:12,color:T.textSecondary,marginBottom:4}}>Gebucht von</div>
-            <div style={{fontWeight:700,fontSize:16}}>{displayName(existing)}</div>
+            <div style={{fontSize:"0.75rem",color:T.textSecondary,marginBottom:4}}>Gebucht von</div>
+            <div style={{fontWeight:700,fontSize:"1rem"}}>{displayName(existing)}</div>
             <div style={{marginTop:6,display:"flex",gap:6,flexWrap:"wrap"}}>
-              <span style={{fontSize:12,padding:"2px 8px",borderRadius:20,background:BOOKING_TYPE_COLORS[bType]+"22",color:BOOKING_TYPE_COLORS[bType],fontWeight:600}}>{bType==="training"?"🏋️ Training":bType==="match"?"🏆 Spieltag":"📅 Standard"}</span>
-              {existing.with_guest&&<span style={{fontSize:12,padding:"2px 8px",borderRadius:20,background:"#FEF3C7",color:"#D97706",fontWeight:700}}>👥 Gastspieler</span>}
+              <span style={{fontSize:"0.75rem",padding:"2px 8px",borderRadius:20,background:BOOKING_TYPE_COLORS[bType]+"22",color:BOOKING_TYPE_COLORS[bType],fontWeight:600}}>{bType==="training"?"🏋️ Training":bType==="match"?"🏆 Spieltag":"📅 Standard"}</span>
+              {existing.with_guest&&<span style={{fontSize:"0.75rem",padding:"2px 8px",borderRadius:20,background:"#FEF3C7",color:"#D97706",fontWeight:700}}>👥 Gastspieler</span>}
             </div>
           </div>
-          {(isOwn||isAdmin)?(<div style={{display:"flex",gap:10}}><button style={{...S.cancelBtn,padding:"10px 18px",fontSize:14}} onClick={()=>onCancel(existing.id)}>Stornieren</button><button style={S.ghostBtn} onClick={onClose}>Schließen</button></div>):(<button style={S.ghostBtn} onClick={onClose}>Schließen</button>)}
+          {(isOwn||isAdmin)?(<div style={{display:"flex",gap:10}}><button style={{...S.cancelBtn,padding:"10px 18px",fontSize:"0.875rem"}} onClick={()=>onCancel(existing.id)}>Stornieren</button><button style={S.ghostBtn} onClick={onClose}>Schließen</button></div>):(<button style={S.ghostBtn} onClick={onClose}>Schließen</button>)}
         </>)}
       </div>
     </div>
@@ -4595,18 +4595,18 @@ function CalendarView({data,user,dayBase,setDayBase,selCourt,setSelCourt,display
       {/* Datum-Navigation */}
       <div style={{display:"flex",alignItems:"center",background:T.bgCard,borderRadius:T.rMd,border:`1px solid ${T.bgBorder}`,padding:"10px 14px"}}>
         <button onClick={()=>setDayBase(addDays(dayBase,-1))}
-          style={{background:"none",border:"none",color:T.textSecondary,fontSize:22,cursor:"pointer",lineHeight:1,minWidth:44,minHeight:44,display:"flex",alignItems:"center",justifyContent:"center"}}>‹</button>
+          style={{background:"none",border:"none",color:T.textSecondary,fontSize:"1.375rem",cursor:"pointer",lineHeight:1,minWidth:44,minHeight:44,display:"flex",alignItems:"center",justifyContent:"center"}}>‹</button>
         <div style={{flex:1,textAlign:"center"}}>
-          <div style={{fontWeight:800,fontSize:15,color:isToday?T.success:T.textPrimary}}>{dateLabel}</div>
-          {!isToday&&<div style={{fontSize:11,color:T.textMuted,marginTop:2}}>{fmtDate(d)}</div>}
+          <div style={{fontWeight:800,fontSize:"0.9375rem",color:isToday?T.success:T.textPrimary}}>{dateLabel}</div>
+          {!isToday&&<div style={{fontSize:"0.6875rem",color:T.textMuted,marginTop:2}}>{fmtDate(d)}</div>}
         </div>
         <button onClick={()=>setDayBase(addDays(dayBase,1))}
-          style={{background:"none",border:"none",color:T.textSecondary,fontSize:22,cursor:"pointer",lineHeight:1,minWidth:44,minHeight:44,display:"flex",alignItems:"center",justifyContent:"center"}}>›</button>
+          style={{background:"none",border:"none",color:T.textSecondary,fontSize:"1.375rem",cursor:"pointer",lineHeight:1,minWidth:44,minHeight:44,display:"flex",alignItems:"center",justifyContent:"center"}}>›</button>
       </div>
 
       {!isToday&&(
         <button onClick={()=>setDayBase(todayStr)}
-          style={{alignSelf:"center",background:"none",border:`1px solid ${T.bgBorder}`,borderRadius:T.rPill,color:T.textMuted,cursor:"pointer",fontSize:11,padding:"4px 14px"}}>
+          style={{alignSelf:"center",background:"none",border:`1px solid ${T.bgBorder}`,borderRadius:T.rPill,color:T.textMuted,cursor:"pointer",fontSize:"0.6875rem",padding:"4px 14px"}}>
           Zurück zu Heute
         </button>
       )}
@@ -4646,9 +4646,9 @@ function CalendarView({data,user,dayBase,setDayBase,selCourt,setSelCourt,display
               style={{display:"flex",alignItems:"center",gap:10,background:bg,border,borderRadius:T.rMd,
                 padding:"13px 16px",cursor:disabled?"default":"pointer",opacity:disabled?.3:1,
                 width:"100%",textAlign:"left",transition:"opacity .1s"}}>
-              <span style={{fontSize:14,fontWeight:800,color:timeColor,flexShrink:0,minWidth:44}}>{slot}</span>
-              <span style={{fontSize:11,color:T.textMuted,flexShrink:0}}>1 Std.</span>
-              <span style={{flex:1,fontSize:13,fontWeight:600,color:labelColor,textAlign:"right"}}>{label}</span>
+              <span style={{fontSize:"0.875rem",fontWeight:800,color:timeColor,flexShrink:0,minWidth:44}}>{slot}</span>
+              <span style={{fontSize:"0.6875rem",color:T.textMuted,flexShrink:0}}>1 Std.</span>
+              <span style={{flex:1,fontSize:"0.8125rem",fontWeight:600,color:labelColor,textAlign:"right"}}>{label}</span>
             </button>
           );
         })}
@@ -4682,12 +4682,12 @@ function MyBookings({data,user,onCancel,guestFee,onMarkPaid}) {
       {(openGuestBookings.length>0||paidBookings.length>0)&&(
         <div style={{background:openAmount>0?"linear-gradient(135deg,#FEF3C7,#FDE68A)":"linear-gradient(135deg,#DCFCE7,#BBF7D0)",border:`1.5px solid ${openAmount>0?"#F59E0B":"#22C55E"}`,borderRadius:14,padding:16,marginBottom:20,display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
           <div>
-            <div style={{fontSize:11,fontWeight:700,color:openAmount>0?"#92400E":"#166534",marginBottom:4}}>GASTSPIELER-GEBÜHR {new Date().getFullYear()}</div>
-            <div style={{fontSize:28,fontWeight:800,color:T.textPrimary}}>{eur(openAmount)}</div>
-            <div style={{fontSize:12,color:T.textSecondary,marginTop:2}}>{openGuestBookings.length} offene Buchungen · {eur(guestFee)} pro Buchung</div>
+            <div style={{fontSize:"0.6875rem",fontWeight:700,color:openAmount>0?"#92400E":"#166534",marginBottom:4}}>GASTSPIELER-GEBÜHR {new Date().getFullYear()}</div>
+            <div style={{fontSize:"1.75rem",fontWeight:800,color:T.textPrimary}}>{eur(openAmount)}</div>
+            <div style={{fontSize:"0.75rem",color:T.textSecondary,marginTop:2}}>{openGuestBookings.length} offene Buchungen · {eur(guestFee)} pro Buchung</div>
           </div>
           {openAmount>0&&(<button style={{...S.primaryBtn,background:"#0F172A",whiteSpace:"nowrap"}} onClick={()=>setShowPayConfirm(true)}>Als bezahlt<br/>markieren</button>)}
-          {openAmount===0&&<div style={{fontSize:24}}>✅</div>}
+          {openAmount===0&&<div style={{fontSize:"1.5rem"}}>✅</div>}
         </div>
       )}
       {Object.keys(massGroups).length>0&&(<div style={{marginBottom:28}}><SectTitle>Serien & Veranstaltungen</SectTitle>
@@ -4697,23 +4697,23 @@ function MyBookings({data,user,onCancel,guestFee,onMarkPaid}) {
           return (<div key={key} style={{...S.card,border:`1.5px solid ${typeColor}44`,background:`${typeColor}08`,marginBottom:10,padding:0,overflow:"hidden"}}>
             <div style={{padding:"14px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap"}}>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}><span style={{fontSize:18}}>{typeIcon}</span><span style={{fontWeight:800,fontSize:15}}>{g.label||typeLabel}</span><span style={{fontSize:11,padding:"2px 8px",borderRadius:20,background:typeColor+"22",color:typeColor,fontWeight:700}}>{typeLabel}</span></div>
-                <div style={{fontSize:12,color:T.textSecondary,display:"flex",flexWrap:"wrap",gap:12}}><span>📅 {groupDateRange(g.bookings)}</span><span>🎾 {groupCourts(g.bookings)}</span><span>⏰ {groupSlots(g.bookings)}</span></div>
-                {next&&<div style={{fontSize:12,color:typeColor,fontWeight:600,marginTop:4}}>Nächster Termin: {next}</div>}
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}><span style={{fontSize:"1.125rem"}}>{typeIcon}</span><span style={{fontWeight:800,fontSize:"0.9375rem"}}>{g.label||typeLabel}</span><span style={{fontSize:"0.6875rem",padding:"2px 8px",borderRadius:20,background:typeColor+"22",color:typeColor,fontWeight:700}}>{typeLabel}</span></div>
+                <div style={{fontSize:"0.75rem",color:T.textSecondary,display:"flex",flexWrap:"wrap",gap:12}}><span>📅 {groupDateRange(g.bookings)}</span><span>🎾 {groupCourts(g.bookings)}</span><span>⏰ {groupSlots(g.bookings)}</span></div>
+                {next&&<div style={{fontSize:"0.75rem",color:typeColor,fontWeight:600,marginTop:4}}>Nächster Termin: {next}</div>}
               </div>
               <div style={{display:"flex",gap:8,alignItems:"center",flexShrink:0}}>
-                <div style={{textAlign:"center",background:"#F9FAFB",borderRadius:8,padding:"6px 12px"}}><div style={{fontWeight:800,fontSize:18,color:typeColor}}>{g.bookings.length}</div><div style={{fontSize:11,color:T.textMuted}}>Slots</div></div>
+                <div style={{textAlign:"center",background:"#F9FAFB",borderRadius:8,padding:"6px 12px"}}><div style={{fontWeight:800,fontSize:"1.125rem",color:typeColor}}>{g.bookings.length}</div><div style={{fontSize:"0.6875rem",color:T.textMuted}}>Slots</div></div>
                 <button style={S.cancelBtn} onClick={()=>{if(window.confirm(`Alle ${g.bookings.length} Slots stornieren?`))g.bookings.forEach(b=>onCancel(b.id));}}>Alle stornieren</button>
-                <button style={{...S.ghostBtn,padding:"7px 12px",fontSize:13}} onClick={()=>toggleGroup(key)}>{isOpen?"▲ Einklappen":"▼ Details"}</button>
+                <button style={{...S.ghostBtn,padding:"7px 12px",fontSize:"0.8125rem"}} onClick={()=>toggleGroup(key)}>{isOpen?"▲ Einklappen":"▼ Details"}</button>
               </div>
             </div>
             {isOpen&&(<div style={{borderTop:"1px solid #F3F4F6",padding:"8px 16px 12px"}}>
-              <div style={{fontSize:12,color:T.textMuted,marginBottom:8,fontWeight:600,textTransform:"uppercase",letterSpacing:.4}}>Alle Termine</div>
+              <div style={{fontSize:"0.75rem",color:T.textMuted,marginBottom:8,fontWeight:600,textTransform:"uppercase",letterSpacing:.4}}>Alle Termine</div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:6}}>
                 {g.bookings.map(b=>{const court=data.courts.find(c=>c.id===b.courtId);const ci=data.courts.findIndex(c=>c.id===b.courtId);const col=COURT_COLORS[ci%COURT_COLORS.length];const d=new Date(b.date+"T12:00:00");
                   return (<div key={b.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:"#F9FAFB",borderRadius:7,padding:"7px 10px",borderLeft:`3px solid ${col}`}}>
-                    <div><div style={{fontSize:13,fontWeight:600}}>{DE_DAYS[dayOfWeek(b.date)]} {d.getDate()}. {DE_MONTH[d.getMonth()]} · {b.slot} Uhr</div><div style={{fontSize:11,color:T.textMuted}}>{court?.name}</div></div>
-                    <button style={{background:"none",border:"none",cursor:"pointer",color:T.textMuted,fontSize:16,padding:"0 4px"}} onClick={()=>onCancel(b.id)}>✕</button>
+                    <div><div style={{fontSize:"0.8125rem",fontWeight:600}}>{DE_DAYS[dayOfWeek(b.date)]} {d.getDate()}. {DE_MONTH[d.getMonth()]} · {b.slot} Uhr</div><div style={{fontSize:"0.6875rem",color:T.textMuted}}>{court?.name}</div></div>
+                    <button style={{background:"none",border:"none",cursor:"pointer",color:T.textMuted,fontSize:"1rem",padding:"0 4px"}} onClick={()=>onCancel(b.id)}>✕</button>
                   </div>);
                 })}
               </div>
@@ -4724,28 +4724,28 @@ function MyBookings({data,user,onCancel,guestFee,onMarkPaid}) {
       {singles.length>0&&(<div style={{marginBottom:28}}><SectTitle>Einzelbuchungen ({singles.length})</SectTitle>
         {singles.map(b=>{const court=data.courts.find(c=>c.id===b.courtId);const ci=data.courts.findIndex(c=>c.id===b.courtId);const color=b.with_guest?"#16A34A":COURT_COLORS[ci%COURT_COLORS.length];const d=new Date(b.date+"T12:00:00");
           return (<div key={b.id} style={{...S.card,border:`1.5px solid ${color}44`,background:`${color}08`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
-            <div><div style={{fontWeight:700,fontSize:14}}>{court?.name||"?"} · {b.slot} Uhr {b.with_guest?"👥":""}</div><div style={{fontSize:12,color:T.textSecondary,marginTop:2}}>{DE_FULL[dayOfWeek(b.date)]}, {fmtDate(d)}</div></div>
+            <div><div style={{fontWeight:700,fontSize:"0.875rem"}}>{court?.name||"?"} · {b.slot} Uhr {b.with_guest?"👥":""}</div><div style={{fontSize:"0.75rem",color:T.textSecondary,marginTop:2}}>{DE_FULL[dayOfWeek(b.date)]}, {fmtDate(d)}</div></div>
             <button style={S.cancelBtn} onClick={()=>onCancel(b.id)}>Stornieren</button>
           </div>);
         })}
       </div>)}
       {upcoming.length===0&&<Em msg="Keine bevorstehenden Buchungen"/>}
       <div>
-        <button style={{...S.ghostBtn,fontSize:13,padding:"7px 14px",marginBottom:12}} onClick={()=>setShowPast(p=>!p)}>{showPast?"▲ Vergangene ausblenden":`▼ Vergangene Buchungen (${past.length})`}</button>
+        <button style={{...S.ghostBtn,fontSize:"0.8125rem",padding:"7px 14px",marginBottom:12}} onClick={()=>setShowPast(p=>!p)}>{showPast?"▲ Vergangene ausblenden":`▼ Vergangene Buchungen (${past.length})`}</button>
         {showPast&&[...past].reverse().slice(0,20).map(b=>{const court=data.courts.find(c=>c.id===b.courtId);const ci=data.courts.findIndex(c=>c.id===b.courtId);const color=b.with_guest?"#16A34A":COURT_COLORS[ci%COURT_COLORS.length];const bType=b.type||"regular";const icon=bType==="training"?"🏋️":bType==="match"?"🏆":b.with_guest?"👥":"📅";const d=new Date(b.date+"T12:00:00");
           return (<div key={b.id} style={{...S.card,border:`1.5px solid ${color}33`,opacity:.7,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
-            <div><div style={{fontSize:13,fontWeight:600}}>{icon} {court?.name||"?"} · {b.slot} Uhr</div><div style={{fontSize:12,color:T.textMuted}}>{DE_FULL[dayOfWeek(b.date)]}, {fmtDate(d)}</div></div>
-            {b.with_guest&&<span style={{fontSize:11,padding:"2px 8px",borderRadius:20,background:b.guest_paid?"#DCFCE7":"#FEF3C7",color:b.guest_paid?"#16A34A":"#D97706",fontWeight:700}}>{b.guest_paid?"Bezahlt ✓":"Offen"}</span>}
+            <div><div style={{fontSize:"0.8125rem",fontWeight:600}}>{icon} {court?.name||"?"} · {b.slot} Uhr</div><div style={{fontSize:"0.75rem",color:T.textMuted}}>{DE_FULL[dayOfWeek(b.date)]}, {fmtDate(d)}</div></div>
+            {b.with_guest&&<span style={{fontSize:"0.6875rem",padding:"2px 8px",borderRadius:20,background:b.guest_paid?"#DCFCE7":"#FEF3C7",color:b.guest_paid?"#16A34A":"#D97706",fontWeight:700}}>{b.guest_paid?"Bezahlt ✓":"Offen"}</span>}
           </div>);
         })}
       </div>
       {showPayConfirm&&(<div style={S.overlay} onClick={()=>setShowPayConfirm(false)}><div style={S.modal} onClick={e=>e.stopPropagation()}>
         <div style={S.modalHeader}><div style={S.modalTitle}>Zahlung bestätigen</div><button style={S.closeBtn} onClick={()=>setShowPayConfirm(false)}>✕</button></div>
-        <p style={{color:T.textSecondary,fontSize:13,marginBottom:16}}>Bitte bestätige, dass du den offenen Betrag an den Verein bezahlt hast.</p>
+        <p style={{color:T.textSecondary,fontSize:"0.8125rem",marginBottom:16}}>Bitte bestätige, dass du den offenen Betrag an den Verein bezahlt hast.</p>
         <div style={{background:"#FEF3C7",borderRadius:10,padding:14,textAlign:"center",marginBottom:20}}>
-          <div style={{fontSize:11,color:"#92400E",fontWeight:700,marginBottom:4}}>ZU BEZAHLENDER BETRAG</div>
-          <div style={{fontSize:28,fontWeight:800,color:T.textPrimary}}>{eur(openAmount)}</div>
-          <div style={{fontSize:12,color:T.textSecondary,marginTop:4}}>{openGuestBookings.length} Buchungen × {eur(guestFee)}</div>
+          <div style={{fontSize:"0.6875rem",color:"#92400E",fontWeight:700,marginBottom:4}}>ZU BEZAHLENDER BETRAG</div>
+          <div style={{fontSize:"1.75rem",fontWeight:800,color:T.textPrimary}}>{eur(openAmount)}</div>
+          <div style={{fontSize:"0.75rem",color:T.textSecondary,marginTop:4}}>{openGuestBookings.length} Buchungen × {eur(guestFee)}</div>
         </div>
         <button style={{...S.primaryBtn,width:"100%",background:"#22C55E",color:"#fff",marginBottom:8}} onClick={()=>{onMarkPaid();setShowPayConfirm(false);}}>✓ Ja, ich habe bezahlt</button>
         <button style={{...S.ghostBtn,width:"100%"}} onClick={()=>setShowPayConfirm(false)}>Abbrechen</button>
@@ -4801,31 +4801,31 @@ function MassBookView({data,user,onMassBook,onCancelMany}) {
               </div>
               <Lbl>Wochentage</Lbl>
               <div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap"}}>
-                {WD.map((l,i)=>(<button key={i} style={{width:36,height:36,borderRadius:"50%",border:`2px solid ${tForm.weekdays.includes(i)?"#111827":"#E5E7EB"}`,background:tForm.weekdays.includes(i)?"#111827":"#fff",color:tForm.weekdays.includes(i)?"#4ADE80":"#374151",fontWeight:700,cursor:"pointer",fontSize:12}} onClick={()=>toggleWd(i)}>{l}</button>))}
+                {WD.map((l,i)=>(<button key={i} style={{width:36,height:36,borderRadius:"50%",border:`2px solid ${tForm.weekdays.includes(i)?"#111827":"#E5E7EB"}`,background:tForm.weekdays.includes(i)?"#111827":"#fff",color:tForm.weekdays.includes(i)?"#4ADE80":"#374151",fontWeight:700,cursor:"pointer",fontSize:"0.75rem"}} onClick={()=>toggleWd(i)}>{l}</button>))}
               </div>
               <Lbl>Plätze</Lbl>
               <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
-                {data.courts.map((c,i)=>(<button key={c.id} style={{padding:"6px 12px",borderRadius:7,border:`2px solid ${tForm.courtIds.includes(c.id)?COURT_COLORS[i%COURT_COLORS.length]:"#E5E7EB"}`,background:tForm.courtIds.includes(c.id)?COURT_COLORS[i%COURT_COLORS.length]+"11":"#fff",color:tForm.courtIds.includes(c.id)?COURT_COLORS[i%COURT_COLORS.length]:"#374151",fontWeight:600,cursor:"pointer",fontSize:13}} onClick={()=>toggleTCourt(c.id)}>{c.name}</button>))}
+                {data.courts.map((c,i)=>(<button key={c.id} style={{padding:"6px 12px",borderRadius:7,border:`2px solid ${tForm.courtIds.includes(c.id)?COURT_COLORS[i%COURT_COLORS.length]:"#E5E7EB"}`,background:tForm.courtIds.includes(c.id)?COURT_COLORS[i%COURT_COLORS.length]+"11":"#fff",color:tForm.courtIds.includes(c.id)?COURT_COLORS[i%COURT_COLORS.length]:"#374151",fontWeight:600,cursor:"pointer",fontSize:"0.8125rem"}} onClick={()=>toggleTCourt(c.id)}>{c.name}</button>))}
               </div>
               <Lbl>Zeitslots</Lbl>
               <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:18}}>
-                {SLOTS.map(s=>(<button key={s} style={{padding:"5px 10px",borderRadius:6,border:`1.5px solid ${tForm.slots.includes(s)?"#111827":"#E5E7EB"}`,background:tForm.slots.includes(s)?"#111827":"#fff",color:tForm.slots.includes(s)?"#4ADE80":"#374151",fontWeight:600,cursor:"pointer",fontSize:12}} onClick={()=>toggleTSlot(s)}>{s}</button>))}
+                {SLOTS.map(s=>(<button key={s} style={{padding:"5px 10px",borderRadius:6,border:`1.5px solid ${tForm.slots.includes(s)?"#111827":"#E5E7EB"}`,background:tForm.slots.includes(s)?"#111827":"#fff",color:tForm.slots.includes(s)?"#4ADE80":"#374151",fontWeight:600,cursor:"pointer",fontSize:"0.75rem"}} onClick={()=>toggleTSlot(s)}>{s}</button>))}
               </div>
               <button style={{...S.primaryBtn,width:"100%"}} onClick={calcPreview}>Vorschau berechnen</button>
             </div>
             <div>
-              {!preview&&<div style={{...S.card,textAlign:"center",color:T.textMuted,padding:"40px 20px"}}><div style={{fontSize:32,marginBottom:8}}>📊</div><div>Klicke auf „Vorschau berechnen"</div></div>}
+              {!preview&&<div style={{...S.card,textAlign:"center",color:T.textMuted,padding:"40px 20px"}}><div style={{fontSize:"2rem",marginBottom:8}}>📊</div><div>Klicke auf „Vorschau berechnen"</div></div>}
               {preview&&(<div style={S.card}>
                 <h3 style={{fontWeight:700,marginBottom:16}}>Vorschau</h3>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
-                  {[["Tage",preview.days,"#111827"],["Gesamt",preview.total,"#111827"],["Belegt",preview.conflicts,"#EF4444"],["Gebucht",preview.toBook,"#22C55E"]].map(([l,v,c])=>(<div key={l} style={{background:"#F9FAFB",borderRadius:8,padding:"12px",textAlign:"center"}}><div style={{fontSize:22,fontWeight:800,color:c}}>{v}</div><div style={{fontSize:12,color:T.textSecondary}}>{l}</div></div>))}
+                  {[["Tage",preview.days,"#111827"],["Gesamt",preview.total,"#111827"],["Belegt",preview.conflicts,"#EF4444"],["Gebucht",preview.toBook,"#22C55E"]].map(([l,v,c])=>(<div key={l} style={{background:"#F9FAFB",borderRadius:8,padding:"12px",textAlign:"center"}}><div style={{fontSize:"1.375rem",fontWeight:800,color:c}}>{v}</div><div style={{fontSize:"0.75rem",color:T.textSecondary}}>{l}</div></div>))}
                 </div>
-                {preview.dates.map(d=>(<div key={d} style={{fontSize:13,padding:"4px 0",borderBottom:"1px solid #F3F4F6"}}>{DE_FULL[dayOfWeek(d)]}, {fmtDate(new Date(d+"T12:00:00"))}</div>))}
-                {preview.days>5&&<div style={{fontSize:12,color:T.textMuted,marginTop:4}}>...und {preview.days-5} weitere</div>}
+                {preview.dates.map(d=>(<div key={d} style={{fontSize:"0.8125rem",padding:"4px 0",borderBottom:"1px solid #F3F4F6"}}>{DE_FULL[dayOfWeek(d)]}, {fmtDate(new Date(d+"T12:00:00"))}</div>))}
+                {preview.days>5&&<div style={{fontSize:"0.75rem",color:T.textMuted,marginTop:4}}>...und {preview.days-5} weitere</div>}
                 <div style={{marginTop:16}}>
                   {preview.toBook>0
                     ?<button style={{...S.primaryBtn,width:"100%",background:"#22C55E",color:"#fff"}} onClick={()=>{onMassBook({...tForm,type:"training"});setPreview(null);}}>{preview.toBook} Slots buchen</button>
-                    :<div style={{padding:"12px",background:"#FEF3C7",borderRadius:8,fontSize:13,color:"#92400E",textAlign:"center"}}>Alle Slots belegt.</div>
+                    :<div style={{padding:"12px",background:"#FEF3C7",borderRadius:8,fontSize:"0.8125rem",color:"#92400E",textAlign:"center"}}>Alle Slots belegt.</div>
                   }
                 </div>
               </div>)}
@@ -4844,7 +4844,7 @@ function MassBookView({data,user,onMassBook,onCancelMany}) {
                 <div key={key} style={{...S.card,border:`1.5px solid #3B82F644`,background:"#3B82F608",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
                   <div>
                     <div style={{fontWeight:700}}>🏋️ Training{g.label&&<span style={{marginLeft:8,fontWeight:400,color:T.textSecondary}}>– {g.label}</span>}</div>
-                    <div style={{fontSize:12,color:T.textSecondary}}>{g.count} Slots gesamt · nächster: {dates[0]?fmtDate(new Date(dates[0]+"T12:00:00")):"–"}</div>
+                    <div style={{fontSize:"0.75rem",color:T.textSecondary}}>{g.count} Slots gesamt · nächster: {dates[0]?fmtDate(new Date(dates[0]+"T12:00:00")):"–"}</div>
                   </div>
                   <button style={S.cancelBtn} onClick={()=>onCancelMany(g.ids)}>Alle stornieren</button>
                 </div>
@@ -4859,7 +4859,7 @@ function MassBookView({data,user,onMassBook,onCancelMany}) {
               <div key={key} style={{...S.card,border:`1.5px solid #EF444444`,background:"#EF444408",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
                 <div>
                   <div style={{fontWeight:700}}>🏆 {g.label||"Spieltag"}</div>
-                  <div style={{fontSize:12,color:T.textSecondary}}>{fmtDate(new Date(g.date+"T12:00:00"))} · {g.slots.sort().join(", ")} Uhr</div>
+                  <div style={{fontSize:"0.75rem",color:T.textSecondary}}>{fmtDate(new Date(g.date+"T12:00:00"))} · {g.slots.sort().join(", ")} Uhr</div>
                 </div>
                 <button style={S.cancelBtn} onClick={()=>onCancelMany(g.ids)}>Stornieren</button>
               </div>
@@ -4901,17 +4901,17 @@ function AdminView({data,allBookings,guestFee,onSaveGuestFee,onAddCourt,onUpdate
       </div>
       {tab==="guest"&&(<>
         <div style={{background:"#EFF6FF",border:"1.5px solid #BFDBFE",borderRadius:12,padding:14,marginBottom:16}}>
-          <div style={{fontWeight:800,fontSize:13,color:"#1E40AF",marginBottom:10}}>⚙️ Gebühr pro Gastspieler-Buchung</div>
+          <div style={{fontWeight:800,fontSize:"0.8125rem",color:"#1E40AF",marginBottom:10}}>⚙️ Gebühr pro Gastspieler-Buchung</div>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
-            <input type="number" value={feeInput} onChange={e=>setFeeInput(e.target.value)} min="0" step="0.5" style={{...S.input,maxWidth:100,fontSize:16,fontWeight:800}}/>
+            <input type="number" value={feeInput} onChange={e=>setFeeInput(e.target.value)} min="0" step="0.5" style={{...S.input,maxWidth:100,fontSize:"1rem",fontWeight:800}}/>
             <span style={{fontWeight:700,color:T.textSecondary}}>€</span>
             <button style={S.primaryBtn} onClick={()=>onSaveGuestFee(parseFloat(feeInput)||0)}>Speichern</button>
           </div>
-          <div style={{fontSize:11,color:T.textSecondary,marginTop:8}}>Gilt für alle zukünftigen Buchungen mit Gastspieler.</div>
+          <div style={{fontSize:"0.6875rem",color:T.textSecondary,marginTop:8}}>Gilt für alle zukünftigen Buchungen mit Gastspieler.</div>
         </div>
         <div style={{background:"#0F172A",borderRadius:12,padding:14,marginBottom:16,display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-          <div style={{textAlign:"center"}}><div style={{color:T.textMuted,fontSize:11,fontWeight:700,marginBottom:4}}>GESAMT OFFEN {new Date().getFullYear()}</div><div style={{color:"#F59E0B",fontSize:22,fontWeight:800}}>{eur(totalOpen)}</div></div>
-          <div style={{textAlign:"center"}}><div style={{color:T.textMuted,fontSize:11,fontWeight:700,marginBottom:4}}>BEZAHLT {new Date().getFullYear()}</div><div style={{color:"#4ADE80",fontSize:22,fontWeight:800}}>{eur(totalPaid)}</div></div>
+          <div style={{textAlign:"center"}}><div style={{color:T.textMuted,fontSize:"0.6875rem",fontWeight:700,marginBottom:4}}>GESAMT OFFEN {new Date().getFullYear()}</div><div style={{color:"#F59E0B",fontSize:"1.375rem",fontWeight:800}}>{eur(totalOpen)}</div></div>
+          <div style={{textAlign:"center"}}><div style={{color:T.textMuted,fontSize:"0.6875rem",fontWeight:700,marginBottom:4}}>BEZAHLT {new Date().getFullYear()}</div><div style={{color:"#4ADE80",fontSize:"1.375rem",fontWeight:800}}>{eur(totalPaid)}</div></div>
         </div>
         <SectTitle>Alle Mitglieder</SectTitle>
         {guestStats.filter(u=>u.openCount>0||u.paidAmount>0).map(u=>(
@@ -4919,20 +4919,20 @@ function AdminView({data,allBookings,guestFee,onSaveGuestFee,onAddCourt,onUpdate
             <div style={{display:"flex",alignItems:"center",gap:10}}>
               <Av name={u.name}/>
               <div>
-                <div style={{fontWeight:700,fontSize:14}}>{u.name}</div>
-                <div style={{fontSize:12,color:T.textSecondary}}>{u.openCount} offen · {eur(u.paidAmount)} bezahlt</div>
-                {u.openAmount>0&&<button style={{...S.cancelBtn,background:"#FEF3C7",color:"#D97706",border:"1px solid #FDE68A",marginTop:6,padding:"5px 10px",fontSize:11}} onClick={()=>setConfirmPay({userId:u.id,name:u.name,amount:u.openAmount,count:u.openCount})}>Als bezahlt markieren</button>}
+                <div style={{fontWeight:700,fontSize:"0.875rem"}}>{u.name}</div>
+                <div style={{fontSize:"0.75rem",color:T.textSecondary}}>{u.openCount} offen · {eur(u.paidAmount)} bezahlt</div>
+                {u.openAmount>0&&<button style={{...S.cancelBtn,background:"#FEF3C7",color:"#D97706",border:"1px solid #FDE68A",marginTop:6,padding:"5px 10px",fontSize:"0.6875rem"}} onClick={()=>setConfirmPay({userId:u.id,name:u.name,amount:u.openAmount,count:u.openCount})}>Als bezahlt markieren</button>}
               </div>
             </div>
-            <div style={{textAlign:"right"}}><div style={{fontSize:18,fontWeight:800,color:u.openAmount>0?"#D97706":"#22C55E"}}>{eur(u.openAmount)}</div><div style={{fontSize:11,color:T.textMuted}}>offen</div></div>
+            <div style={{textAlign:"right"}}><div style={{fontSize:"1.125rem",fontWeight:800,color:u.openAmount>0?"#D97706":"#22C55E"}}>{eur(u.openAmount)}</div><div style={{fontSize:"0.6875rem",color:T.textMuted}}>offen</div></div>
           </div>
         ))}
         {guestStats.every(u=>u.openCount===0&&u.paidAmount===0)&&<Em msg="Keine Gastspieler-Buchungen vorhanden"/>}
         {guestStats.some(u=>u.paidAmount>0)&&(<><SectTitle style={{marginTop:16}}>Zahlungshistorie</SectTitle>
           <div style={S.card}>{guestStats.filter(u=>u.paidAmount>0).map(u=>(
             <div key={u.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid #F3F4F6"}}>
-              <div><div style={{fontWeight:600,fontSize:13}}>{u.name}</div><div style={{fontSize:11,color:T.textSecondary}}>Bezahlt</div></div>
-              <div style={{textAlign:"right"}}><div style={{fontWeight:800,color:"#16A34A"}}>{eur(u.paidAmount)}</div><span style={{fontSize:10,padding:"2px 8px",borderRadius:20,background:"#DCFCE7",color:"#16A34A",fontWeight:700}}>Bezahlt ✓</span></div>
+              <div><div style={{fontWeight:600,fontSize:"0.8125rem"}}>{u.name}</div><div style={{fontSize:"0.6875rem",color:T.textSecondary}}>Bezahlt</div></div>
+              <div style={{textAlign:"right"}}><div style={{fontWeight:800,color:"#16A34A"}}>{eur(u.paidAmount)}</div><span style={{fontSize:"0.625rem",padding:"2px 8px",borderRadius:20,background:"#DCFCE7",color:"#16A34A",fontWeight:700}}>Bezahlt ✓</span></div>
             </div>
           ))}</div>
         </>)}
@@ -4940,18 +4940,18 @@ function AdminView({data,allBookings,guestFee,onSaveGuestFee,onAddCourt,onUpdate
       {tab==="bookings"&&(<div><h3 style={{fontWeight:700,marginBottom:14}}>Bevorstehende Buchungen</h3>
         {data.bookings.filter(b=>b.date>=today()).sort((a,b)=>(a.date+a.slot).localeCompare(b.date+b.slot)).map(b=>{const court=data.courts.find(c=>c.id===b.courtId);const ci=data.courts.findIndex(c=>c.id===b.courtId);const icon=b.type==="training"?"🏋️":b.type==="match"?"🏆":"📅";
           return (<div key={b.id} style={{...S.card,border:`1.5px solid ${COURT_COLORS[ci%COURT_COLORS.length]}44`,background:`${COURT_COLORS[ci%COURT_COLORS.length]}08`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <div><div style={{fontWeight:600}}>{icon} {court?.name||"?"} · {b.slot} Uhr · {b.date}</div><div style={{fontSize:12,color:T.textSecondary}}>{displayName(b)}{b.with_guest?" · 👥 Gastspieler":""}{b.label?` · ${b.label}`:""}</div></div>
+            <div><div style={{fontWeight:600}}>{icon} {court?.name||"?"} · {b.slot} Uhr · {b.date}</div><div style={{fontSize:"0.75rem",color:T.textSecondary}}>{displayName(b)}{b.with_guest?" · 👥 Gastspieler":""}{b.label?` · ${b.label}`:""}</div></div>
             <button style={S.cancelBtn} onClick={()=>onCancelBooking(b.id)}>Stornieren</button>
           </div>);
         })}
       </div>)}
       {confirmPay&&(<div style={S.overlay} onClick={()=>setConfirmPay(null)}><div style={S.modal} onClick={e=>e.stopPropagation()}>
         <div style={S.modalHeader}><div style={S.modalTitle}>Zahlung bestätigen</div><button style={S.closeBtn} onClick={()=>setConfirmPay(null)}>✕</button></div>
-        <p style={{color:T.textSecondary,fontSize:13,marginBottom:16}}>{confirmPay.name} als bezahlt markieren?</p>
+        <p style={{color:T.textSecondary,fontSize:"0.8125rem",marginBottom:16}}>{confirmPay.name} als bezahlt markieren?</p>
         <div style={{background:"#FEF3C7",borderRadius:10,padding:14,textAlign:"center",marginBottom:20}}>
-          <div style={{fontSize:11,color:"#92400E",fontWeight:700,marginBottom:4}}>BETRAG</div>
-          <div style={{fontSize:28,fontWeight:800,color:T.textPrimary}}>{eur(confirmPay.amount)}</div>
-          <div style={{fontSize:12,color:T.textSecondary,marginTop:4}}>{confirmPay.count} Buchungen × {eur(guestFee)}</div>
+          <div style={{fontSize:"0.6875rem",color:"#92400E",fontWeight:700,marginBottom:4}}>BETRAG</div>
+          <div style={{fontSize:"1.75rem",fontWeight:800,color:T.textPrimary}}>{eur(confirmPay.amount)}</div>
+          <div style={{fontSize:"0.75rem",color:T.textSecondary,marginTop:4}}>{confirmPay.count} Buchungen × {eur(guestFee)}</div>
         </div>
         <button style={{...S.primaryBtn,width:"100%",background:"#22C55E",color:"#fff",marginBottom:8}} onClick={()=>{onMarkPaid(confirmPay.userId);setConfirmPay(null);}}>✓ Als bezahlt markieren</button>
         <button style={{...S.ghostBtn,width:"100%"}} onClick={()=>setConfirmPay(null)}>Abbrechen</button>
@@ -4972,10 +4972,10 @@ function ResetPasswordScreen() {
   return (
     <div style={S.loginWrap}>
       <div style={S.loginCard}>
-        <div style={{textAlign:"center",marginBottom:28}}><img src="/logo.png" alt="Tennis Herrieden" style={{width:64,height:64,objectFit:"contain",margin:"0 auto",display:"block"}}/><h1 style={{fontSize:22,fontWeight:800,letterSpacing:-.5,marginTop:12}}>Neues Passwort</h1></div>
+        <div style={{textAlign:"center",marginBottom:28}}><img src="/logo.png" alt="Tennis Herrieden" style={{width:64,height:64,objectFit:"contain",margin:"0 auto",display:"block"}}/><h1 style={{fontSize:"1.375rem",fontWeight:800,letterSpacing:-.5,marginTop:12}}>Neues Passwort</h1></div>
         <div style={{display:"flex",flexDirection:"column",gap:12}}>
           <input type="password" placeholder="Neues Passwort" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handle()} style={S.input}/>
-          {msg&&<div style={{padding:"10px 12px",borderRadius:8,fontSize:13,background:msg.type==="error"?"#FEE2E2":"#DCFCE7",color:msg.type==="error"?"#991B1B":"#166534"}}>{msg.text}</div>}
+          {msg&&<div style={{padding:"10px 12px",borderRadius:8,fontSize:"0.8125rem",background:msg.type==="error"?"#FEE2E2":"#DCFCE7",color:msg.type==="error"?"#991B1B":"#166534"}}>{msg.text}</div>}
           <button style={{...S.primaryBtn,marginTop:4,opacity:loading?.6:1}} onClick={handle} disabled={loading}>{loading?"…":"Passwort speichern"}</button>
         </div>
       </div>
@@ -4995,16 +4995,16 @@ function LoginScreen() {
   return (
     <div style={S.loginWrap}>
       <div style={S.loginCard}>
-        <div style={{textAlign:"center",marginBottom:28}}><img src="/logo.png" alt="Tennis Herrieden" style={{width:72,height:72,objectFit:"contain",margin:"0 auto",display:"block"}}/><h1 style={{fontSize:22,fontWeight:800,letterSpacing:-.5,marginTop:12}}>Tennis Herrieden</h1><p style={{color:T.textSecondary,fontSize:13,marginTop:4}}>Vereins-App</p></div>
+        <div style={{textAlign:"center",marginBottom:28}}><img src="/logo.png" alt="Tennis Herrieden" style={{width:72,height:72,objectFit:"contain",margin:"0 auto",display:"block"}}/><h1 style={{fontSize:"1.375rem",fontWeight:800,letterSpacing:-.5,marginTop:12}}>Tennis Herrieden</h1><p style={{color:T.textSecondary,fontSize:"0.8125rem",marginTop:4}}>Vereins-App</p></div>
         <div style={{display:"flex",gap:6,marginBottom:20}}>{[["login","Anmelden"],["register","Registrieren"]].map(([m,l])=>(<button key={m} style={{...S.tabBtn,flex:1,...(mode===m?S.tabBtnActive:{})}} onClick={()=>{setMode(m);setMsg(null);}}>{l}</button>))}</div>
         <div style={{display:"flex",flexDirection:"column",gap:12}}>
           {mode==="register"&&<input placeholder="Vorname" value={firstName} onChange={e=>setFirstName(e.target.value)} style={S.input}/>}
           {mode==="register"&&<input placeholder="Nachname" value={lastName} onChange={e=>setLastName(e.target.value)} style={S.input}/>}
           <input type="email" placeholder="E-Mail" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handle()} style={S.input}/>
           {mode!=="reset"&&<input type="password" placeholder="Passwort" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handle()} style={S.input}/>}
-          {msg&&<div style={{padding:"10px 12px",borderRadius:8,fontSize:13,background:msg.type==="error"?"#FEE2E2":"#DCFCE7",color:msg.type==="error"?"#991B1B":"#166534"}}>{msg.text}</div>}
+          {msg&&<div style={{padding:"10px 12px",borderRadius:8,fontSize:"0.8125rem",background:msg.type==="error"?"#FEE2E2":"#DCFCE7",color:msg.type==="error"?"#991B1B":"#166534"}}>{msg.text}</div>}
           <button style={{...S.primaryBtn,marginTop:4,opacity:loading?.6:1}} onClick={handle} disabled={loading}>{loading?"…":mode==="login"?"Anmelden":mode==="register"?"Registrieren":"Link senden"}</button>
-          {mode==="login"&&<button style={{background:"none",border:"none",color:T.textSecondary,cursor:"pointer",fontSize:12}} onClick={()=>{setMode("reset");setMsg(null);}}>Passwort vergessen?</button>}
+          {mode==="login"&&<button style={{background:"none",border:"none",color:T.textSecondary,cursor:"pointer",fontSize:"0.75rem"}} onClick={()=>{setMode("reset");setMsg(null);}}>Passwort vergessen?</button>}
         </div>
       </div>
     </div>
@@ -5016,20 +5016,20 @@ function LoginScreen() {
 // ═══════════════════════════════════════════════════════════════════════════
 function TennisBall({size=32}){return(<svg width={size} height={size} viewBox="0 0 32 32" fill="none" style={{display:"block",margin:"0 auto"}}><circle cx="16" cy="16" r="15" stroke="#22C55E" strokeWidth="2"/><ellipse cx="16" cy="16" rx="5" ry="14" stroke="#22C55E" strokeWidth="1.5"/><line x1="1" y1="16" x2="31" y2="16" stroke="#22C55E" strokeWidth="1.5"/></svg>);}
 function Ico({name,size=16,color,style={}}){if(!name)return null;if(name.startsWith("ti-"))return<i className={`ti ${name}`} aria-hidden="true" style={{fontSize:size,color,lineHeight:1,...style}}/>;return<span aria-hidden="true" style={{fontSize:size,...style}}>{name}</span>;}
-function Av({name}){return(<div style={{width:34,height:34,borderRadius:"50%",background:"#22C55E",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:14,flexShrink:0}}>{name?.[0]||"?"}</div>);}
-function Loading({msg="Laden…"}){return(<div style={{display:"flex",justifyContent:"center",alignItems:"center",height:"100vh",background:"#F9FAFB"}}><div style={{textAlign:"center"}}><div style={{fontSize:36,marginBottom:12}}>🎾</div><div style={{color:T.textSecondary}}>{msg}</div></div></div>);}
-function SectTitle({children}){return <div style={{fontSize:13,fontWeight:800,color:T.textSecondary,textTransform:"uppercase",letterSpacing:.6,marginBottom:10}}>{children}</div>;}
-function Em({msg}){return <div style={{color:T.textMuted,padding:"18px 0",fontSize:14}}>– {msg}</div>;}
-function Lbl({children}){return <div style={{fontSize:12,fontWeight:700,color:T.textPrimary,marginBottom:6,textTransform:"uppercase",letterSpacing:.5}}>{children}</div>;}
+function Av({name}){return(<div style={{width:34,height:34,borderRadius:"50%",background:"#22C55E",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:"0.875rem",flexShrink:0}}>{name?.[0]||"?"}</div>);}
+function Loading({msg="Laden…"}){return(<div style={{display:"flex",justifyContent:"center",alignItems:"center",height:"100vh",background:"#F9FAFB"}}><div style={{textAlign:"center"}}><div style={{fontSize:"2.25rem",marginBottom:12}}>🎾</div><div style={{color:T.textSecondary}}>{msg}</div></div></div>);}
+function SectTitle({children}){return <div style={{fontSize:"0.8125rem",fontWeight:800,color:T.textSecondary,textTransform:"uppercase",letterSpacing:.6,marginBottom:10}}>{children}</div>;}
+function Em({msg}){return <div style={{color:T.textMuted,padding:"18px 0",fontSize:"0.875rem"}}>– {msg}</div>;}
+function Lbl({children}){return <div style={{fontSize:"0.75rem",fontWeight:700,color:T.textPrimary,marginBottom:6,textTransform:"uppercase",letterSpacing:.5}}>{children}</div>;}
 
 const K={
   sidebar:    {width:210,background:T.bgPage,display:"flex",flexDirection:"column",padding:"16px 0",flexShrink:0},
-  backBtn:    {margin:"0 12px 14px",padding:"6px 12px",background:"none",border:`1px solid ${T.bgBorder}`,borderRadius:7,color:T.textSecondary,cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left"},
+  backBtn:    {margin:"0 12px 14px",padding:"6px 12px",background:"none",border:`1px solid ${T.bgBorder}`,borderRadius:7,color:T.textSecondary,cursor:"pointer",fontSize:"0.75rem",fontWeight:600,textAlign:"left"},
   logo:       {padding:"0 16px 14px",borderBottom:`1px solid ${T.bgBorder}`,marginBottom:12,display:"flex",flexDirection:"column",gap:4},
   openChip:   {margin:"0 12px 8px",background:T.bgCard,border:"1px solid #F59E0B44",borderRadius:10,padding:"10px 12px",textAlign:"center"},
   page:       {padding:"28px 32px",maxWidth:860},
   summaryBar: {background:T.bgPage,borderRadius:12,padding:"16px 20px",marginBottom:24,display:"flex",justifyContent:"space-between",alignItems:"center"},
-  payBtn:     {padding:"10px 16px",background:"#F59E0B",color:"#0F172A",border:"none",borderRadius:8,fontWeight:800,cursor:"pointer",fontSize:13,lineHeight:1.4,textAlign:"center"},
+  payBtn:     {padding:"10px 16px",background:"#F59E0B",color:"#0F172A",border:"none",borderRadius:8,fontWeight:800,cursor:"pointer",fontSize:"0.8125rem",lineHeight:1.4,textAlign:"center"},
   drinkGrid:  {display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:12},
   drinkTile:  {background:T.bgCard,border:`1.5px solid ${T.bgBorder}`,borderRadius:14,padding:"22px 10px 16px",display:"flex",flexDirection:"column",alignItems:"center",gap:5,textAlign:"center",boxShadow:"0 1px 4px rgba(0,0,0,.06)",transition:"all .15s"},
   drinkTileDone:{background:"#DCFCE7",borderColor:"#22C55E"},
@@ -5209,48 +5209,48 @@ function KassenbuchApp({profile, onBack}) {
     wrap:    {minHeight:"100vh",background:T.bgPage,fontFamily:"'DM Sans',system-ui,sans-serif",color:T.textPrimary,display:"flex",flexDirection:"column",alignItems:"center"},
     inner:   {width:"100%",maxWidth:480,padding:"52px 20px 40px",display:"flex",flexDirection:"column",gap:14},
     header:  {display:"flex",alignItems:"center",gap:10,paddingBottom:4},
-    backBtn: {background:"none",border:`1px solid ${T.bgBorder}`,borderRadius:8,color:T.textSecondary,cursor:"pointer",fontSize:13,padding:"6px 12px",display:"flex",alignItems:"center",gap:5},
-    title:   {fontSize:20,fontWeight:800,letterSpacing:-.5,flex:1,color:T.textPrimary},
-    addBtn:  {background:"#22C55E",color:"#052e16",border:"none",borderRadius:8,padding:"7px 14px",fontWeight:700,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",gap:5},
+    backBtn: {background:"none",border:`1px solid ${T.bgBorder}`,borderRadius:8,color:T.textSecondary,cursor:"pointer",fontSize:"0.8125rem",padding:"6px 12px",display:"flex",alignItems:"center",gap:5},
+    title:   {fontSize:"1.25rem",fontWeight:800,letterSpacing:-.5,flex:1,color:T.textPrimary},
+    addBtn:  {background:"#22C55E",color:"#052e16",border:"none",borderRadius:8,padding:"7px 14px",fontWeight:700,fontSize:"0.8125rem",cursor:"pointer",display:"flex",alignItems:"center",gap:5},
     balCard: {background:T.bgCard,border:`1.5px solid ${T.bgBorder}`,borderRadius:14,padding:"16px 18px"},
-    balLabel:{fontSize:11,fontWeight:700,color:T.textSecondary,textTransform:"uppercase",letterSpacing:.8,marginBottom:4},
-    balAmt:  (pos)=>({fontSize:32,fontWeight:800,color:pos?"#4ADE80":"#F87171"}),
+    balLabel:{fontSize:"0.6875rem",fontWeight:700,color:T.textSecondary,textTransform:"uppercase",letterSpacing:.8,marginBottom:4},
+    balAmt:  (pos)=>({fontSize:"2rem",fontWeight:800,color:pos?"#4ADE80":"#F87171"}),
     startRow:{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:10,paddingTop:10,borderTop:`1px solid ${T.bgBorder}`},
-    editBtn: {background:"none",border:`1px solid ${T.bgBorder}`,borderRadius:6,color:T.textMuted,cursor:"pointer",fontSize:12,padding:"4px 10px",display:"flex",alignItems:"center",gap:4},
+    editBtn: {background:"none",border:`1px solid ${T.bgBorder}`,borderRadius:6,color:T.textMuted,cursor:"pointer",fontSize:"0.75rem",padding:"4px 10px",display:"flex",alignItems:"center",gap:4},
     menuWrap:{position:"relative"},
-    menuBtn: {background:"none",border:`1px solid ${T.bgBorder}`,borderRadius:6,color:T.textMuted,cursor:"pointer",fontSize:12,padding:"4px 10px",display:"flex",alignItems:"center",gap:4},
+    menuBtn: {background:"none",border:`1px solid ${T.bgBorder}`,borderRadius:6,color:T.textMuted,cursor:"pointer",fontSize:"0.75rem",padding:"4px 10px",display:"flex",alignItems:"center",gap:4},
     menuDrop:{position:"absolute",right:0,top:"calc(100% + 4px)",background:T.bgCard,border:`1px solid ${T.bgBorder}`,borderRadius:8,overflow:"hidden",zIndex:10,minWidth:140},
-    menuItem:{display:"block",width:"100%",padding:"10px 14px",background:"none",border:"none",color:T.textPrimary,fontSize:13,cursor:"pointer",textAlign:"left"},
+    menuItem:{display:"block",width:"100%",padding:"10px 14px",background:"none",border:"none",color:T.textPrimary,fontSize:"0.8125rem",cursor:"pointer",textAlign:"left"},
     statRow: {display:"grid",gridTemplateColumns:"1fr 1fr",gap:10},
     stat:    {background:T.bgCard,border:`1.5px solid ${T.bgBorder}`,borderRadius:10,padding:"10px 14px"},
-    statLbl: {fontSize:11,color:T.textSecondary,fontWeight:700,textTransform:"uppercase",letterSpacing:.6,marginBottom:3},
-    statVal: (c)=>({fontSize:18,fontWeight:800,color:c}),
+    statLbl: {fontSize:"0.6875rem",color:T.textSecondary,fontWeight:700,textTransform:"uppercase",letterSpacing:.6,marginBottom:3},
+    statVal: (c)=>({fontSize:"1.125rem",fontWeight:800,color:c}),
     monthRow:{display:"flex",alignItems:"center",gap:8},
-    mBtn:    {background:"none",border:`1px solid ${T.bgBorder}`,borderRadius:6,color:T.textMuted,cursor:"pointer",fontSize:18,lineHeight:1,minWidth:44,minHeight:44,display:"flex",alignItems:"center",justifyContent:"center"},
-    mLabel:  {flex:1,textAlign:"center",fontSize:14,fontWeight:700,color:T.textMuted},
-    allBtn:  (on)=>({background:on?"#14532D":"none",border:`1px solid ${on?"#22C55E":T.bgBorder}`,borderRadius:6,color:on?"#4ADE80":T.textSecondary,cursor:"pointer",fontSize:12,padding:"4px 10px"}),
-    hint:    {fontSize:11,color:T.bgBorder,textAlign:"right",marginBottom:-4},
+    mBtn:    {background:"none",border:`1px solid ${T.bgBorder}`,borderRadius:6,color:T.textMuted,cursor:"pointer",fontSize:"1.125rem",lineHeight:1,minWidth:44,minHeight:44,display:"flex",alignItems:"center",justifyContent:"center"},
+    mLabel:  {flex:1,textAlign:"center",fontSize:"0.875rem",fontWeight:700,color:T.textMuted},
+    allBtn:  (on)=>({background:on?"#14532D":"none",border:`1px solid ${on?"#22C55E":T.bgBorder}`,borderRadius:6,color:on?"#4ADE80":T.textSecondary,cursor:"pointer",fontSize:"0.75rem",padding:"4px 10px"}),
+    hint:    {fontSize:"0.6875rem",color:T.bgBorder,textAlign:"right",marginBottom:-4},
     entry:   (swiped)=>({background:T.bgCard,border:`1.5px solid ${T.bgBorder}`,borderRadius:10,padding:"10px 12px",display:"flex",alignItems:"center",gap:10,transform:swiped?"translateX(-64px)":"translateX(0)",cursor:"grab",userSelect:"none",touchAction:"pan-y"}),
     entryWrap:{position:"relative",overflow:"hidden",borderRadius:10,marginBottom:6},
-    delBtn:  {position:"absolute",right:0,top:0,bottom:0,width:60,background:"#DC2626",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",borderRadius:"0 10px 10px 0",fontSize:18},
-    icon:    (t)=>({width:30,height:30,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:800,flexShrink:0,background:t==="in"?"#14532D":"#450A0A",color:t==="in"?"#4ADE80":"#F87171"}),
-    eDesc:   {fontSize:14,color:T.textPrimary,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"},
-    eDate:   {fontSize:12,color:T.textSecondary},
-    eAmt:    (t)=>({fontSize:14,fontWeight:800,flexShrink:0,color:t==="in"?"#4ADE80":"#F87171"}),
-    empty:   {textAlign:"center",color:T.textSecondary,fontSize:14,padding:"2rem 0"},
+    delBtn:  {position:"absolute",right:0,top:0,bottom:0,width:60,background:"#DC2626",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",borderRadius:"0 10px 10px 0",fontSize:"1.125rem"},
+    icon:    (t)=>({width:30,height:30,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.9375rem",fontWeight:800,flexShrink:0,background:t==="in"?"#14532D":"#450A0A",color:t==="in"?"#4ADE80":"#F87171"}),
+    eDesc:   {fontSize:"0.875rem",color:T.textPrimary,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"},
+    eDate:   {fontSize:"0.75rem",color:T.textSecondary},
+    eAmt:    (t)=>({fontSize:"0.875rem",fontWeight:800,flexShrink:0,color:t==="in"?"#4ADE80":"#F87171"}),
+    empty:   {textAlign:"center",color:T.textSecondary,fontSize:"0.875rem",padding:"2rem 0"},
     formCard:{background:T.bgCard,border:`1.5px solid ${T.bgBorder}`,borderRadius:14,padding:"18px",display:"flex",flexDirection:"column",gap:14},
     typeRow: {display:"grid",gridTemplateColumns:"1fr 1fr",gap:8},
-    typeBtn: (t,sel)=>({border:`2px solid ${sel?(t==="in"?"#22C55E":"#EF4444"):T.bgBorder}`,borderRadius:10,padding:"12px 8px",cursor:"pointer",fontSize:22,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",background:sel?(t==="in"?"#14532D":"#450A0A"):T.bgPage,color:sel?(t==="in"?"#4ADE80":"#F87171"):T.textSecondary,transition:"all .12s"}),
-    lbl:     {fontSize:12,color:T.textSecondary,fontWeight:600,marginBottom:-8},
-    inp:     {background:T.bgPage,border:`1.5px solid ${T.bgBorder}`,borderRadius:8,color:T.textPrimary,fontSize:14,padding:"9px 12px",outline:"none",width:"100%",boxSizing:"border-box"},
-    saveBtn: {background:"#22C55E",color:"#052e16",border:"none",borderRadius:8,padding:"11px",fontWeight:800,fontSize:14,cursor:"pointer"},
+    typeBtn: (t,sel)=>({border:`2px solid ${sel?(t==="in"?"#22C55E":"#EF4444"):T.bgBorder}`,borderRadius:10,padding:"12px 8px",cursor:"pointer",fontSize:"1.375rem",fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",background:sel?(t==="in"?"#14532D":"#450A0A"):T.bgPage,color:sel?(t==="in"?"#4ADE80":"#F87171"):T.textSecondary,transition:"all .12s"}),
+    lbl:     {fontSize:"0.75rem",color:T.textSecondary,fontWeight:600,marginBottom:-8},
+    inp:     {background:T.bgPage,border:`1.5px solid ${T.bgBorder}`,borderRadius:8,color:T.textPrimary,fontSize:"0.875rem",padding:"9px 12px",outline:"none",width:"100%",boxSizing:"border-box"},
+    saveBtn: {background:"#22C55E",color:"#052e16",border:"none",borderRadius:8,padding:"11px",fontWeight:800,fontSize:"0.875rem",cursor:"pointer"},
     overlay: {position:"fixed",inset:0,background:"rgba(0,0,0,.45)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:999},
     sheet:   {background:T.bgCard,borderRadius:"16px 16px 0 0",padding:"24px 20px",width:"100%",maxWidth:480,display:"flex",flexDirection:"column",gap:12,animation:"modal-in .22s cubic-bezier(.2,.85,.25,1)"},
-    shTitle: {fontSize:16,fontWeight:800,color:T.textPrimary},
-    shDesc:  {fontSize:14,color:T.textMuted},
+    shTitle: {fontSize:"1rem",fontWeight:800,color:T.textPrimary},
+    shDesc:  {fontSize:"0.875rem",color:T.textMuted},
     shBtns:  {display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:4},
-    shCancel:{background:"none",border:`1px solid ${T.bgBorder}`,borderRadius:8,padding:10,fontSize:14,color:T.textMuted,cursor:"pointer"},
-    shDel:   {background:"#DC2626",border:"none",borderRadius:8,padding:10,fontSize:14,fontWeight:700,color:"#fff",cursor:"pointer"},
+    shCancel:{background:"none",border:`1px solid ${T.bgBorder}`,borderRadius:8,padding:10,fontSize:"0.875rem",color:T.textMuted,cursor:"pointer"},
+    shDel:   {background:"#DC2626",border:"none",borderRadius:8,padding:10,fontSize:"0.875rem",fontWeight:700,color:"#fff",cursor:"pointer"},
   };
 
   if(loading) return <Loading msg="Lade Kassenbuch…"/>;
@@ -5266,12 +5266,12 @@ function KassenbuchApp({profile, onBack}) {
           </div>
         </div>
         <div style={KB.formCard}>
-          <p style={{fontSize:14,color:T.textMuted,margin:0}}>
+          <p style={{fontSize:"0.875rem",color:T.textMuted,margin:0}}>
             Trage den tatsächlich gezählten Kassenbestand ein. Die Differenz zum aktuellen Bestand wird automatisch als Buchung eingetragen.
           </p>
           <div style={{background:"#0F172A",borderRadius:8,padding:"10px 14px",display:"flex",justifyContent:"space-between"}}>
-            <span style={{fontSize:13,color:T.textMuted}}>Aktueller Bestand</span>
-            <span style={{fontSize:13,fontWeight:700,color:bal>=0?"#4ADE80":"#F87171"}}>{eur(bal)}</span>
+            <span style={{fontSize:"0.8125rem",color:T.textMuted}}>Aktueller Bestand</span>
+            <span style={{fontSize:"0.8125rem",fontWeight:700,color:bal>=0?"#4ADE80":"#F87171"}}>{eur(bal)}</span>
           </div>
           <div>
             <div style={KB.lbl}>Gezählter Bestand (€)</div>
@@ -5283,8 +5283,8 @@ function KassenbuchApp({profile, onBack}) {
             if(Math.abs(diff)<0.005) return null;
             const pos = diff>0;
             return <div style={{background:pos?"#14532D":"#450A0A",borderRadius:8,padding:"10px 14px",display:"flex",justifyContent:"space-between"}}>
-              <span style={{fontSize:13,color:pos?"#86EFAC":"#FCA5A5"}}>Differenzbuchung</span>
-              <span style={{fontSize:13,fontWeight:700,color:pos?"#4ADE80":"#F87171"}}>{pos?"+":"−"}{eur(Math.abs(diff))}</span>
+              <span style={{fontSize:"0.8125rem",color:pos?"#86EFAC":"#FCA5A5"}}>Differenzbuchung</span>
+              <span style={{fontSize:"0.8125rem",fontWeight:700,color:pos?"#4ADE80":"#F87171"}}>{pos?"+":"−"}{eur(Math.abs(diff))}</span>
             </div>;
           })()}
           <button style={KB.saveBtn} onClick={saveInventur}>Inventur buchen</button>
@@ -5303,7 +5303,7 @@ function KassenbuchApp({profile, onBack}) {
           </div>
         </div>
         <div style={KB.formCard}>
-          <p style={{fontSize:14,color:T.textMuted,margin:0}}>Der Startbetrag ist der Kassenbestand vor der ersten Buchung. Alle Buchungen werden dazu addiert bzw. subtrahiert.</p>
+          <p style={{fontSize:"0.875rem",color:T.textMuted,margin:0}}>Der Startbetrag ist der Kassenbestand vor der ersten Buchung. Alle Buchungen werden dazu addiert bzw. subtrahiert.</p>
           <div>
             <div style={KB.lbl}>Startbetrag (€)</div>
             <input style={{...KB.inp,marginTop:6}} type="number" min="0" step="0.01" placeholder="0.00"
@@ -5333,8 +5333,8 @@ function KassenbuchApp({profile, onBack}) {
               <button style={KB.typeBtn("out",fType==="out")} onClick={()=>setFType("out")} aria-label="Ausgabe">−</button>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:4}}>
-              <div style={{textAlign:"center",fontSize:12,color:fType==="in"?"#4ADE80":"#475569"}}>Einnahme</div>
-              <div style={{textAlign:"center",fontSize:12,color:fType==="out"?"#F87171":"#475569"}}>Ausgabe</div>
+              <div style={{textAlign:"center",fontSize:"0.75rem",color:fType==="in"?"#4ADE80":"#475569"}}>Einnahme</div>
+              <div style={{textAlign:"center",fontSize:"0.75rem",color:fType==="out"?"#F87171":"#475569"}}>Ausgabe</div>
             </div>
           </div>
           <div>
@@ -5371,7 +5371,7 @@ function KassenbuchApp({profile, onBack}) {
             <button style={KB.addBtn} onClick={()=>{ setFAmount(""); setFDesc(""); setFDate(today()); setFType("in"); setView("add"); }}>+ Neu</button>
           </div>
           <div style={{...H.header,paddingTop:12}}>
-            <h1 style={{...H.title,fontSize:22}}>💰 Kassenbuch</h1>
+            <h1 style={{...H.title,fontSize:"1.375rem"}}>💰 Kassenbuch</h1>
             <p style={H.greeting}>Einnahmen & Ausgaben verwalten</p>
           </div>
         </div>
@@ -5381,7 +5381,7 @@ function KassenbuchApp({profile, onBack}) {
           <div style={KB.balLabel}>Kassenbestand</div>
           <div style={KB.balAmt(bal>=0)}>{eur(bal)}</div>
           <div style={KB.startRow}>
-            <span style={{fontSize:13,color:T.textMuted}}>Startbetrag: <strong style={{color:T.textMuted}}>{eur(startbetrag)}</strong></span>
+            <span style={{fontSize:"0.8125rem",color:T.textMuted}}>Startbetrag: <strong style={{color:T.textMuted}}>{eur(startbetrag)}</strong></span>
             <div style={KB.menuWrap}>
               <button style={KB.menuBtn} onClick={e=>{ e.stopPropagation(); setShowStartMenu(v=>!v); }}>
                 ⚙️ Optionen ▾
@@ -5399,7 +5399,7 @@ function KassenbuchApp({profile, onBack}) {
             </div>
           </div>
           {(()=>{ const li=[...entries].find(e=>e.description==="Inventur"); if(!li) return null;
-            return <div style={{marginTop:8,paddingTop:8,borderTop:"1px solid #1E3A2F",fontSize:12,color:T.textSecondary,display:"flex",justifyContent:"space-between"}}>
+            return <div style={{marginTop:8,paddingTop:8,borderTop:"1px solid #1E3A2F",fontSize:"0.75rem",color:T.textSecondary,display:"flex",justifyContent:"space-between"}}>
               <span>Letzte Inventur</span>
               <span style={{color:T.textMuted}}>{li.type==="in"?"+":"−"}{eur(parseFloat(li.amount))} · {new Date(li.date+"T12:00:00").toLocaleDateString("de-DE")}</span>
             </div>;
@@ -5489,40 +5489,40 @@ const S={
   shell:{display:"flex",height:"100vh",fontFamily:"'DM Sans',system-ui,sans-serif",background:T.bgPage,color:T.textPrimary},
   sidebar:{width:228,background:T.bgPage,color:T.textPrimary,display:"flex",flexDirection:"column",padding:"20px 0",flexShrink:0},
   logo:{display:"flex",alignItems:"center",gap:10,padding:"0 20px 22px",borderBottom:`1px solid ${T.bgBorder}`},
-  logoText:{fontWeight:800,fontSize:17,letterSpacing:-.5},
+  logoText:{fontWeight:800,fontSize:"1.0625rem",letterSpacing:-.5},
   nav:{flex:1,padding:"14px 0"},
-  navBtn:{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"10px 20px",background:"none",border:"none",color:T.textMuted,fontSize:13,cursor:"pointer",textAlign:"left"},
+  navBtn:{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"10px 20px",background:"none",border:"none",color:T.textMuted,fontSize:"0.8125rem",cursor:"pointer",textAlign:"left"},
   navBtnActive:{background:T.bgCard,color:"var(--accent-strong)",borderLeft:"3px solid var(--accent-strong)"},
   sidebarBottom:{padding:"16px 20px",borderTop:`1px solid ${T.bgBorder}`},
   userChip:{display:"flex",alignItems:"center",gap:10,marginBottom:12},
   main:{flex:1,overflowY:"auto"},
-  pageTitle:{fontSize:23,fontWeight:800,letterSpacing:-.5,margin:0},
-  pageSub:{color:T.textSecondary,fontSize:13,marginTop:4},
-  courtTab:{padding:"8px 14px",border:`2px solid ${T.bgBorder}`,borderRadius:8,cursor:"pointer",background:T.bgCard,fontSize:13,fontWeight:600,textAlign:"center"},
+  pageTitle:{fontSize:"1.4375rem",fontWeight:800,letterSpacing:-.5,margin:0},
+  pageSub:{color:T.textSecondary,fontSize:"0.8125rem",marginTop:4},
+  courtTab:{padding:"8px 14px",border:`2px solid ${T.bgBorder}`,borderRadius:8,cursor:"pointer",background:T.bgCard,fontSize:"0.8125rem",fontWeight:600,textAlign:"center"},
   weekNav:{display:"flex",alignItems:"center",gap:10,marginBottom:16,flexWrap:"wrap"},
-  weekBtn:{padding:"6px 14px",background:T.bgCard,border:`1px solid ${T.bgBorder}`,borderRadius:6,cursor:"pointer",fontSize:13,fontWeight:500},
+  weekBtn:{padding:"6px 14px",background:T.bgCard,border:`1px solid ${T.bgBorder}`,borderRadius:6,cursor:"pointer",fontSize:"0.8125rem",fontWeight:500},
   calTable:{width:"100%",borderCollapse:"collapse",background:T.bgCard,borderRadius:10,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)",minWidth:600},
-  thTime:{width:58,padding:"10px 8px",background:T.bgInput,fontSize:12,color:T.textMuted,fontWeight:600},
+  thTime:{width:58,padding:"10px 8px",background:T.bgInput,fontSize:"0.75rem",color:T.textMuted,fontWeight:600},
   thDay:{padding:"10px 8px",textAlign:"center",borderLeft:`1px solid ${T.bgBorder}`,background:T.bgInput},
   thDayToday:{background:"#F0FDF4"},
-  tdTime:{padding:"4px 8px",fontSize:12,color:T.textMuted,textAlign:"right",borderTop:`1px solid ${T.bgInput}`,whiteSpace:"nowrap"},
+  tdTime:{padding:"4px 8px",fontSize:"0.75rem",color:T.textMuted,textAlign:"right",borderTop:`1px solid ${T.bgInput}`,whiteSpace:"nowrap"},
   tdSlot:{padding:3,borderLeft:`1px solid ${T.bgInput}`,borderTop:`1px solid ${T.bgInput}`},
-  slotBtn:{width:"100%",padding:"5px 4px",border:`1px solid ${T.bgBorder}`,borderRadius:5,background:T.bgInput,cursor:"pointer",fontSize:11,fontWeight:500,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:"100%",display:"block"},
+  slotBtn:{width:"100%",padding:"5px 4px",border:`1px solid ${T.bgBorder}`,borderRadius:5,background:T.bgInput,cursor:"pointer",fontSize:"0.6875rem",fontWeight:500,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:"100%",display:"block"},
   slotPast:{background:T.bgInput,color:T.textMuted,cursor:"not-allowed"},
   card:{background:T.bgCard,borderRadius:10,padding:"14px 16px",marginBottom:10,boxShadow:"0 1px 3px rgba(0,0,0,.05)"},
   overlay:{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999},
   modal:{background:T.bgCard,borderRadius:14,padding:28,width:380,boxShadow:"0 20px 60px rgba(0,0,0,.2)",animation:"modal-in .22s cubic-bezier(.2,.85,.25,1)"},
   modalHeader:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:18},
-  modalTitle:{fontWeight:800,fontSize:18,letterSpacing:-.3},
-  modalSub:{color:T.textSecondary,fontSize:13,marginTop:2},
-  closeBtn:{background:"none",border:"none",fontSize:18,cursor:"pointer",color:T.textMuted,padding:0},
+  modalTitle:{fontWeight:800,fontSize:"1.125rem",letterSpacing:-.3},
+  modalSub:{color:T.textSecondary,fontSize:"0.8125rem",marginTop:2},
+  closeBtn:{background:"none",border:"none",fontSize:"1.125rem",cursor:"pointer",color:T.textMuted,padding:0},
   loginWrap:{minHeight:"100vh",background:`linear-gradient(135deg,${T.bgPage},${T.bgCard})`,display:"flex",alignItems:"center",justifyContent:"center"},
   loginCard:{background:T.bgCard,borderRadius:16,padding:32,width:340,boxShadow:"0 8px 40px rgba(0,0,0,.10)"},
-  input:{padding:"10px 12px",border:`1.5px solid ${T.bgBorder}`,borderRadius:8,fontSize:13,outline:"none",width:"100%",boxSizing:"border-box",background:T.bgInput},
-  primaryBtn:{padding:"11px 20px",background:T.bgPage,color:"var(--accent-strong)",border:"none",borderRadius:8,fontWeight:700,cursor:"pointer",fontSize:14},
-  ghostBtn:{padding:"11px 20px",background:T.bgInput,color:T.textPrimary,border:`1px solid ${T.bgBorder}`,borderRadius:8,fontWeight:600,cursor:"pointer",fontSize:14},
-  cancelBtn:{padding:"7px 14px",background:"#EF444418",color:"#DC2626",border:"1px solid #EF444444",borderRadius:6,fontWeight:600,cursor:"pointer",fontSize:13,flexShrink:0},
-  tabBtn:{padding:"8px 16px",border:`1.5px solid ${T.bgBorder}`,borderRadius:7,cursor:"pointer",background:T.bgCard,fontSize:13,fontWeight:500},
+  input:{padding:"10px 12px",border:`1.5px solid ${T.bgBorder}`,borderRadius:8,fontSize:"0.8125rem",outline:"none",width:"100%",boxSizing:"border-box",background:T.bgInput},
+  primaryBtn:{padding:"11px 20px",background:T.bgPage,color:"var(--accent-strong)",border:"none",borderRadius:8,fontWeight:700,cursor:"pointer",fontSize:"0.875rem"},
+  ghostBtn:{padding:"11px 20px",background:T.bgInput,color:T.textPrimary,border:`1px solid ${T.bgBorder}`,borderRadius:8,fontWeight:600,cursor:"pointer",fontSize:"0.875rem"},
+  cancelBtn:{padding:"7px 14px",background:"#EF444418",color:"#DC2626",border:"1px solid #EF444444",borderRadius:6,fontWeight:600,cursor:"pointer",fontSize:"0.8125rem",flexShrink:0},
+  tabBtn:{padding:"8px 16px",border:`1.5px solid ${T.bgBorder}`,borderRadius:7,cursor:"pointer",background:T.bgCard,fontSize:"0.8125rem",fontWeight:500},
   tabBtnActive:{background:T.bgPage,color:"var(--accent-strong)",borderColor:T.bgPage},
-  toast:{position:"fixed",bottom:24,right:24,padding:"12px 20px",borderRadius:10,color:"#fff",fontWeight:600,fontSize:14,boxShadow:"0 4px 20px rgba(0,0,0,.2)",zIndex:9999},
+  toast:{position:"fixed",bottom:24,right:24,padding:"12px 20px",borderRadius:10,color:"#fff",fontWeight:600,fontSize:"0.875rem",boxShadow:"0 4px 20px rgba(0,0,0,.2)",zIndex:9999},
 };
