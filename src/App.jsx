@@ -3922,6 +3922,62 @@ function SettingsDisplayTab({onToast}) {
   const [fetchStatus,    setFetchStatus]    = useState(null);
   const [schedError,     setSchedError]     = useState(null);
 
+  // ── Turnier (Vereinsmeisterschaft) ──
+  const TRN_EMPTY_SLOT = {visible:false,time:"",title:"",player1:"",player2:"",score:"",status:"upcoming"};
+  const trnDefaultBoard = () => {
+    const matches={};
+    for(let c=1;c<=3;c++) for(let s=1;s<=3;s++) matches[`c${c}s${s}`]={...TRN_EMPTY_SLOT};
+    return {title:"Vereinsmeisterschaft", event_date:new Date().toISOString().slice(0,10), matches};
+  };
+  const [trnBoard,  setTrnBoard]  = useState(trnDefaultBoard);
+  const [trnSaving, setTrnSaving] = useState(false);
+  const [trnError,  setTrnError]  = useState(null);
+
+  useEffect(()=>{
+    sb.from("settings").select("value").eq("key","display_turnier_board").maybeSingle()
+      .then(({data})=>{
+        if(!data?.value) return;
+        try {
+          const b=JSON.parse(data.value);
+          const base=trnDefaultBoard();
+          const matches={...base.matches};
+          for(const id in matches) if(b?.matches?.[id]) matches[id]={...TRN_EMPTY_SLOT,...b.matches[id]};
+          setTrnBoard({
+            title: b.title || base.title,
+            event_date: b.event_date || b.eventDate || base.event_date,
+            matches,
+          });
+        } catch(_){}
+      });
+  },[]);
+
+  const trnSetSlot = (id,patch)=>setTrnBoard(prev=>({...prev,matches:{...prev.matches,[id]:{...prev.matches[id],...patch}}}));
+
+  const trnSave = async()=>{
+    setTrnError(null);
+    // Validierung: sichtbare Slots müssen vollständig sein
+    for(let c=1;c<=3;c++) for(let s=1;s<=3;s++){
+      const m=trnBoard.matches[`c${c}s${s}`];
+      if(m.visible && (!m.time||!m.title.trim()||!m.player1.trim()||!m.player2.trim())){
+        setTrnError(`Platz ${c}, Spiel ${s} ist unvollständig (Uhrzeit, Bezeichnung und beide Spieler nötig).`);
+        return;
+      }
+    }
+    if(!trnBoard.title.trim()||!trnBoard.event_date){
+      setTrnError("Turniername und Datum sind Pflicht."); return;
+    }
+    setTrnSaving(true);
+    const payload={title:trnBoard.title.trim(),event_date:trnBoard.event_date,matches:trnBoard.matches};
+    const {error}=await sb.from("settings").upsert([
+      {key:"display_turnier_board", value:JSON.stringify(payload)},
+      {key:"display_mode",          value:"turnier"},
+    ],{onConflict:"key"});
+    setTrnSaving(false);
+    if(error){ onToast(`Fehler: ${error.message}`,"error"); return; }
+    setMode("turnier");
+    onToast("Turnier gespeichert & auf Display aktiviert ✓");
+  };
+
   useEffect(()=>{
     sb.from("settings").select("*")
       .in("key",["display_mode","display_theme","display_vereinsnummer","display_saison",
@@ -4105,6 +4161,7 @@ function SettingsDisplayTab({onToast}) {
     {id:"einstellungen", icon:"⚙️", label:"Einstellungen"},
     {id:"schedule",      icon:"📅", label:"Tagesbelegung"},
     {id:"heimspiel",     icon:"🏆", label:"Heimspiel"},
+    {id:"turnier",       icon:"🏅", label:"Turnier"},
     {id:"bild",          icon:"🖼️", label:"Bildanzeige"},
     {id:"fotos",         icon:"📸", label:"Fotos"},
   ];
@@ -4181,6 +4238,7 @@ function SettingsDisplayTab({onToast}) {
           const MODES = [
             {id:"schedule",  icon:"📅", label:"Tagesbelegung"},
             {id:"heimspiel", icon:"🏆", label:"Heimspiel"},
+            {id:"turnier",   icon:"🏅", label:"Vereinsmeisterschaft"},
             {id:"spielplan", icon:"🗓️", label:"Spielplan Saison"},
             {id:"bild",      icon:"🖼️", label:"Bildanzeige"},
             {id:"fotos",     icon:"📸", label:"Fotos-Slideshow"},
@@ -4439,6 +4497,94 @@ function SettingsDisplayTab({onToast}) {
             )}
 
             <HeimspieleEdit onToast={onToast} onSaved={setMatchCache} reloadKey={revertKey}/>
+          </div>
+        )}
+
+        {/* ── TURNIER (Vereinsmeisterschaft) ── */}
+        {activeTab==="turnier"&&(
+          <div>
+            <p style={{fontSize:"0.75rem",color:T.textMuted,marginBottom:14}}>
+              Fester Turnierplan: 3 Plätze × 3 Spiele. Nur aktivierte, vollständig ausgefüllte Spiele erscheinen auf dem Display –
+              die Rasterposition bleibt fix, ein leerer mittlerer Slot rutscht nicht nach oben.
+            </p>
+
+            <div style={{display:"flex",gap:10,marginBottom:18,flexWrap:"wrap"}}>
+              <div style={{flex:"1 1 200px"}}>
+                <div style={{fontSize:"0.6875rem",fontWeight:700,color:T.textSecondary,marginBottom:5}}>TURNIERNAME</div>
+                <input value={trnBoard.title} maxLength={80}
+                  onChange={e=>setTrnBoard(p=>({...p,title:e.target.value}))}
+                  style={{...S.input,width:"100%"}}/>
+              </div>
+              <div style={{flex:"0 1 160px"}}>
+                <div style={{fontSize:"0.6875rem",fontWeight:700,color:T.textSecondary,marginBottom:5}}>DATUM</div>
+                <input type="date" value={trnBoard.event_date}
+                  onChange={e=>setTrnBoard(p=>({...p,event_date:e.target.value}))}
+                  style={{...S.input,width:"100%"}}/>
+              </div>
+            </div>
+
+            {[1,2,3].map(court=>(
+              <div key={court} style={{marginBottom:16}}>
+                <div style={{fontSize:"0.75rem",fontWeight:800,color:T.textPrimary,marginBottom:8}}>PLATZ {court}</div>
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  {[1,2,3].map(slot=>{
+                    const id=`c${court}s${slot}`;
+                    const m=trnBoard.matches[id];
+                    return (
+                      <div key={id} style={{border:`1.5px solid ${m.visible?"#8B5CF6":"#E5E7EB"}`,
+                        borderRadius:10,padding:"12px 14px",background:m.visible?"#FBFAFF":"#F9FAFB"}}>
+                        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:m.visible?10:0}}>
+                          <span style={{fontSize:"0.75rem",fontWeight:700,color:m.visible?"#7C3AED":T.textSecondary}}>Spiel {slot}</span>
+                          <ToggleSwitch on={m.visible} onToggle={()=>trnSetSlot(id,{visible:!m.visible})}/>
+                        </div>
+                        {m.visible&&(
+                          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                            <div style={{display:"flex",gap:8}}>
+                              <input type="time" value={m.time} onChange={e=>trnSetSlot(id,{time:e.target.value})}
+                                style={{...S.input,width:110,flexShrink:0}}/>
+                              <input placeholder="Bezeichnung (z.B. Herren Einzel HF)" value={m.title} maxLength={50}
+                                onChange={e=>trnSetSlot(id,{title:e.target.value})} style={{...S.input,flex:1,minWidth:0}}/>
+                            </div>
+                            <div style={{display:"flex",gap:8}}>
+                              <input placeholder="Spieler 1" value={m.player1} maxLength={60}
+                                onChange={e=>trnSetSlot(id,{player1:e.target.value})} style={{...S.input,flex:1,minWidth:0}}/>
+                              <input placeholder="Spieler 2" value={m.player2} maxLength={60}
+                                onChange={e=>trnSetSlot(id,{player2:e.target.value})} style={{...S.input,flex:1,minWidth:0}}/>
+                            </div>
+                            <div style={{display:"flex",gap:8}}>
+                              <select value={m.status} onChange={e=>trnSetSlot(id,{status:e.target.value})}
+                                style={{...S.input,width:150,flexShrink:0}}>
+                                <option value="upcoming">Als Nächstes</option>
+                                <option value="live">Läuft</option>
+                                <option value="finished">Beendet</option>
+                              </select>
+                              <input placeholder="Ergebnis (optional, z.B. 6:4 3:6 10:7)" value={m.score} maxLength={40}
+                                onChange={e=>trnSetSlot(id,{score:e.target.value})} style={{...S.input,flex:1,minWidth:0}}/>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+
+            {trnError&&(
+              <div style={{padding:"10px 14px",background:"#FEF2F2",border:"1px solid #FECACA",
+                borderRadius:8,fontSize:"0.75rem",color:"#DC2626",marginBottom:14}}>⚠️ {trnError}</div>
+            )}
+
+            <div style={{display:"flex",alignItems:"center",gap:16}}>
+              <button style={{...S.primaryBtn,background:"#8B5CF6",color:"#fff",opacity:trnSaving?0.6:1}}
+                onClick={trnSave} disabled={trnSaving}>
+                {trnSaving?"Speichern…":"Speichern und anzeigen"}
+              </button>
+              <a href="/display.html" target="_blank" rel="noopener noreferrer"
+                style={{color:"#8B5CF6",fontSize:"0.8125rem",fontWeight:600,textDecoration:"none"}}>
+                Display öffnen ↗
+              </a>
+            </div>
           </div>
         )}
 

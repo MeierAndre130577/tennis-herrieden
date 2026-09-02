@@ -812,6 +812,191 @@
     @media (max-height: 450px) {
       #sp-filter-bar { display: none; }
     }
+
+    /* ══ TURNIER MODE (Vereinsmeisterschaft, Sandplatz-Design) ═══════════════ */
+    /* Farben zentral – hier anpassen, gilt für den ganzen Turnier-Modus.       */
+    #turnier-screen {
+      --trn-sand:        #a94317;  /* Sandplatz-Grundton (Hintergrund)        */
+      --trn-sand-outer:  #a84316;  /* Rand außerhalb der 16:9-Bühne           */
+      --trn-text:        #fff8e9;  /* Grundtextfarbe                          */
+      --trn-header-text: #fff0ce;  /* Datum unter dem Titel                   */
+      --trn-accent:      #ffe52c;  /* Uhrzeit + Spielbezeichnung (Gelb)       */
+      --trn-ball:        #dfff22;  /* Ball-Punkt im Header                    */
+      --trn-card-bg:     rgba(31,12,9,.9);        /* Spielkarten-Hintergrund  */
+      --trn-card-border: rgba(255,192,48,.72);    /* Kartenrahmen (Gold)      */
+      --trn-court-border:rgba(255,207,69,.72);    /* "PLATZ x"-Rahmen         */
+      --trn-court-bg:    rgba(128,42,14,.48);     /* "PLATZ x"-Hintergrund    */
+      --trn-score-line:  rgba(255,174,33,.7);     /* Trennlinie über Ergebnis */
+      --trn-conn:        rgba(255,248,233,.64);   /* Statuszeile unten rechts */
+      --trn-badge-upcoming: #536477;  /* Status "Als Nächstes"               */
+      --trn-badge-live:     #d73b21;  /* Status "Läuft"                      */
+      --trn-badge-finished: #3c7b20;  /* Status "Beendet"                    */
+      --trn-border-upcoming: rgba(205,218,230,.64); /* Kartenrand upcoming    */
+      --trn-border-live:     #ff4e2f;               /* Kartenrand live        */
+      --trn-border-finished: #74b936;               /* Kartenrand beendet     */
+      display: none;
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 18% 15%, rgba(255,190,92,.18), transparent 28%),
+        radial-gradient(circle at 78% 70%, rgba(74,20,8,.25), transparent 34%),
+        var(--trn-sand-outer);
+    }
+    #turnier-stage {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      transform-origin: center;
+      color: var(--trn-text);
+      font-family: 'DM Sans', system-ui, sans-serif;
+      background:
+        radial-gradient(circle at 15% 20%, rgba(255,196,92,.22), transparent 31%),
+        radial-gradient(circle at 80% 70%, rgba(68,13,5,.3), transparent 37%),
+        repeating-linear-gradient(16deg, rgba(255,255,255,.015) 0 2px, rgba(0,0,0,.025) 2px 5px),
+        var(--trn-sand);
+    }
+    .trn-header {
+      height: 210px;
+      display: grid;
+      grid-template-columns: 185px 1fr 185px;
+      grid-template-rows: 128px 56px;
+      align-items: center;
+      padding: 18px 58px 8px;
+      text-align: center;
+    }
+    .trn-ball {
+      width: 112px;
+      height: 112px;
+      margin-left: 18px;
+      border-radius: 50%;
+      background: var(--trn-ball);
+      box-shadow: 0 18px 36px rgba(57,16,3,.42);
+    }
+    .trn-header h1 {
+      margin: 0;
+      font-size: 78px;
+      line-height: 1;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      text-shadow: 0 5px 8px rgba(55,13,4,.5);
+    }
+    .trn-header p {
+      grid-column: 2;
+      margin: 0;
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      color: var(--trn-header-text);
+    }
+    .trn-courts {
+      height: 840px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 28px;
+      padding: 0 34px 28px;
+    }
+    .trn-court {
+      min-width: 0;
+      display: grid;
+      grid-template-rows: 80px 1fr;
+      gap: 16px;
+    }
+    .trn-court > h2 {
+      margin: 0;
+      display: grid;
+      place-items: center;
+      border: 3px solid var(--trn-court-border);
+      border-radius: 18px;
+      background: var(--trn-court-bg);
+      font-size: 54px;
+      line-height: 1;
+      font-weight: 800;
+      box-shadow: 0 12px 28px rgba(72,18,5,.2);
+    }
+    .trn-grid {
+      min-height: 0;
+      display: grid;
+      grid-template-rows: repeat(3, 1fr);
+      gap: 14px;
+      background: transparent;
+    }
+    .trn-card {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 138px 1fr auto;
+      grid-template-rows: auto 1fr auto;
+      column-gap: 20px;
+      padding: 22px 20px 18px;
+      border: 3px solid var(--trn-card-border);
+      border-radius: 18px;
+      background: var(--trn-card-bg);
+      box-shadow: 0 12px 28px rgba(54,13,4,.3);
+    }
+    .trn-card.trn-live     { border-color: var(--trn-border-live); }
+    .trn-card.trn-finished { border-color: var(--trn-border-finished); }
+    .trn-card.trn-upcoming { border-color: var(--trn-border-upcoming); }
+    .trn-time {
+      grid-row: 1 / 3;
+      font-size: 50px;
+      font-weight: 800;
+      line-height: 1;
+      color: var(--trn-accent);
+    }
+    .trn-mtitle {
+      align-self: center;
+      overflow: hidden;
+      font-size: 24px;
+      line-height: 1.15;
+      font-weight: 800;
+      color: var(--trn-accent);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .trn-status {
+      align-self: start;
+      padding: 8px 12px;
+      border-radius: 9px;
+      background: var(--trn-badge-upcoming);
+      font-size: 19px;
+      line-height: 1;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .trn-live .trn-status     { background: var(--trn-badge-live); }
+    .trn-finished .trn-status  { background: var(--trn-badge-finished); }
+    .trn-players {
+      grid-column: 2 / 4;
+      align-self: center;
+      display: grid;
+      gap: 2px;
+      font-size: 33px;
+      line-height: 1.15;
+      font-weight: 700;
+    }
+    .trn-score {
+      grid-column: 1 / 4;
+      align-self: end;
+      min-height: 46px;
+      padding-top: 10px;
+      border-top: 2px solid var(--trn-score-line);
+      text-align: center;
+      font-size: 37px;
+      line-height: 1;
+      font-weight: 800;
+      letter-spacing: 3px;
+    }
+    #trn-conn {
+      position: absolute;
+      right: 24px;
+      bottom: 10px;
+      font-size: 16px;
+      color: var(--trn-conn);
+    }
   </style>
 </head>
 <body>
@@ -893,6 +1078,23 @@ setTimeout(function() {
   </div>
 </div>
 
+<!-- ── TURNIER MODE (Vereinsmeisterschaft) ── -->
+<div id="turnier-screen">
+  <div id="turnier-stage">
+    <header class="trn-header">
+      <div class="trn-ball" aria-hidden="true"></div>
+      <h1 id="trn-title">Vereinsmeisterschaft</h1>
+      <p id="trn-date">–</p>
+    </header>
+    <section class="trn-courts">
+      <article class="trn-court"><h2>PLATZ 1</h2><div class="trn-grid" id="trn-court-1"></div></article>
+      <article class="trn-court"><h2>PLATZ 2</h2><div class="trn-grid" id="trn-court-2"></div></article>
+      <article class="trn-court"><h2>PLATZ 3</h2><div class="trn-grid" id="trn-court-3"></div></article>
+    </section>
+    <div id="trn-conn">Verbinde …</div>
+  </div>
+</div>
+
 <!-- ── HEIMSPIEL ── -->
 <div id="heimspiel-app">
   <header id="hs-header">
@@ -960,13 +1162,20 @@ setTimeout(function() {
 let _wakeLock = null;
 async function requestWakeLock() {
   if (!('wakeLock' in navigator)) return;
+  if (_wakeLock) return;
   try {
     _wakeLock = await navigator.wakeLock.request('screen');
-    _wakeLock.addEventListener('release', () => { _wakeLock = null; });
+    _wakeLock.addEventListener('release', () => {
+      _wakeLock = null;
+      if (document.visibilityState === 'visible') setTimeout(requestWakeLock, 1000);
+    }, { once: true });
   } catch (_) {}
 }
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') requestWakeLock();
+});
+['pointerdown', 'touchstart', 'keydown'].forEach(ev => {
+  document.addEventListener(ev, requestWakeLock, { passive: true });
 });
 requestWakeLock();
 
@@ -1900,6 +2109,101 @@ function initAffe(alleMinuten, dauerSek, modes, currentMode) {
   setTimeout(tick, msUntilNext());
 }
 
+// ── TURNIER MODE (Vereinsmeisterschaft) ───────────────────────────────────
+function startTurnierModus() {
+  const STAGE_W = 1920, STAGE_H = 1080;
+  const STATUS_LABEL = { upcoming: "ALS NÄCHSTES", live: "LÄUFT", finished: "BEENDET" };
+  const screen = document.getElementById("turnier-screen");
+  const stage  = document.getElementById("turnier-stage");
+  const conn   = document.getElementById("trn-conn");
+  screen.style.display = "block";
+
+  function fitStage() {
+    const scale = Math.min(window.innerWidth / STAGE_W, window.innerHeight / STAGE_H);
+    stage.style.transform = `translate(-50%, -50%) scale(${scale})`;
+  }
+  fitStage();
+  window.addEventListener("resize", fitStage);
+  window.addEventListener("orientationchange", fitStage);
+
+  function txt(parent, className, text, tag = "div") {
+    const el = document.createElement(tag);
+    if (className) el.className = className;
+    el.textContent = text;
+    parent.appendChild(el);
+    return el;
+  }
+
+  function normSlot(raw) {
+    const r = (raw && typeof raw === "object") ? raw : {};
+    const status = ["upcoming", "live", "finished"].includes(r.status) ? r.status : "upcoming";
+    return {
+      visible: r.visible === true,
+      time:    String(r.time    || "").trim(),
+      title:   String(r.title   || "").trim(),
+      player1: String(r.player1 || "").trim(),
+      player2: String(r.player2 || "").trim(),
+      score:   String(r.score   || "").trim(),
+      status,
+    };
+  }
+  const renderable = s => s.visible && s.time && s.title && s.player1 && s.player2;
+
+  function fmtDate(iso) {
+    if (!iso) return "";
+    const d = new Date(`${iso}T12:00:00`);
+    if (isNaN(d.getTime())) return iso;
+    return new Intl.DateTimeFormat("de-DE", { weekday: "long", day: "2-digit", month: "long" })
+      .format(d).toUpperCase();
+  }
+
+  function card(slot, slotIndex) {
+    const c = document.createElement("section");
+    c.className = `trn-card trn-${slot.status}`;
+    c.style.gridRow = String(slotIndex);
+    txt(c, "trn-time", slot.time);
+    txt(c, "trn-mtitle", slot.title.toUpperCase());
+    txt(c, "trn-status", STATUS_LABEL[slot.status]);
+    const players = txt(c, "trn-players", "");
+    txt(players, "", slot.player1, "span");
+    txt(players, "", slot.player2, "span");
+    txt(c, "trn-score", slot.score || "– : –");
+    return c;
+  }
+
+  let lastJson = null;
+  function render(board) {
+    const b = board && typeof board === "object" ? board : {};
+    const matches = b.matches && typeof b.matches === "object" ? b.matches : {};
+    document.getElementById("trn-title").textContent = String(b.title || "Vereinsmeisterschaft").trim();
+    document.getElementById("trn-date").textContent  = fmtDate(b.event_date || b.eventDate);
+    for (let court = 1; court <= 3; court++) {
+      const grid = document.getElementById(`trn-court-${court}`);
+      grid.replaceChildren();
+      for (let slot = 1; slot <= 3; slot++) {
+        const s = normSlot(matches[`c${court}s${slot}`]);
+        if (renderable(s)) grid.appendChild(card(s, slot));
+      }
+    }
+  }
+
+  async function loadBoard() {
+    const { data, error } = await sb.from("settings").select("value")
+      .eq("key", "display_turnier_board").maybeSingle();
+    if (error) { conn.textContent = "Verbindung unterbrochen – neuer Versuch läuft"; return; }
+    let board = {};
+    try { board = JSON.parse(data?.value || "{}"); } catch (_) {}
+    const json = JSON.stringify(board);
+    if (json !== lastJson) { lastJson = json; render(board); }
+    conn.textContent = "Aktualisiert " +
+      new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+  }
+
+  loadBoard();
+  setInterval(loadBoard, 30_000);
+  window.addEventListener("online", loadBoard);
+}
+
 // ── MIDNIGHT RELOAD ───────────────────────────────────────────────────────
 function scheduleMidnightReload() {
   const now  = new Date();
@@ -1986,6 +2290,13 @@ function scheduleMidnightReload() {
   // Spielplan-Übersicht
   if (displayMode === "spielplan") {
     startSpielplanModus();
+    scheduleMidnightReload();
+    return;
+  }
+
+  // Turnier (Vereinsmeisterschaft)
+  if (displayMode === "turnier") {
+    startTurnierModus();
     scheduleMidnightReload();
     return;
   }
