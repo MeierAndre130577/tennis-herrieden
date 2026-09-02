@@ -3925,7 +3925,7 @@ function SettingsDisplayTab({onToast}) {
   const [rotItems,      setRotItems]       = useState([]); // [{mode, seconds}]
 
   // ── Turnier (Vereinsmeisterschaft) ──
-  const TRN_EMPTY_SLOT = {visible:false,time:"",title:"",player1:"",player2:"",score:"",status:"upcoming"};
+  const TRN_EMPTY_SLOT = {visible:false,time:"",title:"",player1:"",player2:"",score:"",status:"upcoming",winner:""};
   const trnDefaultBoard = () => {
     const matches={};
     for(let c=1;c<=3;c++) for(let s=1;s<=3;s++) matches[`c${c}s${s}`]={...TRN_EMPTY_SLOT};
@@ -4001,6 +4001,7 @@ function SettingsDisplayTab({onToast}) {
         player1:(m.player1||"").trim(), player2:(m.player2||"").trim(),
         score:String(prev.score||""),
         status:["upcoming","live","finished"].includes(prev.status)?prev.status:"upcoming",
+        winner:["1","2"].includes(String(prev.winner))?String(prev.winner):"",
       };
     }
     const payload={title:trnBoard.title.trim(),event_date:trnBoard.event_date,matches};
@@ -4021,6 +4022,8 @@ function SettingsDisplayTab({onToast}) {
     const matches=trnMergeMatches(cur);
     for(const id in matches){
       matches[id].score=String(trnBoard.matches[id]?.score||"").trim();
+      const w=String(trnBoard.matches[id]?.winner||"");
+      matches[id].winner=["1","2"].includes(w)?w:"";
       const st=trnBoard.matches[id]?.status;
       if(["upcoming","live","finished"].includes(st)) matches[id].status=st;
     }
@@ -4744,11 +4747,6 @@ function SettingsDisplayTab({onToast}) {
 
         {/* ── TURNIER: ERGEBNISSE (am Handy vor Ort) ── */}
         {activeTab==="turnier"&&subTab==="ergebnisse"&&(()=>{
-          const STAT=[
-            {id:"upcoming",label:"Als Nächstes"},
-            {id:"live",    label:"Läuft"},
-            {id:"finished",label:"Beendet"},
-          ];
           const visible=[];
           for(let c=1;c<=3;c++) for(let s=1;s<=3;s++){
             const id=`c${c}s${s}`, m=trnBoard.matches[id];
@@ -4758,7 +4756,7 @@ function SettingsDisplayTab({onToast}) {
             <div>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,marginBottom:12,flexWrap:"wrap"}}>
                 <p style={{fontSize:"0.75rem",color:T.textMuted,margin:0,flex:"1 1 200px"}}>
-                  Ergebnis & Status je Spiel – ideal vom Handy am Platz. Namen/Zeiten ändern am PC unter <em>🖥️ Stammdaten</em>.
+                  Ergebnis & Sieger je Spiel – ideal vom Handy am Platz. Namen/Zeiten ändern am PC unter <em>🖥️ Stammdaten</em>.
                 </p>
                 <button onClick={()=>trnLoad(true)} disabled={trnLoading}
                   style={{...S.ghostBtn,padding:"8px 14px",fontSize:"0.8125rem",whiteSpace:"nowrap"}}>
@@ -4783,26 +4781,29 @@ function SettingsDisplayTab({onToast}) {
                         {m.player1}<span style={{color:T.textMuted,fontWeight:600}}> vs. </span>{m.player2}
                       </div>
 
-                      <div style={{display:"flex",gap:6,marginBottom:10}}>
-                        {STAT.map(st=>{
-                          const on=m.status===st.id;
-                          return (
-                            <button key={st.id} onClick={()=>trnSetSlot(id,{status:st.id})}
-                              style={{flex:1,padding:"11px 4px",borderRadius:9,cursor:"pointer",
-                                fontSize:"0.75rem",fontWeight:700,
-                                border:`1.5px solid ${on?"#8B5CF6":"#E5E7EB"}`,
-                                background:on?"#8B5CF6":"#F9FAFB",color:on?"#fff":"#475569"}}>
-                              {st.label}
-                            </button>
-                          );
-                        })}
-                      </div>
-
                       <input value={m.score} maxLength={40} inputMode="numeric"
                         placeholder="Ergebnis, z.B. 6:4 3:6 10:7"
                         onChange={e=>trnSetSlot(id,{score:e.target.value})}
                         style={{...S.input,width:"100%",fontSize:"1.0625rem",fontWeight:700,
                           textAlign:"center",padding:"13px 12px",letterSpacing:1}}/>
+
+                      <div style={{fontSize:"0.6875rem",fontWeight:700,color:T.textMuted,margin:"12px 0 5px"}}>
+                        SIEGER 🏆
+                      </div>
+                      <div style={{display:"flex",gap:6}}>
+                        {[{id:"1",label:m.player1},{id:"",label:"offen"},{id:"2",label:m.player2}].map(w=>{
+                          const on=(m.winner||"")===w.id;
+                          return (
+                            <button key={w.id||"none"} onClick={()=>trnSetSlot(id,{winner:w.id})}
+                              style={{flex:w.id?"1 1 40%":"0 0 68px",padding:"11px 6px",borderRadius:9,cursor:"pointer",
+                                fontSize:"0.8125rem",fontWeight:700,lineHeight:1.2,
+                                border:`1.5px solid ${on?"#F59E0B":"#E5E7EB"}`,
+                                background:on?"#F59E0B":"#F9FAFB",color:on?"#fff":"#475569"}}>
+                              {on&&w.id?"🏆 ":""}{w.label}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   ))}
                 </div>

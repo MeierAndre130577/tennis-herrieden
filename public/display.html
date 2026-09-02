@@ -928,7 +928,7 @@
     .trn-card {
       min-height: 0;
       display: grid;
-      grid-template-columns: 138px 1fr auto;
+      grid-template-columns: 138px 1fr;
       grid-template-rows: auto 1fr auto;
       column-gap: 20px;
       padding: 22px 20px 18px;
@@ -937,9 +937,7 @@
       background: var(--trn-card-bg);
       box-shadow: 0 12px 28px rgba(54,13,4,.3);
     }
-    .trn-card.trn-live     { border-color: var(--trn-border-live); }
-    .trn-card.trn-finished { border-color: var(--trn-border-finished); }
-    .trn-card.trn-upcoming { border-color: var(--trn-border-upcoming); }
+    .trn-card.trn-done { border-color: var(--trn-border-finished); }
     .trn-time {
       grid-row: 1 / 3;
       font-size: 50px;
@@ -957,29 +955,22 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    .trn-status {
-      align-self: start;
-      padding: 8px 12px;
-      border-radius: 9px;
-      background: var(--trn-badge-upcoming);
-      font-size: 19px;
-      line-height: 1;
-      font-weight: 800;
-      white-space: nowrap;
-    }
-    .trn-live .trn-status     { background: var(--trn-badge-live); }
-    .trn-finished .trn-status  { background: var(--trn-badge-finished); }
     .trn-players {
-      grid-column: 2 / 4;
+      grid-column: 2 / 3;
       align-self: center;
       display: grid;
-      gap: 2px;
+      gap: 4px;
       font-size: 33px;
       line-height: 1.15;
       font-weight: 700;
     }
+    .trn-players .trn-win {
+      color: var(--trn-accent);
+      font-weight: 800;
+    }
+    .trn-players .trn-win::before { content: "🏆 "; }
     .trn-score {
-      grid-column: 1 / 4;
+      grid-column: 1 / 3;
       align-self: end;
       min-height: 46px;
       padding-top: 10px;
@@ -2216,7 +2207,6 @@ function initAffe(alleMinuten, dauerSek, modes, currentMode) {
 // ── TURNIER MODE (Vereinsmeisterschaft) ───────────────────────────────────
 function startTurnierModus() {
   const STAGE_W = 1920, STAGE_H = 1080;
-  const STATUS_LABEL = { upcoming: "ALS NÄCHSTES", live: "LÄUFT", finished: "BEENDET" };
   const screen = document.getElementById("turnier-screen");
   const stage  = document.getElementById("turnier-stage");
   const conn   = document.getElementById("trn-conn");
@@ -2240,7 +2230,7 @@ function startTurnierModus() {
 
   function normSlot(raw) {
     const r = (raw && typeof raw === "object") ? raw : {};
-    const status = ["upcoming", "live", "finished"].includes(r.status) ? r.status : "upcoming";
+    const winner = ["1", "2"].includes(String(r.winner)) ? String(r.winner) : "";
     return {
       visible: r.visible === true,
       time:    String(r.time    || "").trim(),
@@ -2248,7 +2238,7 @@ function startTurnierModus() {
       player1: String(r.player1 || "").trim(),
       player2: String(r.player2 || "").trim(),
       score:   String(r.score   || "").trim(),
-      status,
+      winner,
     };
   }
   const renderable = s => s.visible && s.time && s.title && s.player1 && s.player2;
@@ -2263,14 +2253,13 @@ function startTurnierModus() {
 
   function card(slot, slotIndex) {
     const c = document.createElement("section");
-    c.className = `trn-card trn-${slot.status}`;
+    c.className = slot.winner ? "trn-card trn-done" : "trn-card";
     c.style.gridRow = String(slotIndex);
     txt(c, "trn-time", slot.time);
     txt(c, "trn-mtitle", slot.title.toUpperCase());
-    txt(c, "trn-status", STATUS_LABEL[slot.status]);
     const players = txt(c, "trn-players", "");
-    txt(players, "", slot.player1, "span");
-    txt(players, "", slot.player2, "span");
+    txt(players, slot.winner === "1" ? "trn-win" : "", slot.player1, "span");
+    txt(players, slot.winner === "2" ? "trn-win" : "", slot.player2, "span");
     txt(c, "trn-score", slot.score || "– : –");
     return c;
   }
