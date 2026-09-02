@@ -3933,29 +3933,52 @@ function SettingsDisplayTab({onToast}) {
   const [trnSaving, setTrnSaving] = useState(false);
   const [trnError,  setTrnError]  = useState(null);
 
-  useEffect(()=>{
-    sb.from("settings").select("value").eq("key","display_turnier_board").maybeSingle()
-      .then(({data})=>{
-        if(!data?.value) return;
-        try {
-          const b=JSON.parse(data.value);
-          const base=trnDefaultBoard();
-          const matches={...base.matches};
-          for(const id in matches) if(b?.matches?.[id]) matches[id]={...TRN_EMPTY_SLOT,...b.matches[id]};
-          setTrnBoard({
-            title: b.title || base.title,
-            event_date: b.event_date || b.eventDate || base.event_date,
-            matches,
-          });
-        } catch(_){}
-      });
-  },[]);
+  const [trnLoading, setTrnLoading] = useState(false);
+
+  // 9 Slots normalisieren (fehlende ergänzen) – Basis für jedes Merge
+  const trnMergeMatches = (src)=>{
+    const matches={};
+    for(let c=1;c<=3;c++) for(let s=1;s<=3;s++){
+      const id=`c${c}s${s}`;
+      matches[id]={...TRN_EMPTY_SLOT,...(src?.matches?.[id]||{})};
+    }
+    return matches;
+  };
+
+  const trnApply = (b)=>{
+    const base=trnDefaultBoard();
+    setTrnBoard({
+      title: b?.title || base.title,
+      event_date: b?.event_date || b?.eventDate || base.event_date,
+      matches: trnMergeMatches(b),
+    });
+  };
+
+  const trnLoad = async(showToastOnDone)=>{
+    setTrnLoading(true);
+    const {data}=await sb.from("settings").select("value").eq("key","display_turnier_board").maybeSingle();
+    setTrnLoading(false);
+    let b=null;
+    try { b = data?.value ? JSON.parse(data.value) : null; } catch(_){}
+    if(b) trnApply(b);
+    if(showToastOnDone) onToast("Aktueller Stand geladen ✓");
+    return b;
+  };
+
+  useEffect(()=>{ trnLoad(); },[]);
 
   const trnSetSlot = (id,patch)=>setTrnBoard(prev=>({...prev,matches:{...prev.matches,[id]:{...prev.matches[id],...patch}}}));
 
-  const trnSave = async()=>{
+  const trnActivate = async()=>{
+    await sb.from("settings").upsert({key:"display_mode",value:"turnier"},{onConflict:"key"});
+    setMode("turnier");
+    onToast("Turnier auf Display aktiviert ✓");
+  };
+
+  // STAMMDATEN speichern – Ergebnis + Status je Slot aus der DB bewahren
+  // (damit eine parallele Handy-Eingabe nicht überschrieben wird)
+  const trnSaveStammdaten = async()=>{
     setTrnError(null);
-    // Validierung: sichtbare Slots müssen vollständig sein
     for(let c=1;c<=3;c++) for(let s=1;s<=3;s++){
       const m=trnBoard.matches[`c${c}s${s}`];
       if(m.visible && (!m.time||!m.title.trim()||!m.player1.trim()||!m.player2.trim())){
@@ -3963,19 +3986,56 @@ function SettingsDisplayTab({onToast}) {
         return;
       }
     }
-    if(!trnBoard.title.trim()||!trnBoard.event_date){
-      setTrnError("Turniername und Datum sind Pflicht."); return;
-    }
+    if(!trnBoard.title.trim()||!trnBoard.event_date){ setTrnError("Turniername und Datum sind Pflicht."); return; }
     setTrnSaving(true);
-    const payload={title:trnBoard.title.trim(),event_date:trnBoard.event_date,matches:trnBoard.matches};
+    const {data}=await sb.from("settings").select("value").eq("key","display_turnier_board").maybeSingle();
+    let cur={}; try{ cur=JSON.parse(data?.value||"{}"); }catch(_){}
+    const matches={};
+    for(let c=1;c<=3;c++) for(let s=1;s<=3;s++){
+      const id=`c${c}s${s}`; const m=trnBoard.matches[id]; const prev=cur?.matches?.[id]||{};
+      matches[id]={
+        visible:!!m.visible,
+        time:(m.time||"").trim(), title:(m.title||"").trim(),
+        player1:(m.player1||"").trim(), player2:(m.player2||"").trim(),
+        score:String(prev.score||""),
+        status:["upcoming","live","finished"].includes(prev.status)?prev.status:"upcoming",
+      };
+    }
+    const payload={title:trnBoard.title.trim(),event_date:trnBoard.event_date,matches};
+    const {error}=await sb.from("settings").upsert([{key:"display_turnier_board",value:JSON.stringify(payload)}],{onConflict:"key"});
+    setTrnSaving(false);
+    if(error){ onToast(`Fehler: ${error.message}`,"error"); return; }
+    trnApply(payload);
+    onToast("Stammdaten gespeichert ✓");
+  };
+
+  // ERGEBNISSE speichern – nur score + status je Slot, Rest aus der DB bewahren
+  const trnSaveErgebnisse = async()=>{
+    setTrnError(null);
+    setTrnSaving(true);
+    const {data}=await sb.from("settings").select("value").eq("key","display_turnier_board").maybeSingle();
+    let cur={}; try{ cur=JSON.parse(data?.value||"{}"); }catch(_){}
+    const base=trnDefaultBoard();
+    const matches=trnMergeMatches(cur);
+    for(const id in matches){
+      matches[id].score=String(trnBoard.matches[id]?.score||"").trim();
+      const st=trnBoard.matches[id]?.status;
+      if(["upcoming","live","finished"].includes(st)) matches[id].status=st;
+    }
+    const payload={
+      title: cur.title || trnBoard.title || base.title,
+      event_date: cur.event_date || cur.eventDate || trnBoard.event_date || base.event_date,
+      matches,
+    };
     const {error}=await sb.from("settings").upsert([
-      {key:"display_turnier_board", value:JSON.stringify(payload)},
-      {key:"display_mode",          value:"turnier"},
+      {key:"display_turnier_board",value:JSON.stringify(payload)},
+      {key:"display_mode",value:"turnier"},
     ],{onConflict:"key"});
     setTrnSaving(false);
     if(error){ onToast(`Fehler: ${error.message}`,"error"); return; }
     setMode("turnier");
-    onToast("Turnier gespeichert & auf Display aktiviert ✓");
+    trnApply(payload);
+    onToast("Ergebnisse gespeichert & auf Display aktiviert ✓");
   };
 
   useEffect(()=>{
@@ -4172,6 +4232,10 @@ function SettingsDisplayTab({onToast}) {
       {id:"farbschema", label:"Farbschema"},
       {id:"easteregg",  label:"🐒 Easter Egg"},
     ],
+    turnier: [
+      {id:"stammdaten", label:"🖥️ Stammdaten"},
+      {id:"ergebnisse", label:"📱 Ergebnisse"},
+    ],
   };
 
   const ModeRow = ({modeId, label}) => (
@@ -4200,7 +4264,7 @@ function SettingsDisplayTab({onToast}) {
       {/* Tab-Navigation Level 1 */}
       <div style={{display:"flex",gap:6,marginTop:20,flexWrap:"wrap"}}>
         {TABS.map(t=>(
-          <button key={t.id} onClick={()=>setActiveTab(t.id)}
+          <button key={t.id} onClick={()=>{setActiveTab(t.id); if(SUB_TABS[t.id]) setSubTab(SUB_TABS[t.id][0].id);}}
             style={{flexShrink:0,fontSize:"0.6875rem",fontWeight:700,padding:"4px 12px",borderRadius:20,
               border:"1.5px solid #334155",cursor:"pointer",
               background:activeTab===t.id?"#334155":"transparent",
@@ -4500,12 +4564,13 @@ function SettingsDisplayTab({onToast}) {
           </div>
         )}
 
-        {/* ── TURNIER (Vereinsmeisterschaft) ── */}
-        {activeTab==="turnier"&&(
+        {/* ── TURNIER: STAMMDATEN (am PC) ── */}
+        {activeTab==="turnier"&&subTab==="stammdaten"&&(
           <div>
             <p style={{fontSize:"0.75rem",color:T.textMuted,marginBottom:14}}>
-              Fester Turnierplan: 3 Plätze × 3 Spiele. Nur aktivierte, vollständig ausgefüllte Spiele erscheinen auf dem Display –
-              die Rasterposition bleibt fix, ein leerer mittlerer Slot rutscht nicht nach oben.
+              Spiele anlegen: Uhrzeit, Bezeichnung, Spielernamen. 3 Plätze × 3 Spiele, feste Rasterposition.
+              Nur freigeschaltete, vollständig ausgefüllte Spiele erscheinen auf dem Display.
+              <br/><strong>Ergebnisse & Status</strong> werden getrennt unter <em>📱 Ergebnisse</em> gepflegt (vom Handy vor Ort) – ein Speichern hier überschreibt sie nicht.
             </p>
 
             <div style={{display:"flex",gap:10,marginBottom:18,flexWrap:"wrap"}}>
@@ -4551,16 +4616,6 @@ function SettingsDisplayTab({onToast}) {
                               <input placeholder="Spieler 2" value={m.player2} maxLength={60}
                                 onChange={e=>trnSetSlot(id,{player2:e.target.value})} style={{...S.input,flex:1,minWidth:0}}/>
                             </div>
-                            <div style={{display:"flex",gap:8}}>
-                              <select value={m.status} onChange={e=>trnSetSlot(id,{status:e.target.value})}
-                                style={{...S.input,width:150,flexShrink:0}}>
-                                <option value="upcoming">Als Nächstes</option>
-                                <option value="live">Läuft</option>
-                                <option value="finished">Beendet</option>
-                              </select>
-                              <input placeholder="Ergebnis (optional, z.B. 6:4 3:6 10:7)" value={m.score} maxLength={40}
-                                onChange={e=>trnSetSlot(id,{score:e.target.value})} style={{...S.input,flex:1,minWidth:0}}/>
-                            </div>
                           </div>
                         )}
                       </div>
@@ -4575,11 +4630,14 @@ function SettingsDisplayTab({onToast}) {
                 borderRadius:8,fontSize:"0.75rem",color:"#DC2626",marginBottom:14}}>⚠️ {trnError}</div>
             )}
 
-            <div style={{display:"flex",alignItems:"center",gap:16}}>
+            <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
               <button style={{...S.primaryBtn,background:"#8B5CF6",color:"#fff",opacity:trnSaving?0.6:1}}
-                onClick={trnSave} disabled={trnSaving}>
-                {trnSaving?"Speichern…":"Speichern und anzeigen"}
+                onClick={trnSaveStammdaten} disabled={trnSaving}>
+                {trnSaving?"Speichern…":"Stammdaten speichern"}
               </button>
+              {mode!=="turnier"&&(
+                <button style={{...S.ghostBtn}} onClick={trnActivate}>Auf Display anzeigen</button>
+              )}
               <a href="/display.html" target="_blank" rel="noopener noreferrer"
                 style={{color:"#8B5CF6",fontSize:"0.8125rem",fontWeight:600,textDecoration:"none"}}>
                 Display öffnen ↗
@@ -4587,6 +4645,88 @@ function SettingsDisplayTab({onToast}) {
             </div>
           </div>
         )}
+
+        {/* ── TURNIER: ERGEBNISSE (am Handy vor Ort) ── */}
+        {activeTab==="turnier"&&subTab==="ergebnisse"&&(()=>{
+          const STAT=[
+            {id:"upcoming",label:"Als Nächstes"},
+            {id:"live",    label:"Läuft"},
+            {id:"finished",label:"Beendet"},
+          ];
+          const visible=[];
+          for(let c=1;c<=3;c++) for(let s=1;s<=3;s++){
+            const id=`c${c}s${s}`, m=trnBoard.matches[id];
+            if(m.visible && m.title && m.player1 && m.player2) visible.push({id,court:c,m});
+          }
+          return (
+            <div>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,marginBottom:12,flexWrap:"wrap"}}>
+                <p style={{fontSize:"0.75rem",color:T.textMuted,margin:0,flex:"1 1 200px"}}>
+                  Ergebnis & Status je Spiel – ideal vom Handy am Platz. Namen/Zeiten ändern am PC unter <em>🖥️ Stammdaten</em>.
+                </p>
+                <button onClick={()=>trnLoad(true)} disabled={trnLoading}
+                  style={{...S.ghostBtn,padding:"8px 14px",fontSize:"0.8125rem",whiteSpace:"nowrap"}}>
+                  {trnLoading?"Lädt…":"↻ Aktualisieren"}
+                </button>
+              </div>
+
+              {visible.length===0?(
+                <div style={{padding:"18px",background:"#F8FAFC",border:"1px solid #E2E8F0",borderRadius:10,
+                  fontSize:"0.8125rem",color:T.textSecondary,textAlign:"center"}}>
+                  Noch keine Spiele freigeschaltet.<br/>Zuerst unter <strong>🖥️ Stammdaten</strong> anlegen.
+                </div>
+              ):(
+                <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                  {visible.map(({id,court,m})=>(
+                    <div key={id} style={{border:"1.5px solid #E5E7EB",borderRadius:12,padding:"14px",background:"#fff"}}>
+                      <div style={{fontSize:"0.6875rem",fontWeight:700,color:T.textMuted,marginBottom:2}}>
+                        PLATZ {court} · {m.time} Uhr
+                      </div>
+                      <div style={{fontSize:"0.8125rem",fontWeight:700,color:T.textPrimary,marginBottom:6}}>{m.title}</div>
+                      <div style={{fontSize:"0.9375rem",fontWeight:800,color:"#0F172A",marginBottom:12,lineHeight:1.4}}>
+                        {m.player1}<span style={{color:T.textMuted,fontWeight:600}}> vs. </span>{m.player2}
+                      </div>
+
+                      <div style={{display:"flex",gap:6,marginBottom:10}}>
+                        {STAT.map(st=>{
+                          const on=m.status===st.id;
+                          return (
+                            <button key={st.id} onClick={()=>trnSetSlot(id,{status:st.id})}
+                              style={{flex:1,padding:"11px 4px",borderRadius:9,cursor:"pointer",
+                                fontSize:"0.75rem",fontWeight:700,
+                                border:`1.5px solid ${on?"#8B5CF6":"#E5E7EB"}`,
+                                background:on?"#8B5CF6":"#F9FAFB",color:on?"#fff":"#475569"}}>
+                              {st.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <input value={m.score} maxLength={40} inputMode="numeric"
+                        placeholder="Ergebnis, z.B. 6:4 3:6 10:7"
+                        onChange={e=>trnSetSlot(id,{score:e.target.value})}
+                        style={{...S.input,width:"100%",fontSize:"1.0625rem",fontWeight:700,
+                          textAlign:"center",padding:"13px 12px",letterSpacing:1}}/>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {trnError&&(
+                <div style={{padding:"10px 14px",background:"#FEF2F2",border:"1px solid #FECACA",
+                  borderRadius:8,fontSize:"0.75rem",color:"#DC2626",marginTop:14}}>⚠️ {trnError}</div>
+              )}
+
+              {visible.length>0&&(
+                <button style={{...S.primaryBtn,background:"#8B5CF6",color:"#fff",width:"100%",
+                  marginTop:16,padding:"15px",fontSize:"0.9375rem",opacity:trnSaving?0.6:1}}
+                  onClick={trnSaveErgebnisse} disabled={trnSaving}>
+                  {trnSaving?"Speichern…":"Ergebnisse speichern"}
+                </button>
+              )}
+            </div>
+          );
+        })()}
 
         {/* ── BILDANZEIGE ── */}
         {activeTab==="bild"&&(
