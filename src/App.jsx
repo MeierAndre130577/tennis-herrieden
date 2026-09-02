@@ -4781,7 +4781,8 @@ function SettingsDisplayTab({onToast}) {
                         {m.player1}<span style={{color:T.textMuted,fontWeight:600}}> vs. </span>{m.player2}
                       </div>
 
-                      <input value={m.score} maxLength={40} inputMode="numeric"
+                      <input value={m.score} maxLength={40} inputMode="text"
+                        autoCapitalize="off" autoCorrect="off" spellCheck={false}
                         placeholder="Ergebnis, z.B. 6:4 3:6 10:7"
                         onChange={e=>trnSetSlot(id,{score:e.target.value})}
                         style={{...S.input,width:"100%",fontSize:"1.0625rem",fontWeight:700,
