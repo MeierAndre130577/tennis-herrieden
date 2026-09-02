@@ -2314,7 +2314,7 @@ function startTurnierModus() {
 // das Vollbild bleibt erhalten. Die Zeitschaltung hat Vorrang: ist ein
 // Zeitfenster aktiv, zeigt die Bühne nur diesen einen Modus.
 function startRotation(rawItems) {
-  const items = (rawItems || [])
+  let items = (rawItems || [])
     .filter(it => it && it.mode && Number(it.seconds) > 0)
     .map(it => ({ mode: String(it.mode), seconds: Math.max(5, Number(it.seconds)) }));
 
@@ -2323,7 +2323,9 @@ function startRotation(rawItems) {
   shell.style.display = "block";
 
   const src = m => "/display.html?mode=" + encodeURIComponent(m);
-  const cfgJson = JSON.stringify(items.map(i => [i.mode, i.seconds]));
+  // nur die Modus-Reihenfolge – ändert sich die, ist ein Neustart nötig
+  const modesKey = () => JSON.stringify(items.map(i => i.mode));
+  let curModesKey = modesKey();
 
   // Nur ein Eintrag (oder Zeitschaltung reduziert auf einen) → einfach anzeigen
   const single = items.length < 2;
@@ -2364,7 +2366,9 @@ function startRotation(rawItems) {
   }
   schedule();
 
-  // Konfig-Überwachung: Zeitschaltung-Vorrang bzw. geänderte Liste → Neustart
+  // Konfig-Überwachung
+  //  • Zeitschaltung aktiv / Rotation aus / andere Modus-Reihenfolge → Neustart
+  //  • NUR geänderte Sekunden → in-place übernehmen, KEIN Reload (Vollbild bleibt)
   setInterval(async () => {
     const { data } = await sb.from("settings").select("key,value")
       .in("key", ["display_rotation", "display_time_entries"]);
@@ -2373,12 +2377,24 @@ function startRotation(rawItems) {
     const na = new Date();
     const activeEntry = te.find(e => e.from && e.to && na >= new Date(e.from) && na <= new Date(e.to));
     let rot = null; try { rot = JSON.parse(s.display_rotation || "null"); } catch (_) {}
-    const valid = (rot && rot.enabled && Array.isArray(rot.items))
-      ? rot.items.filter(it => it && it.mode && Number(it.seconds) > 0).map(it => [String(it.mode), Math.max(5, Number(it.seconds))])
+    const nextItems = (rot && rot.enabled && Array.isArray(rot.items))
+      ? rot.items.filter(it => it && it.mode && Number(it.seconds) > 0)
+          .map(it => ({ mode: String(it.mode), seconds: Math.max(5, Number(it.seconds)) }))
       : [];
-    if (activeEntry || valid.length < 2 || JSON.stringify(valid) !== cfgJson) {
+    const nextModesKey = JSON.stringify(nextItems.map(i => i.mode));
+
+    if (activeEntry || nextItems.length < 2 || nextModesKey !== curModesKey) {
       try { sessionStorage.setItem("th-rot-idx", "0"); } catch (_) {}
       location.reload();
+      return;
+    }
+
+    // gleiche Modi, evtl. andere Dauer → sanft übernehmen
+    const secondsChanged = nextItems.some((it, i) => !items[i] || it.seconds !== items[i].seconds);
+    if (secondsChanged) {
+      const oldCurSeconds = items[idx] ? items[idx].seconds : null;
+      items = nextItems;
+      if (!single && items[idx] && items[idx].seconds !== oldCurSeconds) schedule();
     }
   }, 20_000);
 }
