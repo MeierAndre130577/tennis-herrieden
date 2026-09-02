@@ -2345,8 +2345,7 @@ function startRotation(rawItems) {
     clearTimeout(advanceTimer);
     advanceTimer = setTimeout(advance, items[idx].seconds * 1000);
   }
-  function advance() {
-    const next = (idx + 1) % items.length;
+  function goTo(n) {
     const nl = layers[1 - cur];
     let faded = false;
     const fade = () => {
@@ -2354,14 +2353,15 @@ function startRotation(rawItems) {
       nl.style.opacity = "1";
       layers[cur].style.opacity = "0";
       cur = 1 - cur;
-      idx = next;
+      idx = n;
       try { sessionStorage.setItem("th-rot-idx", String(idx)); } catch (_) {}
       schedule();
     };
     nl.onload = () => setTimeout(fade, 400);
-    nl.src = src(items[next].mode);
+    nl.src = src(items[n].mode);
     setTimeout(fade, 4000); // Fallback, falls onload nicht feuert
   }
+  function advance() { goTo((idx + 1) % items.length); }
   schedule();
 
   // Konfig-Überwachung – ohne Parent-Reload, damit der Vollbildmodus erhalten bleibt.
@@ -2390,12 +2390,18 @@ function startRotation(rawItems) {
 
     // Liste (Dauer / Modi / Reihenfolge) sanft übernehmen – kein Reload
     const curMode = items[idx] ? items[idx].mode : null;
+    const wasIdx  = idx;
     items = nextItems;
-    let ni = items.findIndex(i => i.mode === curMode);
-    if (ni < 0) ni = idx % items.length;   // aktueller Modus entfernt → clampen
-    idx = ni;
-    try { sessionStorage.setItem("th-rot-idx", String(idx)); } catch (_) {}
-    schedule(); // Timer mit neuer Dauer / Position neu aufsetzen
+    const ni = items.findIndex(i => i.mode === curMode);
+    if (ni >= 0) {
+      // aktueller Modus noch in der Liste → sichtbar lassen, nur Index/Timer neu
+      idx = ni;
+      try { sessionStorage.setItem("th-rot-idx", String(idx)); } catch (_) {}
+      schedule();
+    } else {
+      // aktueller Modus wurde entfernt → jetzt sanft auf den nächsten wechseln
+      goTo(wasIdx % items.length);
+    }
   }, 20_000);
 }
 
