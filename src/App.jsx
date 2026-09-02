@@ -3921,6 +3921,8 @@ function SettingsDisplayTab({onToast}) {
   const [saving,        setSaving]         = useState(false);
   const [fetchStatus,    setFetchStatus]    = useState(null);
   const [schedError,     setSchedError]     = useState(null);
+  const [rotEnabled,    setRotEnabled]     = useState(false);
+  const [rotItems,      setRotItems]       = useState([]); // [{mode, seconds}]
 
   // ── Turnier (Vereinsmeisterschaft) ──
   const TRN_EMPTY_SLOT = {visible:false,time:"",title:"",player1:"",player2:"",score:"",status:"upcoming"};
@@ -4045,7 +4047,8 @@ function SettingsDisplayTab({onToast}) {
                  "display_bild_url","github_pat",
                  "display_time_entries",
                  "btv_match_cache","btv_fetch_enabled",
-                 "display_affe_minuten","display_affe_sekunden","display_affe_modes"])
+                 "display_affe_minuten","display_affe_sekunden","display_affe_modes",
+                 "display_rotation"])
       .then(({data})=>{
         if(!data) return;
         const map=Object.fromEntries(data.map(r=>[r.key,r.value]));
@@ -4065,6 +4068,13 @@ function SettingsDisplayTab({onToast}) {
         if(map.display_affe_minuten)           setAffeMinuten(Number(map.display_affe_minuten)||10);
         if(map.display_affe_sekunden)          setAffeSekunden(Number(map.display_affe_sekunden)||10);
         try { if(map.display_affe_modes) setAffeModes(JSON.parse(map.display_affe_modes)); } catch(_){}
+        try {
+          if(map.display_rotation){
+            const r=JSON.parse(map.display_rotation);
+            setRotEnabled(!!r.enabled);
+            setRotItems(Array.isArray(r.items)?r.items.filter(it=>it&&it.mode).map(it=>({mode:it.mode,seconds:Number(it.seconds)||30})):[]);
+          }
+        } catch(_){}
       });
   },[]);
 
@@ -4122,6 +4132,7 @@ function SettingsDisplayTab({onToast}) {
       {key:"display_affe_minuten",    value:String(affeMinuten)},
       {key:"display_affe_sekunden",   value:String(affeSekunden)},
       {key:"display_affe_modes",      value:JSON.stringify(affeModes)},
+      {key:"display_rotation",        value:JSON.stringify({enabled:rotEnabled,items:rotItems.map(it=>({mode:it.mode,seconds:Math.max(5,Number(it.seconds)||30)}))})},
     ],{onConflict:"key"});
     setSaving(false);
     if(error){ onToast(`Fehler: ${error.message}`,"error"); return; }
@@ -4229,6 +4240,7 @@ function SettingsDisplayTab({onToast}) {
   const SUB_TABS = {
     einstellungen: [
       {id:"modus",      label:"Anzeigemodus"},
+      {id:"rotation",   label:"🔁 Rotation"},
       {id:"farbschema", label:"Farbschema"},
       {id:"easteregg",  label:"🐒 Easter Egg"},
     ],
@@ -4424,6 +4436,90 @@ function SettingsDisplayTab({onToast}) {
                       })}
                     </div>
                 }
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ── EINSTELLUNGEN: Rotation / Playlist ── */}
+        {activeTab==="einstellungen"&&subTab==="rotation"&&(()=>{
+          const ROT_MODES=[
+            {id:"schedule",  label:"📅 Tagesbelegung"},
+            {id:"heimspiel", label:"🏆 Heimspiel"},
+            {id:"turnier",   label:"🏅 Vereinsmeisterschaft"},
+            {id:"spielplan", label:"🗓️ Spielplan Saison"},
+            {id:"bild",      label:"🖼️ Bildanzeige"},
+            {id:"fotos",     label:"📸 Fotos-Slideshow"},
+          ];
+          const move=(i,d)=>setRotItems(prev=>{
+            const a=[...prev]; const j=i+d;
+            if(j<0||j>=a.length) return prev;
+            [a[i],a[j]]=[a[j],a[i]]; return a;
+          });
+          const setItem=(i,patch)=>setRotItems(prev=>prev.map((it,k)=>k===i?{...it,...patch}:it));
+          return (
+            <div>
+              <div onClick={()=>setRotEnabled(v=>!v)} className="tap-div"
+                style={{display:"flex",alignItems:"center",justifyContent:"space-between",
+                  padding:"12px 14px",borderRadius:10,marginBottom:12,cursor:"pointer",
+                  background:rotEnabled?"#F5F3FF":"#F9FAFB",
+                  border:`1.5px solid ${rotEnabled?"#8B5CF6":"#E5E7EB"}`}}>
+                <div>
+                  <div style={{fontWeight:700,fontSize:"0.8125rem",color:rotEnabled?"#7C3AED":"#374151"}}>Rotation aktiv</div>
+                  <div style={{fontSize:"0.6875rem",color:T.textSecondary,marginTop:2}}>
+                    {rotEnabled?"Display wechselt automatisch durch die Liste":"Display zeigt den einzelnen Modus (oben)"}
+                  </div>
+                </div>
+                <ToggleSwitch on={rotEnabled} onToggle={()=>setRotEnabled(v=>!v)}/>
+              </div>
+
+              <div style={{fontSize:"0.6875rem",color:T.textMuted,lineHeight:1.6,marginBottom:14,
+                padding:"10px 12px",background:"#F8FAFC",border:"1px solid #E2E8F0",borderRadius:8}}>
+                Läuft in Endlosschleife. Die <strong>Zeitschaltung</strong> (Tab „Anzeigemodus") hat Vorrang:
+                solange ein Zeitfenster aktiv ist, pausiert die Rotation und zeigt nur diesen Modus.
+                Mindestens 2 Einträge nötig. Turnier & Bildanzeige nur einbinden, wenn dort Inhalte hinterlegt sind.
+              </div>
+
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {rotItems.map((it,i)=>(
+                  <div key={i} style={{display:"flex",alignItems:"center",gap:8,
+                    padding:"10px 12px",borderRadius:10,background:"#F9FAFB",border:"1.5px solid #E5E7EB"}}>
+                    <div style={{display:"flex",flexDirection:"column",gap:2}}>
+                      <button onClick={()=>move(i,-1)} disabled={i===0}
+                        style={{border:"none",background:"none",cursor:i===0?"default":"pointer",
+                          color:i===0?"#CBD5E1":"#64748B",fontSize:"0.75rem",lineHeight:1,padding:"2px 4px"}}>▲</button>
+                      <button onClick={()=>move(i,1)} disabled={i===rotItems.length-1}
+                        style={{border:"none",background:"none",cursor:i===rotItems.length-1?"default":"pointer",
+                          color:i===rotItems.length-1?"#CBD5E1":"#64748B",fontSize:"0.75rem",lineHeight:1,padding:"2px 4px"}}>▼</button>
+                    </div>
+                    <select value={it.mode} onChange={e=>setItem(i,{mode:e.target.value})}
+                      style={{...S.input,flex:1,minWidth:0}}>
+                      {ROT_MODES.map(m=><option key={m.id} value={m.id}>{m.label}</option>)}
+                    </select>
+                    <input type="number" min={5} max={600} value={it.seconds}
+                      onChange={e=>setItem(i,{seconds:Math.max(5,Number(e.target.value)||5)})}
+                      style={{...S.input,width:70,flexShrink:0,textAlign:"center"}}/>
+                    <span style={{fontSize:"0.6875rem",color:T.textMuted,flexShrink:0}}>Sek.</span>
+                    <button onClick={()=>setRotItems(prev=>prev.filter((_,k)=>k!==i))}
+                      style={{border:"none",background:"none",color:"#EF4444",cursor:"pointer",
+                        fontSize:"0.875rem",padding:"2px 4px",flexShrink:0}}>✕</button>
+                  </div>
+                ))}
+              </div>
+
+              <button onClick={()=>setRotItems(prev=>[...prev,{mode:"schedule",seconds:30}])}
+                style={{...S.ghostBtn,marginTop:12}}>+ Modus hinzufügen</button>
+
+              {rotEnabled&&rotItems.length<2&&(
+                <div style={{marginTop:12,padding:"10px 14px",background:"#FEF3C7",border:"1px solid #FDE68A",
+                  borderRadius:8,fontSize:"0.75rem",color:"#92400E"}}>
+                  ⚠️ Für die Rotation sind mindestens 2 Einträge nötig.
+                </div>
+              )}
+
+              <div style={{marginTop:14,fontSize:"0.6875rem",color:T.textMuted}}>
+                Speichern über <strong>„Einstellungen speichern"</strong> unten. Läuft die Rotation bereits auf dem Display,
+                übernimmt sie Änderungen innerhalb ~20 Sekunden.
               </div>
             </div>
           );
