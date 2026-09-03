@@ -1025,6 +1025,23 @@
       background: #000;
       transition: opacity .6s ease;
     }
+
+    /* ══ EINZELMODUS-BÜHNE (iframe, Parent behält Vollbild bei Änderungen) ═══ */
+    #solo-shell {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: #000;
+      z-index: 1;
+    }
+    #solo-shell iframe {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: #000;
+    }
   </style>
 </head>
 <body>
@@ -1045,6 +1062,10 @@ setTimeout(function() {
 <div id="rotation-shell">
   <iframe id="rot-a" title="Anzeige" scrolling="no"></iframe>
   <iframe id="rot-b" title="Anzeige" scrolling="no"></iframe>
+</div>
+
+<div id="solo-shell">
+  <iframe id="solo-frame" title="Anzeige" scrolling="no"></iframe>
 </div>
 
 <div id="white-screen"></div>
@@ -1232,6 +1253,11 @@ requestWakeLock();
 
   if (inIframe) {
     if (btn) btn.style.display = 'none';
+    // Gesten im iframe an den Parent melden, damit der ggf. das Vollbild
+    // erneut anfordern kann (Klicks im iframe erreichen das Parent-Dokument nicht).
+    var tell = function () { try { window.top.postMessage('th-gesture', '*'); } catch (e) {} };
+    document.addEventListener('pointerdown', tell, { passive: true, capture: true });
+    document.addEventListener('keydown', tell, { passive: true, capture: true });
     return;
   }
   if (btn) {
@@ -1246,6 +1272,9 @@ requestWakeLock();
   }
   document.addEventListener('pointerdown', reassert, true);
   document.addEventListener('keydown', reassert, true);
+  window.addEventListener('message', function (e) {
+    if (e.data === 'th-gesture' && wants() && !isFs()) enter();
+  });
   document.addEventListener('fullscreenchange', updateGlyph);
   document.addEventListener('webkitfullscreenchange', updateGlyph);
   updateGlyph();
@@ -1420,27 +1449,57 @@ function subscribeRealtime() {
 
 // ── BILD CLOCK ────────────────────────────────────────────────────────────
 
-// ── SETTINGS POLLING ──────────────────────────────────────────────────────
-function startSettingsPolling(mode, theme, vereinsnr, saison, mannschaft, gegner, rotationJson) {
-  setInterval(async () => {
-    const { data } = await sb.from("settings").select("*")
-      .in("key", ["display_mode","display_theme","display_vereinsnummer","display_saison",
-                  "display_mannschaft","display_gegner","display_time_entries","display_rotation"]);
-    const s = Object.fromEntries((data || []).map(r => [r.key, r.value]));
-    const nowP = new Date();
-    const timeEntries = (() => { try { return JSON.parse(s.display_time_entries||"[]"); } catch(_){ return []; } })();
-    const activeEntry = timeEntries.find(e => e.from && e.to && nowP >= new Date(e.from) && nowP <= new Date(e.to));
-    const resolvedMode = activeEntry ? activeEntry.mode : (s.display_mode || "schedule");
-    if (
-      resolvedMode !== mode     ||
-      (s.display_theme         || "dark")     !== theme    ||
-      (s.display_vereinsnummer || "")         !== vereinsnr||
-      (s.display_saison        || "")         !== saison   ||
-      (s.display_mannschaft    || "")         !== mannschaft||
-      (s.display_gegner        || "")         !== gegner   ||
-      (s.display_rotation      || "")         !== (rotationJson || "")
-    ) {
-      location.reload();
+// ── EINZELMODUS-BÜHNE ─────────────────────────────────────────────────────
+// Der Parent (kein ?mode=) rendert den Modus nicht selbst, sondern in einem
+// <iframe>. Ändert sich am Display etwas, wird nur der iframe neu geladen –
+// der Parent (und damit der Vollbildmodus) bleibt unangetastet.
+function mountSolo(mode) {
+  document.getElementById("solo-shell").style.display = "block";
+  document.getElementById("solo-frame").src =
+    "/display.html?mode=" + encodeURIComponent(mode) + "&v=" + Date.now();
+}
+
+function soloResolve(s) {
+  const nowP = new Date();
+  let te = []; try { te = JSON.parse(s.display_time_entries || "[]"); } catch (_) {}
+  const activeEntry = te.find(e => e.from && e.to && nowP >= new Date(e.from) && nowP <= new Date(e.to));
+  let rot = null; try { rot = JSON.parse(s.display_rotation || "null"); } catch (_) {}
+  const rotItems = (!activeEntry && rot && rot.enabled && Array.isArray(rot.items))
+    ? rot.items.filter(it => it && it.mode && Number(it.seconds) > 0) : [];
+  const mode = activeEntry ? activeEntry.mode : (s.display_mode || "schedule");
+  return { mode, rotItems };
+}
+
+function startSettingsPollingSolo(initMode) {
+  const frame = document.getElementById("solo-frame");
+  let curMode = initMode;
+  let lastSig = null;
+  const KEYS = ["display_mode","display_theme","display_vereinsnummer","display_saison",
+                "display_mannschaft","display_gegner","display_bild_url",
+                "display_time_entries","display_rotation"];
+  const iv = setInterval(async () => {
+    const { data } = await sb.from("settings").select("key,value").in("key", KEYS);
+    if (!data) return;
+    const s = Object.fromEntries(data.map(r => [r.key, r.value]));
+    const { mode, rotItems } = soloResolve(s);
+
+    // Rotation wurde aktiviert → auf die Rotationsbühne wechseln (ohne Reload)
+    if (rotItems.length >= 2) {
+      clearInterval(iv);
+      document.getElementById("solo-shell").style.display = "none";
+      startRotation(rotItems);
+      return;
+    }
+
+    const sig = JSON.stringify([
+      mode, s.display_theme || "", s.display_vereinsnummer || "", s.display_saison || "",
+      s.display_mannschaft || "", s.display_gegner || "", s.display_bild_url || "",
+    ]);
+    if (lastSig === null) { lastSig = sig; return; }
+    if (sig !== lastSig) {
+      lastSig = sig;
+      curMode = mode;
+      frame.src = "/display.html?mode=" + encodeURIComponent(mode) + "&v=" + Date.now();
     }
   }, 10_000);
 }
@@ -2320,12 +2379,14 @@ function startRotation(rawItems) {
   function advance() { goTo((idx + 1) % items.length); }
   schedule();
 
+  document.getElementById("solo-shell").style.display = "none";
+
   // Konfig-Überwachung – ohne Parent-Reload, damit der Vollbildmodus erhalten bleibt.
-  //  • Zeitschaltung aktiv / Rotation aus / < 2 Einträge → Reload (zurück in den Einzelmodus)
+  //  • Zeitschaltung aktiv / Rotation aus / < 2 Einträge → zurück auf die Einzelmodus-Bühne
   //  • Sonst (Dauer, Modi, Reihenfolge geändert) → Liste in-place übernehmen
-  setInterval(async () => {
+  const watch = setInterval(async () => {
     const { data } = await sb.from("settings").select("key,value")
-      .in("key", ["display_rotation", "display_time_entries"]);
+      .in("key", ["display_rotation", "display_time_entries", "display_mode"]);
     const s = Object.fromEntries((data || []).map(r => [r.key, r.value]));
     const te = (() => { try { return JSON.parse(s.display_time_entries || "[]"); } catch (_) { return []; } })();
     const na = new Date();
@@ -2337,8 +2398,14 @@ function startRotation(rawItems) {
       : [];
 
     if (activeEntry || nextItems.length < 2) {
+      // Rotation vorbei → Einzelmodus im iframe zeigen (kein Reload)
+      clearInterval(watch);
+      clearTimeout(advanceTimer);
       try { sessionStorage.setItem("th-rot-idx", "0"); } catch (_) {}
-      location.reload();
+      document.getElementById("rotation-shell").style.display = "none";
+      const soloMode = activeEntry ? activeEntry.mode : (s.display_mode || "schedule");
+      mountSolo(soloMode);
+      startSettingsPollingSolo(soloMode);
       return;
     }
 
@@ -2409,27 +2476,28 @@ function scheduleMidnightReload() {
 
   document.getElementById("loading").style.display = "none";
 
-  // Rotation / Playlist – nur als Parent-Bühne (kein ?mode=) und ohne aktives
-  // Zeitfenster. Die Zeitschaltung hat also Vorrang.
-  if (!forcedMode && !activeEntry) {
-    let rotation = null;
-    try { rotation = JSON.parse(settings.display_rotation || "null"); } catch (_) {}
-    const rotationItems = (rotation && rotation.enabled && Array.isArray(rotation.items))
-      ? rotation.items.filter(it => it && it.mode && Number(it.seconds) > 0) : [];
-    if (rotationItems.length >= 2) {
-      // startRotation bringt eine eigene 20s-Konfig-Überwachung mit
-      // (Listen-Änderungen in-place; Reload nur bei Rotation aus / Zeitfenster aktiv)
-      startRotation(rotationItems);
-      return;
-    }
-  }
-
-  initAffe(affeMinuten, affeSekunden, affeModes, displayMode);
-
-  // Innerhalb eines Rotations-iframes übernimmt der Parent die Modus-Steuerung
+  // ══════════════════════════════════════════════════════════════════════════
+  // PARENT-SEITE (kein ?mode=): rendert selbst nichts, sondern hostet den
+  // aktuellen Modus in einem <iframe>. Änderungen am Display laden nur den
+  // iframe neu – der Vollbildmodus des Parents bleibt dabei immer erhalten.
+  // ══════════════════════════════════════════════════════════════════════════
   if (!forcedMode) {
-    startSettingsPolling(displayMode, displayTheme, vereinsnr, saison, mannschaft, gegner, settings.display_rotation || "");
+    if (!activeEntry) {
+      let rotation = null;
+      try { rotation = JSON.parse(settings.display_rotation || "null"); } catch (_) {}
+      const rotationItems = (rotation && rotation.enabled && Array.isArray(rotation.items))
+        ? rotation.items.filter(it => it && it.mode && Number(it.seconds) > 0) : [];
+      if (rotationItems.length >= 2) { startRotation(rotationItems); return; }
+    }
+    mountSolo(displayMode);
+    startSettingsPollingSolo(displayMode);
+    return;
   }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // KIND-SEITE (?mode=…): genau einen Modus rendern, kein Settings-Polling.
+  // ══════════════════════════════════════════════════════════════════════════
+  initAffe(affeMinuten, affeSekunden, affeModes, displayMode);
 
   // Weißer Bildschirm (legacy)
   if (displayMode === "white") {
