@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <meta name="robots" content="noindex"/>
+  <title>Ergebnis eintragen – Tennis Herrieden</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --sand:   #a94317;
+      --sand-2: #8d3813;
+      --card:   rgba(31,12,9,.86);
+      --border: rgba(255,192,48,.6);
+      --text:   #fff8e9;
+      --muted:  rgba(255,248,233,.66);
+      --accent: #ffe52c;
+      --green:  #74b936;
+      --red:    #ff6a49;
+    }
+
+    body {
+      min-height: 100vh;
+      font-family: 'DM Sans', system-ui, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 15% 12%, rgba(255,196,92,.2), transparent 34%),
+        radial-gradient(circle at 85% 78%, rgba(68,13,5,.32), transparent 40%),
+        var(--sand);
+      padding: 22px 16px calc(34px + env(safe-area-inset-bottom));
+      -webkit-text-size-adjust: 100%;
+    }
+
+    .wrap { max-width: 460px; margin: 0 auto; }
+
+    header { text-align: center; margin-bottom: 22px; }
+    header h1 { font-size: 1.5rem; font-weight: 800; letter-spacing: -.4px; }
+    header p  { margin-top: 4px; font-size: .875rem; color: var(--muted); }
+
+    .card {
+      background: var(--card);
+      border: 2px solid var(--border);
+      border-radius: 18px;
+      padding: 20px 18px;
+      margin-bottom: 16px;
+    }
+
+    label.lbl {
+      display: block;
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: 1.4px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    input[type="text"], input[type="tel"] {
+      width: 100%;
+      font-family: inherit;
+      color: var(--text);
+      background: rgba(255,248,233,.1);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      outline: none;
+    }
+    input:focus { border-color: var(--accent); }
+
+    #code-input {
+      font-size: 2.125rem;
+      font-weight: 800;
+      letter-spacing: 10px;
+      text-align: center;
+      text-transform: uppercase;
+      padding: 14px 8px 14px 18px;
+    }
+
+    button {
+      font-family: inherit;
+      cursor: pointer;
+      border: none;
+      border-radius: 12px;
+    }
+    .btn-main {
+      width: 100%;
+      padding: 16px;
+      font-size: 1.0625rem;
+      font-weight: 800;
+      background: var(--accent);
+      color: #3a1a06;
+      margin-top: 14px;
+    }
+    .btn-main[disabled] { opacity: .5; cursor: default; }
+    .btn-ghost {
+      width: 100%;
+      padding: 14px;
+      font-size: .9375rem;
+      font-weight: 700;
+      background: transparent;
+      color: var(--text);
+      border: 2px solid var(--border);
+      margin-top: 10px;
+    }
+
+    .match-title { font-size: .75rem; font-weight: 700; letter-spacing: 1.4px;
+                   text-transform: uppercase; color: var(--muted); text-align: center; }
+    .match-players {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+      text-align: center;
+    }
+    .match-players b { font-size: 1.1875rem; font-weight: 800; line-height: 1.25; }
+    .match-players i { font-style: normal; color: var(--accent); font-weight: 700; }
+
+    .setrow {
+      display: grid;
+      grid-template-columns: 1fr 62px 20px 62px;
+      align-items: center;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .setrow > span { font-size: .9375rem; font-weight: 700; color: var(--muted); }
+    .setrow > .colon { text-align: center; font-size: 1.25rem; font-weight: 800; }
+    .setrow input {
+      font-size: 1.625rem;
+      font-weight: 800;
+      text-align: center;
+      padding: 12px 4px;
+    }
+
+    .hint  { font-size: .8125rem; color: var(--muted); margin-top: 14px; line-height: 1.5; }
+    .error { font-size: .875rem; font-weight: 700; color: var(--red); margin-top: 14px; line-height: 1.45; }
+
+    .wo-toggle {
+      display: block;
+      width: 100%;
+      margin-top: 16px;
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: .8125rem;
+      font-weight: 700;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+    .wo-box { margin-top: 12px; display: none; }
+    .wo-box.on { display: block; }
+    .wo-box .btn-ghost { border-color: rgba(255,106,73,.75); }
+
+    .summary {
+      text-align: center;
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      margin: 14px 0 4px;
+    }
+    .summary-win { text-align: center; font-size: 1.0625rem; font-weight: 700; color: var(--accent); }
+
+    .done-icon { text-align: center; font-size: 3rem; }
+
+    .prev {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: rgba(116,185,54,.16);
+      border: 2px solid rgba(116,185,54,.5);
+      font-size: .875rem;
+      line-height: 1.5;
+    }
+
+    .foot { text-align: center; font-size: .75rem; color: var(--muted); margin-top: 8px; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1 id="t-name">Ergebnis eintragen</h1>
+    <p id="t-sub">Tennis Herrieden</p>
+  </header>
+
+  <!-- Schritt 1: Code -->
+  <section class="card" id="step-code">
+    <label class="lbl" for="code-input">Spielcode vom Zettel</label>
+    <input id="code-input" type="text" inputmode="text" autocomplete="off"
+           autocapitalize="characters" autocorrect="off" spellcheck="false"
+           maxlength="4" placeholder="––––"/>
+    <button class="btn-main" id="code-btn">Weiter</button>
+    <div class="error hidden" id="code-error"></div>
+    <div class="hint">Der Code steht neben deiner Paarung auf dem Spielplan.</div>
+  </section>
+
+  <!-- Schritt 2: Eingabe -->
+  <section class="card hidden" id="step-input">
+    <div class="match-title" id="m-group">–</div>
+    <div class="match-players">
+      <b id="m-p1">–</b><i>vs.</i><b id="m-p2">–</b>
+    </div>
+
+    <div class="prev hidden" id="m-prev"></div>
+
+    <div class="setrow">
+      <span>1. Satz</span>
+      <input id="s1a" type="tel" inputmode="numeric" maxlength="2" pattern="[0-9]*"/>
+      <span class="colon">:</span>
+      <input id="s1b" type="tel" inputmode="numeric" maxlength="2" pattern="[0-9]*"/>
+    </div>
+    <div class="setrow">
+      <span>2. Satz</span>
+      <input id="s2a" type="tel" inputmode="numeric" maxlength="2" pattern="[0-9]*"/>
+      <span class="colon">:</span>
+      <input id="s2b" type="tel" inputmode="numeric" maxlength="2" pattern="[0-9]*"/>
+    </div>
+    <div class="setrow" id="row3">
+      <span>Match-Tiebreak</span>
+      <input id="s3a" type="tel" inputmode="numeric" maxlength="2" pattern="[0-9]*"/>
+      <span class="colon">:</span>
+      <input id="s3b" type="tel" inputmode="numeric" maxlength="2" pattern="[0-9]*"/>
+    </div>
+
+    <div class="error hidden" id="input-error"></div>
+    <button class="btn-main" id="input-btn">Weiter</button>
+
+    <button class="wo-toggle" id="wo-toggle" type="button">Ein Spieler ist nicht angetreten</button>
+    <div class="wo-box" id="wo-box">
+      <button class="btn-ghost" id="wo-1">Kampflos für <span id="wo-n1">Spieler 1</span></button>
+      <button class="btn-ghost" id="wo-2">Kampflos für <span id="wo-n2">Spieler 2</span></button>
+    </div>
+  </section>
+
+  <!-- Schritt 3: Bestätigen -->
+  <section class="card hidden" id="step-confirm">
+    <div class="match-title">Stimmt das so?</div>
+    <div class="match-players" style="margin-top:14px">
+      <b id="c-p1">–</b><i>vs.</i><b id="c-p2">–</b>
+    </div>
+    <div class="summary" id="c-score">–</div>
+    <div class="summary-win" id="c-win">–</div>
+    <div class="error hidden" id="confirm-error"></div>
+    <button class="btn-main" id="confirm-btn">Ja, eintragen</button>
+    <button class="btn-ghost" id="back-btn">Nochmal ändern</button>
+  </section>
+
+  <!-- Schritt 4: Fertig -->
+  <section class="card hidden" id="step-done">
+    <div class="done-icon">🎾</div>
+    <div class="summary" style="margin-top:10px">Eingetragen!</div>
+    <div class="summary-win" id="d-text">–</div>
+    <button class="btn-main" id="again-btn">Nächstes Ergebnis</button>
+  </section>
+
+  <div class="foot">Kein Login nötig – trag einfach dein Ergebnis ein.</div>
+</div>
+
+<script>
+const SUPABASE_URL  = "https://mzagislctxshpgqzniqg.supabase.co";
+const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im16YWdpc2xjdHhzaHBncXpuaXFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4MjExMjYsImV4cCI6MjA5NzM5NzEyNn0.217jpWia-5WGHKQ7A1Qr2xNcV2CMXaLl3GbhM9cUdGM";
+
+// Bewusst ohne Session: wer in der Vereins-App eingeloggt ist, würde sonst als
+// "authenticated" schreiben – dafür gibt es keine Policy, nur für anon.
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+  auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+});
+
+const CODE_ALPHABET = "ACDEFGHJKMNPQRTUVWXY2346789";
+
+const $ = id => document.getElementById(id);
+const show = (id, on) => $(id).classList.toggle("hidden", !on);
+const setErr = (id, msg) => { $(id).textContent = msg || ""; show(id, !!msg); };
+
+let match = null;      // aktuelle Zeile aus vm_matches
+let names = ["", ""];  // Klarnamen zu p1 / p2
+let pending = null;    // vorbereitetes Ergebnis für den Bestätigungsschritt
+
+function step(which) {
+  ["step-code", "step-input", "step-confirm", "step-done"].forEach(s => show(s, s === which));
+  window.scrollTo(0, 0);
+}
+
+function normCode(raw) {
+  return String(raw || "").toUpperCase().replace(/[^A-Z0-9]/g, "")
+    .split("").filter(c => CODE_ALPHABET.includes(c)).join("").slice(0, 4);
+}
+
+function num(id) {
+  const v = $(id).value.trim();
+  if (v === "") return null;
+  const n = Number(v);
+  return Number.isInteger(n) && n >= 0 && n <= 99 ? n : NaN;
+}
+
+// Wertung – identisch zu display.html / App.jsx
+function resultOf(sets) {
+  let sa = 0, sb = 0;
+  sets.forEach(([a, b]) => {
+    if (a === null || b === null || a === b) return;
+    if (a > b) sa++; else sb++;
+  });
+  return { sa, sb };
+}
+
+function fmtSets(sets) {
+  return sets.filter(([a, b]) => a !== null && b !== null)
+             .map(([a, b]) => a + ":" + b).join("  ");
+}
+
+// ── Schritt 1: Code nachschlagen ──────────────────────────────────────────
+async function lookup(code) {
+  setErr("code-error", "");
+  const { data, error } = await sb.from("vm_matches")
+    .select("code,turnier_id,gruppe,p1,p2,s1a,s1b,s2a,s2b,s3a,s3b,wo,updated_at")
+    .eq("code", code).maybeSingle();
+
+  if (error)  { setErr("code-error", "Keine Verbindung. Nochmal versuchen."); return; }
+  if (!data)  { setErr("code-error", "Diesen Code gibt es nicht. Bitte prüfen."); return; }
+
+  const { data: t } = await sb.from("vm_turniere").select("name,gruppen")
+    .eq("id", data.turnier_id).maybeSingle();
+
+  const gruppen = (t && Array.isArray(t.gruppen)) ? t.gruppen : [];
+  const nameById = {};
+  gruppen.forEach(g => (g.spieler || []).forEach(p => { nameById[p.id] = p.name; }));
+
+  match = data;
+  names = [nameById[data.p1] || "Spieler 1", nameById[data.p2] || "Spieler 2"];
+
+  if (t && t.name) $("t-name").textContent = t.name;
+  $("t-sub").textContent = "Ergebnis eintragen";
+  $("m-group").textContent = (gruppen[Number(data.gruppe)] || {}).name || "Gruppenspiel";
+  $("m-p1").textContent = names[0];
+  $("m-p2").textContent = names[1];
+  $("wo-n1").textContent = names[0];
+  $("wo-n2").textContent = names[1];
+
+  const sets = [[data.s1a, data.s1b], [data.s2a, data.s2b], [data.s3a, data.s3b]];
+  const hasPrev = data.wo || sets.some(([a, b]) => a !== null && a !== undefined);
+  if (hasPrev) {
+    $("m-prev").textContent = data.wo
+      ? `Bereits eingetragen: kampflos für ${names[Number(data.wo) - 1]}. Du kannst es hier korrigieren.`
+      : `Bereits eingetragen: ${fmtSets(sets)}. Du kannst es hier korrigieren.`;
+    show("m-prev", true);
+    ["s1a", "s1b", "s2a", "s2b", "s3a", "s3b"].forEach((id, i) => {
+      const v = [data.s1a, data.s1b, data.s2a, data.s2b, data.s3a, data.s3b][i];
+      $(id).value = (v === null || v === undefined) ? "" : String(v);
+    });
+  } else {
+    show("m-prev", false);
+    ["s1a", "s1b", "s2a", "s2b", "s3a", "s3b"].forEach(id => { $(id).value = ""; });
+  }
+
+  setErr("input-error", "");
+  $("wo-box").classList.remove("on");
+  step("step-input");
+}
+
+// ── Schritt 2: Prüfen ─────────────────────────────────────────────────────
+function validate() {
+  const vals = ["s1a", "s1b", "s2a", "s2b", "s3a", "s3b"].map(num);
+  if (vals.some(v => Number.isNaN(v))) return "Bitte nur ganze Zahlen von 0 bis 99 eintragen.";
+
+  const sets = [[vals[0], vals[1]], [vals[2], vals[3]], [vals[4], vals[5]]];
+  const half = sets.map(([a, b]) => (a === null) !== (b === null));
+  if (half[0] || half[1] || half[2]) return "Bei jedem Satz müssen beide Zahlen stehen.";
+  if (sets[0][0] === null || sets[1][0] === null) return "Die ersten beiden Sätze müssen ausgefüllt sein.";
+  if (sets[0][0] === sets[0][1]) return "Der 1. Satz kann nicht unentschieden ausgehen.";
+  if (sets[1][0] === sets[1][1]) return "Der 2. Satz kann nicht unentschieden ausgehen.";
+
+  const zwei = resultOf([sets[0], sets[1]]);
+  if (zwei.sa === 2 || zwei.sb === 2) {
+    if (sets[2][0] !== null) return "Das Spiel ist nach zwei Sätzen entschieden – der Match-Tiebreak bleibt leer.";
+    sets[2] = [null, null];
+  } else {
+    if (sets[2][0] === null) return "Es steht 1:1 – bitte den Match-Tiebreak eintragen.";
+    if (sets[2][0] === sets[2][1]) return "Der Match-Tiebreak kann nicht unentschieden ausgehen.";
+  }
+
+  const r = resultOf(sets);
+  return { sets, winner: r.sa > r.sb ? 1 : 2, wo: null };
+}
+
+function toConfirm(res) {
+  pending = res;
+  $("c-p1").textContent = names[0];
+  $("c-p2").textContent = names[1];
+  $("c-score").textContent = res.wo ? "kampflos" : fmtSets(res.sets);
+  $("c-win").textContent = "🏆 " + names[res.winner - 1] + " gewinnt";
+  setErr("confirm-error", "");
+  step("step-confirm");
+}
+
+// ── Schritt 3: Speichern ──────────────────────────────────────────────────
+async function saveResult() {
+  if (!pending || !match) return;
+  $("confirm-btn").disabled = true;
+  setErr("confirm-error", "");
+
+  const s = pending.wo ? [[null, null], [null, null], [null, null]] : pending.sets;
+  const { error } = await sb.from("vm_matches").update({
+    s1a: s[0][0], s1b: s[0][1],
+    s2a: s[1][0], s2b: s[1][1],
+    s3a: s[2][0], s3b: s[2][1],
+    wo: pending.wo,
+    updated_at: new Date().toISOString(),
+  }).eq("code", match.code);
+
+  $("confirm-btn").disabled = false;
+  if (error) { setErr("confirm-error", "Konnte nicht gespeichert werden. Nochmal versuchen."); return; }
+
+  $("d-text").textContent = pending.wo
+    ? names[pending.winner - 1] + " gewinnt kampflos"
+    : names[pending.winner - 1] + " gewinnt " + fmtSets(pending.sets);
+  step("step-done");
+}
+
+// ── Verdrahtung ───────────────────────────────────────────────────────────
+$("code-input").addEventListener("input", e => {
+  e.target.value = normCode(e.target.value);
+  setErr("code-error", "");
+});
+$("code-input").addEventListener("keydown", e => { if (e.key === "Enter") $("code-btn").click(); });
+
+$("code-btn").addEventListener("click", () => {
+  const code = normCode($("code-input").value);
+  if (code.length < 4) { setErr("code-error", "Der Code hat vier Zeichen."); return; }
+  lookup(code);
+});
+
+["s1a", "s1b", "s2a", "s2b", "s3a", "s3b"].forEach(id => {
+  $(id).addEventListener("input", e => {
+    e.target.value = e.target.value.replace(/[^0-9]/g, "").slice(0, 2);
+    setErr("input-error", "");
+  });
+});
+
+$("input-btn").addEventListener("click", () => {
+  const res = validate();
+  if (typeof res === "string") { setErr("input-error", res); return; }
+  toConfirm(res);
+});
+
+$("wo-toggle").addEventListener("click", () => $("wo-box").classList.toggle("on"));
+$("wo-1").addEventListener("click", () => toConfirm({ sets: [[null,null],[null,null],[null,null]], winner: 1, wo: "1" }));
+$("wo-2").addEventListener("click", () => toConfirm({ sets: [[null,null],[null,null],[null,null]], winner: 2, wo: "2" }));
+
+$("confirm-btn").addEventListener("click", saveResult);
+$("back-btn").addEventListener("click", () => step("step-input"));
+$("again-btn").addEventListener("click", () => {
+  match = null; pending = null;
+  $("code-input").value = "";
+  setErr("code-error", "");
+  step("step-code");
+  $("code-input").focus();
+});
+
+// Direktstart per QR: /ergebnis.html?c=ABCD
+(function () {
+  const c = normCode(new URLSearchParams(location.search).get("c") || "");
+  if (c.length === 4) { $("code-input").value = c; lookup(c); }
+})();
+</script>
+</body>
+</html>

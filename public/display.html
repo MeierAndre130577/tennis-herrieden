@@ -1043,6 +1043,170 @@
       background: #000;
     }
 
+    /* ══ VEREINSMEISTERSCHAFT (Gruppentabellen) ═════════════════════════════ */
+    #vm-screen {
+      --vm-sand:   #a94317;
+      --vm-outer:  #a84316;
+      --vm-text:   #fff8e9;
+      --vm-accent: #ffe52c;
+      --vm-card:   rgba(31,12,9,.9);
+      --vm-border: rgba(255,192,48,.72);
+      --vm-line:   rgba(255,174,33,.34);
+      --vm-muted:  rgba(255,248,233,.62);
+      --vm-lead:   rgba(255,229,44,.13);
+      display: none;
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 18% 15%, rgba(255,190,92,.18), transparent 28%),
+        radial-gradient(circle at 78% 70%, rgba(74,20,8,.25), transparent 34%),
+        var(--vm-outer);
+    }
+    #vm-stage {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      transform-origin: center;
+      color: var(--vm-text);
+      font-family: 'DM Sans', system-ui, sans-serif;
+      padding: 40px 52px 28px;
+      display: flex;
+      flex-direction: column;
+      background:
+        radial-gradient(circle at 15% 20%, rgba(255,196,92,.22), transparent 31%),
+        radial-gradient(circle at 80% 70%, rgba(68,13,5,.3), transparent 37%),
+        repeating-linear-gradient(16deg, rgba(255,255,255,.015) 0 2px, rgba(0,0,0,.025) 2px 5px),
+        var(--vm-sand);
+    }
+    /* display:block überschreibt die globale header-Regel der anderen Modi */
+    .vm-header { display: block; text-align: center; flex-shrink: 0; }
+    .vm-header h1 {
+      font-size: 66px;
+      font-weight: 800;
+      letter-spacing: -1.4px;
+      line-height: 1.05;
+      text-transform: uppercase;
+    }
+    .vm-header p {
+      margin-top: 8px;
+      font-size: 26px;
+      font-weight: 600;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--vm-accent);
+      min-height: 32px;
+    }
+    #vm-groups {
+      flex: 1;
+      display: flex;
+      gap: 42px;
+      margin-top: 28px;
+      min-height: 0;
+    }
+    .vm-group {
+      flex: 1 1 0;
+      display: flex;
+      flex-direction: column;
+      border: 3px solid var(--vm-border);
+      border-radius: 24px;
+      background: var(--vm-card);
+      padding: 20px 26px 16px;
+      min-width: 0;
+    }
+    .vm-group > h2 {
+      font-size: 38px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      text-align: center;
+      color: var(--vm-accent);
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--vm-line);
+      flex-shrink: 0;
+    }
+    .vm-row {
+      display: grid;
+      grid-template-columns: 44px 72px minmax(0,1fr) 62px 88px 88px 88px;
+      align-items: center;
+      gap: 8px;
+    }
+    .vm-head {
+      font-size: 19px;
+      font-weight: 700;
+      letter-spacing: 1.4px;
+      text-transform: uppercase;
+      color: var(--vm-muted);
+      padding: 12px 0 4px;
+      flex-shrink: 0;
+      text-align: center;
+    }
+    .vm-head > div:nth-child(3) { text-align: left; }
+    .vm-body { flex: 1; display: flex; flex-direction: column; justify-content: space-evenly; }
+    .vm-player { padding: 8px 6px; }
+    .vm-player + .vm-player { border-top: 2px solid var(--vm-line); }
+    .vm-player.vm-lead { background: var(--vm-lead); border-radius: 12px; }
+    .vm-rank { font-size: 33px; font-weight: 800; color: var(--vm-accent); text-align: center; }
+    .vm-ava {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      overflow: hidden;
+      background: rgba(255,248,233,.16);
+      border: 3px solid var(--vm-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 29px;
+      font-weight: 800;
+    }
+    .vm-ava img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .vm-name {
+      font-size: 34px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .vm-num { font-size: 30px; font-weight: 700; text-align: center; }
+    .vm-num.vm-dim { color: var(--vm-muted); font-weight: 600; }
+    .vm-empty {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      color: var(--vm-muted);
+      text-align: center;
+      padding: 0 20px;
+    }
+    #vm-footer {
+      flex-shrink: 0;
+      margin-top: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 28px;
+      font-size: 24px;
+      font-weight: 600;
+      min-height: 34px;
+    }
+    #vm-progress { color: var(--vm-accent); white-space: nowrap; }
+    #vm-latest {
+      flex: 1;
+      display: flex;
+      gap: 26px;
+      justify-content: center;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    #vm-latest span { color: var(--vm-muted); }
+    #vm-latest b { font-weight: 800; }
+    #vm-conn { color: var(--vm-muted); font-size: 21px; white-space: nowrap; }
+
     /* ══ STANDBY (Bildschirm schwarz im eingestellten Zeitfenster) ══════════ */
     #standby-screen {
       display: none;
@@ -1143,6 +1307,22 @@ setTimeout(function() {
       <article class="trn-court"><h2>PLATZ 3</h2><div class="trn-grid" id="trn-court-3"></div></article>
     </section>
     <div id="trn-conn">Verbinde …</div>
+  </div>
+</div>
+
+<!-- ── VEREINSMEISTERSCHAFT (Gruppentabellen) ── -->
+<div id="vm-screen">
+  <div id="vm-stage">
+    <header class="vm-header">
+      <h1 id="vm-title">Vereinsmeisterschaft</h1>
+      <p id="vm-sub"></p>
+    </header>
+    <div id="vm-groups"></div>
+    <div id="vm-footer">
+      <div id="vm-progress"></div>
+      <div id="vm-latest"></div>
+      <div id="vm-conn">Verbinde …</div>
+    </div>
   </div>
 </div>
 
@@ -2381,6 +2561,202 @@ function startTurnierModus() {
   window.addEventListener("online", loadBoard);
 }
 
+// ── VEREINSMEISTERSCHAFT (Gruppentabellen) ────────────────────────────────
+// Gespeichert sind nur die rohen Satzergebnisse – gewertet wird hier.
+// Reihenfolge: Siege → Satzdifferenz → Spieldifferenz (kein direkter Vergleich).
+// Der Match-Tiebreak (3. Satz) zählt als Satz und als 1:0 Spiele.
+// Dieselbe Rechnung steckt in src/App.jsx (vmMatchResult / vmComputeTable) –
+// wer hier etwas ändert, muss sie dort mitziehen.
+
+function vmMatchResult(m) {
+  if (m.wo === "1" || m.wo === "2") {
+    const w = Number(m.wo);
+    return { w, sets: w === 1 ? [2, 0] : [0, 2], games: w === 1 ? [12, 0] : [0, 12], wo: true };
+  }
+  const raw = [[m.s1a, m.s1b], [m.s2a, m.s2b], [m.s3a, m.s3b]];
+  let sa = 0, sbb = 0, ga = 0, gb = 0;
+  for (let i = 0; i < raw.length; i++) {
+    const a = raw[i][0], b = raw[i][1];
+    if (a === null || a === undefined || b === null || b === undefined) continue;
+    if (Number(a) === Number(b)) continue;
+    if (Number(a) > Number(b)) sa++; else sbb++;
+    if (i === 2) { if (Number(a) > Number(b)) ga++; else gb++; }
+    else { ga += Number(a); gb += Number(b); }
+  }
+  if (sa < 2 && sbb < 2) return null;          // noch nicht entschieden
+  return { w: sa > sbb ? 1 : 2, sets: [sa, sbb], games: [ga, gb], wo: false };
+}
+
+function vmComputeTable(players, matches) {
+  const rows = {};
+  players.forEach(p => { rows[p.id] = { p, sp: 0, s: 0, n: 0, sd: 0, gd: 0 }; });
+  matches.forEach(m => {
+    const r = vmMatchResult(m);
+    if (!r) return;
+    const a = rows[m.p1], b = rows[m.p2];
+    if (!a || !b) return;
+    a.sp++; b.sp++;
+    if (r.w === 1) { a.s++; b.n++; } else { b.s++; a.n++; }
+    a.sd += r.sets[0]  - r.sets[1];   b.sd += r.sets[1]  - r.sets[0];
+    a.gd += r.games[0] - r.games[1];  b.gd += r.games[1] - r.games[0];
+  });
+  return Object.values(rows).sort((x, y) =>
+    y.s - x.s || y.sd - x.sd || y.gd - x.gd || x.p.name.localeCompare(y.p.name, "de"));
+}
+
+function vmSigned(n) { return n > 0 ? "+" + n : String(n); }
+
+function startVmModus() {
+  const STAGE_W = 1920, STAGE_H = 1080;
+  const screen = document.getElementById("vm-screen");
+  const stage  = document.getElementById("vm-stage");
+  const conn   = document.getElementById("vm-conn");
+  screen.style.display = "block";
+
+  function fitStage() {
+    const scale = Math.min(window.innerWidth / STAGE_W, window.innerHeight / STAGE_H);
+    stage.style.transform = `translate(-50%, -50%) scale(${scale})`;
+  }
+  fitStage();
+  window.addEventListener("resize", fitStage);
+  window.addEventListener("orientationchange", fitStage);
+
+  function el(parent, tag, className, text) {
+    const e = document.createElement(tag);
+    if (className) e.className = className;
+    if (text !== undefined) e.textContent = text;
+    parent.appendChild(e);
+    return e;
+  }
+
+  function avatar(parent, player) {
+    const a = el(parent, "div", "vm-ava");
+    if (player.avatar) {
+      const img = document.createElement("img");
+      img.alt = "";
+      img.onerror = () => { img.remove(); a.textContent = toInitials(player.name); };
+      img.src = player.avatar;
+      a.appendChild(img);
+    } else {
+      a.textContent = toInitials(player.name);
+    }
+    return a;
+  }
+
+  function groupCard(parent, gruppe, players, matches) {
+    const g = el(parent, "section", "vm-group");
+    el(g, "h2", null, String(gruppe.name || "Gruppe").toUpperCase());
+
+    const head = el(g, "div", "vm-row vm-head");
+    ["", "", "Spieler", "Sp", "S:N", "Sätze", "Spiele"].forEach(t => el(head, "div", null, t));
+
+    if (!players.length) {
+      el(g, "div", "vm-empty", "Noch keine Spieler eingetragen");
+      return;
+    }
+
+    const body = el(g, "div", "vm-body");
+    vmComputeTable(players, matches).forEach((r, i) => {
+      const row = el(body, "div", "vm-row vm-player" + (i === 0 && r.sp > 0 ? " vm-lead" : ""));
+      el(row, "div", "vm-rank", String(i + 1));
+      avatar(row, r.p);
+      el(row, "div", "vm-name", r.p.name);
+      const dim = r.sp ? "" : " vm-dim";
+      el(row, "div", "vm-num" + dim, String(r.sp));
+      el(row, "div", "vm-num" + dim, r.s + ":" + r.n);
+      el(row, "div", "vm-num" + dim, vmSigned(r.sd));
+      el(row, "div", "vm-num" + dim, vmSigned(r.gd));
+    });
+  }
+
+  function shortLabel(name) {
+    const parts = String(name || "").trim().split(/\s+/);
+    if (parts.length < 2) return parts[0] || "?";
+    return parts[0] + " " + parts[parts.length - 1][0] + ".";
+  }
+
+  function renderLatest(nameOf, matches) {
+    const box = document.getElementById("vm-latest");
+    box.replaceChildren();
+    matches
+      .filter(m => m.updated_at && vmMatchResult(m))
+      .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+      .slice(0, 3)
+      .forEach(m => {
+        const r = vmMatchResult(m);
+        const wrap = el(box, "div", null);
+        el(wrap, "b", null, shortLabel(nameOf(r.w === 1 ? m.p1 : m.p2)));
+        el(wrap, "span", null, " schlägt ");
+        el(wrap, "b", null, shortLabel(nameOf(r.w === 1 ? m.p2 : m.p1)));
+        if (r.wo) { el(wrap, "span", null, " (w.o.)"); return; }
+        const sets = [[m.s1a, m.s1b], [m.s2a, m.s2b], [m.s3a, m.s3b]]
+          .filter(p => p[0] !== null && p[0] !== undefined && p[1] !== null && p[1] !== undefined)
+          .map(p => (r.w === 1 ? p[0] + ":" + p[1] : p[1] + ":" + p[0]))
+          .join("  ");
+        el(wrap, "span", null, " " + sets);
+      });
+  }
+
+  function renderEmpty(msg) {
+    document.getElementById("vm-title").textContent = "Vereinsmeisterschaft";
+    document.getElementById("vm-sub").textContent   = "";
+    const box = document.getElementById("vm-groups");
+    box.replaceChildren();
+    el(box, "div", "vm-empty", msg);
+    document.getElementById("vm-progress").textContent = "";
+    document.getElementById("vm-latest").replaceChildren();
+  }
+
+  function render(turnier, matches) {
+    const gruppen = Array.isArray(turnier.gruppen) ? turnier.gruppen : [];
+    document.getElementById("vm-title").textContent = String(turnier.name || "Vereinsmeisterschaft");
+
+    const nameById = {};
+    gruppen.forEach(g => (g.spieler || []).forEach(p => { nameById[p.id] = p.name; }));
+
+    const box = document.getElementById("vm-groups");
+    box.replaceChildren();
+    if (!gruppen.length) el(box, "div", "vm-empty", "Noch keine Gruppen angelegt");
+    gruppen.forEach((g, i) => {
+      const players = (g.spieler || []).filter(p => p && p.id && String(p.name || "").trim());
+      groupCard(box, g, players, matches.filter(m => Number(m.gruppe) === i));
+    });
+
+    const gespielt = matches.filter(m => vmMatchResult(m)).length;
+    document.getElementById("vm-sub").textContent      = matches.length ? "Gruppenphase" : "";
+    document.getElementById("vm-progress").textContent =
+      matches.length ? `${gespielt} von ${matches.length} Spielen` : "";
+    renderLatest(id => nameById[id] || "?", matches);
+  }
+
+  let lastJson = null;
+  async function load() {
+    const { data: st, error } = await sb.from("settings").select("value")
+      .eq("key", "display_vm_turnier").maybeSingle();
+    if (error) { conn.textContent = "Verbindung unterbrochen – neuer Versuch läuft"; return; }
+
+    const tid = String(st?.value || "").trim();
+    if (!tid) { renderEmpty("Kein Turnier ausgewählt"); return; }
+
+    const { data: t } = await sb.from("vm_turniere").select("id,name,gruppen")
+      .eq("id", tid).maybeSingle();
+    if (!t) { renderEmpty("Turnier nicht gefunden"); return; }
+
+    const { data: ms } = await sb.from("vm_matches")
+      .select("code,gruppe,p1,p2,s1a,s1b,s2a,s2b,s3a,s3b,wo,updated_at")
+      .eq("turnier_id", tid);
+
+    const json = JSON.stringify([t, ms || []]);
+    if (json !== lastJson) { lastJson = json; render(t, ms || []); }
+    conn.textContent = "Aktualisiert " +
+      new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+  }
+
+  load();
+  setInterval(load, 20_000);
+  window.addEventListener("online", load);
+}
+
 // ── ROTATION / PLAYLIST ───────────────────────────────────────────────────
 // Wechselt automatisch durch mehrere Modi. Jeder Modus läuft in einem eigenen
 // <iframe> (display.html?mode=X) – dadurch kein location.reload() des Parents,
@@ -2600,6 +2976,13 @@ function scheduleMidnightReload() {
   // Turnier (Vereinsmeisterschaft)
   if (displayMode === "turnier") {
     startTurnierModus();
+    scheduleMidnightReload();
+    return;
+  }
+
+  // Vereinsmeisterschaft (Gruppentabellen)
+  if (displayMode === "vm") {
+    startVmModus();
     scheduleMidnightReload();
     return;
   }

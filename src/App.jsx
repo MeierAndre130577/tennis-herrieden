@@ -3896,6 +3896,76 @@ function SettingsJobsTab() {
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// VEREINSMEISTERSCHAFT – Wertung
+// Dieselbe Rechnung steckt in public/display.html (vmMatchResult /
+// vmComputeTable). Wer hier etwas ändert, muss sie dort mitziehen.
+// Reihenfolge: Siege → Satzdifferenz → Spieldifferenz (kein direkter Vergleich).
+// Der Match-Tiebreak (3. Satz) zählt als Satz und als 1:0 Spiele.
+// ═══════════════════════════════════════════════════════════════════════════
+const VM_ALPHABET = "ACDEFGHJKMNPQRTUVWXY2346789"; // ohne B I L O S Z 0 1 5 8
+const VM_SLOTS    = 4;                              // max. Spieler je Gruppe
+
+function vmMatchResult(m){
+  if(m.wo==="1"||m.wo==="2"){
+    const w=Number(m.wo);
+    return {w, sets:w===1?[2,0]:[0,2], games:w===1?[12,0]:[0,12], wo:true};
+  }
+  const raw=[[m.s1a,m.s1b],[m.s2a,m.s2b],[m.s3a,m.s3b]];
+  let sa=0,sbb=0,ga=0,gb=0;
+  for(let i=0;i<raw.length;i++){
+    const a=raw[i][0], b=raw[i][1];
+    if(a===null||a===undefined||b===null||b===undefined) continue;
+    if(Number(a)===Number(b)) continue;
+    if(Number(a)>Number(b)) sa++; else sbb++;
+    if(i===2){ if(Number(a)>Number(b)) ga++; else gb++; }
+    else { ga+=Number(a); gb+=Number(b); }
+  }
+  if(sa<2&&sbb<2) return null;
+  return {w:sa>sbb?1:2, sets:[sa,sbb], games:[ga,gb], wo:false};
+}
+
+function vmComputeTable(players, matches){
+  const rows={};
+  players.forEach(p=>{ rows[p.id]={p,sp:0,s:0,n:0,sd:0,gd:0}; });
+  matches.forEach(m=>{
+    const r=vmMatchResult(m); if(!r) return;
+    const a=rows[m.p1], b=rows[m.p2]; if(!a||!b) return;
+    a.sp++; b.sp++;
+    if(r.w===1){ a.s++; b.n++; } else { b.s++; a.n++; }
+    a.sd+=r.sets[0]-r.sets[1];   b.sd+=r.sets[1]-r.sets[0];
+    a.gd+=r.games[0]-r.games[1]; b.gd+=r.games[1]-r.games[0];
+  });
+  return Object.values(rows).sort((x,y)=>
+    y.s-x.s || y.sd-x.sd || y.gd-x.gd || x.p.name.localeCompare(y.p.name,"de"));
+}
+
+const vmSigned  = n => n>0 ? "+"+n : String(n);
+const vmNewId   = () => Math.random().toString(36).slice(2,8);
+const vmMakeCode = (used) => {
+  for(let n=0;n<300;n++){
+    let c=""; for(let i=0;i<4;i++) c+=VM_ALPHABET[Math.floor(Math.random()*VM_ALPHABET.length)];
+    if(!used.has(c)){ used.add(c); return c; }
+  }
+  const fb="X"+Date.now().toString(36).slice(-3).toUpperCase();
+  used.add(fb); return fb;
+};
+
+// Immer 2 Gruppen mit je 4 Bearbeitungsplätzen – leere Namen zählen nicht als Spieler
+function vmNormGruppen(raw){
+  const src=Array.isArray(raw)?raw:[];
+  return [0,1].map(i=>{
+    const g=src[i]||{};
+    const sp=Array.isArray(g.spieler)?g.spieler:[];
+    const spieler=[];
+    for(let k=0;k<VM_SLOTS;k++){
+      const p=sp[k]||{};
+      spieler.push({id:p.id||vmNewId(), name:p.name||"", avatar:p.avatar||""});
+    }
+    return {name:g.name||`Gruppe ${String.fromCharCode(65+i)}`, spieler};
+  });
+}
+
 function SettingsDisplayTab({onToast}) {
   const [activeTab,      setActiveTab]      = useState("schedule");
   const [subTab,         setSubTab]         = useState("modus");
@@ -3926,6 +3996,211 @@ function SettingsDisplayTab({onToast}) {
   const [stbEnabled,    setStbEnabled]     = useState(false);
   const [stbFrom,       setStbFrom]        = useState("22:00");
   const [stbTo,         setStbTo]          = useState("07:00");
+
+  // ── Vereinsmeisterschaft (Gruppen, Tabelle, Codes) ──
+  const [vmTurniere,  setVmTurniere]  = useState([]);
+  const [vmActiveId,  setVmActiveId]  = useState("");   // settings.display_vm_turnier
+  const [vmSelId,     setVmSelId]     = useState("");   // gerade bearbeitetes Turnier
+  const [vmName,      setVmName]      = useState("");
+  const [vmGruppen,   setVmGruppen]   = useState(()=>vmNormGruppen(null));
+  const [vmMatches,   setVmMatches]   = useState([]);
+  const [vmNewName,   setVmNewName]   = useState("");
+  const [vmBusy,      setVmBusy]      = useState(false);
+  const [vmErr,       setVmErr]       = useState(null);
+  const [vmUploading, setVmUploading] = useState("");
+  const [vmSavingRow, setVmSavingRow] = useState("");
+
+  const vmLoadList = async(preferId)=>{
+    const {data,error}=await sb.from("vm_turniere").select("id,name,gruppen")
+      .order("created_at",{ascending:false});
+    if(error){ setVmErr(error.message); return []; }
+    const list=data||[];
+    setVmTurniere(list);
+    const pick = preferId || vmSelId || list[0]?.id || "";
+    const t = list.find(x=>x.id===pick);
+    if(t){ setVmSelId(t.id); setVmName(t.name||""); setVmGruppen(vmNormGruppen(t.gruppen)); }
+    return list;
+  };
+
+  const vmLoadMatches = async(tid)=>{
+    if(!tid){ setVmMatches([]); return []; }
+    const {data}=await sb.from("vm_matches")
+      .select("code,turnier_id,gruppe,p1,p2,s1a,s1b,s2a,s2b,s3a,s3b,wo,updated_at")
+      .eq("turnier_id",tid);
+    setVmMatches(data||[]);
+    return data||[];
+  };
+
+  useEffect(()=>{
+    (async()=>{
+      const list=await vmLoadList();
+      const {data}=await sb.from("settings").select("value")
+        .eq("key","display_vm_turnier").maybeSingle();
+      const act=String(data?.value||"").trim();
+      setVmActiveId(act);
+      const start = list.find(t=>t.id===act) || list[0];
+      if(start){
+        setVmSelId(start.id); setVmName(start.name||"");
+        setVmGruppen(vmNormGruppen(start.gruppen));
+        await vmLoadMatches(start.id);
+      }
+    })();
+  },[]);
+
+  const vmSelect = async(t)=>{
+    setVmErr(null);
+    setVmSelId(t.id); setVmName(t.name||"");
+    setVmGruppen(vmNormGruppen(t.gruppen));
+    await vmLoadMatches(t.id);
+  };
+
+  const vmCreate = async()=>{
+    const name=(vmNewName||"").trim();
+    if(!name){ setVmErr("Bitte einen Namen für das Turnier eingeben."); return; }
+    setVmErr(null); setVmBusy(true);
+    const {data,error}=await sb.from("vm_turniere").insert({
+      name, gruppen:[{name:"Gruppe A",spieler:[]},{name:"Gruppe B",spieler:[]}],
+    }).select("id,name,gruppen").single();
+    setVmBusy(false);
+    if(error){ setVmErr(error.message); return; }
+    setVmNewName("");
+    await vmLoadList(data.id);
+    await vmLoadMatches(data.id);
+    onToast(`„${name}" angelegt ✓`);
+  };
+
+  const vmDelete = async(t)=>{
+    if(!window.confirm(`„${t.name}" mit allen Paarungen und Ergebnissen löschen?`)) return;
+    setVmBusy(true);
+    const {error}=await sb.from("vm_turniere").delete().eq("id",t.id);
+    if(!error && vmActiveId===t.id){
+      await sb.from("settings").upsert({key:"display_vm_turnier",value:""},{onConflict:"key"});
+      setVmActiveId("");
+    }
+    setVmBusy(false);
+    if(error){ setVmErr(error.message); return; }
+    const list=await vmLoadList(null);
+    const next=list[0];
+    if(next){ setVmSelId(next.id); setVmName(next.name||""); setVmGruppen(vmNormGruppen(next.gruppen)); await vmLoadMatches(next.id); }
+    else { setVmSelId(""); setVmName(""); setVmGruppen(vmNormGruppen(null)); setVmMatches([]); }
+    onToast("Turnier gelöscht");
+  };
+
+  const vmSetActive = async(t)=>{
+    setVmBusy(true);
+    const {error}=await sb.from("settings").upsert([
+      {key:"display_vm_turnier",value:t.id},
+      {key:"display_mode",value:"vm"},
+    ],{onConflict:"key"});
+    setVmBusy(false);
+    if(error){ setVmErr(error.message); return; }
+    setVmActiveId(t.id); setMode("vm");
+    onToast(`„${t.name}" läuft jetzt auf dem Display ✓`);
+  };
+
+  const vmSetGruppe = (gi,patch)=>setVmGruppen(prev=>prev.map((g,i)=>i===gi?{...g,...patch}:g));
+  const vmSetPlayer = (gi,pi,patch)=>setVmGruppen(prev=>prev.map((g,i)=>i!==gi?g:({
+    ...g, spieler:g.spieler.map((p,k)=>k===pi?{...p,...patch}:p),
+  })));
+
+  const vmUploadAvatar = async(gi,pi,file)=>{
+    if(!file) return;
+    setVmErr(null); setVmUploading(`${gi}-${pi}`);
+    const ext=(file.name.split(".").pop()||"jpg").toLowerCase();
+    const path=`vm/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+    const {error}=await sb.storage.from("club-photos").upload(path,file,{contentType:file.type});
+    setVmUploading("");
+    if(error){ setVmErr(`Upload fehlgeschlagen: ${error.message}`); return; }
+    const {data:{publicUrl}}=sb.storage.from("club-photos").getPublicUrl(path);
+    vmSetPlayer(gi,pi,{avatar:publicUrl});
+    onToast("Bild hochgeladen – noch speichern nicht vergessen");
+  };
+
+  // Paarungen an die Spielerliste angleichen: bestehende behalten (Code + Ergebnis
+  // bleiben), verschwundene löschen, neue mit frischem Code anlegen.
+  const vmSyncMatches = async(tid,gruppen)=>{
+    const {data:existing}=await sb.from("vm_matches").select("code,gruppe,p1,p2").eq("turnier_id",tid);
+    const cur=existing||[];
+    const key=(g,a,b)=>`${g}|${a}|${b}`;
+    const have=new Set(cur.map(m=>key(m.gruppe,m.p1,m.p2)));
+
+    const want=[];
+    gruppen.forEach((g,gi)=>{
+      const ids=g.spieler.map(p=>p.id);
+      for(let i=0;i<ids.length;i++) for(let j=i+1;j<ids.length;j++) want.push({gruppe:gi,p1:ids[i],p2:ids[j]});
+    });
+    const wantKeys=new Set(want.map(w=>key(w.gruppe,w.p1,w.p2)));
+
+    const drop=cur.filter(m=>!wantKeys.has(key(m.gruppe,m.p1,m.p2))&&!wantKeys.has(key(m.gruppe,m.p2,m.p1)))
+                  .map(m=>m.code);
+    if(drop.length){
+      const {error}=await sb.from("vm_matches").delete().in("code",drop);
+      if(error){ setVmErr(`Alte Paarungen konnten nicht entfernt werden: ${error.message}`); return; }
+    }
+
+    const {data:allCodes}=await sb.from("vm_matches").select("code");
+    const used=new Set((allCodes||[]).map(r=>r.code));
+    const neu=want.filter(w=>!have.has(key(w.gruppe,w.p1,w.p2))&&!have.has(key(w.gruppe,w.p2,w.p1)))
+                  .map(w=>({...w,turnier_id:tid,code:vmMakeCode(used)}));
+    if(neu.length){
+      const {error}=await sb.from("vm_matches").insert(neu);
+      if(error){ setVmErr(`Neue Paarungen konnten nicht angelegt werden: ${error.message}`); return; }
+    }
+    await vmLoadMatches(tid);
+  };
+
+  const vmSaveGruppen = async()=>{
+    if(!vmSelId){ setVmErr("Erst ein Turnier anlegen oder auswählen."); return; }
+    setVmErr(null);
+    const clean=vmGruppen.map(g=>({
+      name:(g.name||"").trim()||"Gruppe",
+      spieler:g.spieler.filter(p=>(p.name||"").trim())
+                       .map(p=>({id:p.id,name:p.name.trim(),avatar:p.avatar||""})),
+    }));
+    const namen=clean.flatMap(g=>g.spieler.map(p=>p.name.toLowerCase()));
+    const doppelt=namen.find((n,i)=>namen.indexOf(n)!==i);
+    if(doppelt){ setVmErr(`Der Name „${doppelt}" kommt doppelt vor – bitte eindeutig machen.`); return; }
+
+    setVmBusy(true);
+    const {error}=await sb.from("vm_turniere")
+      .update({name:(vmName||"").trim()||"Vereinsmeisterschaft",gruppen:clean}).eq("id",vmSelId);
+    if(error){ setVmBusy(false); setVmErr(error.message); return; }
+    await vmSyncMatches(vmSelId,clean);
+    await vmLoadList(vmSelId);
+    setVmBusy(false);
+    const anzahl=clean.reduce((s,g)=>s+g.spieler.length,0);
+    onToast(`Gespeichert – ${anzahl} Spieler, Paarungen aktualisiert ✓`);
+  };
+
+  const vmSetMatch = (code,patch)=>setVmMatches(prev=>prev.map(m=>m.code===code?{...m,...patch}:m));
+
+  const vmSaveMatch = async(m)=>{
+    setVmErr(null); setVmSavingRow(m.code);
+    const n=v=>{ const s=String(v??"").trim(); if(s==="") return null; const x=Number(s);
+                 return Number.isInteger(x)&&x>=0&&x<=99?x:null; };
+    const wo=["1","2"].includes(String(m.wo))?String(m.wo):null;
+    const {error}=await sb.from("vm_matches").update({
+      s1a:wo?null:n(m.s1a), s1b:wo?null:n(m.s1b),
+      s2a:wo?null:n(m.s2a), s2b:wo?null:n(m.s2b),
+      s3a:wo?null:n(m.s3a), s3b:wo?null:n(m.s3b),
+      wo, updated_at:new Date().toISOString(),
+    }).eq("code",m.code);
+    setVmSavingRow("");
+    if(error){ setVmErr(error.message); return; }
+    await vmLoadMatches(vmSelId);
+    onToast("Ergebnis gespeichert ✓");
+  };
+
+  const vmClearMatch = async(m)=>{
+    setVmSavingRow(m.code);
+    const {error}=await sb.from("vm_matches").update({
+      s1a:null,s1b:null,s2a:null,s2b:null,s3a:null,s3b:null,wo:null,updated_at:null,
+    }).eq("code",m.code);
+    setVmSavingRow("");
+    if(error){ setVmErr(error.message); return; }
+    await vmLoadMatches(vmSelId);
+    onToast("Ergebnis zurückgesetzt");
+  };
 
   // ── Turnier (Vereinsmeisterschaft) ──
   const TRN_EMPTY_SLOT = {visible:false,time:"",title:"",player1:"",player2:"",score:"",status:"upcoming",winner:""};
@@ -4248,6 +4523,7 @@ function SettingsDisplayTab({onToast}) {
     {id:"schedule",      icon:"📅", label:"Tagesbelegung"},
     {id:"heimspiel",     icon:"🏆", label:"Heimspiel"},
     {id:"turnier",       icon:"🏅", label:"Turnier"},
+    {id:"vm",            icon:"🥇", label:"Meisterschaft"},
     {id:"bild",          icon:"🖼️", label:"Bildanzeige"},
     {id:"fotos",         icon:"📸", label:"Fotos"},
   ];
@@ -4263,6 +4539,12 @@ function SettingsDisplayTab({onToast}) {
     turnier: [
       {id:"stammdaten", label:"🖥️ Stammdaten"},
       {id:"ergebnisse", label:"📱 Ergebnisse"},
+    ],
+    vm: [
+      {id:"vmturnier",    label:"🗂️ Turniere"},
+      {id:"vmspieler",    label:"👥 Gruppen & Spieler"},
+      {id:"vmergebnisse", label:"📱 Ergebnisse & Tabelle"},
+      {id:"vmdruck",      label:"🖨️ Spielzettel"},
     ],
   };
 
@@ -4331,6 +4613,7 @@ function SettingsDisplayTab({onToast}) {
             {id:"schedule",  icon:"📅", label:"Tagesbelegung"},
             {id:"heimspiel", icon:"🏆", label:"Heimspiel"},
             {id:"turnier",   icon:"🏅", label:"Vereinsmeisterschaft"},
+            {id:"vm",        icon:"🥇", label:"Meisterschaft (Gruppentabellen)"},
             {id:"spielplan", icon:"🗓️", label:"Spielplan Saison"},
             {id:"bild",      icon:"🖼️", label:"Bildanzeige"},
             {id:"fotos",     icon:"📸", label:"Fotos-Slideshow"},
@@ -4463,6 +4746,7 @@ function SettingsDisplayTab({onToast}) {
             {id:"schedule",  label:"📅 Tagesbelegung"},
             {id:"heimspiel", label:"🏆 Heimspiel"},
             {id:"turnier",   label:"🏅 Vereinsmeisterschaft"},
+            {id:"vm",        label:"🥇 Meisterschaft (Gruppen)"},
             {id:"spielplan", label:"🗓️ Spielplan Saison"},
             {id:"bild",      label:"🖼️ Bildanzeige"},
             {id:"fotos",     label:"📸 Fotos-Slideshow"},
@@ -4954,6 +5238,306 @@ function SettingsDisplayTab({onToast}) {
               <label style={{fontSize:"0.8125rem",color:T.textSecondary}}>Sekunden</label>
             </div>
           </div>
+        )}
+
+        {/* ── MEISTERSCHAFT: Turniere ── */}
+        {activeTab==="vm"&&subTab==="vmturnier"&&(
+          <div>
+            <div style={{padding:"12px 14px",background:"#F5F3FF",border:"1px solid #DDD6FE",
+              borderRadius:10,fontSize:"0.75rem",color:"#5B21B6",lineHeight:1.6,marginBottom:16}}>
+              Zwei Gruppen, jeder gegen jeden, drei oder vier Spieler pro Gruppe. Die Tabelle rechnet
+              sich selbst aus den eingetragenen Sätzen. Angezeigt wird immer genau ein Turnier –
+              die anderen bleiben mit ihren Ergebnissen erhalten.
+            </div>
+
+            <Lbl>Neues Turnier</Lbl>
+            <div style={{display:"flex",gap:8,marginBottom:22}}>
+              <input value={vmNewName} onChange={e=>setVmNewName(e.target.value)}
+                onKeyDown={e=>e.key==="Enter"&&vmCreate()}
+                placeholder="z.B. Jugend-Vereinsmeisterschaft 2026"
+                style={{...S.input,flex:1}}/>
+              <button onClick={vmCreate} disabled={vmBusy}
+                style={{...S.primaryBtn,background:"#8B5CF6",flexShrink:0,opacity:vmBusy?0.6:1}}>
+                Anlegen
+              </button>
+            </div>
+
+            <Lbl>Turniere</Lbl>
+            {!vmTurniere.length&&<Em msg="Noch kein Turnier angelegt"/>}
+            {vmTurniere.map(t=>{
+              const gr=Array.isArray(t.gruppen)?t.gruppen:[];
+              const anz=gr.reduce((s,g)=>s+((g.spieler||[]).length),0);
+              const aktiv=vmActiveId===t.id;
+              const offen=vmSelId===t.id;
+              return (
+                <div key={t.id} style={{...S.card,marginBottom:8,
+                  border:`1.5px solid ${offen?"#8B5CF6":"#E5E7EB"}`}}>
+                  <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+                    <div style={{flex:1,minWidth:180}}>
+                      <div style={{fontWeight:800,fontSize:"0.9375rem"}}>
+                        {t.name}
+                        {aktiv&&<span style={{marginLeft:8,fontSize:"0.6875rem",fontWeight:800,
+                          background:"#8B5CF6",color:"#fff",borderRadius:20,padding:"2px 9px"}}>auf dem Display</span>}
+                      </div>
+                      <div style={{fontSize:"0.75rem",color:T.textSecondary,marginTop:3}}>
+                        {gr.map(g=>g.name).join(" · ")||"keine Gruppen"} — {anz} Spieler
+                      </div>
+                    </div>
+                    <button onClick={()=>{vmSelect(t); setSubTab("vmspieler");}}
+                      style={{...S.ghostBtn,padding:"8px 14px",fontSize:"0.8125rem"}}>
+                      Bearbeiten
+                    </button>
+                    {!aktiv&&(
+                      <button onClick={()=>vmSetActive(t)} disabled={vmBusy}
+                        style={{...S.primaryBtn,background:"#8B5CF6",padding:"8px 14px",
+                          fontSize:"0.8125rem",opacity:vmBusy?0.6:1}}>
+                        Auf Display
+                      </button>
+                    )}
+                    <button onClick={()=>vmDelete(t)} style={{...S.cancelBtn}}>Löschen</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ── MEISTERSCHAFT: Gruppen & Spieler ── */}
+        {activeTab==="vm"&&subTab==="vmspieler"&&(
+          !vmSelId ? <Em msg="Erst im Reiter Turniere ein Turnier anlegen"/> : (
+          <div>
+            <Lbl>Turniername (steht auf dem Display und dem Spielzettel)</Lbl>
+            <input value={vmName} onChange={e=>setVmName(e.target.value)}
+              style={{...S.input,marginBottom:20,fontWeight:700}}/>
+
+            {vmGruppen.map((g,gi)=>(
+              <div key={gi} style={{...S.card,marginBottom:14}}>
+                <input value={g.name} onChange={e=>vmSetGruppe(gi,{name:e.target.value})}
+                  style={{...S.input,fontWeight:800,marginBottom:12}}/>
+                {g.spieler.map((p,pi)=>{
+                  const busy=vmUploading===`${gi}-${pi}`;
+                  const initial=(p.name||"").trim()?(p.name.trim()[0].toUpperCase()):"–";
+                  return (
+                    <div key={p.id} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+                      <div style={{width:44,height:44,borderRadius:"50%",overflow:"hidden",flexShrink:0,
+                        background:"#EEF2FF",border:"1.5px solid #E5E7EB",display:"flex",
+                        alignItems:"center",justifyContent:"center",fontWeight:800,
+                        fontSize:"0.9375rem",color:"#6366F1"}}>
+                        {p.avatar
+                          ? <img src={p.avatar} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                          : initial}
+                      </div>
+                      <input value={p.name} onChange={e=>vmSetPlayer(gi,pi,{name:e.target.value})}
+                        placeholder={`Spieler ${pi+1} (leer lassen = kein Spieler)`}
+                        style={{...S.input,flex:1}}/>
+                      <label style={{...S.ghostBtn,padding:"9px 12px",fontSize:"0.75rem",
+                        flexShrink:0,opacity:busy?0.6:1,margin:0}}>
+                        {busy?"…":p.avatar?"Ersetzen":"Bild"}
+                        <input type="file" accept="image/*" style={{display:"none"}}
+                          onChange={e=>{const f=e.target.files?.[0]; e.target.value=""; vmUploadAvatar(gi,pi,f);}}/>
+                      </label>
+                      {p.avatar&&(
+                        <button onClick={()=>vmSetPlayer(gi,pi,{avatar:""})}
+                          style={{...S.cancelBtn,padding:"7px 10px"}}>✕</button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+
+            {vmErr&&(
+              <div style={{padding:"10px 14px",background:"#FEF2F2",border:"1px solid #FECACA",
+                borderRadius:8,fontSize:"0.75rem",color:"#DC2626",marginBottom:12}}>⚠️ {vmErr}</div>
+            )}
+
+            <button onClick={vmSaveGruppen} disabled={vmBusy}
+              style={{...S.primaryBtn,background:"#8B5CF6",opacity:vmBusy?0.6:1}}>
+              {vmBusy?"Speichern…":"Gruppen speichern & Paarungen erzeugen"}
+            </button>
+
+            <div style={{padding:"12px 14px",background:"#F8FAFC",border:"1px solid #E2E8F0",
+              borderRadius:10,fontSize:"0.75rem",color:T.textSecondary,lineHeight:1.6,marginTop:14}}>
+              Beim Speichern werden die Paarungen erzeugt: bei 3 Spielern 3 Spiele, bei 4 Spielern 6.
+              Bestehende Paarungen behalten ihren Code und ihr Ergebnis. Wird ein Spieler entfernt,
+              verschwinden nur seine Spiele. <strong>Nach jeder Änderung den Spielzettel neu drucken</strong> –
+              neue Paarungen haben neue Codes.
+              <br/><br/>
+              Bilder: quadratisch, mindestens 512×512, Gesicht mittig. Der Kreis schneidet die Ecken weg.
+            </div>
+          </div>
+          )
+        )}
+
+        {/* ── MEISTERSCHAFT: Ergebnisse & Tabelle ── */}
+        {activeTab==="vm"&&subTab==="vmergebnisse"&&(
+          !vmSelId ? <Em msg="Erst im Reiter Turniere ein Turnier anlegen"/> : (()=>{
+            const gruppen=Array.isArray(vmTurniere.find(t=>t.id===vmSelId)?.gruppen)
+              ? vmTurniere.find(t=>t.id===vmSelId).gruppen : [];
+            const nameById={};
+            gruppen.forEach(g=>(g.spieler||[]).forEach(p=>{nameById[p.id]=p.name;}));
+            const setCell=(m,f)=>(
+              <input value={m[f]??""} inputMode="numeric" maxLength={2}
+                onChange={e=>vmSetMatch(m.code,{[f]:e.target.value.replace(/[^0-9]/g,"").slice(0,2)})}
+                style={{...S.input,width:44,textAlign:"center",fontWeight:700,padding:"8px 4px"}}/>
+            );
+            return (
+              <div>
+                {vmErr&&(
+                  <div style={{padding:"10px 14px",background:"#FEF2F2",border:"1px solid #FECACA",
+                    borderRadius:8,fontSize:"0.75rem",color:"#DC2626",marginBottom:12}}>⚠️ {vmErr}</div>
+                )}
+
+                {gruppen.map((g,gi)=>{
+                  const players=(g.spieler||[]).filter(p=>p&&p.id&&(p.name||"").trim());
+                  const list=vmMatches.filter(m=>Number(m.gruppe)===gi);
+                  return (
+                    <div key={gi} style={{marginBottom:26}}>
+                      <SectTitle>{g.name}</SectTitle>
+
+                      {/* Tabelle */}
+                      <div style={{...S.card,marginBottom:12,padding:"10px 12px"}}>
+                        <div style={{display:"grid",gridTemplateColumns:"26px 1fr 34px 46px 44px 46px",
+                          gap:6,fontSize:"0.6875rem",fontWeight:700,color:T.textMuted,
+                          paddingBottom:6,borderBottom:"1px solid #E5E7EB"}}>
+                          <div>#</div><div>Spieler</div><div style={{textAlign:"center"}}>Sp</div>
+                          <div style={{textAlign:"center"}}>S:N</div>
+                          <div style={{textAlign:"center"}}>Sätze</div>
+                          <div style={{textAlign:"center"}}>Spiele</div>
+                        </div>
+                        {!players.length&&<Em msg="Keine Spieler"/>}
+                        {vmComputeTable(players,list).map((r,i)=>(
+                          <div key={r.p.id} style={{display:"grid",
+                            gridTemplateColumns:"26px 1fr 34px 46px 44px 46px",gap:6,
+                            fontSize:"0.8125rem",padding:"7px 0",
+                            borderBottom:i<players.length-1?"1px solid #F1F5F9":"none",
+                            fontWeight:i===0&&r.sp>0?800:500}}>
+                            <div style={{color:"#8B5CF6",fontWeight:800}}>{i+1}</div>
+                            <div style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.p.name}</div>
+                            <div style={{textAlign:"center"}}>{r.sp}</div>
+                            <div style={{textAlign:"center"}}>{r.s}:{r.n}</div>
+                            <div style={{textAlign:"center"}}>{vmSigned(r.sd)}</div>
+                            <div style={{textAlign:"center"}}>{vmSigned(r.gd)}</div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Paarungen */}
+                      {!list.length&&<Em msg="Noch keine Paarungen – im Reiter Gruppen & Spieler speichern"/>}
+                      {list.map(m=>{
+                        const r=vmMatchResult({...m,
+                          s1a:m.s1a===""?null:m.s1a, s1b:m.s1b===""?null:m.s1b,
+                          s2a:m.s2a===""?null:m.s2a, s2b:m.s2b===""?null:m.s2b,
+                          s3a:m.s3a===""?null:m.s3a, s3b:m.s3b===""?null:m.s3b});
+                        const busy=vmSavingRow===m.code;
+                        return (
+                          <div key={m.code} style={{...S.card,marginBottom:8}}>
+                            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                              <span style={{fontFamily:"monospace",fontWeight:800,fontSize:"0.875rem",
+                                background:"#F1F5F9",borderRadius:6,padding:"3px 8px",letterSpacing:2}}>
+                                {m.code}
+                              </span>
+                              <span style={{fontWeight:700,fontSize:"0.875rem",flex:1}}>
+                                {nameById[m.p1]||"?"} <span style={{color:T.textMuted,fontWeight:500}}>gegen</span> {nameById[m.p2]||"?"}
+                              </span>
+                              {r&&<span style={{fontSize:"0.75rem",fontWeight:800,color:"#16A34A"}}>
+                                🏆 {nameById[r.w===1?m.p1:m.p2]||"?"}
+                              </span>}
+                            </div>
+
+                            {m.wo?(
+                              <div style={{fontSize:"0.8125rem",fontWeight:700,color:"#B45309",
+                                background:"#FEF3C7",borderRadius:8,padding:"9px 12px",marginBottom:10}}>
+                                Kampflos für {nameById[m.wo==="1"?m.p1:m.p2]||"?"}
+                              </div>
+                            ):(
+                              <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:10}}>
+                                {[["s1a","s1b","1. Satz"],["s2a","s2b","2. Satz"],["s3a","s3b","Tiebreak"]].map(([fa,fb,lbl])=>(
+                                  <div key={fa} style={{display:"flex",alignItems:"center",gap:5}}>
+                                    <span style={{fontSize:"0.6875rem",color:T.textMuted,fontWeight:700,
+                                      width:52,textAlign:"right"}}>{lbl}</span>
+                                    {setCell(m,fa)}<span style={{fontWeight:800}}>:</span>{setCell(m,fb)}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                              <button onClick={()=>vmSaveMatch(m)} disabled={busy}
+                                style={{...S.primaryBtn,background:"#8B5CF6",padding:"8px 14px",
+                                  fontSize:"0.8125rem",opacity:busy?0.6:1}}>
+                                {busy?"…":"Speichern"}
+                              </button>
+                              <button onClick={()=>vmSetMatch(m.code,{wo:m.wo==="1"?null:"1"})}
+                                style={{...S.ghostBtn,padding:"8px 12px",fontSize:"0.75rem",
+                                  borderColor:m.wo==="1"?"#F59E0B":"#E5E7EB"}}>
+                                w.o. {nameById[m.p1]||"1"}
+                              </button>
+                              <button onClick={()=>vmSetMatch(m.code,{wo:m.wo==="2"?null:"2"})}
+                                style={{...S.ghostBtn,padding:"8px 12px",fontSize:"0.75rem",
+                                  borderColor:m.wo==="2"?"#F59E0B":"#E5E7EB"}}>
+                                w.o. {nameById[m.p2]||"2"}
+                              </button>
+                              <button onClick={()=>vmClearMatch(m)} disabled={busy}
+                                style={{...S.cancelBtn}}>Zurücksetzen</button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+
+                <div style={{padding:"12px 14px",background:"#F8FAFC",border:"1px solid #E2E8F0",
+                  borderRadius:10,fontSize:"0.75rem",color:T.textSecondary,lineHeight:1.6}}>
+                  Hier korrigierst du, was über die Codes eingetragen wurde. Die Sortierung ist
+                  Siege → Satzdifferenz → Spieldifferenz. Der Match-Tiebreak zählt als Satz und als 1:0 Spiele,
+                  ein kampfloser Sieg als 2:0 Sätze und 12:0 Spiele.
+                </div>
+              </div>
+            );
+          })()
+        )}
+
+        {/* ── MEISTERSCHAFT: Spielzettel ── */}
+        {activeTab==="vm"&&subTab==="vmdruck"&&(
+          !vmSelId ? <Em msg="Erst im Reiter Turniere ein Turnier anlegen"/> : (
+          <div>
+            <div style={{padding:"12px 14px",background:"#F5F3FF",border:"1px solid #DDD6FE",
+              borderRadius:10,fontSize:"0.75rem",color:"#5B21B6",lineHeight:1.6,marginBottom:16}}>
+              Der Spielzettel enthält alle Paarungen mit Code und QR-Code. Öffnen, mit
+              <strong> Strg+P</strong> drucken oder als PDF speichern. Jeder QR-Code führt direkt zur
+              Eingabe der jeweiligen Paarung – ohne Tippen.
+            </div>
+
+            <a href={`/spielzettel.html?t=${vmSelId}`} target="_blank" rel="noopener noreferrer"
+              style={{...S.primaryBtn,background:"#8B5CF6",display:"inline-block",textDecoration:"none"}}>
+              Spielzettel öffnen ↗
+            </a>
+            <a href="/ergebnis.html" target="_blank" rel="noopener noreferrer"
+              style={{marginLeft:14,color:"#8B5CF6",fontSize:"0.8125rem",fontWeight:600,textDecoration:"none"}}>
+              Eingabeseite ansehen ↗
+            </a>
+
+            <div style={{marginTop:22}}>
+              <Lbl>Alle Codes ({vmMatches.length})</Lbl>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(58px,1fr))",gap:6}}>
+                {vmMatches.map(m=>(
+                  <div key={m.code} style={{fontFamily:"monospace",fontWeight:800,fontSize:"0.8125rem",
+                    textAlign:"center",background:"#F1F5F9",borderRadius:6,padding:"7px 2px",letterSpacing:1}}>
+                    {m.code}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{padding:"12px 14px",background:"#FFFBEB",border:"1px solid #FDE68A",
+              borderRadius:10,fontSize:"0.75rem",color:"#92400E",lineHeight:1.6,marginTop:18}}>
+              Die Eingabe ist bewusst ohne Anmeldung. Wer einen Code hat, kann das Ergebnis eintragen
+              und auch wieder ändern. Falsches lässt sich unter „Ergebnisse & Tabelle" jederzeit korrigieren.
+            </div>
+          </div>
+          )
         )}
       </div>
 
