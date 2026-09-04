@@ -1103,8 +1103,8 @@
     #vm-groups {
       flex: 1;
       display: flex;
-      gap: 42px;
-      margin-top: 28px;
+      gap: 40px;
+      margin-top: 24px;
       min-height: 0;
     }
     .vm-group {
@@ -1183,28 +1183,61 @@
       text-align: center;
       padding: 0 20px;
     }
+    /* Dritter Block: alle Ergebnisse, volle Breite unter den Tabellen */
+    #vm-results {
+      flex-shrink: 0;
+      margin-top: 24px;
+      border: 3px solid var(--vm-border);
+      border-radius: 24px;
+      background: var(--vm-card);
+      padding: 16px 26px 18px;
+    }
+    #vm-results > h2 {
+      font-size: 30px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      text-align: center;
+      color: var(--vm-accent);
+      padding-bottom: 10px;
+      border-bottom: 2px solid var(--vm-line);
+      margin-bottom: 6px;
+    }
+    #vm-results-grid {
+      display: grid;
+      grid-auto-flow: column;
+      grid-auto-columns: minmax(0, 1fr);
+      column-gap: 34px;
+    }
+    .vm-res {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: baseline;
+      gap: 12px;
+      padding: 7px 0;
+      font-size: 25px;
+      font-weight: 700;
+    }
+    .vm-res.vm-res-line { border-top: 2px solid var(--vm-line); }
+    .vm-res-names { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .vm-res-vs   { color: var(--vm-muted); font-weight: 600; }
+    .vm-res-win  { color: var(--vm-accent); font-weight: 800; }
+    .vm-res-score { font-weight: 800; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .vm-res-open .vm-res-names,
+    .vm-res-open .vm-res-score { color: var(--vm-muted); font-weight: 600; }
+
     #vm-footer {
       flex-shrink: 0;
-      margin-top: 20px;
+      margin-top: 16px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 28px;
       font-size: 24px;
       font-weight: 600;
-      min-height: 34px;
+      min-height: 30px;
     }
     #vm-progress { color: var(--vm-accent); white-space: nowrap; }
-    #vm-latest {
-      flex: 1;
-      display: flex;
-      gap: 26px;
-      justify-content: center;
-      overflow: hidden;
-      white-space: nowrap;
-    }
-    #vm-latest span { color: var(--vm-muted); }
-    #vm-latest b { font-weight: 800; }
     #vm-conn { color: var(--vm-muted); font-size: 21px; white-space: nowrap; }
 
     /* ══ STANDBY (Bildschirm schwarz im eingestellten Zeitfenster) ══════════ */
@@ -1318,9 +1351,12 @@ setTimeout(function() {
       <p id="vm-sub"></p>
     </header>
     <div id="vm-groups"></div>
+    <section id="vm-results">
+      <h2>Ergebnisse</h2>
+      <div id="vm-results-grid"></div>
+    </section>
     <div id="vm-footer">
       <div id="vm-progress"></div>
-      <div id="vm-latest"></div>
       <div id="vm-conn">Verbinde …</div>
     </div>
   </div>
@@ -2675,26 +2711,43 @@ function startVmModus() {
     return parts[0] + " " + parts[parts.length - 1][0] + ".";
   }
 
-  function renderLatest(nameOf, matches) {
-    const box = document.getElementById("vm-latest");
+  // Ergebnis immer in der Reihenfolge p1:p2 – die Namen stehen ja auch so da
+  function scoreText(m, r) {
+    if (!r) return "– : –";
+    if (r.wo) return "w.o.";
+    return [[m.s1a, m.s1b], [m.s2a, m.s2b], [m.s3a, m.s3b]]
+      .filter(p => p[0] !== null && p[0] !== undefined && p[1] !== null && p[1] !== undefined)
+      .map(p => p[0] + ":" + p[1])
+      .join("  ");
+  }
+
+  function renderResults(nameOf, matches) {
+    const box = document.getElementById("vm-results-grid");
     box.replaceChildren();
-    matches
-      .filter(m => m.updated_at && vmMatchResult(m))
-      .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
-      .slice(0, 3)
-      .forEach(m => {
-        const r = vmMatchResult(m);
-        const wrap = el(box, "div", null);
-        el(wrap, "b", null, shortLabel(nameOf(r.w === 1 ? m.p1 : m.p2)));
-        el(wrap, "span", null, " schlägt ");
-        el(wrap, "b", null, shortLabel(nameOf(r.w === 1 ? m.p2 : m.p1)));
-        if (r.wo) { el(wrap, "span", null, " (w.o.)"); return; }
-        const sets = [[m.s1a, m.s1b], [m.s2a, m.s2b], [m.s3a, m.s3b]]
-          .filter(p => p[0] !== null && p[0] !== undefined && p[1] !== null && p[1] !== undefined)
-          .map(p => (r.w === 1 ? p[0] + ":" + p[1] : p[1] + ":" + p[0]))
-          .join("  ");
-        el(wrap, "span", null, " " + sets);
-      });
+
+    const sorted = matches.slice().sort((a, b) =>
+      Number(a.gruppe) - Number(b.gruppe) ||
+      String(nameOf(a.p1)).localeCompare(String(nameOf(b.p1)), "de") ||
+      String(nameOf(a.p2)).localeCompare(String(nameOf(b.p2)), "de"));
+
+    // Drei Spalten, spaltenweise gefüllt – so bleiben die Gruppen beieinander
+    const cols = sorted.length > 8 ? 3 : (sorted.length > 4 ? 2 : 1);
+    const rows = Math.max(1, Math.ceil(sorted.length / cols));
+    box.style.gridTemplateRows = `repeat(${rows}, auto)`;
+
+    sorted.forEach((m, i) => {
+      const r = vmMatchResult(m);
+      // Trennlinie nur zwischen Zeilen einer Spalte, nicht über der ersten
+      const cls = "vm-res" + (r ? "" : " vm-res-open") + (i % rows ? " vm-res-line" : "");
+      const e = el(box, "div", cls);
+      const nm = el(e, "div", "vm-res-names");
+      el(nm, "span", r && r.w === 1 ? "vm-res-win" : "", shortLabel(nameOf(m.p1)));
+      el(nm, "span", "vm-res-vs", " – ");
+      el(nm, "span", r && r.w === 2 ? "vm-res-win" : "", shortLabel(nameOf(m.p2)));
+      el(e, "div", "vm-res-score", scoreText(m, r));
+    });
+
+    document.getElementById("vm-results").style.display = sorted.length ? "block" : "none";
   }
 
   function renderEmpty(msg) {
@@ -2704,7 +2757,8 @@ function startVmModus() {
     box.replaceChildren();
     el(box, "div", "vm-empty", msg);
     document.getElementById("vm-progress").textContent = "";
-    document.getElementById("vm-latest").replaceChildren();
+    document.getElementById("vm-results").style.display = "none";
+    document.getElementById("vm-results-grid").replaceChildren();
   }
 
   function render(turnier, matches) {
@@ -2725,8 +2779,8 @@ function startVmModus() {
     const gespielt = matches.filter(m => vmMatchResult(m)).length;
     document.getElementById("vm-sub").textContent      = matches.length ? "Gruppenphase" : "";
     document.getElementById("vm-progress").textContent =
-      matches.length ? `${gespielt} von ${matches.length} Spielen` : "";
-    renderLatest(id => nameById[id] || "?", matches);
+      matches.length ? `${gespielt} von ${matches.length} Spielen gespielt` : "";
+    renderResults(id => nameById[id] || "?", matches);
   }
 
   let lastJson = null;
