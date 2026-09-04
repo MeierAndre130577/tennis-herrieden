@@ -1042,6 +1042,16 @@
       border: 0;
       background: #000;
     }
+
+    /* ══ STANDBY (Bildschirm schwarz im eingestellten Zeitfenster) ══════════ */
+    #standby-screen {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: #000;
+      z-index: 100001;   /* über allem, auch über #fs-btn */
+      cursor: none;
+    }
   </style>
 </head>
 <body>
@@ -1067,6 +1077,8 @@ setTimeout(function() {
 <div id="solo-shell">
   <iframe id="solo-frame" title="Anzeige" scrolling="no"></iframe>
 </div>
+
+<div id="standby-screen"></div>
 
 <div id="white-screen"></div>
 
@@ -1448,6 +1460,52 @@ function subscribeRealtime() {
 }
 
 // ── BILD CLOCK ────────────────────────────────────────────────────────────
+
+// ── STANDBY ───────────────────────────────────────────────────────────────
+// Legt im eingestellten Zeitfenster eine schwarze Fläche über alles.
+// Der Wake Lock bleibt bewusst aktiv: ein echtes Abschalten kann der Browser
+// nicht auslösen, und ein eingeschlafener Fernseher würde morgens nicht von
+// selbst wieder anspringen. Ein Tipp auf die Fläche zeigt sie 5 Min. an.
+function startStandbyWatch() {
+  const el = document.getElementById("standby-screen");
+  const SNOOZE_MS = 5 * 60 * 1000;
+  let cfg = null;
+  let snoozeUntil = 0;
+
+  function toMin(t) {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(String(t || "").trim());
+    if (!m) return null;
+    const h = Number(m[1]), mi = Number(m[2]);
+    return (h > 23 || mi > 59) ? null : h * 60 + mi;
+  }
+  function inWindow() {
+    if (!cfg || !cfg.enabled) return false;
+    const from = toMin(cfg.from), to = toMin(cfg.to);
+    if (from === null || to === null || from === to) return false;
+    const d = new Date();
+    const n = d.getHours() * 60 + d.getMinutes();
+    return from < to ? (n >= from && n < to) : (n >= from || n < to);
+  }
+  function apply() {
+    const on = inWindow() && Date.now() >= snoozeUntil;
+    el.style.display = on ? "block" : "none";
+  }
+
+  el.addEventListener("pointerdown", function () {
+    snoozeUntil = Date.now() + SNOOZE_MS;
+    apply();
+  });
+
+  async function loadCfg() {
+    const { data } = await sb.from("settings").select("value")
+      .eq("key", "display_standby").maybeSingle();
+    try { cfg = JSON.parse(data?.value || "null"); } catch (_) { cfg = null; }
+    apply();
+  }
+  loadCfg();
+  setInterval(loadCfg, 60_000);
+  setInterval(apply, 15_000);
+}
 
 // ── EINZELMODUS-BÜHNE ─────────────────────────────────────────────────────
 // Der Parent (kein ?mode=) rendert den Modus nicht selbst, sondern in einem
@@ -2482,6 +2540,7 @@ function scheduleMidnightReload() {
   // iframe neu – der Vollbildmodus des Parents bleibt dabei immer erhalten.
   // ══════════════════════════════════════════════════════════════════════════
   if (!forcedMode) {
+    startStandbyWatch();
     if (!activeEntry) {
       let rotation = null;
       try { rotation = JSON.parse(settings.display_rotation || "null"); } catch (_) {}

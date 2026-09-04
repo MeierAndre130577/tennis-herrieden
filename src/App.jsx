@@ -3923,6 +3923,9 @@ function SettingsDisplayTab({onToast}) {
   const [schedError,     setSchedError]     = useState(null);
   const [rotEnabled,    setRotEnabled]     = useState(false);
   const [rotItems,      setRotItems]       = useState([]); // [{mode, seconds}]
+  const [stbEnabled,    setStbEnabled]     = useState(false);
+  const [stbFrom,       setStbFrom]        = useState("22:00");
+  const [stbTo,         setStbTo]          = useState("07:00");
 
   // ── Turnier (Vereinsmeisterschaft) ──
   const TRN_EMPTY_SLOT = {visible:false,time:"",title:"",player1:"",player2:"",score:"",status:"upcoming",winner:""};
@@ -4051,7 +4054,7 @@ function SettingsDisplayTab({onToast}) {
                  "display_time_entries",
                  "btv_match_cache","btv_fetch_enabled",
                  "display_affe_minuten","display_affe_sekunden","display_affe_modes",
-                 "display_rotation"])
+                 "display_rotation","display_standby"])
       .then(({data})=>{
         if(!data) return;
         const map=Object.fromEntries(data.map(r=>[r.key,r.value]));
@@ -4076,6 +4079,14 @@ function SettingsDisplayTab({onToast}) {
             const r=JSON.parse(map.display_rotation);
             setRotEnabled(!!r.enabled);
             setRotItems(Array.isArray(r.items)?r.items.filter(it=>it&&it.mode).map(it=>({mode:it.mode,seconds:Number(it.seconds)||30})):[]);
+          }
+        } catch(_){}
+        try {
+          if(map.display_standby){
+            const b=JSON.parse(map.display_standby);
+            setStbEnabled(!!b.enabled);
+            if(b.from) setStbFrom(b.from);
+            if(b.to)   setStbTo(b.to);
           }
         } catch(_){}
       });
@@ -4136,6 +4147,7 @@ function SettingsDisplayTab({onToast}) {
       {key:"display_affe_sekunden",   value:String(affeSekunden)},
       {key:"display_affe_modes",      value:JSON.stringify(affeModes)},
       {key:"display_rotation",        value:JSON.stringify({enabled:rotEnabled,items:rotItems.map(it=>({mode:it.mode,seconds:Math.max(5,Number(it.seconds)||30)}))})},
+      {key:"display_standby",         value:JSON.stringify({enabled:stbEnabled,from:stbFrom,to:stbTo})},
     ],{onConflict:"key"});
     setSaving(false);
     if(error){ onToast(`Fehler: ${error.message}`,"error"); return; }
@@ -4244,6 +4256,7 @@ function SettingsDisplayTab({onToast}) {
     einstellungen: [
       {id:"modus",      label:"Anzeigemodus"},
       {id:"rotation",   label:"🔁 Rotation"},
+      {id:"standby",    label:"🌙 Standby"},
       {id:"farbschema", label:"Farbschema"},
       {id:"easteregg",  label:"🐒 Easter Egg"},
     ],
@@ -4523,6 +4536,72 @@ function SettingsDisplayTab({onToast}) {
               <div style={{marginTop:14,fontSize:"0.6875rem",color:T.textMuted}}>
                 Speichern über <strong>„Einstellungen speichern"</strong> unten. Läuft die Rotation bereits auf dem Display,
                 übernimmt sie Änderungen innerhalb ~20 Sekunden.
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ── EINSTELLUNGEN: Standby ── */}
+        {activeTab==="einstellungen"&&subTab==="standby"&&(()=>{
+          const toMin=t=>{ const m=/^(\d{1,2}):(\d{2})$/.exec(String(t||"").trim());
+            if(!m) return null; const h=+m[1], mi=+m[2];
+            return (h>23||mi>59)?null:h*60+mi; };
+          const f=toMin(stbFrom), t2=toMin(stbTo);
+          const dauer=(f===null||t2===null||f===t2)?null:((t2-f+1440)%1440);
+          const fmtDauer=d=>`${Math.floor(d/60)} Std. ${String(d%60).padStart(2,"0")} Min.`;
+          return (
+            <div>
+              <div onClick={()=>setStbEnabled(v=>!v)} className="tap-div"
+                style={{display:"flex",alignItems:"center",justifyContent:"space-between",
+                  padding:"12px 14px",borderRadius:10,marginBottom:12,cursor:"pointer",
+                  background:stbEnabled?"#F5F3FF":"#F9FAFB",
+                  border:`1.5px solid ${stbEnabled?"#8B5CF6":"#E5E7EB"}`}}>
+                <div>
+                  <div style={{fontWeight:700,fontSize:"0.8125rem",color:stbEnabled?"#7C3AED":"#374151"}}>Standby aktiv</div>
+                  <div style={{fontSize:"0.6875rem",color:T.textSecondary,marginTop:2}}>
+                    {stbEnabled?"Bildschirm wird im Zeitfenster schwarz":"Display läuft rund um die Uhr"}
+                  </div>
+                </div>
+                <ToggleSwitch on={stbEnabled} onToggle={()=>setStbEnabled(v=>!v)}/>
+              </div>
+
+              <div style={{display:"flex",gap:10,alignItems:"flex-end",flexWrap:"wrap"}}>
+                <div style={{flex:"1 1 120px"}}>
+                  <div style={{fontSize:"0.6875rem",fontWeight:700,color:T.textMuted,marginBottom:5}}>SCHWARZ AB</div>
+                  <input type="time" value={stbFrom} onChange={e=>setStbFrom(e.target.value)}
+                    style={{...S.input,width:"100%",fontWeight:700,fontSize:"1rem",textAlign:"center"}}/>
+                </div>
+                <div style={{flex:"1 1 120px"}}>
+                  <div style={{fontSize:"0.6875rem",fontWeight:700,color:T.textMuted,marginBottom:5}}>WIEDER AN UM</div>
+                  <input type="time" value={stbTo} onChange={e=>setStbTo(e.target.value)}
+                    style={{...S.input,width:"100%",fontWeight:700,fontSize:"1rem",textAlign:"center"}}/>
+                </div>
+              </div>
+
+              {dauer===null?(
+                <div style={{marginTop:12,padding:"10px 14px",background:"#FEF3C7",border:"1px solid #FDE68A",
+                  borderRadius:8,fontSize:"0.75rem",color:"#92400E"}}>
+                  ⚠️ Bitte zwei verschiedene Uhrzeiten eintragen.
+                </div>
+              ):(
+                <div style={{marginTop:12,padding:"10px 14px",background:"#F5F3FF",border:"1px solid #DDD6FE",
+                  borderRadius:8,fontSize:"0.75rem",color:"#5B21B6"}}>
+                  🌙 Schwarz von <strong>{stbFrom}</strong> bis <strong>{stbTo}</strong> Uhr – täglich, {fmtDauer(dauer)}.
+                  {t2<f&&" (über Mitternacht)"}
+                </div>
+              )}
+
+              <div style={{fontSize:"0.6875rem",color:T.textMuted,lineHeight:1.6,marginTop:14,
+                padding:"10px 12px",background:"#F8FAFC",border:"1px solid #E2E8F0",borderRadius:8}}>
+                Der Bildschirm wird <strong>komplett schwarz</strong> – ein echtes Ausschalten des Fernsehers
+                kann der Browser nicht auslösen. Der Bildschirm-Wachhalter bleibt bewusst aktiv, damit das
+                Display morgens zuverlässig wieder anspringt.<br/>
+                <strong>Tipp:</strong> Ein Tipp auf den schwarzen Bildschirm zeigt die Anzeige für 5 Minuten wieder an.
+              </div>
+
+              <div style={{marginTop:14,fontSize:"0.6875rem",color:T.textMuted}}>
+                Speichern über <strong>„Einstellungen speichern"</strong> unten. Das Display übernimmt die
+                Änderung innerhalb ~1 Minute.
               </div>
             </div>
           );
