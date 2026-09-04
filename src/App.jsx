@@ -3951,6 +3951,28 @@ const vmMakeCode = (used) => {
   used.add(fb); return fb;
 };
 
+// ── Avatar-Aufräumen ───────────────────────────────────────────────────────
+// Bilder liegen im Bucket club-photos unter dem Präfix vm/. Gelöscht wird nur,
+// was dort liegt – die normalen Vereinsfotos im selben Bucket bleiben tabu.
+function vmAvatarPath(url){
+  const p=String(url||"").split("/club-photos/")[1]||"";
+  if(!p) return "";
+  const clean=decodeURIComponent(p.split("?")[0]);
+  return clean.startsWith("vm/") ? clean : "";
+}
+
+function vmAvatarUrls(gruppen){
+  return (Array.isArray(gruppen)?gruppen:[])
+    .flatMap(g=>((g&&g.spieler)||[]).map(p=>(p&&p.avatar)||""))
+    .filter(Boolean);
+}
+
+async function vmRemoveAvatars(urls){
+  const paths=[...new Set((urls||[]).map(vmAvatarPath).filter(Boolean))];
+  if(!paths.length) return;
+  await sb.storage.from("club-photos").remove(paths);
+}
+
 // Immer 2 Gruppen mit je 4 Bearbeitungsplätzen – leere Namen zählen nicht als Spieler
 function vmNormGruppen(raw){
   const src=Array.isArray(raw)?raw:[];
@@ -4009,6 +4031,8 @@ function SettingsDisplayTab({onToast}) {
   const [vmErr,       setVmErr]       = useState(null);
   const [vmUploading, setVmUploading] = useState("");
   const [vmSavingRow, setVmSavingRow] = useState("");
+  // in dieser Sitzung hochgeladen, aber noch nicht gespeichert
+  const [vmTempUploads, setVmTempUploads] = useState([]);
 
   const vmLoadList = async(preferId)=>{
     const {data,error}=await sb.from("vm_turniere").select("id,name,gruppen")
@@ -4047,8 +4071,16 @@ function SettingsDisplayTab({onToast}) {
     })();
   },[]);
 
+  // Nie gespeicherte Uploads einer abgebrochenen Bearbeitung wegräumen
+  const vmDiscardTemp = async()=>{
+    if(!vmTempUploads.length) return;
+    await vmRemoveAvatars(vmTempUploads);
+    setVmTempUploads([]);
+  };
+
   const vmSelect = async(t)=>{
     setVmErr(null);
+    await vmDiscardTemp();
     setVmSelId(t.id); setVmName(t.name||"");
     setVmGruppen(vmNormGruppen(t.gruppen));
     await vmLoadMatches(t.id);
@@ -4070,12 +4102,19 @@ function SettingsDisplayTab({onToast}) {
   };
 
   const vmDelete = async(t)=>{
-    if(!window.confirm(`„${t.name}" mit allen Paarungen und Ergebnissen löschen?`)) return;
+    if(!window.confirm(`„${t.name}" mit allen Paarungen, Ergebnissen und Spielerbildern löschen?`)) return;
     setVmBusy(true);
+    await vmDiscardTemp();
+    // Bildliste frisch aus der DB holen – die Liste im State kann veraltet sein
+    const {data:fresh}=await sb.from("vm_turniere").select("gruppen").eq("id",t.id).maybeSingle();
+    const bilder=vmAvatarUrls(fresh?fresh.gruppen:t.gruppen);
     const {error}=await sb.from("vm_turniere").delete().eq("id",t.id);
-    if(!error && vmActiveId===t.id){
-      await sb.from("settings").upsert({key:"display_vm_turnier",value:""},{onConflict:"key"});
-      setVmActiveId("");
+    if(!error){
+      await vmRemoveAvatars(bilder);   // erst wenn die Zeile wirklich weg ist
+      if(vmActiveId===t.id){
+        await sb.from("settings").upsert({key:"display_vm_turnier",value:""},{onConflict:"key"});
+        setVmActiveId("");
+      }
     }
     setVmBusy(false);
     if(error){ setVmErr(error.message); return; }
@@ -4112,6 +4151,7 @@ function SettingsDisplayTab({onToast}) {
     setVmUploading("");
     if(error){ setVmErr(`Upload fehlgeschlagen: ${error.message}`); return; }
     const {data:{publicUrl}}=sb.storage.from("club-photos").getPublicUrl(path);
+    setVmTempUploads(prev=>[...prev,publicUrl]);
     vmSetPlayer(gi,pi,{avatar:publicUrl});
     onToast("Bild hochgeladen – noch speichern nicht vergessen");
   };
@@ -4162,9 +4202,20 @@ function SettingsDisplayTab({onToast}) {
     if(doppelt){ setVmErr(`Der Name „${doppelt}" kommt doppelt vor – bitte eindeutig machen.`); return; }
 
     setVmBusy(true);
+    // Ersetzte und entfernte Bilder erst beim Speichern wegräumen – wer ein Bild
+    // wegklickt und dann doch nicht speichert, soll es nicht verloren haben.
+    const {data:vorher}=await sb.from("vm_turniere").select("gruppen").eq("id",vmSelId).maybeSingle();
+    const behalten=new Set(vmAvatarUrls(clean));
+    const verwaist=[
+      ...vmAvatarUrls(vorher?vorher.gruppen:null),   // vorher gespeichert, jetzt ersetzt/entfernt
+      ...vmTempUploads,                              // hochgeladen, aber nie verwendet
+    ].filter(u=>!behalten.has(u));
+
     const {error}=await sb.from("vm_turniere")
       .update({name:(vmName||"").trim()||"Vereinsmeisterschaft",gruppen:clean}).eq("id",vmSelId);
     if(error){ setVmBusy(false); setVmErr(error.message); return; }
+    await vmRemoveAvatars(verwaist);
+    setVmTempUploads([]);
     await vmSyncMatches(vmSelId,clean);
     await vmLoadList(vmSelId);
     setVmBusy(false);
