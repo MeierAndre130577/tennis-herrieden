@@ -3298,8 +3298,12 @@ function HeimspieleEdit({onToast, onSaved, reloadKey, hideShare=false}) {
 
 // ── SETTINGS: DISPLAY – Hilfskomponenten ─────────────────────────────────
 function ToggleSwitch({on, onToggle}) {
+  // stopPropagation: der Schalter sitzt in Zeilen, die selbst anklickbar sind.
+  // Ohne das feuert ein Klick auf den Schalter beide Handler – bei einem
+  // Umschalter (v=>!v) hebt sich das gegenseitig auf und nichts passiert.
+  const click = e => { e.stopPropagation(); if (onToggle) onToggle(e); };
   return (
-    <button role="switch" aria-checked={on} onClick={onToggle}
+    <button type="button" role="switch" aria-checked={on} onClick={click}
       style={{width:44,height:24,background:on?"#8B5CF6":T.bgBorder,borderRadius:12,
         position:"relative",transition:"background .2s",cursor:"pointer",flexShrink:0,
         border:"none",padding:0}}>
