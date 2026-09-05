@@ -2842,29 +2842,68 @@ function startRotation(rawItems) {
   layers[1].style.opacity = "0";
 
   let advanceTimer = null;
+  let preTimer     = null;
+  let preFor       = -1;     // für welchen Eintrag lädt die versteckte Ebene?
+  let preReady     = false;  // ist sie fertig?
+
+  // Vorlauf zum Vorladen: genug Zeit, dass das Kind seine Daten geholt und
+  // gerendert hat, aber nie mehr als die halbe Standzeit.
+  const leadFor = ms => Math.min(7000, Math.max(2500, ms * 0.4));
 
   function schedule() {
     if (single) return;
     clearTimeout(advanceTimer);
-    advanceTimer = setTimeout(advance, items[idx].seconds * 1000);
+    clearTimeout(preTimer);
+    preFor = -1; preReady = false;
+    const ms   = items[idx].seconds * 1000;
+    const lead = leadFor(ms);
+    preTimer     = setTimeout(preload, Math.max(300, ms - lead));
+    advanceTimer = setTimeout(advance, ms);
   }
+
+  // Nächsten Modus schon während der laufenden Anzeige in die unsichtbare
+  // Ebene laden. Deren Ladebildschirm sieht niemand – beim Umblenden steht
+  // der neue Modus dann fertig da.
+  function preload() {
+    const n  = (idx + 1) % items.length;
+    const nl = layers[1 - cur];
+    preFor = n; preReady = false;
+    nl.onload = () => { preReady = true; };
+    nl.src = src(items[n].mode);
+  }
+
+  function swap(n) {
+    const nl = layers[1 - cur];
+    nl.style.opacity = "1";
+    layers[cur].style.opacity = "0";
+    cur = 1 - cur;
+    idx = n;
+    try { sessionStorage.setItem("th-rot-idx", String(idx)); } catch (_) {}
+    schedule();
+  }
+
+  // Lädt selbst und blendet danach um – für Sprünge, die nicht vorgeladen sind
   function goTo(n) {
     const nl = layers[1 - cur];
-    let faded = false;
-    const fade = () => {
-      if (faded) return; faded = true;
-      nl.style.opacity = "1";
-      layers[cur].style.opacity = "0";
-      cur = 1 - cur;
-      idx = n;
-      try { sessionStorage.setItem("th-rot-idx", String(idx)); } catch (_) {}
-      schedule();
-    };
-    nl.onload = () => setTimeout(fade, 400);
+    let done = false;
+    const run = () => { if (done) return; done = true; swap(n); };
+    nl.onload = () => setTimeout(run, 600);
     nl.src = src(items[n].mode);
-    setTimeout(fade, 4000); // Fallback, falls onload nicht feuert
+    setTimeout(run, 5000); // Fallback, falls onload nicht feuert
   }
-  function advance() { goTo((idx + 1) % items.length); }
+
+  function advance() {
+    const n = (idx + 1) % items.length;
+    if (preFor !== n) { goTo(n); return; }      // nicht vorgeladen
+    if (preReady)     { swap(n); return; }      // fertig → direkt weich blenden
+    // Vorladen läuft noch: warten statt neu zu laden, sonst flackert es
+    const nl = layers[1 - cur];
+    let done = false;
+    const run = () => { if (done) return; done = true; swap(n); };
+    nl.onload = () => setTimeout(run, 600);
+    setTimeout(run, 4000);
+  }
+
   schedule();
 
   document.getElementById("solo-shell").style.display = "none";
