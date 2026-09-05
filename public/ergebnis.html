@@ -233,11 +233,13 @@
       <button class="btn-ghost" id="wo-1">Kampflos für <span id="wo-n1">Spieler 1</span></button>
       <button class="btn-ghost" id="wo-2">Kampflos für <span id="wo-n2">Spieler 2</span></button>
     </div>
+
+    <button class="wo-toggle hidden" id="reset-btn" type="button">Eingetragenes Ergebnis löschen</button>
   </section>
 
   <!-- Schritt 3: Bestätigen -->
   <section class="card hidden" id="step-confirm">
-    <div class="match-title">Stimmt das so?</div>
+    <div class="match-title" id="c-title">Stimmt das so?</div>
     <div class="match-players" style="margin-top:14px">
       <b id="c-p1">–</b><i>vs.</i><b id="c-p2">–</b>
     </div>
@@ -250,10 +252,11 @@
 
   <!-- Schritt 4: Fertig -->
   <section class="card hidden" id="step-done">
-    <div class="done-icon">🎾</div>
-    <div class="summary" style="margin-top:10px">Eingetragen!</div>
+    <div class="done-icon" id="d-icon">🎾</div>
+    <div class="summary" id="d-title" style="margin-top:10px">Eingetragen!</div>
     <div class="summary-win" id="d-text">–</div>
     <button class="btn-main" id="again-btn">Nächstes Ergebnis</button>
+    <button class="btn-ghost" id="fix-btn">Vertippt? Nochmal ändern</button>
   </section>
 
   <div class="foot">Kein Login nötig – trag einfach dein Ergebnis ein.</div>
@@ -341,6 +344,7 @@ async function lookup(code) {
 
   const sets = [[data.s1a, data.s1b], [data.s2a, data.s2b], [data.s3a, data.s3b]];
   const hasPrev = data.wo || sets.some(([a, b]) => a !== null && a !== undefined);
+  show("reset-btn", !!hasPrev);
   if (hasPrev) {
     $("m-prev").textContent = data.wo
       ? `Bereits eingetragen: kampflos für ${names[Number(data.wo) - 1]}. Du kannst es hier korrigieren.`
@@ -389,8 +393,19 @@ function toConfirm(res) {
   pending = res;
   $("c-p1").textContent = names[0];
   $("c-p2").textContent = names[1];
-  $("c-score").textContent = res.wo ? "kampflos" : fmtSets(res.sets);
-  $("c-win").textContent = "🏆 " + names[res.winner - 1] + " gewinnt";
+
+  if (res.clear) {
+    $("c-title").textContent      = "Ergebnis wirklich löschen?";
+    $("c-score").textContent      = "wird geleert";
+    $("c-win").textContent        = "Das Spiel steht danach wieder auf offen";
+    $("confirm-btn").textContent  = "Ja, löschen";
+  } else {
+    $("c-title").textContent      = "Stimmt das so?";
+    $("c-score").textContent      = res.wo ? "kampflos" : fmtSets(res.sets);
+    $("c-win").textContent        = "🏆 " + names[res.winner - 1] + " gewinnt";
+    $("confirm-btn").textContent  = "Ja, eintragen";
+  }
+
   setErr("confirm-error", "");
   step("step-confirm");
 }
@@ -401,21 +416,35 @@ async function saveResult() {
   $("confirm-btn").disabled = true;
   setErr("confirm-error", "");
 
-  const s = pending.wo ? [[null, null], [null, null], [null, null]] : pending.sets;
+  const leer = pending.clear || pending.wo;
+  const s = leer ? [[null, null], [null, null], [null, null]] : pending.sets;
   const { error } = await sb.from("vm_matches").update({
     s1a: s[0][0], s1b: s[0][1],
     s2a: s[1][0], s2b: s[1][1],
     s3a: s[2][0], s3b: s[2][1],
-    wo: pending.wo,
-    updated_at: new Date().toISOString(),
+    wo: pending.clear ? null : pending.wo,
+    updated_at: pending.clear ? null : new Date().toISOString(),
   }).eq("code", match.code);
 
   $("confirm-btn").disabled = false;
-  if (error) { setErr("confirm-error", "Konnte nicht gespeichert werden. Nochmal versuchen."); return; }
+  if (error) {
+    setErr("confirm-error", pending.clear
+      ? "Konnte nicht gelöscht werden. Nochmal versuchen."
+      : "Konnte nicht gespeichert werden. Nochmal versuchen.");
+    return;
+  }
 
-  $("d-text").textContent = pending.wo
-    ? names[pending.winner - 1] + " gewinnt kampflos"
-    : names[pending.winner - 1] + " gewinnt " + fmtSets(pending.sets);
+  if (pending.clear) {
+    $("d-icon").textContent  = "🧹";
+    $("d-title").textContent = "Zurückgesetzt";
+    $("d-text").textContent  = names[0] + " – " + names[1] + " steht wieder auf offen";
+  } else {
+    $("d-icon").textContent  = "🎾";
+    $("d-title").textContent = "Eingetragen!";
+    $("d-text").textContent  = pending.wo
+      ? names[pending.winner - 1] + " gewinnt kampflos"
+      : names[pending.winner - 1] + " gewinnt " + fmtSets(pending.sets);
+  }
   step("step-done");
 }
 
@@ -449,8 +478,16 @@ $("wo-toggle").addEventListener("click", () => $("wo-box").classList.toggle("on"
 $("wo-1").addEventListener("click", () => toConfirm({ sets: [[null,null],[null,null],[null,null]], winner: 1, wo: "1" }));
 $("wo-2").addEventListener("click", () => toConfirm({ sets: [[null,null],[null,null],[null,null]], winner: 2, wo: "2" }));
 
+$("reset-btn").addEventListener("click", () => toConfirm({
+  sets: [[null, null], [null, null], [null, null]], winner: 1, wo: null, clear: true,
+}));
+
 $("confirm-btn").addEventListener("click", saveResult);
 $("back-btn").addEventListener("click", () => step("step-input"));
+
+// Direkt nach dem Speichern nochmal ran – ohne den QR erneut zu scannen
+$("fix-btn").addEventListener("click", () => { if (match) lookup(match.code); });
+
 $("again-btn").addEventListener("click", () => {
   match = null; pending = null;
   $("code-input").value = "";
