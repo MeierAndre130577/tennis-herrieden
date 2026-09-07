@@ -4002,7 +4002,9 @@ function SettingsDisplayTab({onToast}) {
   const [mannschaft,     setMannschaft]     = useState("");
   const [gegner,         setGegner]         = useState("");
   const [matchUrl,       setMatchUrl]       = useState("");
-  const [bildUrl,        setBildUrl]        = useState("");
+  const [bildUrl,        setBildUrl]        = useState("");   // erstes Bild, Rückwärtskompatibilität
+  const [bildUrls,       setBildUrls]       = useState([]);
+  const [bildInterval,   setBildInterval]   = useState(10);
   const [githubPat,      setGithubPat]      = useState("");
   const [timeEntries,    setTimeEntries]    = useState([]);
   const [newEntry,       setNewEntry]       = useState({mode:"schedule",fromDate:"",fromTime:"08:00",toDate:"",toTime:"20:00"});
@@ -4380,7 +4382,7 @@ function SettingsDisplayTab({onToast}) {
     sb.from("settings").select("*")
       .in("key",["display_mode","display_theme","display_vereinsnummer","display_saison",
                  "display_mannschaft","display_gegner","display_match_url",
-                 "display_bild_url","github_pat",
+                 "display_bild_url","display_bild_urls","display_bild_interval","github_pat",
                  "display_time_entries",
                  "btv_match_cache","btv_fetch_enabled",
                  "display_affe_minuten","display_affe_sekunden","display_affe_modes",
@@ -4396,6 +4398,16 @@ function SettingsDisplayTab({onToast}) {
         if(map.display_gegner)         setGegner(map.display_gegner);
         if(map.display_match_url)      setMatchUrl(map.display_match_url);
         if(map.display_bild_url)       setBildUrl(map.display_bild_url);
+        if(map.display_bild_interval)  setBildInterval(Math.max(3,Number(map.display_bild_interval)||10));
+        {
+          // Liste bevorzugt; ein altes Einzelbild wandert beim ersten Öffnen hinein
+          let liste=[];
+          try { if(map.display_bild_urls) liste=JSON.parse(map.display_bild_urls); } catch(_){}
+          if(!Array.isArray(liste)) liste=[];
+          liste=liste.filter(u=>typeof u==="string"&&u.trim());
+          if(!liste.length&&map.display_bild_url) liste=[map.display_bild_url];
+          setBildUrls(liste);
+        }
         if(map.github_pat)             setGithubPat(map.github_pat);
         try { if(map.display_time_entries) setTimeEntries(JSON.parse(map.display_time_entries)); } catch(_){}
         try { if(map.btv_match_cache)         setMatchCache(JSON.parse(map.btv_match_cache)); } catch(_){}
@@ -4436,25 +4448,77 @@ function SettingsDisplayTab({onToast}) {
     return null;
   };
 
-  const uploadBild=async(file)=>{
-    setUploading(true);
+  // Bilder liegen im Bucket club-photos unter bild/. Frueher steckte das
+  // Bild als Base64 direkt in der settings-Zeile – bei mehreren Bildern
+  // waeren das schnell ein paar MB in einer Zeile, die jedes Display bei
+  // jeder Abfrage mitliest. Alte Base64-Eintraege funktionieren weiter.
+  const bildStoragePath=(url)=>{
+    const p=String(url||"").split("/club-photos/")[1]||"";
+    if(!p) return "";
+    const clean=decodeURIComponent(p.split("?")[0]);
+    return clean.startsWith("bild/") ? clean : "";
+  };
+
+  const bildResize=(file)=>new Promise(resolve=>{
     const img=new Image();
     const objUrl=URL.createObjectURL(file);
-    img.onload=async()=>{
-      const maxW=1920;
-      const ratio=Math.min(1,maxW/img.width);
+    img.onload=()=>{
+      const ratio=Math.min(1,1920/img.width);
       const canvas=document.createElement("canvas");
-      canvas.width=Math.round(img.width*ratio);
+      canvas.width =Math.round(img.width *ratio);
       canvas.height=Math.round(img.height*ratio);
       canvas.getContext("2d").drawImage(img,0,0,canvas.width,canvas.height);
       URL.revokeObjectURL(objUrl);
-      const dataUrl=canvas.toDataURL("image/jpeg",0.85);
-      const {error}=await sb.from("settings").upsert([{key:"display_bild_url",value:dataUrl}],{onConflict:"key"});
-      if(error){ onToast(`Fehler: ${error.message}`,"error"); }
-      else{ setBildUrl(dataUrl); onToast("Bild gespeichert ✓"); }
-      setUploading(false);
+      canvas.toBlob(b=>resolve(b),"image/jpeg",0.85);
     };
+    img.onerror=()=>{ URL.revokeObjectURL(objUrl); resolve(null); };
     img.src=objUrl;
+  });
+
+  const bildPersist=async(liste,sek)=>{
+    const {error}=await sb.from("settings").upsert([
+      {key:"display_bild_urls",     value:JSON.stringify(liste)},
+      {key:"display_bild_interval", value:String(Math.max(3,Number(sek)||10))},
+      {key:"display_bild_url",      value:liste[0]||""},   // Rueckwaertskompatibilitaet
+    ],{onConflict:"key"});
+    if(error){ onToast(`Fehler: ${error.message}`,"error"); return false; }
+    setBildUrls(liste);
+    setBildUrl(liste[0]||"");
+    return true;
+  };
+
+  const uploadBilder=async(files)=>{
+    const auswahl=Array.from(files||[]);
+    if(!auswahl.length) return;
+    setUploading(true);
+    const neu=[];
+    for(const file of auswahl){
+      const blob=await bildResize(file);
+      if(!blob){ onToast(`„${file.name}" ist kein lesbares Bild`,"error"); continue; }
+      const path=`bild/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
+      const {error}=await sb.storage.from("club-photos").upload(path,blob,{contentType:"image/jpeg"});
+      if(error){ onToast(`Upload fehlgeschlagen: ${error.message}`,"error"); setUploading(false); return; }
+      neu.push(sb.storage.from("club-photos").getPublicUrl(path).data.publicUrl);
+    }
+    if(!neu.length){ setUploading(false); return; }
+    const ok=await bildPersist([...bildUrls,...neu],bildInterval);
+    setUploading(false);
+    if(ok) onToast(neu.length===1?"Bild gespeichert ✓":`${neu.length} Bilder gespeichert ✓`);
+  };
+
+  const bildEntfernen=async(url)=>{
+    const ok=await bildPersist(bildUrls.filter(u=>u!==url),bildInterval);
+    if(!ok) return;
+    const path=bildStoragePath(url);          // leer bei alten Base64-Bildern
+    if(path) await sb.storage.from("club-photos").remove([path]);
+    onToast("Bild entfernt");
+  };
+
+  const bildVerschieben=async(i,d)=>{
+    const a=[...bildUrls], j=i+d;
+    if(j<0||j>=a.length) return;
+    [a[i],a[j]]=[a[j],a[i]];
+    if(await bildPersist(a,bildInterval)) onToast("Reihenfolge gespeichert ✓");
   };
 
   const save=async()=>{
@@ -5250,26 +5314,70 @@ function SettingsDisplayTab({onToast}) {
             {/* Hinweis für KI-Bildgenerierung */}
             <div style={{marginBottom:14,padding:"10px 12px",background:"#F8FAFC",
               border:"1px solid #E2E8F0",borderRadius:8,fontSize:"0.6875rem",color:"#6B7280",lineHeight:1.6}}>
-              <div style={{fontWeight:700,color:T.textSecondary,marginBottom:4}}>📐 Ideales Format für KI-generierte Bilder</div>
-              <div><strong>Querformat, mind. 1920 × 1080 px (16:9 oder breiter)</strong></div>
-              <div style={{marginTop:4}}>Das Bild füllt immer den ganzen Bildschirm — Ränder werden automatisch beschnitten.</div>
-              <div style={{marginTop:4}}>Das Bild erscheint unterhalb einer Kopfzeile (~85 px) — wichtige Inhalte nicht ganz oben platzieren.</div>
-              <div style={{marginTop:4}}>Farbschema beachten: bei <strong>dunklem Theme</strong> dunklen Bildhintergrund wählen (<code style={{background:"#E5E7EB",padding:"0 3px",borderRadius:3}}>#0F172A</code>), bei <strong>hellem Theme</strong> hellen (<code style={{background:"#E5E7EB",padding:"0 3px",borderRadius:3}}>#F8FAFC</code>).</div>
+              <div style={{fontWeight:700,color:T.textSecondary,marginBottom:4}}>📐 Ideales Format</div>
+              <div><strong>Querformat, mind. 1920 × 1080 px (16:9)</strong></div>
+              <div style={{marginTop:4}}>Die Seite zeigt nur das Bild — keine Kopfzeile, kein Logo. Es wird vollständig eingepasst, was daneben bleibt ist schwarz. Bei 16:9 füllt es den Bildschirm exakt.</div>
+              <div style={{marginTop:4}}>Größere Bilder werden beim Hochladen automatisch auf 1920 px Breite verkleinert.</div>
             </div>
 
-            <input type="file" accept="image/*" id="bild-file-input" style={{display:"none"}}
-              onChange={e=>e.target.files[0]&&uploadBild(e.target.files[0])}/>
+            <input type="file" accept="image/*" id="bild-file-input" multiple style={{display:"none"}}
+              onChange={e=>{const f=e.target.files; e.target.value=""; uploadBilder(f);}}/>
             <label htmlFor="bild-file-input"
               style={{...S.primaryBtn,display:"inline-block",cursor:uploading?"not-allowed":"pointer",opacity:uploading?0.6:1}}>
-              {uploading?"Hochladen…":"📁 Bild hochladen"}
+              {uploading?"Hochladen…":"📁 Bilder hochladen"}
             </label>
-            {bildUrl&&(
-              <div style={{marginTop:14}}>
-                <img src={bildUrl} alt="" style={{width:"100%",maxHeight:180,objectFit:"contain",borderRadius:8,background:"#E5E7EB"}}/>
-                <div style={{fontSize:"0.6875rem",color:T.textMuted,marginTop:6}}>Aktuell hinterlegtes Bild</div>
+            <span style={{marginLeft:10,fontSize:"0.75rem",color:T.textMuted}}>
+              Mehrere auf einmal möglich
+            </span>
+
+            {bildUrls.length>1&&(
+              <div style={{display:"flex",alignItems:"center",gap:12,marginTop:18}}>
+                <label style={{fontSize:"0.8125rem",fontWeight:600,color:T.textSecondary,whiteSpace:"nowrap"}}>
+                  Wechsel alle
+                </label>
+                <input type="number" min={3} max={600} value={bildInterval}
+                  onChange={e=>setBildInterval(Math.max(3,Number(e.target.value)||3))}
+                  onBlur={()=>bildPersist(bildUrls,bildInterval)}
+                  style={{width:64,fontSize:"0.875rem",fontWeight:700,textAlign:"center",
+                    border:"1.5px solid #E5E7EB",borderRadius:6,padding:"5px 8px"}}/>
+                <label style={{fontSize:"0.8125rem",color:T.textSecondary}}>Sekunden</label>
+                <span style={{fontSize:"0.6875rem",color:T.textMuted}}>wird beim Verlassen des Feldes gespeichert</span>
               </div>
             )}
-            {!bildUrl&&<div style={{marginTop:10,fontSize:"0.75rem",color:T.textMuted}}>Noch kein Bild hochgeladen.</div>}
+
+            <div style={{marginTop:18}}>
+              <Lbl>{bildUrls.length?`Bilder (${bildUrls.length})`:"Bilder"}</Lbl>
+              {!bildUrls.length&&<div style={{fontSize:"0.75rem",color:T.textMuted}}>Noch kein Bild hochgeladen.</div>}
+              {bildUrls.map((u,i)=>(
+                <div key={u+i} style={{...S.card,marginBottom:8,display:"flex",alignItems:"center",gap:12}}>
+                  <div style={{fontSize:"0.8125rem",fontWeight:800,color:"#8B5CF6",width:20,textAlign:"center",flexShrink:0}}>
+                    {i+1}
+                  </div>
+                  <img src={u} alt="" style={{width:112,height:63,objectFit:"cover",borderRadius:6,
+                    background:"#E5E7EB",flexShrink:0}}/>
+                  <div style={{flex:1,minWidth:0,fontSize:"0.6875rem",color:T.textMuted}}>
+                    {u.startsWith("data:")?"Altes Bild (direkt in den Einstellungen gespeichert)":"Gespeichert"}
+                  </div>
+                  <div style={{display:"flex",gap:5,flexShrink:0}}>
+                    <button onClick={()=>bildVerschieben(i,-1)} disabled={i===0}
+                      style={{...S.ghostBtn,padding:"7px 11px",fontSize:"0.8125rem",opacity:i===0?0.35:1}}>↑</button>
+                    <button onClick={()=>bildVerschieben(i,1)} disabled={i===bildUrls.length-1}
+                      style={{...S.ghostBtn,padding:"7px 11px",fontSize:"0.8125rem",opacity:i===bildUrls.length-1?0.35:1}}>↓</button>
+                    <button onClick={()=>bildEntfernen(u)} style={{...S.cancelBtn}}>Entfernen</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {bildUrls.length>1&&(
+              <div style={{padding:"12px 14px",background:"#F8FAFC",border:"1px solid #E2E8F0",
+                borderRadius:10,fontSize:"0.75rem",color:T.textSecondary,lineHeight:1.6,marginTop:6}}>
+                Die Bilder laufen in dieser Reihenfolge durch und beginnen danach wieder von vorn.
+                Ein Durchlauf dauert {Math.round(bildUrls.length*Math.max(3,bildInterval)/6)/10} Minuten.
+                Läuft die Bildanzeige in der Rotation mit, sollte dort genug Zeit stehen — sonst sieht
+                niemand alle Bilder.
+              </div>
+            )}
           </div>
         )}
 

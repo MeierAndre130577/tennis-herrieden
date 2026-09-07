@@ -190,18 +190,17 @@
     #bild-img-wrap {
       position: absolute;
       inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
       overflow: hidden;
     }
-    #bild-img {
-      max-width: 100%;
-      max-height: 100%;
-      width: auto;
-      height: auto;
+    /* Zwei Ebenen übereinander – beim Wechsel wird weich überblendet */
+    .bild-layer {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
       object-fit: contain;
-      display: none;
+      opacity: 0;
+      transition: opacity .8s ease;
     }
 
     /* ── HEIMSPIEL MODE ── */
@@ -1322,7 +1321,8 @@ setTimeout(function() {
 <!-- ── BILD MODE (zeigt nur das hochgeladene Bild) ── -->
 <div id="bild-screen">
   <div id="bild-img-wrap">
-    <img id="bild-img" alt=""/>
+    <img id="bild-img"   class="bild-layer" alt=""/>
+    <img id="bild-img-b" class="bild-layer" alt=""/>
   </div>
 </div>
 
@@ -1750,6 +1750,7 @@ function startSettingsPollingSolo(initMode) {
   let lastSig = null;
   const KEYS = ["display_mode","display_theme","display_vereinsnummer","display_saison",
                 "display_mannschaft","display_gegner","display_bild_url",
+                "display_bild_urls","display_bild_interval",
                 "display_time_entries","display_rotation"];
   const iv = setInterval(async () => {
     const { data } = await sb.from("settings").select("key,value").in("key", KEYS);
@@ -1768,6 +1769,7 @@ function startSettingsPollingSolo(initMode) {
     const sig = JSON.stringify([
       mode, s.display_theme || "", s.display_vereinsnummer || "", s.display_saison || "",
       s.display_mannschaft || "", s.display_gegner || "", s.display_bild_url || "",
+      s.display_bild_urls || "", s.display_bild_interval || "",
     ]);
     if (lastSig === null) { lastSig = sig; return; }
     if (sig !== lastSig) {
@@ -2597,6 +2599,46 @@ function startTurnierModus() {
   window.addEventListener("online", loadBoard);
 }
 
+// ── BILDANZEIGE ───────────────────────────────────────────────────────────
+// Ein Bild: einfach anzeigen. Mehrere: im eingestellten Takt überblenden.
+// Das jeweils nächste Bild wird vorher in den Cache geholt, damit beim
+// Wechsel nichts blitzt.
+function startBildModus(urls, sekunden) {
+  document.getElementById("bild-screen").style.display = "block";
+
+  const list = (urls || []).filter(u => typeof u === "string" && u.trim());
+  if (!list.length) return;
+
+  const layers = [document.getElementById("bild-img"), document.getElementById("bild-img-b")];
+  let cur = 0, idx = 0;
+  layers[0].src = list[0];
+  layers[0].style.opacity = "1";
+  if (list.length < 2) return;
+
+  const ms = Math.max(3, Number(sekunden) || 10) * 1000;
+
+  const pre = new Image();
+  const preloadNext = () => { pre.src = list[(idx + 1) % list.length]; };
+  preloadNext();
+
+  setInterval(() => {
+    const n  = (idx + 1) % list.length;
+    const nl = layers[1 - cur];
+    let done = false;
+    const show = () => {
+      if (done) return; done = true;
+      nl.style.opacity = "1";
+      layers[cur].style.opacity = "0";
+      cur = 1 - cur;
+      idx = n;
+      preloadNext();
+    };
+    nl.onload = show;
+    nl.src = list[n];
+    setTimeout(show, 2000); // Fallback, falls onload nicht feuert
+  }, ms);
+}
+
 // ── VEREINSMEISTERSCHAFT (Gruppentabellen) ────────────────────────────────
 // Gespeichert sind nur die rohen Satzergebnisse – gewertet wird hier.
 // Reihenfolge: Siege → Satzdifferenz → Spieldifferenz (kein direkter Vergleich).
@@ -2968,7 +3010,8 @@ function scheduleMidnightReload() {
 (async function init() {
   const _settingsFetch = sb.from("settings").select("*")
     .in("key", ["display_mode","display_theme","display_vereinsnummer","display_saison",
-                "display_bild_url","display_mannschaft","display_gegner",
+                "display_bild_url","display_bild_urls","display_bild_interval",
+                "display_mannschaft","display_gegner",
                 "display_time_entries",
                 "display_foto_interval",
                 "display_affe_minuten","display_affe_sekunden","display_affe_modes",
@@ -2991,6 +3034,13 @@ function scheduleMidnightReload() {
   const mannschaft   = settings.display_mannschaft    || "";
   const gegner       = settings.display_gegner        || "";
   const bildUrl      = settings.display_bild_url      || "";
+  // Liste bevorzugt; das alte Einzelbild bleibt als Rückfall bestehen
+  let bildUrls = [];
+  try { bildUrls = JSON.parse(settings.display_bild_urls || "[]"); } catch (_) {}
+  if (!Array.isArray(bildUrls)) bildUrls = [];
+  bildUrls = bildUrls.filter(u => typeof u === "string" && u.trim());
+  if (!bildUrls.length && bildUrl) bildUrls = [bildUrl];
+  const bildInterval = Number(settings.display_bild_interval) || 10;
   const fotoInterval  = Number(settings.display_foto_interval) || 8;
   const affeMinuten   = Number(settings.display_affe_minuten)  || 10;
   const affeSekunden  = Number(settings.display_affe_sekunden) || 10;
@@ -3042,12 +3092,7 @@ function scheduleMidnightReload() {
 
   // Bildanzeige
   if (displayMode === "bild") {
-    document.getElementById("bild-screen").style.display = "block";
-    if (bildUrl) {
-      const img = document.getElementById("bild-img");
-      img.src = bildUrl;
-      img.style.display = "block";
-    }
+    startBildModus(bildUrls, bildInterval);
     scheduleMidnightReload();
     return;
   }
