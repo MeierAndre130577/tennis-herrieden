@@ -2609,12 +2609,47 @@ function startTurnierModus() {
 // ist. Modi, die selbst weiterschalten (Bilder, Fotos), dürfen ihren Takt
 // deshalb erst starten, wenn sie wirklich sichtbar sind – sonst laufen die
 // ersten Bilder im Verborgenen durch. Der Parent meldet das per "th-show".
+// Wichtig: der Parent meldet "th-show" beim Umblenden – das kann aber schon
+// passiert sein, bevor dieses Kind seinen Listener hatte (die Seite wartet
+// beim Start auf Supabase). Deshalb fragt das Kind zusätzlich aktiv nach.
+// cb(inRotation) – inRotation sagt dem Modus, ob er nach einem Durchlauf
+// Bescheid geben soll (dann schaltet die Rotation weiter) oder von vorn
+// beginnen darf (Einzelmodus).
 function whenShown(cb) {
   let done = false;
-  const go = () => { if (done) return; done = true; cb(); };
-  if (window.parent === window) { go(); return; }   // eigenständig geöffnet
-  window.addEventListener("message", e => { if (e.data === "th-show") go(); });
-  setTimeout(go, 12_000);                           // Notnagel, falls nichts kommt
+  const go = rot => { if (done) return; done = true; cb(!!rot); };
+  if (window.parent === window) { go(false); return; }   // eigenständig geöffnet
+  window.addEventListener("message", e => {
+    if (e.data === "th-show")     go(false);
+    if (e.data === "th-show-rot") go(true);
+  });
+  try { window.parent.postMessage("th-ask", "*"); } catch (_) {}
+  setTimeout(() => go(false), 12_000);                   // Notnagel
+}
+
+// Gegenstück im Parent: beantwortet "th-ask" nur der gerade sichtbaren Ebene.
+function visibleChild() {
+  const rot = document.getElementById("rotation-shell");
+  if (rot && rot.style.display === "block") {
+    const a = document.getElementById("rot-a"), b = document.getElementById("rot-b");
+    const oa = Number(a.style.opacity || 0), ob = Number(b.style.opacity || 0);
+    return { win: (ob > oa ? b : a).contentWindow, rot: true };
+  }
+  const solo = document.getElementById("solo-shell");
+  if (solo && solo.style.display === "block") {
+    return { win: document.getElementById("solo-frame").contentWindow, rot: false };
+  }
+  return { win: null, rot: false };
+}
+
+function answerShowRequests() {
+  window.addEventListener("message", e => {
+    if (e.data !== "th-ask" || !e.source) return;
+    const v = visibleChild();
+    if (e.source === v.win) {
+      try { e.source.postMessage(v.rot ? "th-show-rot" : "th-show", "*"); } catch (_) {}
+    }
+  });
 }
 
 // Bilder aus den Einstellungen lesen (Liste bevorzugt, altes Einzelbild als Rückfall)
@@ -2627,14 +2662,17 @@ function bildListe(s) {
   return list;
 }
 
-// Wie lange braucht ein kompletter Bilddurchlauf? Das ist die Standzeit, die
-// die Rotation für die Bildanzeige bekommt – damit jedes Bild einmal dran war.
-// Die eine Sekunde obendrauf sorgt dafür, dass das letzte Bild nicht mitten
-// in seiner Standzeit von der Rotation weggeblendet wird.
+// Standzeit der Bildanzeige in der Rotation.
+// Ab zwei Bildern ist das nur eine Obergrenze: weitergeschaltet wird, sobald
+// das Kind "th-done" meldet (nach genau n × Takt auf seiner eigenen Uhr).
+// Der Aufschlag sorgt dafür, dass diese Meldung immer vor dem Timer kommt –
+// sonst würde das letzte Bild angeschnitten, wenn das Laden etwas gedauert hat.
+// Bei einem einzigen Bild gibt es keinen Durchlauf und keine Meldung, dann
+// ist der Wert die tatsächliche Standzeit.
 function bildDauerSek(s) {
   const n  = bildListe(s).length;
   const iv = Math.max(3, Number(s.display_bild_interval) || 10);
-  return Math.max(5, n * iv + 1);
+  return n <= 1 ? Math.max(5, iv) : n * iv + 4;
 }
 
 // ── BILDANZEIGE ───────────────────────────────────────────────────────────
@@ -2659,8 +2697,7 @@ function startBildModus(urls, sekunden) {
   const preloadNext = () => { pre.src = list[(idx + 1) % list.length]; };
   preloadNext();
 
-  whenShown(() => setInterval(() => {
-    const n  = (idx + 1) % list.length;
+  function zeige(n) {
     const nl = layers[1 - cur];
     let done = false;
     const show = () => {
@@ -2671,10 +2708,38 @@ function startBildModus(urls, sekunden) {
       idx = n;
       preloadNext();
     };
+    // Bei genau zwei Bildern trägt die verdeckte Ebene das Ziel schon: dasselbe
+    // src erneut zu setzen löst kein onload aus, dann käme jeder zweite Wechsel
+    // erst über den Notnagel.
+    if (nl.getAttribute("src") === list[n]) { show(); return; }
     nl.onload = show;
     nl.src = list[n];
     setTimeout(show, 2000); // Fallback, falls onload nicht feuert
-  }, ms));
+  }
+
+  // In der Rotation zählt nicht die Uhr des Parents, sondern dieser Durchlauf:
+  // ist das letzte Bild abgelaufen, meldet das Kind "th-done" und bleibt
+  // stehen – der Parent blendet dann weiter. Nur so bekommt jedes Bild exakt
+  // seine Standzeit, egal wie lange Laden oder Dekodieren gedauert hat.
+  whenShown(inRotation => {
+    let timer = null;
+    let gemeldet = false;
+    const plan = ms2 => { clearTimeout(timer); timer = setTimeout(tick, ms2); };
+
+    function tick() {
+      const n = (idx + 1) % list.length;
+      if (inRotation && n === 0 && !gemeldet) {
+        gemeldet = true;
+        try { window.parent.postMessage("th-done", "*"); } catch (_) {}
+        plan(10_000);          // Notnagel: blendet der Parent nicht, läuft es weiter
+        return;                // letztes Bild stehen lassen
+      }
+      gemeldet = false;
+      plan(ms);      // Takt zuerst neu stellen: sonst summiert sich die Zeit
+      zeige(n);      // fürs Dekodieren jedes Bildes auf und läuft weg
+    }
+    plan(ms);
+  });
 }
 
 // ── VEREINSMEISTERSCHAFT (Gruppentabellen) ────────────────────────────────
@@ -2925,7 +2990,7 @@ function startRotation(rawItems, bildSekInit) {
           if (s >= 0 && s < items.length) idx = s; } catch (_) {}
   }
   let cur = 0;
-  layers[0].onload = () => { try { layers[0].contentWindow.postMessage("th-show", "*"); } catch (_) {} };
+  layers[0].onload = () => { try { layers[0].contentWindow.postMessage("th-show-rot", "*"); } catch (_) {} };
   layers[0].src = src(items[idx].mode);
   layers[0].style.opacity = "1";
   layers[1].style.opacity = "0";
@@ -2966,7 +3031,7 @@ function startRotation(rawItems, bildSekInit) {
     nl.style.opacity = "1";
     layers[cur].style.opacity = "0";
     // Ab jetzt ist dieser Modus zu sehen – er darf seinen Takt starten
-    try { nl.contentWindow.postMessage("th-show", "*"); } catch (_) {}
+    try { nl.contentWindow.postMessage("th-show-rot", "*"); } catch (_) {}
     cur = 1 - cur;
     idx = n;
     try { sessionStorage.setItem("th-rot-idx", String(idx)); } catch (_) {}
@@ -2991,11 +3056,21 @@ function startRotation(rawItems, bildSekInit) {
     const nl = layers[1 - cur];
     let done = false;
     const run = () => { if (done) return; done = true; swap(n); };
-    nl.onload = () => setTimeout(run, 600);
+    nl.onload = () => setTimeout(run, 200);
     setTimeout(run, 4000);
   }
 
   schedule();
+
+  // Ein Modus mit eigenem Durchlauf (Bildanzeige) meldet sich, wenn er fertig
+  // ist. Dann wird sofort weitergeblendet – das ist genauer als jede Rechnung
+  // im Parent, weil Laden und Dekodieren die Uhren sonst auseinandertreiben.
+  window.addEventListener("message", e => {
+    if (e.data !== "th-done" || single || !e.source) return;
+    if (e.source !== layers[cur].contentWindow) return;   // nur die sichtbare Ebene
+    clearTimeout(advanceTimer);
+    advance();
+  });
 
   document.getElementById("solo-shell").style.display = "none";
 
@@ -3116,6 +3191,7 @@ function scheduleMidnightReload() {
   // ══════════════════════════════════════════════════════════════════════════
   if (!forcedMode) {
     startStandbyWatch();
+    answerShowRequests();
     if (!activeEntry) {
       let rotation = null;
       try { rotation = JSON.parse(settings.display_rotation || "null"); } catch (_) {}

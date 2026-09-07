@@ -4453,10 +4453,9 @@ function SettingsDisplayTab({onToast}) {
   // Bild als Base64 direkt in der settings-Zeile – bei mehreren Bildern
   // waeren das schnell ein paar MB in einer Zeile, die jedes Display bei
   // jeder Abfrage mitliest. Alte Base64-Eintraege funktionieren weiter.
-  // Standzeit der Bildanzeige = alle Bilder einmal durch. Die eine Sekunde
-  // obendrauf verhindert, dass die Rotation das letzte Bild anschneidet.
+  // Standzeit der Bildanzeige = alle Bilder einmal durch, exakt.
   // Muss zu bildDauerSek() in public/display.html passen.
-  const bildDauerSek = Math.max(5, bildUrls.length*Math.max(3,Number(bildInterval)||10) + 1);
+  const bildDauerSek = Math.max(5, bildUrls.length*Math.max(3,Number(bildInterval)||10));
 
   const bildStoragePath=(url)=>{
     const p=String(url||"").split("/club-photos/")[1]||"";
@@ -5381,7 +5380,7 @@ function SettingsDisplayTab({onToast}) {
               </div>
               <div style={{fontSize:"0.6875rem",color:"#5B21B6",lineHeight:1.6,marginTop:8}}>
                 {bildUrls.length>1
-                  ? <>Ein Durchlauf: {bildUrls.length} Bilder × {Math.max(3,bildInterval)} Sek. = <strong>{bildDauerSek} Sek.</strong></>
+                  ? <>Ein Durchlauf: {bildUrls.length} × {Math.max(3,bildInterval)} Sek. = <strong>{bildDauerSek} Sek.</strong></>
                   : <>Bei nur einem Bild wechselt nichts – die Zeit gilt dann nur für die Rotation.</>}
                 {" "}Genau diese Zeit bekommt die Bildanzeige auch in der <strong>Rotation</strong>,
                 dort musst du nichts einstellen.
