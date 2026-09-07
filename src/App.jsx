@@ -4420,7 +4420,8 @@ function SettingsDisplayTab({onToast}) {
           if(map.display_rotation){
             const r=JSON.parse(map.display_rotation);
             setRotEnabled(!!r.enabled);
-            setRotItems(Array.isArray(r.items)?r.items.filter(it=>it&&it.mode).map(it=>({mode:it.mode,seconds:Number(it.seconds)||30})):[]);
+            setRotItems(Array.isArray(r.items)?r.items.filter(it=>it&&it.mode)
+              .map(it=>({mode:it.mode,seconds:Number(it.seconds)||30,auto:it.mode==="bild"?it.auto!==false:false})):[]);
           }
         } catch(_){}
         try {
@@ -4452,6 +4453,11 @@ function SettingsDisplayTab({onToast}) {
   // Bild als Base64 direkt in der settings-Zeile – bei mehreren Bildern
   // waeren das schnell ein paar MB in einer Zeile, die jedes Display bei
   // jeder Abfrage mitliest. Alte Base64-Eintraege funktionieren weiter.
+  // Standzeit der Bildanzeige = alle Bilder einmal durch. Die eine Sekunde
+  // obendrauf verhindert, dass die Rotation das letzte Bild anschneidet.
+  // Muss zu bildDauerSek() in public/display.html passen.
+  const bildDauerSek = Math.max(5, bildUrls.length*Math.max(3,Number(bildInterval)||10) + 1);
+
   const bildStoragePath=(url)=>{
     const p=String(url||"").split("/club-photos/")[1]||"";
     if(!p) return "";
@@ -4540,7 +4546,13 @@ function SettingsDisplayTab({onToast}) {
       {key:"display_affe_minuten",    value:String(affeMinuten)},
       {key:"display_affe_sekunden",   value:String(affeSekunden)},
       {key:"display_affe_modes",      value:JSON.stringify(affeModes)},
-      {key:"display_rotation",        value:JSON.stringify({enabled:rotEnabled,items:rotItems.map(it=>({mode:it.mode,seconds:Math.max(5,Number(it.seconds)||30)}))})},
+      // Bild-Einträge laufen automatisch: die Standzeit ergibt sich aus dem Bild-Tab.
+      // Der mitgespeicherte Sekundenwert ist nur ein Rückfall, gerechnet wird auf dem Display.
+      {key:"display_rotation",        value:JSON.stringify({enabled:rotEnabled,items:rotItems.map(it=>(
+        it.mode==="bild"&&it.auto!==false
+          ? {mode:"bild", seconds:bildDauerSek, auto:true}
+          : {mode:it.mode, seconds:Math.max(5,Number(it.seconds)||30)}
+      ))})},
       {key:"display_standby",         value:JSON.stringify({enabled:stbEnabled,from:stbFrom,to:stbTo})},
     ],{onConflict:"key"});
     setSaving(false);
@@ -4899,6 +4911,16 @@ function SettingsDisplayTab({onToast}) {
                 Mindestens 2 Einträge nötig. Turnier & Bildanzeige nur einbinden, wenn dort Inhalte hinterlegt sind.
               </div>
 
+              {rotItems.some(it=>it.mode==="bild"&&it.auto!==false)&&(
+                <div style={{fontSize:"0.6875rem",color:"#5B21B6",lineHeight:1.6,marginBottom:14,
+                  padding:"10px 12px",background:"#F5F3FF",border:"1px solid #DDD6FE",borderRadius:8}}>
+                  🖼️ Die <strong>Bildanzeige</strong> stellt ihre Zeit selbst: {bildUrls.length}
+                  {bildUrls.length===1?" Bild":" Bilder"} × {Math.max(3,bildInterval)} Sek. = <strong>{bildDauerSek} Sek.</strong>
+                  {" "}So ist jedes Bild einmal dran, bevor weitergeschaltet wird. Ändern kannst du das
+                  im Tab <strong>Bildanzeige</strong> — das Display zieht innerhalb ~20 Sekunden nach.
+                </div>
+              )}
+
               <div style={{display:"flex",flexDirection:"column",gap:8}}>
                 {rotItems.map((it,i)=>(
                   <div key={i} style={{display:"flex",alignItems:"center",gap:8,
@@ -4911,14 +4933,27 @@ function SettingsDisplayTab({onToast}) {
                         style={{border:"none",background:"none",cursor:i===rotItems.length-1?"default":"pointer",
                           color:i===rotItems.length-1?"#CBD5E1":"#64748B",fontSize:"0.75rem",lineHeight:1,padding:"2px 4px"}}>▼</button>
                     </div>
-                    <select value={it.mode} onChange={e=>setItem(i,{mode:e.target.value})}
+                    <select value={it.mode} onChange={e=>setItem(i,{mode:e.target.value,auto:e.target.value==="bild"})}
                       style={{...S.input,flex:1,minWidth:0}}>
                       {ROT_MODES.map(m=><option key={m.id} value={m.id}>{m.label}</option>)}
                     </select>
-                    <input type="number" min={5} max={600} value={it.seconds}
-                      onChange={e=>setItem(i,{seconds:Math.max(5,Number(e.target.value)||5)})}
-                      style={{...S.input,width:70,flexShrink:0,textAlign:"center"}}/>
-                    <span style={{fontSize:"0.6875rem",color:T.textMuted,flexShrink:0}}>Sek.</span>
+                    {it.mode==="bild"&&it.auto!==false ? (
+                      <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+                        <div style={{width:70,textAlign:"center",fontSize:"0.8125rem",fontWeight:700,
+                          color:"#7C3AED",background:"#F5F3FF",border:"1.5px solid #DDD6FE",
+                          borderRadius:8,padding:"10px 4px"}}>
+                          {bildDauerSek}
+                        </div>
+                        <span style={{fontSize:"0.6875rem",color:T.textMuted}}>Sek.<br/>automatisch</span>
+                      </div>
+                    ) : (
+                      <>
+                        <input type="number" min={5} max={600} value={it.seconds}
+                          onChange={e=>setItem(i,{seconds:Math.max(5,Number(e.target.value)||5)})}
+                          style={{...S.input,width:70,flexShrink:0,textAlign:"center"}}/>
+                        <span style={{fontSize:"0.6875rem",color:T.textMuted,flexShrink:0}}>Sek.</span>
+                      </>
+                    )}
                     <button onClick={()=>setRotItems(prev=>prev.filter((_,k)=>k!==i))}
                       style={{border:"none",background:"none",color:"#EF4444",cursor:"pointer",
                         fontSize:"0.875rem",padding:"2px 4px",flexShrink:0}}>✕</button>
@@ -5330,20 +5365,28 @@ function SettingsDisplayTab({onToast}) {
               Mehrere auf einmal möglich
             </span>
 
-            {bildUrls.length>1&&(
-              <div style={{display:"flex",alignItems:"center",gap:12,marginTop:18}}>
-                <label style={{fontSize:"0.8125rem",fontWeight:600,color:T.textSecondary,whiteSpace:"nowrap"}}>
-                  Wechsel alle
+            <div style={{marginTop:18,padding:"12px 14px",background:"#F5F3FF",
+              border:"1px solid #DDD6FE",borderRadius:10}}>
+              <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+                <label style={{fontSize:"0.8125rem",fontWeight:700,color:"#5B21B6",whiteSpace:"nowrap"}}>
+                  Ein Bild steht
                 </label>
                 <input type="number" min={3} max={600} value={bildInterval}
                   onChange={e=>setBildInterval(Math.max(3,Number(e.target.value)||3))}
                   onBlur={()=>bildPersist(bildUrls,bildInterval)}
                   style={{width:64,fontSize:"0.875rem",fontWeight:700,textAlign:"center",
-                    border:"1.5px solid #E5E7EB",borderRadius:6,padding:"5px 8px"}}/>
-                <label style={{fontSize:"0.8125rem",color:T.textSecondary}}>Sekunden</label>
+                    border:"1.5px solid #DDD6FE",borderRadius:6,padding:"5px 8px",background:"#fff"}}/>
+                <label style={{fontSize:"0.8125rem",color:"#5B21B6"}}>Sekunden</label>
                 <span style={{fontSize:"0.6875rem",color:T.textMuted}}>wird beim Verlassen des Feldes gespeichert</span>
               </div>
-            )}
+              <div style={{fontSize:"0.6875rem",color:"#5B21B6",lineHeight:1.6,marginTop:8}}>
+                {bildUrls.length>1
+                  ? <>Ein Durchlauf: {bildUrls.length} Bilder × {Math.max(3,bildInterval)} Sek. = <strong>{bildDauerSek} Sek.</strong></>
+                  : <>Bei nur einem Bild wechselt nichts – die Zeit gilt dann nur für die Rotation.</>}
+                {" "}Genau diese Zeit bekommt die Bildanzeige auch in der <strong>Rotation</strong>,
+                dort musst du nichts einstellen.
+              </div>
+            </div>
 
             <div style={{marginTop:18}}>
               <Lbl>{bildUrls.length?`Bilder (${bildUrls.length})`:"Bilder"}</Lbl>
@@ -5373,9 +5416,6 @@ function SettingsDisplayTab({onToast}) {
               <div style={{padding:"12px 14px",background:"#F8FAFC",border:"1px solid #E2E8F0",
                 borderRadius:10,fontSize:"0.75rem",color:T.textSecondary,lineHeight:1.6,marginTop:6}}>
                 Die Bilder laufen in dieser Reihenfolge durch und beginnen danach wieder von vorn.
-                Ein Durchlauf dauert {Math.round(bildUrls.length*Math.max(3,bildInterval)/6)/10} Minuten.
-                Läuft die Bildanzeige in der Rotation mit, sollte dort genug Zeit stehen — sonst sieht
-                niemand alle Bilder.
               </div>
             )}
           </div>

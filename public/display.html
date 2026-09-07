@@ -1729,8 +1729,10 @@ function startStandbyWatch() {
 // der Parent (und damit der Vollbildmodus) bleibt unangetastet.
 function mountSolo(mode) {
   document.getElementById("solo-shell").style.display = "block";
-  document.getElementById("solo-frame").src =
-    "/display.html?mode=" + encodeURIComponent(mode) + "&v=" + Date.now();
+  const frame = document.getElementById("solo-frame");
+  // Im Einzelmodus ist der iframe sofort sichtbar – Takt darf gleich losgehen
+  frame.onload = () => { try { frame.contentWindow.postMessage("th-show", "*"); } catch (_) {} };
+  frame.src = "/display.html?mode=" + encodeURIComponent(mode) + "&v=" + Date.now();
 }
 
 function soloResolve(s) {
@@ -1739,7 +1741,7 @@ function soloResolve(s) {
   const activeEntry = te.find(e => e.from && e.to && nowP >= new Date(e.from) && nowP <= new Date(e.to));
   let rot = null; try { rot = JSON.parse(s.display_rotation || "null"); } catch (_) {}
   const rotItems = (!activeEntry && rot && rot.enabled && Array.isArray(rot.items))
-    ? rot.items.filter(it => it && it.mode && Number(it.seconds) > 0) : [];
+    ? rot.items.filter(it => it && it.mode && (it.auto || Number(it.seconds) > 0)) : [];
   const mode = activeEntry ? activeEntry.mode : (s.display_mode || "schedule");
   return { mode, rotItems };
 }
@@ -1762,7 +1764,7 @@ function startSettingsPollingSolo(initMode) {
     if (rotItems.length >= 2) {
       clearInterval(iv);
       document.getElementById("solo-shell").style.display = "none";
-      startRotation(rotItems);
+      startRotation(rotItems, bildDauerSek(s));
       return;
     }
 
@@ -2068,13 +2070,16 @@ async function startFotosModus(intervalSec) {
     updateSlide(photos);
   }
 
+  // Erst laufen lassen, wenn die Slideshow auch zu sehen ist – in der Rotation
+  // wird sie vorgeladen, sonst liefen die ersten Fotos im Verborgenen durch.
+  let sichtbar = false;
   function startSlideTimer() {
     if (slideTimer) clearInterval(slideTimer);
-    if (photos.length > 1) slideTimer = setInterval(next, slideInterval);
+    if (sichtbar && photos.length > 1) slideTimer = setInterval(next, slideInterval);
   }
 
   render(photos);
-  startSlideTimer();
+  whenShown(() => { sichtbar = true; startSlideTimer(); });
 
   // Alle 5 Minuten prüfen — nur neu aufbauen wenn sich IDs geändert haben
   setInterval(async () => {
@@ -2599,6 +2604,39 @@ function startTurnierModus() {
   window.addEventListener("online", loadBoard);
 }
 
+// ── SICHTBARKEIT IM iframe ────────────────────────────────────────────────
+// Die Rotation lädt den nächsten Modus vor, während noch der vorige zu sehen
+// ist. Modi, die selbst weiterschalten (Bilder, Fotos), dürfen ihren Takt
+// deshalb erst starten, wenn sie wirklich sichtbar sind – sonst laufen die
+// ersten Bilder im Verborgenen durch. Der Parent meldet das per "th-show".
+function whenShown(cb) {
+  let done = false;
+  const go = () => { if (done) return; done = true; cb(); };
+  if (window.parent === window) { go(); return; }   // eigenständig geöffnet
+  window.addEventListener("message", e => { if (e.data === "th-show") go(); });
+  setTimeout(go, 12_000);                           // Notnagel, falls nichts kommt
+}
+
+// Bilder aus den Einstellungen lesen (Liste bevorzugt, altes Einzelbild als Rückfall)
+function bildListe(s) {
+  let list = [];
+  try { list = JSON.parse(s.display_bild_urls || "[]"); } catch (_) {}
+  if (!Array.isArray(list)) list = [];
+  list = list.filter(u => typeof u === "string" && u.trim());
+  if (!list.length && s.display_bild_url) list = [s.display_bild_url];
+  return list;
+}
+
+// Wie lange braucht ein kompletter Bilddurchlauf? Das ist die Standzeit, die
+// die Rotation für die Bildanzeige bekommt – damit jedes Bild einmal dran war.
+// Die eine Sekunde obendrauf sorgt dafür, dass das letzte Bild nicht mitten
+// in seiner Standzeit von der Rotation weggeblendet wird.
+function bildDauerSek(s) {
+  const n  = bildListe(s).length;
+  const iv = Math.max(3, Number(s.display_bild_interval) || 10);
+  return Math.max(5, n * iv + 1);
+}
+
 // ── BILDANZEIGE ───────────────────────────────────────────────────────────
 // Ein Bild: einfach anzeigen. Mehrere: im eingestellten Takt überblenden.
 // Das jeweils nächste Bild wird vorher in den Cache geholt, damit beim
@@ -2621,7 +2659,7 @@ function startBildModus(urls, sekunden) {
   const preloadNext = () => { pre.src = list[(idx + 1) % list.length]; };
   preloadNext();
 
-  setInterval(() => {
+  whenShown(() => setInterval(() => {
     const n  = (idx + 1) % list.length;
     const nl = layers[1 - cur];
     let done = false;
@@ -2636,7 +2674,7 @@ function startBildModus(urls, sekunden) {
     nl.onload = show;
     nl.src = list[n];
     setTimeout(show, 2000); // Fallback, falls onload nicht feuert
-  }, ms);
+  }, ms));
 }
 
 // ── VEREINSMEISTERSCHAFT (Gruppentabellen) ────────────────────────────────
@@ -2858,17 +2896,25 @@ function startVmModus() {
 // <iframe> (display.html?mode=X) – dadurch kein location.reload() des Parents,
 // das Vollbild bleibt erhalten. Die Zeitschaltung hat Vorrang: ist ein
 // Zeitfenster aktiv, zeigt die Bühne nur diesen einen Modus.
-function startRotation(rawItems) {
-  let items = (rawItems || [])
-    .filter(it => it && it.mode && Number(it.seconds) > 0)
-    .map(it => ({ mode: String(it.mode), seconds: Math.max(5, Number(it.seconds)) }));
+function startRotation(rawItems, bildSekInit) {
+  // Die Bildanzeige bekommt ihre Standzeit aus dem Bild-Tab (Anzahl Bilder ×
+  // Wechseltakt), nicht aus der Rotation – sonst würden bei zu kurzer
+  // Rotationszeit die hinteren Bilder nie jemand sehen.
+  let bildSek = Math.max(5, Number(bildSekInit) || 30);
+  const secondsOf = it => (it.auto && it.mode === "bild") ? bildSek : it.seconds;
+
+  const norm = arr => (arr || [])
+    .filter(it => it && it.mode && (it.auto || Number(it.seconds) > 0))
+    .map(it => ({ mode: String(it.mode), seconds: Math.max(5, Number(it.seconds) || 30), auto: !!it.auto }));
+
+  let items = norm(rawItems);
 
   const shell  = document.getElementById("rotation-shell");
   const layers = [document.getElementById("rot-a"), document.getElementById("rot-b")];
   shell.style.display = "block";
 
   const src = m => "/display.html?mode=" + encodeURIComponent(m);
-  const listKey = arr => JSON.stringify(arr.map(i => [i.mode, i.seconds]));
+  const listKey = arr => JSON.stringify(arr.map(i => [i.mode, i.auto ? "auto" : i.seconds]));
 
   // Nur ein Eintrag (oder Zeitschaltung reduziert auf einen) → einfach anzeigen
   const single = items.length < 2;
@@ -2879,6 +2925,7 @@ function startRotation(rawItems) {
           if (s >= 0 && s < items.length) idx = s; } catch (_) {}
   }
   let cur = 0;
+  layers[0].onload = () => { try { layers[0].contentWindow.postMessage("th-show", "*"); } catch (_) {} };
   layers[0].src = src(items[idx].mode);
   layers[0].style.opacity = "1";
   layers[1].style.opacity = "0";
@@ -2897,7 +2944,7 @@ function startRotation(rawItems) {
     clearTimeout(advanceTimer);
     clearTimeout(preTimer);
     preFor = -1; preReady = false;
-    const ms   = items[idx].seconds * 1000;
+    const ms   = secondsOf(items[idx]) * 1000;
     const lead = leadFor(ms);
     preTimer     = setTimeout(preload, Math.max(300, ms - lead));
     advanceTimer = setTimeout(advance, ms);
@@ -2918,6 +2965,8 @@ function startRotation(rawItems) {
     const nl = layers[1 - cur];
     nl.style.opacity = "1";
     layers[cur].style.opacity = "0";
+    // Ab jetzt ist dieser Modus zu sehen – er darf seinen Takt starten
+    try { nl.contentWindow.postMessage("th-show", "*"); } catch (_) {}
     cur = 1 - cur;
     idx = n;
     try { sessionStorage.setItem("th-rot-idx", String(idx)); } catch (_) {}
@@ -2955,16 +3004,19 @@ function startRotation(rawItems) {
   //  • Sonst (Dauer, Modi, Reihenfolge geändert) → Liste in-place übernehmen
   const watch = setInterval(async () => {
     const { data } = await sb.from("settings").select("key,value")
-      .in("key", ["display_rotation", "display_time_entries", "display_mode"]);
+      .in("key", ["display_rotation", "display_time_entries", "display_mode",
+                  "display_bild_urls", "display_bild_url", "display_bild_interval"]);
     const s = Object.fromEntries((data || []).map(r => [r.key, r.value]));
     const te = (() => { try { return JSON.parse(s.display_time_entries || "[]"); } catch (_) { return []; } })();
     const na = new Date();
     const activeEntry = te.find(e => e.from && e.to && na >= new Date(e.from) && na <= new Date(e.to));
     let rot = null; try { rot = JSON.parse(s.display_rotation || "null"); } catch (_) {}
-    const nextItems = (rot && rot.enabled && Array.isArray(rot.items))
-      ? rot.items.filter(it => it && it.mode && Number(it.seconds) > 0)
-          .map(it => ({ mode: String(it.mode), seconds: Math.max(5, Number(it.seconds)) }))
-      : [];
+    const nextItems = (rot && rot.enabled && Array.isArray(rot.items)) ? norm(rot.items) : [];
+
+    // Bilder geändert → Standzeit der Bildanzeige neu bestimmen
+    const neuBildSek = bildDauerSek(s);
+    const bildGeaendert = neuBildSek !== bildSek;
+    bildSek = neuBildSek;
 
     if (activeEntry || nextItems.length < 2) {
       // Rotation vorbei → Einzelmodus im iframe zeigen (kein Reload)
@@ -2978,7 +3030,11 @@ function startRotation(rawItems) {
       return;
     }
 
-    if (listKey(nextItems) === listKey(items)) return; // nichts geändert
+    if (listKey(nextItems) === listKey(items)) {
+      // Liste gleich, aber die Bildanzeige läuft gerade mit neuer Dauer → Timer neu stellen
+      if (bildGeaendert && items[idx] && items[idx].auto && items[idx].mode === "bild") schedule();
+      return;
+    }
 
     // Liste (Dauer / Modi / Reihenfolge) sanft übernehmen – kein Reload
     const curMode = items[idx] ? items[idx].mode : null;
@@ -3064,8 +3120,8 @@ function scheduleMidnightReload() {
       let rotation = null;
       try { rotation = JSON.parse(settings.display_rotation || "null"); } catch (_) {}
       const rotationItems = (rotation && rotation.enabled && Array.isArray(rotation.items))
-        ? rotation.items.filter(it => it && it.mode && Number(it.seconds) > 0) : [];
-      if (rotationItems.length >= 2) { startRotation(rotationItems); return; }
+        ? rotation.items.filter(it => it && it.mode && (it.auto || Number(it.seconds) > 0)) : [];
+      if (rotationItems.length >= 2) { startRotation(rotationItems, bildDauerSek(settings)); return; }
     }
     mountSolo(displayMode);
     startSettingsPollingSolo(displayMode);
