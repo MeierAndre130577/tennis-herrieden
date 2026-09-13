@@ -30,7 +30,16 @@ module.exports = async function handler(req, res) {
 
   const uploadUrl = await getSignedUrl(
     r2,
-    new PutObjectCommand({ Bucket: process.env.R2_BUCKET, Key: key, ContentType: contentType }),
+    // Jeder Key ist zufaellig und wird nie ueberschrieben (neues Foto = neuer
+    // Key) -> darf beliebig lange im Browser-Cache bleiben. Das haelt die
+    // Kiosk-Rotation, die dieselben Fotos alle paar Sekunden neu anzeigt,
+    // aus dem Netz und damit aus der Egress-Abrechnung.
+    new PutObjectCommand({
+      Bucket: process.env.R2_BUCKET,
+      Key: key,
+      ContentType: contentType,
+      CacheControl: "public, max-age=31536000, immutable",
+    }),
     { expiresIn: 300 }
   );
 
