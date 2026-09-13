@@ -5,6 +5,57 @@ const SUPABASE_URL  = import.meta.env.VITE_SUPABASE_URL  || "";
 const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON || "";
 const sb = SUPABASE_URL ? createClient(SUPABASE_URL, SUPABASE_ANON) : null;
 
+// ── CLOUDFLARE R2 (Bild-Uploads) ────────────────────────────────────────────
+// Ablöst schrittweise sb.storage.from("club-photos"). Läuft über /api/r2-presign
+// (liefert eine kurzlebige Upload-URL) + /api/r2-delete, damit die R2-Zugangsdaten
+// nie im Browser landen. VITE_R2_PUBLIC_BASE_URL wird erst gesetzt, sobald
+// img.tennis-herrieden.de aktiv mit dem Bucket verbunden ist.
+const R2_PUBLIC_BASE_URL = (import.meta.env.VITE_R2_PUBLIC_BASE_URL || "").replace(/\/$/, "");
+
+async function uploadToR2(file, folder) {
+  const { data: { session } } = await sb.auth.getSession();
+  const presignRes = await fetch("/api/r2-presign", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token || ""}` },
+    body: JSON.stringify({ contentType: file.type, folder }),
+  });
+  if (!presignRes.ok) throw new Error((await presignRes.json().catch(() => ({}))).error || "Presign fehlgeschlagen");
+  const { uploadUrl, publicUrl, key } = await presignRes.json();
+  const putRes = await fetch(uploadUrl, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
+  if (!putRes.ok) throw new Error("Upload zu R2 fehlgeschlagen");
+  return { publicUrl, key };
+}
+
+async function deleteFromR2(keys) {
+  const list = (Array.isArray(keys) ? keys : [keys]).filter(Boolean);
+  if (list.length === 0) return;
+  const { data: { session } } = await sb.auth.getSession();
+  await fetch("/api/r2-delete", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token || ""}` },
+    body: JSON.stringify({ keys: list }),
+  });
+}
+
+// Extrahiert den R2-Key aus einer gespeicherten öffentlichen Bild-URL, analog
+// zum bisherigen url.split("/club-photos/")[1] für Supabase Storage.
+function r2KeyFromUrl(url) {
+  if (!R2_PUBLIC_BASE_URL || !url) return null;
+  return String(url).startsWith(R2_PUBLIC_BASE_URL + "/") ? url.slice(R2_PUBLIC_BASE_URL.length + 1) : null;
+}
+
+// Löscht ein Bild unabhängig davon, ob es (neu) auf R2 oder (Übergangszeit,
+// noch nicht migriert) auf Supabase Storage liegt. Optionales requirePrefix
+// (z.B. "bild/") verhindert, dass versehentlich fremde Bilder im selben
+// Bucket/derselben Storage-Basis gelöscht werden.
+async function deleteImageByUrl(url, requirePrefix) {
+  const r2Key = r2KeyFromUrl(url);
+  if (r2Key) { if (!requirePrefix || r2Key.startsWith(requirePrefix)) await deleteFromR2(r2Key); return; }
+  const legacyPath = String(url || "").split("/club-photos/")[1];
+  const clean = legacyPath ? decodeURIComponent(legacyPath.split("?")[0]) : "";
+  if (clean && (!requirePrefix || clean.startsWith(requirePrefix))) await sb.storage.from("club-photos").remove([clean]);
+}
+
 // ── DESIGN TOKENS ─────────────────────────────────────────────────────────────
 // Strukturelle Farben → CSS Custom Properties (aus index.html, theme-switchable)
 // State-Farben → feste Hex-Werte (gleich in Dark & Light)
@@ -1194,11 +1245,7 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
   const uploadPhoto = async (file, caption) => {
     setUploading(true); setUploadErr(null);
     try {
-      const ext  = file.name.split(".").pop();
-      const path = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-      const {error:upErr} = await sb.storage.from("club-photos").upload(path, file, {contentType: file.type});
-      if(upErr) throw upErr;
-      const {data:{publicUrl}} = sb.storage.from("club-photos").getPublicUrl(path);
+      const {publicUrl} = await uploadToR2(file, "club-photos");
       const {error:insErr} = await sb.from("club_photos").insert({image_url: publicUrl, caption: caption||null, user_id: profile.id});
       if(insErr) throw insErr;
       const {data:newPhotos} = await sb.from("club_photos").select("id,url,image_url,caption,created_at,user_id").order("created_at",{ascending:false}).limit(200);
@@ -1209,8 +1256,7 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
 
   const deletePhoto = async (photo) => {
     if(!window.confirm("Dieses Foto löschen?")) return;
-    const path = (photo.image_url||"").split("/club-photos/")[1];
-    if(path) await sb.storage.from("club-photos").remove([path]);
+    await deleteImageByUrl(photo.image_url);
     await sb.from("club_photos").delete().eq("id", photo.id);
     const {data} = await sb.from("club_photos").select("id,url,image_url,caption,created_at,user_id").order("created_at",{ascending:false}).limit(200);
     setPhotos(data||[]);
@@ -3972,9 +4018,16 @@ function vmAvatarUrls(gruppen){
 }
 
 async function vmRemoveAvatars(urls){
-  const paths=[...new Set((urls||[]).map(vmAvatarPath).filter(Boolean))];
-  if(!paths.length) return;
-  await sb.storage.from("club-photos").remove(paths);
+  const list=[...new Set((urls||[]).filter(Boolean))];
+  const r2Keys=[], legacyPaths=[];
+  for(const url of list){
+    const r2Key=r2KeyFromUrl(url);
+    if(r2Key&&r2Key.startsWith("vm/")){ r2Keys.push(r2Key); continue; }
+    const legacy=vmAvatarPath(url);
+    if(legacy) legacyPaths.push(legacy);
+  }
+  if(r2Keys.length) await deleteFromR2(r2Keys);
+  if(legacyPaths.length) await sb.storage.from("club-photos").remove(legacyPaths);
 }
 
 // Immer 2 Gruppen mit je 4 Bearbeitungsplätzen – leere Namen zählen nicht als Spieler
@@ -4151,15 +4204,13 @@ function SettingsDisplayTab({onToast}) {
   const vmUploadAvatar = async(gi,pi,file)=>{
     if(!file) return;
     setVmErr(null); setVmUploading(`${gi}-${pi}`);
-    const ext=(file.name.split(".").pop()||"jpg").toLowerCase();
-    const path=`vm/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-    const {error}=await sb.storage.from("club-photos").upload(path,file,{contentType:file.type});
+    try{
+      const {publicUrl}=await uploadToR2(file,"vm");
+      setVmTempUploads(prev=>[...prev,publicUrl]);
+      vmSetPlayer(gi,pi,{avatar:publicUrl});
+      onToast("Bild hochgeladen – noch speichern nicht vergessen");
+    }catch(e){ setVmErr(`Upload fehlgeschlagen: ${e.message}`); }
     setVmUploading("");
-    if(error){ setVmErr(`Upload fehlgeschlagen: ${error.message}`); return; }
-    const {data:{publicUrl}}=sb.storage.from("club-photos").getPublicUrl(path);
-    setVmTempUploads(prev=>[...prev,publicUrl]);
-    vmSetPlayer(gi,pi,{avatar:publicUrl});
-    onToast("Bild hochgeladen – noch speichern nicht vergessen");
   };
 
   // Paarungen an die Spielerliste angleichen: bestehende behalten (Code + Ergebnis
@@ -4457,13 +4508,6 @@ function SettingsDisplayTab({onToast}) {
   // Muss zu bildDauerSek() in public/display.html passen.
   const bildDauerSek = Math.max(5, bildUrls.length*Math.max(3,Number(bildInterval)||10));
 
-  const bildStoragePath=(url)=>{
-    const p=String(url||"").split("/club-photos/")[1]||"";
-    if(!p) return "";
-    const clean=decodeURIComponent(p.split("?")[0]);
-    return clean.startsWith("bild/") ? clean : "";
-  };
-
   const bildResize=(file)=>new Promise(resolve=>{
     const img=new Image();
     const objUrl=URL.createObjectURL(file);
@@ -4500,10 +4544,10 @@ function SettingsDisplayTab({onToast}) {
     for(const file of auswahl){
       const blob=await bildResize(file);
       if(!blob){ onToast(`„${file.name}" ist kein lesbares Bild`,"error"); continue; }
-      const path=`bild/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
-      const {error}=await sb.storage.from("club-photos").upload(path,blob,{contentType:"image/jpeg"});
-      if(error){ onToast(`Upload fehlgeschlagen: ${error.message}`,"error"); setUploading(false); return; }
-      neu.push(sb.storage.from("club-photos").getPublicUrl(path).data.publicUrl);
+      try{
+        const {publicUrl}=await uploadToR2(blob,"bild");
+        neu.push(publicUrl);
+      }catch(e){ onToast(`Upload fehlgeschlagen: ${e.message}`,"error"); setUploading(false); return; }
     }
     if(!neu.length){ setUploading(false); return; }
     const ok=await bildPersist([...bildUrls,...neu],bildInterval);
@@ -4514,8 +4558,7 @@ function SettingsDisplayTab({onToast}) {
   const bildEntfernen=async(url)=>{
     const ok=await bildPersist(bildUrls.filter(u=>u!==url),bildInterval);
     if(!ok) return;
-    const path=bildStoragePath(url);          // leer bei alten Base64-Bildern
-    if(path) await sb.storage.from("club-photos").remove([path]);
+    await deleteImageByUrl(url,"bild/");       // no-op bei alten Base64-Bildern
     onToast("Bild entfernt");
   };
 
@@ -6233,13 +6276,32 @@ function ResetPasswordScreen() {
 }
 
 function LoginScreen() {
-  const [mode,setMode]=useState("login");const [email,setEmail]=useState("");const [password,setPassword]=useState("");const [firstName,setFirstName]=useState("");const [lastName,setLastName]=useState("");const [msg,setMsg]=useState(null);const [loading,setLoading]=useState(false);
+  const [mode,setMode]=useState("login");const [email,setEmail]=useState("");const [password,setPassword]=useState("");const [firstName,setFirstName]=useState("");const [lastName,setLastName]=useState("");const [msg,setMsg]=useState(null);const [loading,setLoading]=useState(false);const [showResend,setShowResend]=useState(false);
   const handle=async()=>{
-    setLoading(true);setMsg(null);
-    if(mode==="login"){ const {error}=await sb.auth.signInWithPassword({email,password}); if(error)setMsg({text:error.message,type:"error"}); }
-    else if(mode==="register"){ const name=`${firstName.trim()} ${lastName.trim()}`.trim(); const {error}=await sb.auth.signUp({email,password,options:{data:{name}}}); if(error)setMsg({text:error.message,type:"error"}); else setMsg({text:"Bitte bestätige deine E-Mail, dann kannst du dich anmelden.",type:"ok"}); }
+    setLoading(true);setMsg(null);setShowResend(false);
+    if(mode==="login"){
+      const {error}=await sb.auth.signInWithPassword({email,password});
+      if(error){
+        if(/email not confirmed/i.test(error.message)){ setMsg({text:"E-Mail noch nicht bestätigt.",type:"error"}); setShowResend(true); }
+        else setMsg({text:error.message,type:"error"});
+      }
+    }
+    else if(mode==="register"){
+      const name=`${firstName.trim()} ${lastName.trim()}`.trim();
+      const {data,error}=await sb.auth.signUp({email,password,options:{data:{name},emailRedirectTo:window.location.origin}});
+      if(error) setMsg({text:error.message,type:"error"});
+      else if(data?.user&&data.user.identities&&data.user.identities.length===0) setMsg({text:"Diese E-Mail ist bereits registriert. Einfach anmelden oder Passwort zurücksetzen.",type:"error"});
+      else if(data?.session) setMsg({text:"Registrierung erfolgreich, du wirst angemeldet …",type:"ok"});
+      else setMsg({text:"Bitte bestätige deine E-Mail, dann kannst du dich anmelden.",type:"ok"});
+    }
     else { const {error}=await sb.auth.resetPasswordForEmail(email); if(error)setMsg({text:error.message,type:"error"}); else setMsg({text:"Passwort-Reset-Link gesendet.",type:"ok"}); }
     setLoading(false);
+  };
+  const handleResend=async()=>{
+    setLoading(true);
+    const {error}=await sb.auth.resend({type:"signup",email,options:{emailRedirectTo:window.location.origin}});
+    setMsg(error?{text:error.message,type:"error"}:{text:"Bestätigungsmail erneut gesendet.",type:"ok"});
+    setShowResend(false);setLoading(false);
   };
   return (
     <div style={S.loginWrap}>
@@ -6252,6 +6314,7 @@ function LoginScreen() {
           <input type="email" placeholder="E-Mail" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handle()} style={S.input}/>
           {mode!=="reset"&&<input type="password" placeholder="Passwort" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handle()} style={S.input}/>}
           {msg&&<div style={{padding:"10px 12px",borderRadius:8,fontSize:"0.8125rem",background:msg.type==="error"?"#FEE2E2":"#DCFCE7",color:msg.type==="error"?"#991B1B":"#166534"}}>{msg.text}</div>}
+          {showResend&&<button style={{background:"none",border:"none",color:"#22C55E",cursor:"pointer",fontSize:"0.8125rem",fontWeight:700,textAlign:"left",padding:0}} onClick={handleResend} disabled={loading}>Bestätigungsmail erneut senden</button>}
           <button style={{...S.primaryBtn,marginTop:4,opacity:loading?.6:1}} onClick={handle} disabled={loading}>{loading?"…":mode==="login"?"Anmelden":mode==="register"?"Registrieren":"Link senden"}</button>
           {mode==="login"&&<button style={{background:"none",border:"none",color:T.textSecondary,cursor:"pointer",fontSize:"0.75rem"}} onClick={()=>{setMode("reset");setMsg(null);}}>Passwort vergessen?</button>}
         </div>
