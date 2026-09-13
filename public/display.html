@@ -1719,7 +1719,7 @@ function startStandbyWatch() {
     apply();
   }
   loadCfg();
-  setInterval(loadCfg, 5 * 60_000);
+  setInterval(loadCfg, 60_000);
   setInterval(apply, 15_000);
 }
 
@@ -1779,7 +1779,7 @@ function startSettingsPollingSolo(initMode) {
       curMode = mode;
       frame.src = "/display.html?mode=" + encodeURIComponent(mode) + "&v=" + Date.now();
     }
-  }, 5 * 60_000);
+  }, 60_000);
 }
 
 // ── HEIMSPIEL ─────────────────────────────────────────────────────────────
@@ -1974,7 +1974,7 @@ function startHeimspielmodus() {
   document.getElementById("heimspiel-app").style.display = "grid";
 
   loadHsMatch();
-  setInterval(loadHsMatch, 5 * 60_000);
+  setInterval(loadHsMatch, 60_000);
 }
 
 // ── FOTOS SLIDESHOW ───────────────────────────────────────────────────────
@@ -2185,7 +2185,7 @@ async function startSpielplanModus() {
   }
 
   await reloadAndRender();
-  setInterval(reloadAndRender, 5 * 60_000);
+  setInterval(reloadAndRender, 60_000);
 
   function renderSpielplan() {
     const today = new Date(); today.setHours(0,0,0,0);
@@ -2600,7 +2600,7 @@ function startTurnierModus() {
   }
 
   loadBoard();
-  setInterval(loadBoard, 5 * 60_000);
+  setInterval(loadBoard, 60_000);
   window.addEventListener("online", loadBoard);
 }
 
@@ -2952,7 +2952,7 @@ function startVmModus() {
   }
 
   load();
-  setInterval(load, 5 * 60_000);
+  setInterval(load, 60_000);
   window.addEventListener("online", load);
 }
 
@@ -3125,7 +3125,7 @@ function startRotation(rawItems, bildSekInit) {
       // aktueller Modus wurde entfernt → jetzt sanft auf den nächsten wechseln
       goTo(wasIdx % items.length);
     }
-  }, 5 * 60_000);
+  }, 60_000);
 }
 
 // ── MIDNIGHT RELOAD ───────────────────────────────────────────────────────
@@ -3262,7 +3262,7 @@ function scheduleMidnightReload() {
   setInterval(updateClock, 30_000);
 
   await loadData();
-  setInterval(loadData, 5 * 60_000);
+  setInterval(loadData, 60_000);
 
   subscribeRealtime();
   scheduleMidnightReload();

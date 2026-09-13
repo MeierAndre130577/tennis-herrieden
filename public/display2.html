@@ -501,7 +501,7 @@ function scheduleMidnightReload() {
 
   updateDateUI();
   await loadData();
-  setInterval(loadData, 5 * 60_000);
+  setInterval(loadData, 60_000);
 
   subscribeRealtime();
   scheduleMidnightReload();
