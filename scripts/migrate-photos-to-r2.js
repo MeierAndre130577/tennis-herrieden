@@ -50,12 +50,21 @@ const r2 = new S3Client({
 
 const OLD_BASE = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET_NAME}`;
 
-// Listet den Bucket rekursiv (Supabase list() ist nicht rekursiv von Haus aus)
+// Listet den Bucket rekursiv (Supabase list() ist nicht rekursiv von Haus aus
+// und liefert pro Aufruf höchstens 1000 Einträge → seitenweise abfragen,
+// damit auch Ordner mit >1000 Dateien vollständig erfasst werden).
 async function listAllFiles(prefix = "") {
-  const { data, error } = await sb.storage.from(BUCKET_NAME).list(prefix, { limit: 1000 });
-  if (error) throw new Error(`list(${prefix}) fehlgeschlagen: ${error.message}`);
+  const PAGE = 1000;
+  let entries = [], offset = 0;
+  while (true) {
+    const { data, error } = await sb.storage.from(BUCKET_NAME).list(prefix, { limit: PAGE, offset });
+    if (error) throw new Error(`list(${prefix}) fehlgeschlagen: ${error.message}`);
+    entries = entries.concat(data || []);
+    if (!data || data.length < PAGE) break;
+    offset += PAGE;
+  }
   let files = [];
-  for (const entry of data || []) {
+  for (const entry of entries) {
     const fullPath = prefix ? `${prefix}/${entry.name}` : entry.name;
     if (entry.id === null) {
       // Ordner (Supabase markiert Ordner mit id:null) → rekursiv weiter

@@ -1779,7 +1779,7 @@ function startSettingsPollingSolo(initMode) {
       curMode = mode;
       frame.src = "/display.html?mode=" + encodeURIComponent(mode) + "&v=" + Date.now();
     }
-  }, 10_000);
+  }, 20_000);
 }
 
 // ── HEIMSPIEL ─────────────────────────────────────────────────────────────
@@ -2952,7 +2952,7 @@ function startVmModus() {
   }
 
   load();
-  setInterval(load, 20_000);
+  setInterval(load, 35_000);
   window.addEventListener("online", load);
 }
 
@@ -3125,7 +3125,7 @@ function startRotation(rawItems, bildSekInit) {
       // aktueller Modus wurde entfernt → jetzt sanft auf den nächsten wechseln
       goTo(wasIdx % items.length);
     }
-  }, 20_000);
+  }, 35_000);
 }
 
 // ── MIDNIGHT RELOAD ───────────────────────────────────────────────────────
