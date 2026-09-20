@@ -1443,6 +1443,11 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
         {/* Fotos nach KW gruppiert */}
         {typeFilter==="__fotos__"?(
           <div style={{display:"flex",flexDirection:"column",gap:20}}>
+            <input ref={fileInputRef} type="file" accept="image/*" style={{display:"none"}} onChange={e=>{if(e.target.files[0]){setPendingFile(e.target.files[0]);e.target.value="";}}}/>
+            <button onClick={()=>fileInputRef.current.click()}
+              style={{width:"100%",padding:"12px",borderRadius:12,border:"1.5px dashed #EC489966",background:"#EC489908",color:"#F472B6",fontSize:"0.8125rem",fontWeight:700,cursor:"pointer"}}>
+              📷 Foto hochladen
+            </button>
             {kwGroups.length===0&&(
               <div style={{background:"#1E293B",border:"1.5px solid #334155",borderRadius:14,padding:"32px 14px",textAlign:"center"}}>
                 <span style={{fontSize:"2rem"}}>🖼️</span>
@@ -1488,11 +1493,6 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
                 </div>
               );
             })}
-            <input ref={fileInputRef} type="file" accept="image/*" style={{display:"none"}} onChange={e=>{if(e.target.files[0]){setPendingFile(e.target.files[0]);e.target.value="";}}}/>
-            <button onClick={()=>fileInputRef.current.click()}
-              style={{width:"100%",padding:"12px",borderRadius:12,border:"1.5px dashed #EC489966",background:"#EC489908",color:"#F472B6",fontSize:"0.8125rem",fontWeight:700,cursor:"pointer"}}>
-              📷 Foto hochladen
-            </button>
           </div>
         ):(
 
