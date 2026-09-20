@@ -12,6 +12,12 @@ const sb = SUPABASE_URL ? createClient(SUPABASE_URL, SUPABASE_ANON) : null;
 // deshalb einen festen Standardwert (gleicher Wert in api/r2-presign.js).
 const R2_PUBLIC_BASE_URL = (import.meta.env.VITE_R2_PUBLIC_BASE_URL || "https://img.tennis-herrieden.de").replace(/\/$/, "");
 
+// Übergangsweise: Bilder aus Supabase Storage nicht mehr laden (Egress-Limit).
+// Auf false setzen, sobald die Dateien nach R2 migriert sind.
+const BLOCK_SUPABASE_IMAGES = true;
+const isBlockedImg = u => BLOCK_SUPABASE_IMAGES && typeof u === "string" && u.includes("/storage/v1/object/public/");
+const visiblePhotos = arr => (arr || []).filter(p => !isBlockedImg(p.image_url || p.url));
+
 async function uploadToR2(file, folder) {
   const { data: { session } } = await sb.auth.getSession();
   const presignRes = await fetch("/api/r2-presign", {
@@ -1262,7 +1268,7 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
     ]).then(([{data:news,error},{count},{data:pics}])=>{
       if(!error) setItems(news||[]);
       setPending(count||0);
-      setPhotos(pics||[]);
+      setPhotos(visiblePhotos(pics));
       setLoading(false);
     });
   },[]);
@@ -1276,7 +1282,7 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
       const {error:insErr} = await sb.from("club_photos").insert({image_url: publicUrl, caption: caption||null, user_id: profile.id});
       if(insErr) throw insErr;
       const {data:newPhotos} = await sb.from("club_photos").select("id,url,image_url,caption,created_at,user_id").order("created_at",{ascending:false}).limit(200);
-      setPhotos(newPhotos||[]); setPendingFile(null); setPendingCaption("");
+      setPhotos(visiblePhotos(newPhotos)); setPendingFile(null); setPendingCaption("");
     } catch(e) { setUploadErr(e.message||"Fehler beim Upload"); }
     setUploading(false);
   };
@@ -1286,7 +1292,7 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
     await deleteImageByUrl(photo.image_url);
     await sb.from("club_photos").delete().eq("id", photo.id);
     const {data} = await sb.from("club_photos").select("id,url,image_url,caption,created_at,user_id").order("created_at",{ascending:false}).limit(200);
-    setPhotos(data||[]);
+    setPhotos(visiblePhotos(data));
     setKwIdxMap({});
   };
 
@@ -5595,7 +5601,7 @@ function SettingsDisplayTab({onToast}) {
                         background:"#EEF2FF",border:"1.5px solid #E5E7EB",display:"flex",
                         alignItems:"center",justifyContent:"center",fontWeight:800,
                         fontSize:"0.9375rem",color:"#6366F1"}}>
-                        {p.avatar
+                        {p.avatar&&!isBlockedImg(p.avatar)
                           ? <img src={p.avatar} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
                           : initial}
                       </div>
