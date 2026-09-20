@@ -43,7 +43,8 @@ module.exports = async function handler(req, res) {
     { expiresIn: 300 }
   );
 
-  const publicUrl = `${process.env.R2_PUBLIC_BASE_URL}/${key}`;
+  const base = (process.env.R2_PUBLIC_BASE_URL || "https://img.tennis-herrieden.de").replace(/\/$/, "");
+  const publicUrl = `${base}/${key}`;
 
   res.json({ uploadUrl, publicUrl, key });
 };

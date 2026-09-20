@@ -8,9 +8,9 @@ const sb = SUPABASE_URL ? createClient(SUPABASE_URL, SUPABASE_ANON) : null;
 // ── CLOUDFLARE R2 (Bild-Uploads) ────────────────────────────────────────────
 // Ablöst schrittweise sb.storage.from("club-photos"). Läuft über /api/r2-presign
 // (liefert eine kurzlebige Upload-URL) + /api/r2-delete, damit die R2-Zugangsdaten
-// nie im Browser landen. VITE_R2_PUBLIC_BASE_URL wird erst gesetzt, sobald
-// img.tennis-herrieden.de aktiv mit dem Bucket verbunden ist.
-const R2_PUBLIC_BASE_URL = (import.meta.env.VITE_R2_PUBLIC_BASE_URL || "").replace(/\/$/, "");
+// nie im Browser landen. Die öffentliche Basis-URL ist kein Geheimnis und hat
+// deshalb einen festen Standardwert (gleicher Wert in api/r2-presign.js).
+const R2_PUBLIC_BASE_URL = (import.meta.env.VITE_R2_PUBLIC_BASE_URL || "https://img.tennis-herrieden.de").replace(/\/$/, "");
 
 async function uploadToR2(file, folder) {
   const { data: { session } } = await sb.auth.getSession();
