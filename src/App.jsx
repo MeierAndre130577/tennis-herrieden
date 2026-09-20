@@ -26,6 +26,33 @@ async function uploadToR2(file, folder) {
   return { publicUrl, key };
 }
 
+// Handyfotos sind oft 3-5 MB. Für Galerie/Display reichen 1920 px als JPEG.
+// Schlägt das Dekodieren fehl (z.B. exotisches Format), geht das Original durch.
+async function resizeImageForUpload(file, maxDim = 1920, quality = 0.85) {
+  if (!file || !/^image\/(jpeg|png|webp)$/.test(file.type)) return file;
+  const objUrl = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = reject;
+      i.src = objUrl;
+    });
+    const ratio = Math.min(1, maxDim / Math.max(img.width, img.height));
+    if (ratio === 1 && file.size < 600 * 1024) return file;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(img.width * ratio);
+    canvas.height = Math.round(img.height * ratio);
+    canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise(r => canvas.toBlob(r, "image/jpeg", quality));
+    return blob && blob.size < file.size ? blob : file;
+  } catch (_) {
+    return file;
+  } finally {
+    URL.revokeObjectURL(objUrl);
+  }
+}
+
 async function deleteFromR2(keys) {
   const list = (Array.isArray(keys) ? keys : [keys]).filter(Boolean);
   if (list.length === 0) return;
@@ -1245,7 +1272,7 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
   const uploadPhoto = async (file, caption) => {
     setUploading(true); setUploadErr(null);
     try {
-      const {publicUrl} = await uploadToR2(file, "club-photos");
+      const {publicUrl} = await uploadToR2(await resizeImageForUpload(file), "club-photos");
       const {error:insErr} = await sb.from("club_photos").insert({image_url: publicUrl, caption: caption||null, user_id: profile.id});
       if(insErr) throw insErr;
       const {data:newPhotos} = await sb.from("club_photos").select("id,url,image_url,caption,created_at,user_id").order("created_at",{ascending:false}).limit(200);
@@ -1454,7 +1481,7 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
                     {kphotos.map((p,i)=>(
                       <div key={p.id} onClick={()=>setKwIdxMap(m=>({...m,[label]:i}))} className="tap-div"
                         style={{flexShrink:0,width:52,height:52,borderRadius:6,overflow:"hidden",cursor:"pointer",border:`2px solid ${i===idx?"#EC4899":"transparent"}`,opacity:i===idx?1:.55,transition:"all .15s"}}>
-                        <img src={p.image_url||p.url} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+                        <img src={p.image_url||p.url} alt="" loading="lazy" decoding="async" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
                       </div>
                     ))}
                   </div>
@@ -1499,7 +1526,7 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
                       onTouchEnd={e=>{const dx=e.changedTouches[0].clientX-(allTouchX.current||0);if(Math.abs(dx)>30){allSwiped.current=true;if(dx>0&&idx>0)setAllIdxMap(m=>({...m,[item._kwLabel]:idx-1}));else if(dx<0&&idx<kwPhotos.length-1)setAllIdxMap(m=>({...m,[item._kwLabel]:idx+1}));}}}
                       onClick={()=>{if(!allSwiped.current){setLbPhotos(kwPhotos);setLbIdx(idx);}}}
                     >
-                      {src&&<img src={src} alt={cur.caption||""} style={{width:"100%",height:220,objectFit:"cover",display:"block",cursor:"pointer"}}/>}
+                      {src&&<img src={src} alt={cur.caption||""} loading="lazy" decoding="async" style={{width:"100%",height:220,objectFit:"cover",display:"block",cursor:"pointer"}}/>}
                       {idx>0&&<button onMouseDown={goPrev} style={{position:"absolute",left:8,top:"50%",transform:"translateY(-50%)",background:"#00000077",border:"none",color:"#fff",fontSize:"1.25rem",borderRadius:"50%",width:32,height:32,cursor:"pointer",lineHeight:"32px",textAlign:"center"}}>‹</button>}
                       {idx<kwPhotos.length-1&&<button onMouseDown={goNext} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"#00000077",border:"none",color:"#fff",fontSize:"1.25rem",borderRadius:"50%",width:32,height:32,cursor:"pointer",lineHeight:"32px",textAlign:"center"}}>›</button>}
                     </div>
