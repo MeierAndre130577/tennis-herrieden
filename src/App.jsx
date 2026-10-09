@@ -1200,6 +1200,13 @@ function ClubstreamMailBox({item}) {
   const [sent,setSent]       = useState(!!item.push_sent);
   const [busy,setBusy]       = useState(false);
   const [msg,setMsg]         = useState(null);
+  const [log,setLog]         = useState([]);
+
+  const loadLog=useCallback(async()=>{
+    const {data,error}=await sb.from("news_mail_log").select("id,sent_at,recipients").eq("news_id",item.id).order("sent_at",{ascending:false});
+    if(!error) setLog(data||[]);
+  },[item.id]);
+  useEffect(()=>{ loadLog(); },[loadLog]);
 
   useEffect(()=>{
     if(!armed) return;
@@ -1217,9 +1224,9 @@ function ClubstreamMailBox({item}) {
       if(c.j.recipients===0){ setMsg({text:"Keine Empfänger vorhanden.",type:"error"}); return; }
       const warn=sent?"\n\nDieser Beitrag wurde schon einmal per Mail verschickt (jetzt als Erinnerung).":"";
       if(!window.confirm(`Mail wirklich an ${c.j.recipients} Mitglieder senden?${warn}`)) return;
-      const {ok,j}=await callMemberMail({subject,text});
+      const {ok,j}=await callMemberMail({subject,text,newsId:item.id});
       if(!ok){ setMsg({text:j.error||"Fehler",type:"error"}); return; }
-      setSent(true); setArmed(false);
+      setSent(true); setArmed(false); loadLog();
       setMsg({text:`${j.sent} Mails gesendet.`,type:"ok"});
       await sb.from("news_items").update({push_sent:true}).eq("id",item.id);
     } finally { setBusy(false); }
@@ -1228,7 +1235,18 @@ function ClubstreamMailBox({item}) {
   return (
     <div style={{background:T.bgCard,border:`1px solid ${T.bgBorder}`,borderRadius:14,padding:"14px",marginTop:12,display:"flex",flexDirection:"column",gap:10}}>
       <div style={{fontSize:"0.625rem",fontWeight:700,color:T.textMuted,textTransform:"uppercase",letterSpacing:.8}}>E-Mail an Mitglieder</div>
-      {sent&&<div style={{fontSize:"0.75rem",color:T.success}}>✓ Dieser Beitrag wurde bereits per Mail verschickt.</div>}
+      {log.length>0?(
+        <div style={{fontSize:"0.75rem",color:T.success}}>
+          ✓ Per Mail verschickt: {log.length}×
+          <div style={{color:T.textSecondary,marginTop:4,display:"flex",flexDirection:"column",gap:2}}>
+            {log.map(l=>(
+              <span key={l.id}>
+                {new Date(l.sent_at).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})} Uhr · {l.recipients} Empfänger
+              </span>
+            ))}
+          </div>
+        </div>
+      ):sent&&<div style={{fontSize:"0.75rem",color:T.success}}>✓ Dieser Beitrag wurde bereits per Mail verschickt.</div>}
       <label style={{display:"flex",alignItems:"center",gap:8,fontSize:"0.8125rem",color:T.textPrimary,cursor:"pointer"}}>
         <input type="checkbox" checked={armed} onChange={e=>{setArmed(e.target.checked);setMsg(null);}}/>
         {sent?"Als Erinnerung nochmal per E-Mail senden":"Auch per E-Mail an Mitglieder senden"}
@@ -2491,7 +2509,19 @@ function SettingsMailTab() {
   const [text,setText]=useState("");
   const [busy,setBusy]=useState(false);
   const [msg,setMsg]=useState(null);
+  const [log,setLog]=useState(null);
   const call=callMemberMail;
+  const loadLog=useCallback(async()=>{
+    const {data,error}=await sb.from("news_mail_log")
+      .select("id,sent_at,recipients,subject,news_items(title)")
+      .order("sent_at",{ascending:false}).limit(100);
+    setLog(error?false:(data||[]));
+  },[]);
+  useEffect(()=>{ loadLog(); },[loadLog]);
+  const since30=Date.now()-30*24*3600*1000;
+  const last30=(log||[]).filter(l=>new Date(l.sent_at).getTime()>=since30);
+  const mails30=last30.reduce((n,l)=>n+(l.recipients||0),0);
+  const fmtDT=iso=>new Date(iso).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})+" Uhr";
   const run=async(kind)=>{
     setMsg(null);
     if(kind!=="count"&&(!subject.trim()||!text.trim())){ setMsg({text:"Betreff und Text ausfüllen.",type:"error"}); return; }
@@ -2517,7 +2547,29 @@ function SettingsMailTab() {
         <button style={{...S.tabBtn,opacity:busy?.6:1}} disabled={busy} onClick={()=>run("self")}>Test an mich</button>
         <button style={{...S.tabBtn,opacity:busy?.6:1}} disabled={busy} onClick={()=>run("count")}>Empfänger zählen</button>
       </div>
-    </div></div>
+    </div>
+
+    <div style={{...S.card,display:"flex",flexDirection:"column",gap:8,maxWidth:560,marginTop:12}}>
+      <div style={{display:"flex",alignItems:"center",gap:8}}>
+        <div style={{fontWeight:800,flex:1}}>📋 Versandübersicht</div>
+        <button style={S.tabBtn} onClick={loadLog}>Aktualisieren</button>
+      </div>
+      {log===null&&<div style={{fontSize:"0.75rem",color:T.textSecondary}}>Lade …</div>}
+      {log===false&&<div style={{fontSize:"0.75rem",color:T.textSecondary}}>Übersicht nicht verfügbar (Tabelle news_mail_log fehlt oder keine Berechtigung).</div>}
+      {Array.isArray(log)&&(<>
+        <div style={{fontSize:"0.75rem",color:T.textSecondary}}>
+          Letzte 30 Tage: {last30.length} Versände · {mails30} Mails (Resend gratis: max. 100 pro Tag, 3000 pro Monat)
+        </div>
+        {log.length===0&&<div style={{fontSize:"0.8125rem",color:T.textSecondary}}>Noch kein Versand protokolliert.</div>}
+        {log.map(l=>(
+          <div key={l.id} style={{borderTop:`1px solid ${T.bgBorder}`,paddingTop:8}}>
+            <div style={{fontSize:"0.8125rem",fontWeight:700,color:T.textPrimary}}>{l.subject||l.news_items?.title||"(ohne Betreff)"}</div>
+            <div style={{fontSize:"0.6875rem",color:T.textSecondary}}>{fmtDT(l.sent_at)} · {l.recipients} Empfänger</div>
+          </div>
+        ))}
+      </>)}
+    </div>
+    </div>
   );
 }
 

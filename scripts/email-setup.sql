@@ -58,3 +58,19 @@ begin
   return new;
 end;
 $$;
+
+-- 5) Versandprotokoll: wann ging welcher Beitrag an wie viele Mitglieder
+create table if not exists public.news_mail_log (
+  id          uuid primary key default gen_random_uuid(),
+  news_id     uuid not null references public.news_items(id) on delete cascade,
+  sent_at     timestamptz not null default now(),
+  recipients  int not null,
+  subject     text,
+  sent_by     uuid references auth.users(id) on delete set null
+);
+create index if not exists news_mail_log_news_idx on public.news_mail_log (news_id, sent_at desc);
+alter table public.news_mail_log enable row level security;
+create policy "Admin liest Mail-Log" on public.news_mail_log for select
+  using (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'));
+create policy "Admin schreibt Mail-Log" on public.news_mail_log for insert
+  with check (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'));

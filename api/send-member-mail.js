@@ -7,6 +7,7 @@
 // Body: { subject, text, dryRun?, selfOnly? }
 //   dryRun:true   zählt nur die Empfänger
 //   selfOnly:true schickt nur an die eigene Adresse (zum Testen)
+//   newsId        (optional) Beitrag, zu dem der Versand in news_mail_log protokolliert wird
 const { createClient } = require("@supabase/supabase-js");
 const { sendBatch, MEMBER_FOOTER } = require("./_mail");
 
@@ -26,7 +27,7 @@ module.exports = async function handler(req, res) {
   const { data: profile } = await sb.from("profiles").select("role").eq("id", userData.user.id).single();
   if (profile?.role !== "admin") return res.status(403).json({ error: "Nur für Admins" });
 
-  const { subject, text, dryRun, selfOnly } = req.body || {};
+  const { subject, text, dryRun, selfOnly, newsId } = req.body || {};
   if (!dryRun) {
     if (typeof subject !== "string" || !subject.trim() || subject.length > 200) {
       return res.status(400).json({ error: "Betreff fehlt oder ist zu lang" });
@@ -53,7 +54,14 @@ module.exports = async function handler(req, res) {
     const sent = await sendBatch(
       list.map((r) => ({ to: r.email, subject: subject.trim(), text: text.trim() + MEMBER_FOOTER }))
     );
-    return res.status(200).json({ sent });
+    let logged = false;
+    if (!selfOnly && typeof newsId === "string" && newsId) {
+      const { error: logErr } = await sb.from("news_mail_log").insert({
+        news_id: newsId, recipients: sent, subject: subject.trim(), sent_by: userData.user.id,
+      });
+      logged = !logErr;
+    }
+    return res.status(200).json({ sent, logged });
   } catch (e) {
     return res.status(502).json({ error: e.message });
   }
