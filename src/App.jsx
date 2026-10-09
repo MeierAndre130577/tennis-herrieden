@@ -70,6 +70,18 @@ async function dispatchBtvFetch(inputs) {
   });
 }
 
+// Ruft den Admin-Endpunkt für Mitglieder-Mails auf (dryRun / selfOnly / echter Versand).
+async function callMemberMail(body) {
+  const { data: { session } } = await sb.auth.getSession();
+  const r = await fetch("/api/send-member-mail", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token || ""}` },
+    body: JSON.stringify(body),
+  });
+  const j = await r.json().catch(() => ({}));
+  return { ok: r.ok, j };
+}
+
 async function deleteFromR2(keys) {
   const list = (Array.isArray(keys) ? keys : [keys]).filter(Boolean);
   if (list.length === 0) return;
@@ -1160,7 +1172,83 @@ function csStripHtml(html) {
     .replace(/\n{3,}/g,"\n\n").trim();
 }
 
-function ClubstreamDetail({item,onBack}) {
+// Vorbelegung für die Mitglieder-Mail: Titel, Kurztext, ggf. Termin, Link zur App.
+function csMailDraft(item) {
+  const isRueckblick = item.age_group === "wochenrueckblick";
+  let body = isRueckblick ? (item.summary||"") : (item.summary || csStripHtml(item.content) || "");
+  body = body.trim();
+  if(body.length>500) body = body.slice(0,500).replace(/\s+\S*$/,"")+" …";
+  const parts = [];
+  if(body) parts.push(body);
+  if(item.event_start){
+    const d = new Date(item.event_start);
+    const day = d.toLocaleDateString("de-DE",{weekday:"long",day:"numeric",month:"long",year:"numeric",timeZone:"UTC"});
+    const t = d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit",timeZone:"UTC"});
+    parts.push(`Termin: ${day}${t!=="00:00"?`, ${t} Uhr`:""}`);
+  }
+  if(item.event_location) parts.push(`Ort: ${item.event_location}`);
+  parts.push(`Mehr dazu in der App: ${window.location.origin}`);
+  return parts.join("\n\n");
+}
+
+// Admin: veröffentlichten Beitrag per Mail an alle Mitglieder mit eingeschalteten Benachrichtigungen schicken.
+function ClubstreamMailBox({item}) {
+  const [armed,setArmed]     = useState(false);
+  const [subject,setSubject] = useState(item.title||"");
+  const [text,setText]       = useState(()=>csMailDraft(item));
+  const [count,setCount]     = useState(null);
+  const [sent,setSent]       = useState(!!item.push_sent);
+  const [busy,setBusy]       = useState(false);
+  const [msg,setMsg]         = useState(null);
+
+  useEffect(()=>{
+    if(!armed) return;
+    setCount(null);
+    callMemberMail({dryRun:true}).then(({ok,j})=>setCount(ok?j.recipients:-1));
+  },[armed]);
+
+  const send=async()=>{
+    setMsg(null);
+    if(!subject.trim()||!text.trim()){ setMsg({text:"Betreff und Text ausfüllen.",type:"error"}); return; }
+    setBusy(true);
+    try{
+      const c=await callMemberMail({dryRun:true});
+      if(!c.ok){ setMsg({text:c.j.error||"Fehler",type:"error"}); return; }
+      if(c.j.recipients===0){ setMsg({text:"Keine Empfänger vorhanden.",type:"error"}); return; }
+      const warn=sent?"\n\nDieser Beitrag wurde schon einmal per Mail verschickt (jetzt als Erinnerung).":"";
+      if(!window.confirm(`Mail wirklich an ${c.j.recipients} Mitglieder senden?${warn}`)) return;
+      const {ok,j}=await callMemberMail({subject,text});
+      if(!ok){ setMsg({text:j.error||"Fehler",type:"error"}); return; }
+      setSent(true); setArmed(false);
+      setMsg({text:`${j.sent} Mails gesendet.`,type:"ok"});
+      await sb.from("news_items").update({push_sent:true}).eq("id",item.id);
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <div style={{background:T.bgCard,border:`1px solid ${T.bgBorder}`,borderRadius:14,padding:"14px",marginTop:12,display:"flex",flexDirection:"column",gap:10}}>
+      <div style={{fontSize:"0.625rem",fontWeight:700,color:T.textMuted,textTransform:"uppercase",letterSpacing:.8}}>E-Mail an Mitglieder</div>
+      {sent&&<div style={{fontSize:"0.75rem",color:T.success}}>✓ Dieser Beitrag wurde bereits per Mail verschickt.</div>}
+      <label style={{display:"flex",alignItems:"center",gap:8,fontSize:"0.8125rem",color:T.textPrimary,cursor:"pointer"}}>
+        <input type="checkbox" checked={armed} onChange={e=>{setArmed(e.target.checked);setMsg(null);}}/>
+        {sent?"Als Erinnerung nochmal per E-Mail senden":"Auch per E-Mail an Mitglieder senden"}
+      </label>
+      {armed&&(<>
+        <input value={subject} onChange={e=>setSubject(e.target.value)} placeholder="Betreff" style={S.input}/>
+        <textarea value={text} onChange={e=>setText(e.target.value)} style={{...S.input,minHeight:150,resize:"vertical",fontFamily:"inherit"}}/>
+        <div style={{fontSize:"0.75rem",color:T.textSecondary}}>
+          {count===null?"Empfänger werden gezählt …":count<0?"Empfänger konnten nicht gezählt werden.":`Geht an ${count} Mitglieder. Der Abschalt-Hinweis wird automatisch angehängt.`}
+        </div>
+        <button style={{...S.primaryBtn,opacity:(busy||!count||count<0)?.5:1}} disabled={busy||!count||count<0} onClick={send}>
+          {busy?"Sende …":"Jetzt senden"}
+        </button>
+      </>)}
+      {msg&&<div style={{padding:"10px 12px",borderRadius:8,fontSize:"0.8125rem",background:msg.type==="error"?"#FEE2E2":"#DCFCE7",color:msg.type==="error"?"#991B1B":"#166534"}}>{msg.text}</div>}
+    </div>
+  );
+}
+
+function ClubstreamDetail({item,profile,onBack}) {
   const color   = CS_COLORS[item.type]||"#94A3B8";
   const icon    = CS_ICONS[item.type]||"📰";
   const label   = CS_LABELS[item.type]||item.type;
@@ -1265,6 +1353,8 @@ function ClubstreamDetail({item,onBack}) {
           <p style={{fontSize:"0.6875rem",color:T.textSecondary,margin:0,borderTop:"1px solid #334155",paddingTop:8}}>{csTimeAgo(item.published_at)}</p>
         </div>
 
+        {profile?.role==="admin"&&<ClubstreamMailBox item={item}/>}
+
       </div>
     </div>
   );
@@ -1296,7 +1386,7 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
     setLoading(true);
     Promise.all([
       sb.from("news_items")
-        .select("id,title,type,summary,content,published_at,is_pinned,priority,event_start,event_end,event_location,result_home,result_away,team_name,opponent,league,age_group,valid_until,valid_from,image_url")
+        .select("id,title,type,summary,content,published_at,is_pinned,priority,event_start,event_end,event_location,result_home,result_away,team_name,opponent,league,age_group,valid_until,valid_from,image_url,push_sent")
         .eq("status","published")
         .is("deleted_at",null)
         .order("is_pinned",{ascending:false})
@@ -1312,7 +1402,7 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
     });
   },[]);
 
-  if(detail) return <ClubstreamDetail item={detail} onBack={()=>setDetail(null)}/>;
+  if(detail) return <ClubstreamDetail item={detail} profile={profile} onBack={()=>setDetail(null)}/>;
 
   const uploadPhoto = async (file, caption) => {
     setUploading(true); setUploadErr(null);
@@ -2401,12 +2491,7 @@ function SettingsMailTab() {
   const [text,setText]=useState("");
   const [busy,setBusy]=useState(false);
   const [msg,setMsg]=useState(null);
-  const call=async(body)=>{
-    const {data:{session}}=await sb.auth.getSession();
-    const r=await fetch("/api/send-member-mail",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${session?.access_token||""}`},body:JSON.stringify(body)});
-    const j=await r.json().catch(()=>({}));
-    return {ok:r.ok,j};
-  };
+  const call=callMemberMail;
   const run=async(kind)=>{
     setMsg(null);
     if(kind!=="count"&&(!subject.trim()||!text.trim())){ setMsg({text:"Betreff und Text ausfüllen.",type:"error"}); return; }
