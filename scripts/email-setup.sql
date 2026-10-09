@@ -6,9 +6,9 @@
 --   <SECRET>  → gleicher Wert wie die Vercel-Variable NEW_MEMBER_WEBHOOK_SECRET
 -- ═══════════════════════════════════════════════════════════════════════════
 
--- 1) Opt-in-Spalte: jedes Mitglied entscheidet selbst (Standard: aus)
+-- 1) Spalte: standardmäßig an, jedes Mitglied kann sie selbst ausschalten
 alter table public.profiles
-  add column if not exists email_notifications boolean not null default false;
+  add column if not exists email_notifications boolean not null default true;
 
 -- 2) Eigenen Haken setzen (gleiches Muster wie update_own_anonymous_bookings)
 create or replace function public.update_own_email_notifications(p_value boolean)

@@ -1,10 +1,12 @@
 // api/send-member-mail.js
-// Schickt eine Mail an alle Mitglieder, die in der App "E-Mail-Benachrichtigungen"
-// angehakt haben. Nur für eingeloggte Admins. Die Empfängerliste kommt aus der
+// Schickt eine Mail an alle Mitglieder, bei denen "E-Mail-Benachrichtigungen"
+// eingeschaltet sind (Standard: an, jeder kann es im Profil-Menü abschalten). Nur für eingeloggte Admins. Die Empfängerliste kommt aus der
 // DB-Funktion get_mail_recipients() (prüft selbst, ob der Aufrufer Admin ist),
 // deshalb braucht dieser Endpunkt keinen Service-Key.
 //
-// Body: { subject, text, dryRun? }  –  dryRun:true zählt nur die Empfänger.
+// Body: { subject, text, dryRun?, selfOnly? }
+//   dryRun:true   zählt nur die Empfänger
+//   selfOnly:true schickt nur an die eigene Adresse (zum Testen)
 const { createClient } = require("@supabase/supabase-js");
 const { sendBatch, MEMBER_FOOTER } = require("./_mail");
 
@@ -24,7 +26,7 @@ module.exports = async function handler(req, res) {
   const { data: profile } = await sb.from("profiles").select("role").eq("id", userData.user.id).single();
   if (profile?.role !== "admin") return res.status(403).json({ error: "Nur für Admins" });
 
-  const { subject, text, dryRun } = req.body || {};
+  const { subject, text, dryRun, selfOnly } = req.body || {};
   if (!dryRun) {
     if (typeof subject !== "string" || !subject.trim() || subject.length > 200) {
       return res.status(400).json({ error: "Betreff fehlt oder ist zu lang" });
@@ -34,9 +36,15 @@ module.exports = async function handler(req, res) {
     }
   }
 
-  const { data: recipients, error: recErr } = await sb.rpc("get_mail_recipients");
-  if (recErr) return res.status(500).json({ error: recErr.message });
-  const list = (recipients || []).filter((r) => r.email);
+  // selfOnly: Testversand nur an die eigene Adresse des Admins
+  let list;
+  if (selfOnly) {
+    list = userData.user.email ? [{ email: userData.user.email }] : [];
+  } else {
+    const { data: recipients, error: recErr } = await sb.rpc("get_mail_recipients");
+    if (recErr) return res.status(500).json({ error: recErr.message });
+    list = (recipients || []).filter((r) => r.email);
+  }
 
   if (dryRun) return res.status(200).json({ recipients: list.length });
   if (!list.length) return res.status(200).json({ sent: 0 });

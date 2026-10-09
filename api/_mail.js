@@ -41,7 +41,7 @@ async function sendBatch(messages) {
 
 // Hinweis am Ende jeder Mitglieder-Mail: sagt, warum man sie bekommt und wie man sie abschaltet.
 const MEMBER_FOOTER =
-  "\n\n--\nDu erhältst diese Mail, weil du in der Tennis-Herrieden-App E-Mail-Benachrichtigungen aktiviert hast.\n" +
+  "\n\n--\nDu erhältst diese Mail, weil in der Tennis-Herrieden-App E-Mail-Benachrichtigungen für dich eingeschaltet sind.\n" +
   "Abschalten: In der App unten rechts auf dein Profil-Symbol tippen und „E-Mail-Benachrichtigungen“ ausschalten.";
 
 module.exports = { sendMail, sendBatch, MEMBER_FOOTER };
