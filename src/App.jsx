@@ -2418,28 +2418,19 @@ function SettingsMailTab() {
       } else if(kind==="self"){
         const {ok,j}=await call({subject,text,selfOnly:true});
         setMsg(ok?{text:"Testmail an dich gesendet.",type:"ok"}:{text:j.error||"Fehler",type:"error"});
-      } else {
-        const c=await call({dryRun:true});
-        if(!c.ok){ setMsg({text:c.j.error||"Fehler",type:"error"}); }
-        else if(c.j.recipients===0){ setMsg({text:"Keine Empfänger vorhanden.",type:"error"}); }
-        else if(window.confirm(`Mail wirklich an ${c.j.recipients} Mitglieder senden?`)){
-          const {ok,j}=await call({subject,text});
-          setMsg(ok?{text:`${j.sent} Mails gesendet.`,type:"ok"}:{text:j.error||"Fehler",type:"error"});
-        }
       }
     } finally { setBusy(false); }
   };
   return (
     <div style={K.page}><div style={{...S.card,display:"flex",flexDirection:"column",gap:10,maxWidth:560,marginTop:4}}>
-      <div style={{fontWeight:800}}>✉️ Mail an Mitglieder</div>
-      <div style={{fontSize:"0.75rem",color:T.textSecondary}}>Geht an alle Mitglieder mit eingeschalteten E-Mail-Benachrichtigungen. Der Abschalt-Hinweis wird automatisch angehängt.</div>
+      <div style={{fontWeight:800}}>✉️ Mail-Test</div>
+      <div style={{fontSize:"0.75rem",color:T.textSecondary}}>Zum Testen des Mail-Versands: „Test an mich“ schickt nur an deine eigene Adresse. Der Abschalt-Hinweis wird automatisch angehängt.</div>
       <input placeholder="Betreff" value={subject} onChange={e=>setSubject(e.target.value)} style={S.input}/>
       <textarea placeholder="Text" value={text} onChange={e=>setText(e.target.value)} style={{...S.input,minHeight:140,resize:"vertical",fontFamily:"inherit"}}/>
       {msg&&<div style={{padding:"10px 12px",borderRadius:8,fontSize:"0.8125rem",background:msg.type==="error"?"#FEE2E2":"#DCFCE7",color:msg.type==="error"?"#991B1B":"#166534"}}>{msg.text}</div>}
       <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
         <button style={{...S.tabBtn,opacity:busy?.6:1}} disabled={busy} onClick={()=>run("self")}>Test an mich</button>
         <button style={{...S.tabBtn,opacity:busy?.6:1}} disabled={busy} onClick={()=>run("count")}>Empfänger zählen</button>
-        <button style={{...S.primaryBtn,opacity:busy?.6:1}} disabled={busy} onClick={()=>run("all")}>An alle senden</button>
       </div>
     </div></div>
   );
