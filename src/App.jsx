@@ -269,12 +269,13 @@ export default function App() {
 
   const shareParam = useState(()=>new URLSearchParams(window.location.search).get("share"))[0];
   const isRecovery = useState(()=>window.location.hash.includes("type=recovery"))[0];
+  const beitragParam = useState(()=>new URLSearchParams(window.location.search).get("beitrag"))[0]; // Deep-Link aus Vereinsmail
   const [shareValid, setShareValid] = useState(null); // null=prüft, true/false
   const [session,setSession]       = useState(undefined);
   const [profile,setProfile]       = useState(null);
   const [permissions,setPerms]         = useState(DEFAULT_PERMISSIONS);
   const [contentTypePerms,setContentTypePerms] = useState(DEFAULT_CONTENT_TYPE_PERMISSIONS);
-  const [screen,setScreen]         = useState("home");
+  const [screen,setScreen]         = useState(()=>beitragParam?"clubstream":"home");
   const [showLogin,setShowLogin]   = useState(false);
 
   const navigate = useCallback((s) => {
@@ -284,6 +285,7 @@ export default function App() {
 
   useEffect(()=>{
     history.replaceState({screen:"home"},"");
+    if(beitragParam) history.pushState({screen:"clubstream"},"");
     const onPop=(e)=>setScreen(e.state?.screen||"home");
     window.addEventListener("popstate",onPop);
     return ()=>window.removeEventListener("popstate",onPop);
@@ -340,10 +342,11 @@ export default function App() {
   if(isRecovery || (session && isRecovery)) return <ResetPasswordScreen/>;
   if(!session) {
     if(showLogin) return <LoginScreen onBack={()=>setShowLogin(false)}/>;
+    if(beitragParam && screen==="clubstream" && !canDoPublic("clubstream")) return <LoginScreen/>;
     const pubModules = MODULES.filter(m=>canDoPublic(m.id));
     if(pubModules.length===0) return <LoginScreen/>;
     // Öffentlich zugängliche Screens ohne Login
-    if(screen==="clubstream" && canDoPublic("clubstream")) return <ClubstreamApp profile={guestProfile} onBack={()=>navigate("home")} onLogin={()=>setShowLogin(true)} contentTypePerms={contentTypePerms}/>;
+    if(screen==="clubstream" && canDoPublic("clubstream")) return <ClubstreamApp profile={guestProfile} onBack={()=>navigate("home")} onLogin={()=>setShowLogin(true)} contentTypePerms={contentTypePerms} openId={beitragParam}/>;
     if(screen==="btv"        && canDoPublic("btv"))        return <BtvLinksScreen onBack={()=>navigate("home")}/>;
     if(screen==="heimspiel"  && canDoPublic("heimspiel"))  return <HeimspielwocheScreen onBack={()=>navigate("home")} profile={guestProfile}/>;
     return <HomeScreen profile={guestProfile} canDo={canDoPublic} isGuest
@@ -359,7 +362,7 @@ export default function App() {
   else if(screen==="kasse"      && canDo("kasse"))         el=<KasseApp       profile={profile} perms={permissions} onBack={()=>navigate("home")}/>;
   else if(screen==="settings"   && canDo("einstellungen")) el=<SettingsApp    profile={profile} onBack={()=>navigate("home")}/>;
   else if(screen==="kassenbuch" && canDo("kassenbuch"))    el=<KassenbuchApp  profile={profile} onBack={()=>navigate("home")}/>;
-  else if(screen==="clubstream" && canDo("clubstream"))    el=<ClubstreamApp  profile={profile} onBack={()=>navigate("home")} contentTypePerms={contentTypePerms}/>;
+  else if(screen==="clubstream" && canDo("clubstream"))    el=<ClubstreamApp  profile={profile} onBack={()=>navigate("home")} contentTypePerms={contentTypePerms} openId={beitragParam}/>;
   else if(screen==="btv"        && canDo("btv"))           el=<BtvLinksScreen onBack={()=>navigate("home")}/>;
   else if(screen==="heimspiel"  && canDo("heimspiel"))     el=<HeimspielwocheScreen onBack={()=>navigate("home")} profile={profile}/>;
   else el=<HomeScreen profile={profile} canDo={canDo}
@@ -1187,7 +1190,7 @@ function csMailDraft(item) {
     parts.push(`Termin: ${day}${t!=="00:00"?`, ${t} Uhr`:""}`);
   }
   if(item.event_location) parts.push(`Ort: ${item.event_location}`);
-  parts.push(`Mehr dazu in der App: ${window.location.origin}`);
+  parts.push(`Zum Beitrag in der App: ${window.location.origin}/?beitrag=${item.id}`);
   return parts.join("\n\n");
 }
 
@@ -1378,7 +1381,7 @@ function ClubstreamDetail({item,profile,onBack}) {
   );
 }
 
-function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_TYPE_PERMISSIONS}) {
+function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_TYPE_PERMISSIONS,openId=null}) {
   const [items,setItems]         = useState([]);
   const [photos,setPhotos]       = useState([]);
   const [pending,setPending]     = useState(0);
@@ -1419,6 +1422,24 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
       setLoading(false);
     });
   },[]);
+
+  // Deep-Link aus der Vereinsmail (?beitrag=<id>): Beitrag direkt öffnen, einmalig
+  const openHandled = useRef(false);
+  useEffect(()=>{
+    if(!openId||openHandled.current||loading) return;
+    openHandled.current = true;
+    const show=(it)=>{
+      const role=profile?.role;
+      if(it && (role==="admin" || (contentTypePerms[it.type]||[]).includes(role))) setDetail(it);
+    };
+    const found=items.find(i=>i.id===openId);
+    if(found) show(found);
+    else sb.from("news_items")
+      .select("id,title,type,summary,content,published_at,is_pinned,priority,event_start,event_end,event_location,result_home,result_away,team_name,opponent,league,age_group,valid_until,valid_from,image_url,push_sent")
+      .eq("id",openId).eq("status","published").is("deleted_at",null).maybeSingle()
+      .then(({data})=>show(data));
+    window.history.replaceState(window.history.state,"",window.location.pathname);
+  },[openId,loading,items]);
 
   if(detail) return <ClubstreamDetail item={detail} profile={profile} onBack={()=>setDetail(null)}/>;
 
