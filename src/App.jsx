@@ -59,6 +59,17 @@ async function resizeImageForUpload(file, maxDim = 1920, quality = 0.85) {
   }
 }
 
+// Startet den BTV-Abruf (GitHub-Workflow) über den geschützten Server-Endpunkt.
+// Liefert die fetch-Response (204 = gestartet).
+async function dispatchBtvFetch(inputs) {
+  const { data: { session } } = await sb.auth.getSession();
+  return fetch("/api/btv-dispatch", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token || ""}` },
+    body: JSON.stringify({ inputs: inputs || {} }),
+  });
+}
+
 async function deleteFromR2(keys) {
   const list = (Array.isArray(keys) ? keys : [keys]).filter(Boolean);
   if (list.length === 0) return;
@@ -375,10 +386,12 @@ function UserWidget({profile}) {
   });
   const [forceMobile, setForceMobile] = useState(()=>document.documentElement.classList.contains("force-mobile"));
   const [anonBookings, setAnonBookings] = useState(!!profile?.anonymous_bookings);
+  const [mailNotif, setMailNotif]   = useState(!!profile?.email_notifications);
   const isDesktop                   = window.innerWidth >= 768;
   const initials = profile?.name?.split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase() || "🎨";
 
   useEffect(()=>{ applyTheme(theme); }, []);
+  useEffect(()=>{ setMailNotif(!!profile?.email_notifications); }, [profile?.email_notifications]);
 
   const handleTheme = (id) => { setTheme(id); applyTheme(id); };
   const handleLayout = () => {
@@ -390,6 +403,12 @@ function UserWidget({profile}) {
     const next = !anonBookings;
     setAnonBookings(next);
     await sb.rpc("update_own_anonymous_bookings", { p_value: next });
+  };
+  const toggleMail = async () => {
+    const next = !mailNotif;
+    setMailNotif(next);
+    const { error } = await sb.rpc("update_own_email_notifications", { p_value: next });
+    if (error) setMailNotif(!next);
   };
 
   return (
@@ -451,6 +470,26 @@ function UserWidget({profile}) {
                   {anonBookings&&<span style={{fontSize:"0.625rem",color:T.info}}>✓</span>}
                 </button>
                 {anonBookings&&<div style={{fontSize:"0.625rem",color:T.textMuted,marginTop:4,paddingLeft:2}}>Andere sehen nur deine Initialen</div>}
+              </div>
+            )}
+
+            {profile?.id&&(
+              <div style={{borderTop:`1px solid ${T.bgBorder}`,paddingTop:12,marginTop:4}}>
+                <div style={{fontSize:"0.625rem",fontWeight:700,color:T.textMuted,textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>Benachrichtigungen</div>
+                <button onClick={toggleMail} style={{
+                  width:"100%",padding:"8px 10px",borderRadius:T.rSm,cursor:"pointer",
+                  border:mailNotif?`1.5px solid ${T.success}`:`1px solid ${T.bgBorder}`,
+                  background:mailNotif?T.success+"18":"transparent",
+                  color:mailNotif?T.success:T.textSecondary,fontSize:"0.8125rem",fontWeight:600,
+                  display:"flex",alignItems:"center",gap:8,
+                }}>
+                  <span>{mailNotif?"📧":"✉️"}</span>
+                  <span style={{flex:1,textAlign:"left"}}>E-Mail-Benachrichtigungen</span>
+                  {mailNotif&&<span style={{fontSize:"0.625rem",color:T.success}}>✓</span>}
+                </button>
+                <div style={{fontSize:"0.625rem",color:T.textMuted,marginTop:4,paddingLeft:2}}>
+                  {mailNotif?"Du bekommst Neuigkeiten vom Verein per Mail":"Neuigkeiten vom Verein per Mail erhalten"}
+                </div>
               </div>
             )}
 
@@ -3478,15 +3517,12 @@ function SettingsMannschaftenTab({onToast}) {
   const [teamsStatus,   setTeamsStatus]   = useState(null);
   const [playersStatus, setPlayersStatus] = useState({}); // { [groupId]: "running" | {ok:bool} }
   const [playersPopup,  setPlayersPopup]  = useState(null); // Teamname dessen Spieler angezeigt werden
-  const [githubPat,     setGithubPat_]    = useState("");
-  const [scrapedAt,     setScrapedAt]     = useState(null);
+  const [scrapedAt,    setScrapedAt]     = useState(null);
   const [playersData,   setPlayersData]   = useState(null); // btv_players
 
   useEffect(()=>{
     sb.from("settings").select("value").eq("key","btv_teams_config").single()
       .then(({data})=>{ if(data?.value) try { setTeamsConfig(JSON.parse(data.value)); } catch(_){} });
-    sb.from("settings").select("value").eq("key","github_pat").single()
-      .then(({data})=>{ if(data?.value) setGithubPat_(data.value); });
     sb.from("settings").select("value").eq("key","btv_club_teams").single()
       .then(({data})=>{ try { setScrapedAt(JSON.parse(data?.value)?.scrapedAt||null); } catch(_){} });
     sb.from("settings").select("value").eq("key","btv_players").single()
@@ -3501,15 +3537,9 @@ function SettingsMannschaftenTab({onToast}) {
   };
 
   const triggerTeamsLoad = async () => {
-    if(!githubPat) { onToast("Kein GitHub PAT hinterlegt (Display-Tab → Speichern)","error"); return; }
     setTeamsStatus("running");
     try {
-      const res = await fetch(
-        "https://api.github.com/repos/MeierAndre130577/tennis-herrieden/actions/workflows/btv-fetch.yml/dispatches",
-        { method:"POST",
-          headers:{Authorization:`Bearer ${githubPat}`,Accept:"application/vnd.github+json","Content-Type":"application/json"},
-          body: JSON.stringify({ref:"main", inputs:{teams_only:"true"}}) }
-      );
+      const res = await dispatchBtvFetch({teams_only:"true"});
       if(res.status===204){
         setTeamsStatus({ok:true, msg:"✅ Mannschaften-Fetch gestartet – dauert ~3 Min."});
         setTimeout(()=>setTeamsStatus(null), 8000);
@@ -3523,23 +3553,17 @@ function SettingsMannschaftenTab({onToast}) {
   };
 
   const triggerPlayersLoad = async (cfg) => {
-    if(!githubPat) { onToast("Kein GitHub PAT hinterlegt (Display-Tab → Speichern)","error"); return; }
     const groupIdM = cfg.url?.match(/groupid=(\d+)/i);
     if(!groupIdM) { onToast("Keine groupId in URL für diese Mannschaft","error"); return; }
     const groupId = groupIdM[1];
     setPlayersStatus(s=>({...s, [groupId]:"running"}));
     try {
-      const res = await fetch(
-        "https://api.github.com/repos/MeierAndre130577/tennis-herrieden/actions/workflows/btv-fetch.yml/dispatches",
-        { method:"POST",
-          headers:{Authorization:`Bearer ${githubPat}`,Accept:"application/vnd.github+json","Content-Type":"application/json"},
-          body: JSON.stringify({ref:"main", inputs:{
-            players_only:"true",
-            players_group_id: groupId,
-            players_team_name: cfg.teamName||"",
-            players_config_name: cfg.name||"",
-          }}) }
-      );
+      const res = await dispatchBtvFetch({
+        players_only:"true",
+        players_group_id: groupId,
+        players_team_name: cfg.teamName||"",
+        players_config_name: cfg.name||"",
+      });
       if(res.status===204){
         setPlayersStatus(s=>({...s, [groupId]:{ok:true}}));
         onToast(`✅ Spieler-Fetch gestartet: ${cfg.name} – dauert ~3–5 Min.`);
@@ -3805,30 +3829,22 @@ function SettingsMannschaftenTab({onToast}) {
 // ── SETTINGS: HINTERGRUND-JOBS ────────────────────────────────────────────
 function SettingsJobsTab() {
   const [data, setData]         = useState({});
-  const [githubPat, setGithubPat] = useState("");
   const [spielplanStatus, setSpielplanStatus] = useState(null); // null | "running" | "ok" | "error"
 
   useEffect(()=>{
-    const keys = ["btv_club_teams","btv_club_teams_ergebnisse","btv_players","github_pat"];
+    const keys = ["btv_club_teams","btv_club_teams_ergebnisse","btv_players"];
     sb.from("settings").select("key,value").in("key", keys).then(({data:rows})=>{
       if (!rows) return;
       const m = {};
       rows.forEach(r=>{ try { m[r.key] = typeof r.value==="string" ? JSON.parse(r.value) : r.value; } catch(_){ m[r.key]=r.value; } });
-      if (m.github_pat) setGithubPat(m.github_pat);
       setData(m);
     });
   },[]);
 
   const triggerSpielplan = async () => {
-    if(!githubPat) { alert("Kein GitHub PAT hinterlegt – bitte unter Display-Einstellungen speichern."); return; }
     setSpielplanStatus("running");
     try {
-      const res = await fetch(
-        "https://api.github.com/repos/MeierAndre130577/tennis-herrieden/actions/workflows/btv-fetch.yml/dispatches",
-        { method:"POST",
-          headers:{Authorization:`Bearer ${githubPat}`,Accept:"application/vnd.github+json","Content-Type":"application/json"},
-          body: JSON.stringify({ref:"main", inputs:{teams_only:"true"}}) }
-      );
+      const res = await dispatchBtvFetch({teams_only:"true"});
       if(res.status===204){
         setSpielplanStatus("ok");
         setTimeout(()=>setSpielplanStatus(null), 8000);
@@ -4091,7 +4107,6 @@ function SettingsDisplayTab({onToast}) {
   const [bildUrl,        setBildUrl]        = useState("");   // erstes Bild, Rückwärtskompatibilität
   const [bildUrls,       setBildUrls]       = useState([]);
   const [bildInterval,   setBildInterval]   = useState(10);
-  const [githubPat,      setGithubPat]      = useState("");
   const [timeEntries,    setTimeEntries]    = useState([]);
   const [newEntry,       setNewEntry]       = useState({mode:"schedule",fromDate:"",fromTime:"08:00",toDate:"",toTime:"20:00"});
   const [matchCache,     setMatchCache]     = useState(null); // btv_match_cache
@@ -4466,7 +4481,7 @@ function SettingsDisplayTab({onToast}) {
     sb.from("settings").select("*")
       .in("key",["display_mode","display_theme","display_vereinsnummer","display_saison",
                  "display_mannschaft","display_gegner","display_match_url",
-                 "display_bild_url","display_bild_urls","display_bild_interval","github_pat",
+                 "display_bild_url","display_bild_urls","display_bild_interval",
                  "display_time_entries",
                  "btv_match_cache","btv_fetch_enabled",
                  "display_affe_minuten","display_affe_sekunden","display_affe_modes",
@@ -4492,7 +4507,6 @@ function SettingsDisplayTab({onToast}) {
           if(!liste.length&&map.display_bild_url) liste=[map.display_bild_url];
           setBildUrls(liste);
         }
-        if(map.github_pat)             setGithubPat(map.github_pat);
         try { if(map.display_time_entries) setTimeEntries(JSON.parse(map.display_time_entries)); } catch(_){}
         try { if(map.btv_match_cache)         setMatchCache(JSON.parse(map.btv_match_cache)); } catch(_){}
         if(map.btv_fetch_enabled !== undefined) setFetchEnabled(map.btv_fetch_enabled !== "false");
@@ -4615,7 +4629,6 @@ function SettingsDisplayTab({onToast}) {
       {key:"display_mannschaft",      value:mannschaft},
       {key:"display_gegner",          value:gegner},
       {key:"display_match_url",       value:matchUrl},
-      {key:"github_pat",              value:githubPat},
       {key:"display_time_entries",     value:JSON.stringify(timeEntries)},
       {key:"display_foto_interval",   value:String(fotosInterval)},
       {key:"display_affe_minuten",    value:String(affeMinuten)},
@@ -4636,15 +4649,9 @@ function SettingsDisplayTab({onToast}) {
   };
 
   const triggerFetch = async () => {
-    if(!githubPat) { onToast("Kein GitHub PAT hinterlegt – bitte zuerst speichern","error"); return; }
     setFetchStatus("running");
     try {
-      const res = await fetch(
-        "https://api.github.com/repos/MeierAndre130577/tennis-herrieden/actions/workflows/btv-fetch.yml/dispatches",
-        { method:"POST",
-          headers:{ Authorization:`Bearer ${githubPat}`, Accept:"application/vnd.github+json", "Content-Type":"application/json" },
-          body: JSON.stringify({ref:"main"}) }
-      );
+      const res = await dispatchBtvFetch({});
       if(res.status === 204) {
         setFetchStatus("ok");
         onToast("✅ Fetch gestartet – läuft in ~30 Sek.");

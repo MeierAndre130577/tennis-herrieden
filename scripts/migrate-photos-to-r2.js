@@ -85,6 +85,7 @@ async function copyFile(path) {
     Key: path,
     Body: buffer,
     ContentType: data.type || "application/octet-stream",
+    CacheControl: "public, max-age=31536000, immutable",
   }));
   return buffer.length;
 }
