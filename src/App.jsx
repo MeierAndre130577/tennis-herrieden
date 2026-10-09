@@ -2336,6 +2336,7 @@ function SettingsApp({profile,onBack}) {
     {id:"permissions",  label:"Rechte",     icon:"🔐"},
     {id:"display",      label:"Display",    icon:"🖥️"},
     {id:"mannschaften", label:"Teams",      icon:"🏆"},
+    {id:"mail",         label:"Mail",       icon:"✉️"},
   ];
 
   return (
@@ -2383,12 +2384,64 @@ function SettingsApp({profile,onBack}) {
         {tab==="permissions"  &&<SettingsPermissionsTab  onToast={showToast}/>}
         {tab==="display"      &&<SettingsDisplayTab      onToast={showToast}/>}
         {tab==="mannschaften" &&<SettingsMannschaftenTab onToast={showToast}/>}
+        {tab==="mail"         &&<SettingsMailTab/>}
         </div>{/* h-content */}
         </div>{/* h-cols */}
 
         {toast&&<div style={{...S.toast,background:toast.type==="error"?"#EF4444":"#10B981"}}>{toast.msg}</div>}
       </div>
     </div>
+  );
+}
+
+// ── SETTINGS: MAIL ────────────────────────────────────────────────────────
+// Mail an Mitglieder (Empfänger: alle mit eingeschalteten E-Mail-Benachrichtigungen)
+function SettingsMailTab() {
+  const [subject,setSubject]=useState("");
+  const [text,setText]=useState("");
+  const [busy,setBusy]=useState(false);
+  const [msg,setMsg]=useState(null);
+  const call=async(body)=>{
+    const {data:{session}}=await sb.auth.getSession();
+    const r=await fetch("/api/send-member-mail",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${session?.access_token||""}`},body:JSON.stringify(body)});
+    const j=await r.json().catch(()=>({}));
+    return {ok:r.ok,j};
+  };
+  const run=async(kind)=>{
+    setMsg(null);
+    if(kind!=="count"&&(!subject.trim()||!text.trim())){ setMsg({text:"Betreff und Text ausfüllen.",type:"error"}); return; }
+    setBusy(true);
+    try{
+      if(kind==="count"){
+        const {ok,j}=await call({dryRun:true});
+        setMsg(ok?{text:`${j.recipients} Empfänger würden die Mail bekommen.`,type:"ok"}:{text:j.error||"Fehler",type:"error"});
+      } else if(kind==="self"){
+        const {ok,j}=await call({subject,text,selfOnly:true});
+        setMsg(ok?{text:"Testmail an dich gesendet.",type:"ok"}:{text:j.error||"Fehler",type:"error"});
+      } else {
+        const c=await call({dryRun:true});
+        if(!c.ok){ setMsg({text:c.j.error||"Fehler",type:"error"}); }
+        else if(c.j.recipients===0){ setMsg({text:"Keine Empfänger vorhanden.",type:"error"}); }
+        else if(window.confirm(`Mail wirklich an ${c.j.recipients} Mitglieder senden?`)){
+          const {ok,j}=await call({subject,text});
+          setMsg(ok?{text:`${j.sent} Mails gesendet.`,type:"ok"}:{text:j.error||"Fehler",type:"error"});
+        }
+      }
+    } finally { setBusy(false); }
+  };
+  return (
+    <div style={K.page}><div style={{...S.card,display:"flex",flexDirection:"column",gap:10,maxWidth:560,marginTop:4}}>
+      <div style={{fontWeight:800}}>✉️ Mail an Mitglieder</div>
+      <div style={{fontSize:"0.75rem",color:T.textSecondary}}>Geht an alle Mitglieder mit eingeschalteten E-Mail-Benachrichtigungen. Der Abschalt-Hinweis wird automatisch angehängt.</div>
+      <input placeholder="Betreff" value={subject} onChange={e=>setSubject(e.target.value)} style={S.input}/>
+      <textarea placeholder="Text" value={text} onChange={e=>setText(e.target.value)} style={{...S.input,minHeight:140,resize:"vertical",fontFamily:"inherit"}}/>
+      {msg&&<div style={{padding:"10px 12px",borderRadius:8,fontSize:"0.8125rem",background:msg.type==="error"?"#FEE2E2":"#DCFCE7",color:msg.type==="error"?"#991B1B":"#166534"}}>{msg.text}</div>}
+      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+        <button style={{...S.tabBtn,opacity:busy?.6:1}} disabled={busy} onClick={()=>run("self")}>Test an mich</button>
+        <button style={{...S.tabBtn,opacity:busy?.6:1}} disabled={busy} onClick={()=>run("count")}>Empfänger zählen</button>
+        <button style={{...S.primaryBtn,opacity:busy?.6:1}} disabled={busy} onClick={()=>run("all")}>An alle senden</button>
+      </div>
+    </div></div>
   );
 }
 
@@ -6205,56 +6258,6 @@ function MassBookView({data,user,onMassBook,onCancelMany}) {
   );
 }
 
-// Mail an Mitglieder (Empfänger: alle mit eingeschalteten E-Mail-Benachrichtigungen)
-function MemberMailForm() {
-  const [subject,setSubject]=useState("");
-  const [text,setText]=useState("");
-  const [busy,setBusy]=useState(false);
-  const [msg,setMsg]=useState(null);
-  const call=async(body)=>{
-    const {data:{session}}=await sb.auth.getSession();
-    const r=await fetch("/api/send-member-mail",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${session?.access_token||""}`},body:JSON.stringify(body)});
-    const j=await r.json().catch(()=>({}));
-    return {ok:r.ok,j};
-  };
-  const run=async(kind)=>{
-    setMsg(null);
-    if(kind!=="count"&&(!subject.trim()||!text.trim())){ setMsg({text:"Betreff und Text ausfüllen.",type:"error"}); return; }
-    setBusy(true);
-    try{
-      if(kind==="count"){
-        const {ok,j}=await call({dryRun:true});
-        setMsg(ok?{text:`${j.recipients} Empfänger würden die Mail bekommen.`,type:"ok"}:{text:j.error||"Fehler",type:"error"});
-      } else if(kind==="self"){
-        const {ok,j}=await call({subject,text,selfOnly:true});
-        setMsg(ok?{text:"Testmail an dich gesendet.",type:"ok"}:{text:j.error||"Fehler",type:"error"});
-      } else {
-        const c=await call({dryRun:true});
-        if(!c.ok){ setMsg({text:c.j.error||"Fehler",type:"error"}); }
-        else if(c.j.recipients===0){ setMsg({text:"Keine Empfänger vorhanden.",type:"error"}); }
-        else if(window.confirm(`Mail wirklich an ${c.j.recipients} Mitglieder senden?`)){
-          const {ok,j}=await call({subject,text});
-          setMsg(ok?{text:`${j.sent} Mails gesendet.`,type:"ok"}:{text:j.error||"Fehler",type:"error"});
-        }
-      }
-    } finally { setBusy(false); }
-  };
-  return (
-    <div style={{...S.card,display:"flex",flexDirection:"column",gap:10,maxWidth:560}}>
-      <div style={{fontWeight:800}}>✉️ Mail an Mitglieder</div>
-      <div style={{fontSize:"0.75rem",color:T.textSecondary}}>Geht an alle Mitglieder mit eingeschalteten E-Mail-Benachrichtigungen. Der Abschalt-Hinweis wird automatisch angehängt.</div>
-      <input placeholder="Betreff" value={subject} onChange={e=>setSubject(e.target.value)} style={S.input}/>
-      <textarea placeholder="Text" value={text} onChange={e=>setText(e.target.value)} style={{...S.input,minHeight:140,resize:"vertical",fontFamily:"inherit"}}/>
-      {msg&&<div style={{padding:"10px 12px",borderRadius:8,fontSize:"0.8125rem",background:msg.type==="error"?"#FEE2E2":"#DCFCE7",color:msg.type==="error"?"#991B1B":"#166534"}}>{msg.text}</div>}
-      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-        <button style={{...S.tabBtn,opacity:busy?.6:1}} disabled={busy} onClick={()=>run("self")}>Test an mich</button>
-        <button style={{...S.tabBtn,opacity:busy?.6:1}} disabled={busy} onClick={()=>run("count")}>Empfänger zählen</button>
-        <button style={{...S.primaryBtn,opacity:busy?.6:1}} disabled={busy} onClick={()=>run("all")}>An alle senden</button>
-      </div>
-    </div>
-  );
-}
-
 function AdminView({data,allBookings,guestFee,onSaveGuestFee,onAddCourt,onUpdateCourt,onDeleteCourt,onDeleteUser,onCancelBooking,onMarkPaid}) {
   const [tab,setTab]=useState("guest");
   const [supaUsers,setSupaUsers]=useState([]);
@@ -6279,9 +6282,8 @@ function AdminView({data,allBookings,guestFee,onSaveGuestFee,onAddCourt,onUpdate
     <div style={{padding:"24px 28px"}}>
       <h1 style={S.pageTitle}>Administration</h1>
       <div style={{display:"flex",gap:8,marginBottom:24,flexWrap:"wrap"}}>
-        {[["guest","💶 Gastspieler"],["bookings","📅 Buchungen"],["mail","✉️ Mail"]].map(([id,l])=>(<button key={id} style={{...S.tabBtn,...(tab===id?S.tabBtnActive:{})}} onClick={()=>setTab(id)}>{l}</button>))}
+        {[["guest","💶 Gastspieler"],["bookings","📅 Buchungen"]].map(([id,l])=>(<button key={id} style={{...S.tabBtn,...(tab===id?S.tabBtnActive:{})}} onClick={()=>setTab(id)}>{l}</button>))}
       </div>
-      {tab==="mail"&&<MemberMailForm/>}
       {tab==="guest"&&(<>
         <div style={{background:"#EFF6FF",border:"1.5px solid #BFDBFE",borderRadius:12,padding:14,marginBottom:16}}>
           <div style={{fontWeight:800,fontSize:"0.8125rem",color:"#1E40AF",marginBottom:10}}>⚙️ Gebühr pro Gastspieler-Buchung</div>
