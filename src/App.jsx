@@ -1290,7 +1290,267 @@ function ClubstreamMailBox({item}) {
   );
 }
 
-function ClubstreamDetail({item,profile,onBack}) {
+// Spalten für Liste (ohne content) und Detail/Bearbeiten (mit content)
+const CS_COLS_LIST = "id,title,type,summary,status,published_at,created_at,is_pinned,priority,event_start,event_end,event_location,result_home,result_away,team_name,opponent,league,age_group,valid_until,valid_from,image_url,push_sent";
+const CS_COLS_FULL = CS_COLS_LIST + ",content";
+const CS_TYPE_ORDER = ["club_news","important_notice","event","match_result","court_notice","training_notice","team_news","document","social_post","discussion","external_article"];
+const CS_OPEN_STATUSES = ["imported","pending_review","draft"];
+const CS_STATUS_LABELS = {imported:"Importiert",pending_review:"Wartet auf Freigabe",draft:"Entwurf",published:"Veröffentlicht",rejected:"Abgelehnt"};
+const CS_HUB_SOURCES_URL = "https://clubstream-hub.vercel.app/admin/sources";
+
+// Beitrag anlegen/bearbeiten (nur Admin; RLS-Policy "Admin schreibt" auf news_items)
+function ClubstreamEditor({item,profile,onSaved,onCancel}) {
+  const isEdit = !!item?.id;
+  const isRueckblick = item?.age_group==="wochenrueckblick";
+  const initText = isRueckblick ? "" : csStripHtml(item?.content);
+  const hadHtml = !isRueckblick && /<[a-z][\s\S]*>/i.test(item?.content||"");
+  const isoOf = v => v ? new Date(v).toISOString() : "";
+  const timeOf = v => { const t=isoOf(v).slice(11,16); return t&&t!=="00:00"?t:""; };
+  const [f,setF] = useState(()=>({
+    type:item?.type||"club_news", title:item?.title||"", summary:item?.summary||"", text:initText,
+    image_url:item?.image_url||"",
+    ev_date:isoOf(item?.event_start).slice(0,10), ev_time:timeOf(item?.event_start),
+    ev_end_date:isoOf(item?.event_end).slice(0,10), ev_end_time:timeOf(item?.event_end),
+    event_location:item?.event_location||"",
+    team_name:item?.team_name||"", opponent:item?.opponent||"", league:item?.league||"",
+    result_home:item?.result_home??"", result_away:item?.result_away??"",
+    valid_from:item?.valid_from?String(item.valid_from).slice(0,10):"",
+    valid_until:item?.valid_until?String(item.valid_until).slice(0,10):"",
+    is_pinned:!!item?.is_pinned, important:(item?.priority||0)>=2,
+  }));
+  const [busy,setBusy]       = useState(false);
+  const [imgBusy,setImgBusy] = useState(false);
+  const [err,setErr]         = useState(null);
+  const uploaded = useRef([]); // in dieser Sitzung hochgeladene Bilder (Aufräumen bei Abbruch/Ersetzen)
+  const fileRef  = useRef(null);
+  const set = (k,v) => setF(p=>({...p,[k]:v}));
+
+  const pickImage = async (file) => {
+    setImgBusy(true); setErr(null);
+    try {
+      const {publicUrl} = await uploadToR2(await resizeImageForUpload(file), "news");
+      uploaded.current.push(publicUrl);
+      set("image_url", publicUrl);
+    } catch(e) { setErr(e.message||"Bild-Upload fehlgeschlagen"); }
+    setImgBusy(false);
+  };
+
+  const cancel = async () => {
+    for(const u of uploaded.current) await deleteImageByUrl(u,"news/");
+    onCancel();
+  };
+
+  const save = async (status) => {
+    setErr(null);
+    if(!f.title.trim()) { setErr("Bitte einen Titel eingeben."); return; }
+    if(f.type==="event" && !f.ev_date) { setErr("Bitte das Datum des Termins eingeben."); return; }
+    if(f.valid_from && f.valid_until && f.valid_until<f.valid_from) { setErr("„Anzeigen bis“ liegt vor „Anzeigen ab“."); return; }
+    // Termine werden als UTC gespeichert und mit timeZone:"UTC" angezeigt (= eingegebene Uhrzeit)
+    const ts = (d,t) => d ? `${d}T${t||"00:00"}:00Z` : null;
+    const num = v => v===""||v==null ? null : Number(v);
+    const now = new Date().toISOString();
+    const p = {
+      type:f.type, title:f.title.trim(), summary:f.summary.trim()||null,
+      image_url:f.image_url||null, is_pinned:f.is_pinned,
+      priority:f.important?2:Math.min(item?.priority??1,1),
+      valid_from:f.valid_from||null, valid_until:f.valid_until||null,
+      status, updated_at:now,
+    };
+    if(f.type==="event") Object.assign(p,{event_start:ts(f.ev_date,f.ev_time), event_end:ts(f.ev_end_date,f.ev_end_time), event_location:f.event_location.trim()||null});
+    if(f.type==="match_result" && !isRueckblick) Object.assign(p,{team_name:f.team_name.trim()||null, opponent:f.opponent.trim()||null, league:f.league.trim()||null, result_home:num(f.result_home), result_away:num(f.result_away)});
+    // Text nur schreiben, wenn er geändert wurde (importierte Artikel behalten sonst ihr HTML)
+    if(!isRueckblick && (!isEdit || f.text!==initText)) p.content = f.text.trim()||null;
+    if(status==="published" && item?.status!=="published") p.published_at = now;
+    if(!isEdit) Object.assign(p,{author_id:profile.id, author_name:profile.name||null});
+
+    setBusy(true);
+    try {
+      const q = isEdit
+        ? sb.from("news_items").update(p).eq("id",item.id)
+        : sb.from("news_items").insert(p);
+      const {data,error} = await q.select(CS_COLS_FULL).single();
+      if(error) throw error;
+      // Ersetzte/verworfene eigene Bilder aufräumen (nur news/-Uploads, keine fremden Links)
+      const stale = [...uploaded.current, item?.image_url].filter(u=>u && u!==data.image_url);
+      for(const u of stale) await deleteImageByUrl(u,"news/");
+      uploaded.current = [];
+      onSaved(data);
+    } catch(e) {
+      setErr(/row-level security/i.test(e.message||"") ? "Keine Berechtigung: Nur Admins dürfen Beiträge speichern." : (e.message||"Speichern fehlgeschlagen"));
+    }
+    setBusy(false);
+  };
+
+  const lbl = {fontSize:"0.6875rem",fontWeight:700,color:T.textMuted,textTransform:"uppercase",letterSpacing:.6,marginBottom:4,display:"block"};
+  const box = {background:T.bgCard,border:`1px solid ${T.bgBorder}`,borderRadius:14,padding:"14px",display:"flex",flexDirection:"column",gap:12};
+  const row2 = {display:"grid",gridTemplateColumns:"1fr 1fr",gap:10};
+  const field = (k,label,props={}) => (
+    <div><label style={lbl}>{label}</label><input value={f[k]} onChange={e=>set(k,e.target.value)} style={S.input} {...props}/></div>
+  );
+  const wasPublished = item?.status==="published";
+
+  return (
+    <div style={H.wrap}>
+      <div style={H.inner} className="h-inner">
+        <ScreenHeader onBack={cancel} title={isEdit?"Beitrag bearbeiten":"Neuer Beitrag"}/>
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          <div style={box}>
+            <div>
+              <label style={lbl}>Art</label>
+              <select value={f.type} onChange={e=>set("type",e.target.value)} style={S.input} disabled={isRueckblick}>
+                {CS_TYPE_ORDER.map(t=><option key={t} value={t}>{CS_ICONS[t]} {CS_LABELS[t]}</option>)}
+              </select>
+            </div>
+            {field("title","Titel *",{placeholder:"Kurz und klar"})}
+            <div>
+              <label style={lbl}>Kurztext (Vorschau in der Liste)</label>
+              <textarea value={f.summary} onChange={e=>set("summary",e.target.value)} rows={2} style={{...S.input,resize:"vertical",fontFamily:"inherit"}}/>
+            </div>
+            {!isRueckblick&&(
+              <div>
+                <label style={lbl}>Text</label>
+                <textarea value={f.text} onChange={e=>set("text",e.target.value)} rows={7} style={{...S.input,resize:"vertical",fontFamily:"inherit",lineHeight:1.5}}/>
+                {hadHtml&&<div style={{fontSize:"0.6875rem",color:T.textSecondary,marginTop:4}}>Importierter Artikel: Änderst du den Text, wird er als reiner Text gespeichert (Formatierung geht verloren).</div>}
+              </div>
+            )}
+          </div>
+
+          {f.type==="event"&&(
+            <div style={{...box,borderColor:"#8B5CF655"}}>
+              <div style={row2}>
+                {field("ev_date","Datum *",{type:"date"})}
+                {field("ev_time","Uhrzeit",{type:"time"})}
+                {field("ev_end_date","Ende Datum",{type:"date"})}
+                {field("ev_end_time","Ende Uhrzeit",{type:"time"})}
+              </div>
+              {field("event_location","Ort",{placeholder:"Tennisheim, Anlage …"})}
+            </div>
+          )}
+
+          {f.type==="match_result"&&!isRueckblick&&(
+            <div style={{...box,borderColor:"#22C55E55"}}>
+              <div style={row2}>
+                {field("team_name","Mannschaft",{placeholder:"Herren 1"})}
+                {field("opponent","Gegner")}
+                {field("result_home","Punkte Herrieden",{type:"number",min:0})}
+                {field("result_away","Punkte Gegner",{type:"number",min:0})}
+              </div>
+              {field("league","Liga")}
+            </div>
+          )}
+
+          <div style={box}>
+            <label style={{...lbl,marginBottom:0}}>Bild</label>
+            {f.image_url&&<img src={f.image_url} alt="" style={{width:"100%",maxHeight:220,objectFit:"cover",borderRadius:10}}/>}
+            <input ref={fileRef} type="file" accept="image/*" style={{display:"none"}} onChange={e=>{const fl=e.target.files[0]; e.target.value=""; if(fl) pickImage(fl);}}/>
+            <div style={{display:"flex",gap:8}}>
+              <button type="button" style={{...S.ghostBtn,flex:1,padding:"9px 12px"}} disabled={imgBusy} onClick={()=>fileRef.current.click()}>
+                {imgBusy?"⏳ Lädt hoch …":f.image_url?"Bild ersetzen":"📷 Bild hinzufügen"}
+              </button>
+              {f.image_url&&<button type="button" style={S.cancelBtn} onClick={()=>set("image_url","")}>Entfernen</button>}
+            </div>
+          </div>
+
+          <div style={box}>
+            <div style={row2}>
+              {field("valid_from","Anzeigen ab",{type:"date"})}
+              {field("valid_until","Anzeigen bis",{type:"date"})}
+            </div>
+            <label style={{display:"flex",alignItems:"center",gap:8,fontSize:"0.8125rem",color:T.textPrimary,cursor:"pointer"}}>
+              <input type="checkbox" checked={f.is_pinned} onChange={e=>set("is_pinned",e.target.checked)}/> 📌 Oben anheften
+            </label>
+            <label style={{display:"flex",alignItems:"center",gap:8,fontSize:"0.8125rem",color:T.textPrimary,cursor:"pointer"}}>
+              <input type="checkbox" checked={f.important} onChange={e=>set("important",e.target.checked)}/> ❗ Als wichtig markieren
+            </label>
+          </div>
+
+          {err&&<div style={{padding:"10px 12px",borderRadius:8,fontSize:"0.8125rem",background:"#FEE2E2",color:"#991B1B"}}>{err}</div>}
+
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            <button style={{...S.primaryBtn,flex:2,opacity:busy||imgBusy?.5:1}} disabled={busy||imgBusy} onClick={()=>save("published")}>
+              {busy?"Speichert …":wasPublished?"Speichern":"✅ Veröffentlichen"}
+            </button>
+            {!wasPublished&&(
+              <button style={{...S.ghostBtn,flex:1,opacity:busy||imgBusy?.5:1}} disabled={busy||imgBusy} onClick={()=>save("draft")}>Als Entwurf</button>
+            )}
+          </div>
+          {!isEdit&&<div style={{fontSize:"0.75rem",color:T.textSecondary}}>Nach dem Veröffentlichen kannst du den Beitrag direkt per E-Mail an die Mitglieder schicken.</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Offene Beiträge: aus Quellen importiert, wartend oder Entwurf (nur Admin)
+function ClubstreamQueue({onBack,onEdit}) {
+  const [items,setItems]   = useState(null);
+  const [acting,setActing] = useState(null);
+  const [err,setErr]       = useState(null);
+
+  const load = useCallback(async()=>{
+    const {data,error} = await sb.from("news_items").select(CS_COLS_FULL)
+      .in("status",CS_OPEN_STATUSES).is("deleted_at",null)
+      .order("created_at",{ascending:false}).limit(100);
+    if(error) setErr(error.message);
+    setItems(data||[]);
+  },[]);
+  useEffect(()=>{ load(); },[load]);
+
+  const setStatus = async (it,status) => {
+    if(status==="rejected" && !window.confirm(`„${it.title}“ ablehnen? Der Beitrag erscheint dann nicht im Clubstream.`)) return;
+    setActing(it.id); setErr(null);
+    const now = new Date().toISOString();
+    const upd = {status, updated_at:now, ...(status==="published"?{published_at:now}:{})};
+    const {error} = await sb.from("news_items").update(upd).eq("id",it.id);
+    if(error) setErr(error.message); else await load();
+    setActing(null);
+  };
+
+  return (
+    <div style={H.wrap}>
+      <div style={H.inner} className="h-inner">
+        <ScreenHeader onBack={onBack} title="Offene Beiträge"/>
+        {err&&<div style={{padding:"10px 12px",borderRadius:8,fontSize:"0.8125rem",background:"#FEE2E2",color:"#991B1B",marginBottom:10}}>{err}</div>}
+        {items===null?(
+          <div style={{color:T.textMuted,fontSize:T.fzBody}}>Lädt …</div>
+        ):items.length===0?(
+          <div style={{background:T.bgCard,border:`1px solid ${T.bgBorder}`,borderRadius:T.rMd,padding:"28px 14px",textAlign:"center",color:T.textMuted,fontSize:T.fzBody}}>
+            ✓ Nichts offen. Alle Beiträge sind bearbeitet.
+          </div>
+        ):(
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {items.map(it=>{
+              const color = CS_COLORS[it.type]||"#94A3B8";
+              const preview = it.summary || csStripHtml(it.content);
+              return (
+                <div key={it.id} style={{background:T.bgCard,border:`1.5px solid ${color}33`,borderRadius:T.rMd,padding:"12px 14px",display:"flex",flexDirection:"column",gap:8,opacity:acting===it.id?.5:1}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,fontSize:"0.625rem",fontWeight:700,textTransform:"uppercase",letterSpacing:.7}}>
+                    <span style={{color}}>{CS_ICONS[it.type]} {CS_LABELS[it.type]||it.type}</span>
+                    <span style={{color:it.status==="draft"?T.textSecondary:"#F59E0B"}}>· {CS_STATUS_LABELS[it.status]||it.status}</span>
+                    <span style={{marginLeft:"auto",color:T.textMuted,fontWeight:400,textTransform:"none",letterSpacing:0}}>{csTimeAgo(it.created_at)}</span>
+                  </div>
+                  <div style={{fontWeight:700,fontSize:T.fzBody,color:T.textPrimary}}>{it.title||"(ohne Titel)"}</div>
+                  {preview&&<div style={{fontSize:T.fzSm,color:T.textMuted,display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{preview}</div>}
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                    <button disabled={acting===it.id} onClick={()=>setStatus(it,"published")} style={{...S.primaryBtn,padding:"8px 14px",fontSize:"0.8125rem"}}>✅ Freigeben</button>
+                    <button disabled={acting===it.id} onClick={()=>onEdit(it)} style={{...S.ghostBtn,padding:"8px 14px",fontSize:"0.8125rem"}}>✏️ Bearbeiten</button>
+                    <button disabled={acting===it.id} onClick={()=>setStatus(it,"rejected")} style={{...S.cancelBtn,marginLeft:"auto"}}>Ablehnen</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <div style={{marginTop:16,fontSize:"0.75rem",color:T.textSecondary,textAlign:"center"}}>
+          Automatische Quellen (Website, Instagram) werden noch im{" "}
+          <a href={CS_HUB_SOURCES_URL} target="_blank" rel="noopener noreferrer" style={{color:T.textMuted}}>Clubstream Hub</a> verwaltet.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ClubstreamDetail({item,profile,onBack,onEdit,onDeleted}) {
   const color   = CS_COLORS[item.type]||"#94A3B8";
   const icon    = CS_ICONS[item.type]||"📰";
   const label   = CS_LABELS[item.type]||item.type;
@@ -1307,7 +1567,7 @@ function ClubstreamDetail({item,profile,onBack}) {
             <span style={{fontSize:"1.375rem"}}>{icon}</span>
             <span style={{fontSize:"0.6875rem",fontWeight:700,color,textTransform:"uppercase",letterSpacing:.8}}>{label}</span>
             {item.is_pinned&&<span style={{fontSize:"0.6875rem",color:"#EAB308"}}>📌 Angeheftet</span>}
-            {item.priority==="urgent"&&<span style={{fontSize:"0.6875rem",color:"#EF4444",fontWeight:800}}>DRINGEND</span>}
+            {item.priority>=2&&<span style={{fontSize:"0.6875rem",color:"#EF4444",fontWeight:800}}>WICHTIG</span>}
           </div>
 
           {/* Titel */}
@@ -1397,6 +1657,17 @@ function ClubstreamDetail({item,profile,onBack}) {
 
         {profile?.role==="admin"&&<ClubstreamMailBox item={item}/>}
 
+        {profile?.role==="admin"&&(onEdit||onDeleted)&&(
+          <div style={{display:"flex",gap:8,marginTop:12}}>
+            {onEdit&&<button style={{...S.ghostBtn,flex:1}} onClick={()=>onEdit(item)}>✏️ Bearbeiten</button>}
+            {onDeleted&&<button style={{...S.cancelBtn,padding:"11px 16px"}} onClick={async()=>{
+              if(!window.confirm(`„${item.title}“ aus dem Clubstream entfernen?`)) return;
+              const {error}=await sb.from("news_items").update({deleted_at:new Date().toISOString()}).eq("id",item.id);
+              if(error) window.alert("Löschen fehlgeschlagen: "+error.message); else onDeleted(item);
+            }}>🗑 Löschen</button>}
+          </div>
+        )}
+
       </div>
     </div>
   );
@@ -1424,19 +1695,24 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
   const [allIdxMap,setAllIdxMap]     = useState({});
   const fileInputRef                 = useRef(null);
 
-  useEffect(()=>{
-    setLoading(true);
+  const isAdmin = profile?.role==="admin";
+  // null = Liste, "queue" = offene Beiträge, {edit:item|null, from} = Formular
+  const [mode,setMode] = useState(null);
+
+  const load = useCallback(()=>{
     Promise.all([
       // Ohne "content": der volle Artikeltext macht ~2/3 der Bytes aus und wird
       // erst in der Detailansicht gebraucht (openDetail lädt ihn nach).
       sb.from("news_items")
-        .select("id,title,type,summary,published_at,is_pinned,priority,event_start,event_end,event_location,result_home,result_away,team_name,opponent,league,age_group,valid_until,valid_from,image_url,push_sent")
+        .select(CS_COLS_LIST)
         .eq("status","published")
         .is("deleted_at",null)
         .order("is_pinned",{ascending:false})
         .order("published_at",{ascending:false})
         .limit(60),
-      sb.from("news_items").select("*",{count:"exact",head:true}).eq("status","pending_review").is("deleted_at",null),
+      isAdmin
+        ? sb.from("news_items").select("id",{count:"exact",head:true}).in("status",CS_OPEN_STATUSES).is("deleted_at",null)
+        : Promise.resolve({count:0}),
       sb.from("club_photos").select("id,url,image_url,caption,created_at,user_id").order("created_at",{ascending:false}).limit(200),
     ]).then(([{data:news,error},{count},{data:pics}])=>{
       if(!error) setItems(news||[]);
@@ -1444,7 +1720,8 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
       setPhotos(visiblePhotos(pics));
       setLoading(false);
     });
-  },[]);
+  },[isAdmin]);
+  useEffect(()=>{ setLoading(true); load(); },[load]);
 
   // Deep-Link aus der Vereinsmail (?beitrag=<id>): Beitrag direkt öffnen, einmalig
   const openHandled = useRef(false);
@@ -1457,13 +1734,27 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
     };
     // Immer frisch laden: die Liste enthält keinen Artikeltext (content)
     sb.from("news_items")
-      .select("id,title,type,summary,content,published_at,is_pinned,priority,event_start,event_end,event_location,result_home,result_away,team_name,opponent,league,age_group,valid_until,valid_from,image_url,push_sent")
+      .select(CS_COLS_FULL)
       .eq("id",openId).eq("status","published").is("deleted_at",null).maybeSingle()
       .then(({data})=>show(data));
     window.history.replaceState(window.history.state,"",window.location.pathname);
   },[openId,loading]);
 
-  if(detail) return <ClubstreamDetail item={detail} profile={profile} onBack={()=>setDetail(null)}/>;
+  if(mode && typeof mode==="object") return (
+    <ClubstreamEditor item={mode.edit} profile={profile}
+      onCancel={()=>{ if(mode.from==="detail") setDetail(mode.edit); setMode(mode.from==="queue"?"queue":null); }}
+      onSaved={saved=>{
+        load();
+        if(saved.status==="published"){ setMode(null); setDetail(saved); }
+        else setMode("queue");
+      }}/>
+  );
+  if(mode==="queue") return <ClubstreamQueue onBack={()=>{ setMode(null); load(); }} onEdit={it=>setMode({edit:it,from:"queue"})}/>;
+  if(detail) return (
+    <ClubstreamDetail item={detail} profile={profile} onBack={()=>setDetail(null)}
+      onEdit={isAdmin?(it=>{ setDetail(null); setMode({edit:it,from:"detail"}); }):undefined}
+      onDeleted={isAdmin?(()=>{ setDetail(null); load(); }):undefined}/>
+  );
 
   const openDetail = async (item) => {
     if(item.content!==undefined){ setDetail(item); return; }
@@ -1545,21 +1836,16 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
           <div style={{display:"flex",alignItems:"center",gap:10}}>
             <button style={H.backBtn} onClick={onBack}>‹ Zurück</button>
             <div style={{flex:1}}/>
-            {pending>0&&(
-              <span style={{fontSize:"0.6875rem",fontWeight:700,color:"#F59E0B",background:"#F59E0B18",border:"1px solid #F59E0B44",borderRadius:20,padding:"3px 10px"}}>
-                ⏳ {pending} ausstehend
-              </span>
+            {isAdmin&&(
+              <button onClick={()=>setMode("queue")}
+                style={{fontSize:"0.6875rem",fontWeight:700,color:pending>0?"#F59E0B":T.textMuted,background:pending>0?"#F59E0B18":"transparent",border:`1px solid ${pending>0?"#F59E0B44":T.bgBorder}`,borderRadius:20,padding:"4px 12px",cursor:"pointer"}}>
+                {pending>0?`⏳ ${pending} offen`:"Offene"}
+              </button>
             )}
-            {profile.role==="admin"&&(
-              <button onClick={async()=>{
-                const {data:{session}}=await sb.auth.getSession();
-                const base="https://clubstream-hub.vercel.app/admin";
-                const url=session?.access_token
-                  ?`${base}/#access_token=${session.access_token}&refresh_token=${session.refresh_token}&token_type=bearer`
-                  :base;
-                window.open(url,"_blank");
-              }} style={{fontSize:"0.6875rem",fontWeight:700,padding:"4px 12px",borderRadius:20,border:"1px solid #8B5CF644",background:"#8B5CF618",color:"#A78BFA",cursor:"pointer"}}>
-                ⚙️ Admin
+            {isAdmin&&(
+              <button onClick={()=>setMode({edit:null})}
+                style={{fontSize:"0.6875rem",fontWeight:700,padding:"4px 12px",borderRadius:20,border:"1px solid #22C55E55",background:"#22C55E18",color:"#4ADE80",cursor:"pointer"}}>
+                + Beitrag
               </button>
             )}
           </div>
@@ -1774,7 +2060,7 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
                       <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
                         <span style={{fontSize:"0.625rem",fontWeight:700,color,textTransform:"uppercase",letterSpacing:.7}}>{label}</span>
                         {item.is_pinned&&<span style={{fontSize:"0.625rem",color:"#EAB308"}}>📌</span>}
-                        {item.priority==="urgent"&&<span style={{fontSize:"0.625rem",color:"#EF4444",fontWeight:700}}>DRINGEND</span>}
+                        {item.priority>=2&&<span style={{fontSize:"0.625rem",color:"#EF4444",fontWeight:700}}>WICHTIG</span>}
                       </div>
                       <div style={{fontWeight:700,fontSize:T.fzBody,color:T.textPrimary,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.title}</div>
                       {item.summary&&<div style={{fontSize:T.fzSm,color:T.textMuted,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.summary}</div>}
@@ -1803,13 +2089,13 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
         ))}
 
         {/* Pending-Hinweis */}
-        {pending>0&&(
-          <div style={{background:T.bgCard,border:accentBorder(T.warning),borderRadius:T.rMd,padding:T.pCompact,textAlign:"center"}}>
+        {isAdmin&&pending>0&&(
+          <button onClick={()=>setMode("queue")} style={{background:T.bgCard,border:accentBorder(T.warning),borderRadius:T.rMd,padding:T.pCompact,textAlign:"center",cursor:"pointer",width:"100%"}}>
             <p style={{fontSize:T.fzBody,color:T.warning,margin:0}}>
-              ⚠️ <strong>{pending}</strong> {pending===1?"Beitrag wartet":"Beiträge warten"} auf Freigabe
+              ⚠️ <strong>{pending}</strong> {pending===1?"Beitrag ist":"Beiträge sind"} noch offen
             </p>
-            <p style={{fontSize:T.fzLabel,color:T.textMuted,margin:"4px 0 0"}}>Im Clubstream Hub unter /admin/approval freigeben</p>
-          </div>
+            <p style={{fontSize:T.fzLabel,color:T.textMuted,margin:"4px 0 0"}}>Antippen zum Freigeben oder Bearbeiten</p>
+          </button>
         )}
         </div>{/* h-content */}
         </div>{/* h-cols */}
