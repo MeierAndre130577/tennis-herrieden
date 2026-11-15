@@ -18,24 +18,44 @@ const BLOCK_SUPABASE_IMAGES = true;
 const isBlockedImg = u => BLOCK_SUPABASE_IMAGES && typeof u === "string" && u.includes("/storage/v1/object/public/");
 const visiblePhotos = arr => (arr || []).filter(p => !isBlockedImg(p.image_url || p.url));
 
-async function uploadToR2(file, folder) {
+// thumb (optional): kleines JPEG, das unter <name>_t.jpg neben dem Bild landet.
+// Scheitert nur das Vorschaubild, bleibt der Upload gültig (thumbUrl fällt aufs Original zurück).
+async function uploadToR2(file, folder, thumb = null) {
   const { data: { session } } = await sb.auth.getSession();
   const presignRes = await fetch("/api/r2-presign", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token || ""}` },
-    body: JSON.stringify({ contentType: file.type, folder }),
+    body: JSON.stringify({ contentType: file.type, folder, thumb: !!thumb }),
   });
   if (!presignRes.ok) throw new Error((await presignRes.json().catch(() => ({}))).error || "Presign fehlgeschlagen");
-  const { uploadUrl, publicUrl, key } = await presignRes.json();
+  const { uploadUrl, publicUrl, key, thumbUploadUrl } = await presignRes.json();
   const putRes = await fetch(uploadUrl, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
   if (!putRes.ok) throw new Error("Upload zu R2 fehlgeschlagen");
+  if (thumb && thumbUploadUrl) {
+    await fetch(thumbUploadUrl, { method: "PUT", headers: { "Content-Type": "image/jpeg" }, body: thumb }).catch(() => {});
+  }
   return { publicUrl, key };
+}
+
+// Vorschaubild zu einem Vereinsfoto: gleiche Adresse mit _t.jpg statt Endung.
+// Gibt es (noch) keins, lädt <img {...thumbImg(url)}> per onError das Original.
+const THUMB_MAX = 800;
+function thumbUrl(url) {
+  if (!url || !R2_PUBLIC_BASE_URL || !String(url).startsWith(R2_PUBLIC_BASE_URL + "/")) return url;
+  return String(url).replace(/\.[a-z0-9]+$/i, "_t.jpg");
+}
+function thumbImg(url) {
+  return {
+    src: thumbUrl(url),
+    onError: e => { const el = e.currentTarget; if (url && el.src !== url) el.src = url; },
+  };
 }
 
 // Handyfotos sind oft 3-5 MB. Für Galerie/Display reichen 1920 px als JPEG.
 // Schlägt das Dekodieren fehl (z.B. exotisches Format), geht das Original durch.
-async function resizeImageForUpload(file, maxDim = 1920, quality = 0.85) {
-  if (!file || !/^image\/(jpeg|png|webp)$/.test(file.type)) return file;
+// force: immer neu als JPEG rechnen (für Vorschaubilder); bei Fehler null.
+async function resizeImageForUpload(file, maxDim = 1920, quality = 0.85, force = false) {
+  if (!file || !/^image\/(jpeg|png|webp)$/.test(file.type)) return force ? null : file;
   const objUrl = URL.createObjectURL(file);
   try {
     const img = await new Promise((resolve, reject) => {
@@ -45,15 +65,16 @@ async function resizeImageForUpload(file, maxDim = 1920, quality = 0.85) {
       i.src = objUrl;
     });
     const ratio = Math.min(1, maxDim / Math.max(img.width, img.height));
-    if (ratio === 1 && file.size < 600 * 1024) return file;
+    if (!force && ratio === 1 && file.size < 600 * 1024) return file;
     const canvas = document.createElement("canvas");
     canvas.width = Math.round(img.width * ratio);
     canvas.height = Math.round(img.height * ratio);
     canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
     const blob = await new Promise(r => canvas.toBlob(r, "image/jpeg", quality));
+    if (force) return blob || null;
     return blob && blob.size < file.size ? blob : file;
   } catch (_) {
-    return file;
+    return force ? null : file;
   } finally {
     URL.revokeObjectURL(objUrl);
   }
@@ -1354,7 +1375,7 @@ function ClubstreamDetail({item,profile,onBack}) {
 
           {/* Bild */}
           {item.image_url&&(
-            <img src={item.image_url} alt="" style={{width:"100%",borderRadius:10,objectFit:"contain"}}/>
+            <img src={item.image_url} alt="" decoding="async" style={{width:"100%",borderRadius:10,objectFit:"contain"}}/>
           )}
 
           {/* Haupttext */}
@@ -1406,8 +1427,10 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
   useEffect(()=>{
     setLoading(true);
     Promise.all([
+      // Ohne "content": der volle Artikeltext macht ~2/3 der Bytes aus und wird
+      // erst in der Detailansicht gebraucht (openDetail lädt ihn nach).
       sb.from("news_items")
-        .select("id,title,type,summary,content,published_at,is_pinned,priority,event_start,event_end,event_location,result_home,result_away,team_name,opponent,league,age_group,valid_until,valid_from,image_url,push_sent")
+        .select("id,title,type,summary,published_at,is_pinned,priority,event_start,event_end,event_location,result_home,result_away,team_name,opponent,league,age_group,valid_until,valid_from,image_url,push_sent")
         .eq("status","published")
         .is("deleted_at",null)
         .order("is_pinned",{ascending:false})
@@ -1432,21 +1455,29 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
       const role=profile?.role;
       if(it && (role==="admin" || (contentTypePerms[it.type]||[]).includes(role))) setDetail(it);
     };
-    const found=items.find(i=>i.id===openId);
-    if(found) show(found);
-    else sb.from("news_items")
+    // Immer frisch laden: die Liste enthält keinen Artikeltext (content)
+    sb.from("news_items")
       .select("id,title,type,summary,content,published_at,is_pinned,priority,event_start,event_end,event_location,result_home,result_away,team_name,opponent,league,age_group,valid_until,valid_from,image_url,push_sent")
       .eq("id",openId).eq("status","published").is("deleted_at",null).maybeSingle()
       .then(({data})=>show(data));
     window.history.replaceState(window.history.state,"",window.location.pathname);
-  },[openId,loading,items]);
+  },[openId,loading]);
 
   if(detail) return <ClubstreamDetail item={detail} profile={profile} onBack={()=>setDetail(null)}/>;
+
+  const openDetail = async (item) => {
+    if(item.content!==undefined){ setDetail(item); return; }
+    const {data} = await sb.from("news_items").select("content").eq("id",item.id).maybeSingle();
+    const full = {...item, content:data?.content??null};
+    setItems(list=>list.map(i=>i.id===item.id?full:i));
+    setDetail(full);
+  };
 
   const uploadPhoto = async (file, caption) => {
     setUploading(true); setUploadErr(null);
     try {
-      const {publicUrl} = await uploadToR2(await resizeImageForUpload(file), "club-photos");
+      const [main, thumb] = await Promise.all([resizeImageForUpload(file), resizeImageForUpload(file, THUMB_MAX, 0.78, true)]);
+      const {publicUrl} = await uploadToR2(main, "club-photos", thumb);
       const {error:insErr} = await sb.from("club_photos").insert({image_url: publicUrl, caption: caption||null, user_id: profile.id});
       if(insErr) throw insErr;
       const {data:newPhotos} = await sb.from("club_photos").select("id,url,image_url,caption,created_at,user_id").order("created_at",{ascending:false}).limit(200);
@@ -1458,6 +1489,8 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
   const deletePhoto = async (photo) => {
     if(!window.confirm("Dieses Foto löschen?")) return;
     await deleteImageByUrl(photo.image_url);
+    const tKey = r2KeyFromUrl(thumbUrl(photo.image_url));
+    if (tKey && thumbUrl(photo.image_url) !== photo.image_url) await deleteFromR2(tKey);
     await sb.from("club_photos").delete().eq("id", photo.id);
     const {data} = await sb.from("club_photos").select("id,url,image_url,caption,created_at,user_id").order("created_at",{ascending:false}).limit(200);
     setPhotos(visiblePhotos(data));
@@ -1641,7 +1674,7 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
                   <div style={{position:"relative",borderRadius:14,overflow:"hidden",background:"#0F172A",border:"1.5px solid #EC489933"}}
                     onTouchStart={e=>kwTouchX.current=e.touches[0].clientX}
                     onTouchEnd={e=>{const dx=e.changedTouches[0].clientX-(kwTouchX.current||0);if(dx>50)prev();else if(dx<-50)next();}}>
-                    <img src={cur.image_url||cur.url} alt={cur.caption||""}
+                    <img {...thumbImg(cur.image_url||cur.url)} key={cur.id} alt={cur.caption||""} decoding="async"
                       style={{width:"100%",height:240,objectFit:"cover",display:"block",cursor:"pointer"}}
                       onClick={()=>{setLbPhotos(kphotos);setLbIdx(idx);}}/>
                     {idx>0&&<button onClick={prev} style={{position:"absolute",left:8,top:"50%",transform:"translateY(-50%)",background:"#00000088",border:"none",color:"#fff",fontSize:"1.25rem",borderRadius:"50%",width:34,height:34,cursor:"pointer"}}>‹</button>}
@@ -1660,7 +1693,7 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
                     {kphotos.map((p,i)=>(
                       <div key={p.id} onClick={()=>setKwIdxMap(m=>({...m,[label]:i}))} className="tap-div"
                         style={{flexShrink:0,width:52,height:52,borderRadius:6,overflow:"hidden",cursor:"pointer",border:`2px solid ${i===idx?"#EC4899":"transparent"}`,opacity:i===idx?1:.55,transition:"all .15s"}}>
-                        <img src={p.image_url||p.url} alt="" loading="lazy" decoding="async" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+                        <img {...thumbImg(p.image_url||p.url)} alt="" loading="lazy" decoding="async" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
                       </div>
                     ))}
                   </div>
@@ -1700,7 +1733,7 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
                       onTouchEnd={e=>{const dx=e.changedTouches[0].clientX-(allTouchX.current||0);if(Math.abs(dx)>30){allSwiped.current=true;if(dx>0&&idx>0)setAllIdxMap(m=>({...m,[item._kwLabel]:idx-1}));else if(dx<0&&idx<kwPhotos.length-1)setAllIdxMap(m=>({...m,[item._kwLabel]:idx+1}));}}}
                       onClick={()=>{if(!allSwiped.current){setLbPhotos(kwPhotos);setLbIdx(idx);}}}
                     >
-                      {src&&<img src={src} alt={cur.caption||""} loading="lazy" decoding="async" style={{width:"100%",height:220,objectFit:"cover",display:"block",cursor:"pointer"}}/>}
+                      {src&&<img {...thumbImg(src)} key={cur.id} alt={cur.caption||""} loading="lazy" decoding="async" style={{width:"100%",height:220,objectFit:"cover",display:"block",cursor:"pointer"}}/>}
                       {idx>0&&<button onMouseDown={goPrev} style={{position:"absolute",left:8,top:"50%",transform:"translateY(-50%)",background:"#00000077",border:"none",color:"#fff",fontSize:"1.25rem",borderRadius:"50%",width:32,height:32,cursor:"pointer",lineHeight:"32px",textAlign:"center"}}>‹</button>}
                       {idx<kwPhotos.length-1&&<button onMouseDown={goNext} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"#00000077",border:"none",color:"#fff",fontSize:"1.25rem",borderRadius:"50%",width:32,height:32,cursor:"pointer",lineHeight:"32px",textAlign:"center"}}>›</button>}
                     </div>
@@ -1729,10 +1762,10 @@ function ClubstreamApp({profile,onBack,onLogin,contentTypePerms=DEFAULT_CONTENT_
               return (
                 <div key={item.id}
                   style={{background:T.bgCard,border:`1.5px solid ${color}33`,borderRadius:T.rMd,overflow:"hidden",cursor:"pointer",opacity:item._isPast?0.45:1,filter:item._isPast?"grayscale(60%)":"none"}}
-                  onClick={()=>setDetail(item)}
+                  onClick={()=>openDetail(item)}
                 >
                   {item.image_url&&!item._isPhoto&&(
-                    <img src={item.image_url} alt="" style={{width:"100%",height:160,objectFit:"cover",display:"block"}}/>
+                    <img src={item.image_url} alt="" loading="lazy" decoding="async" style={{width:"100%",height:160,objectFit:"cover",display:"block"}}/>
                   )}
                   <div style={{padding:"12px 14px"}}>
                   <div style={{display:"flex",alignItems:"flex-start",gap:10}}>

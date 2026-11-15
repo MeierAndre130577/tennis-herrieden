@@ -18,7 +18,7 @@ module.exports = async function handler(req, res) {
   const user = await requireUser(req);
   if (!user) return res.status(401).json({ error: "Nicht angemeldet" });
 
-  const { contentType, folder } = req.body || {};
+  const { contentType, folder, thumb } = req.body || {};
   if (!ALLOWED_TYPES.includes(contentType)) {
     return res.status(400).json({ error: "Nicht unterstuetzter Dateityp" });
   }
@@ -28,23 +28,31 @@ module.exports = async function handler(req, res) {
 
   const key = `${safeFolder}/${randomId()}.${EXT_BY_TYPE[contentType]}`;
 
-  const uploadUrl = await getSignedUrl(
+  // Jeder Key ist zufaellig und wird nie ueberschrieben (neues Foto = neuer
+  // Key) -> darf beliebig lange im Browser-Cache bleiben. Das haelt die
+  // Kiosk-Rotation, die dieselben Fotos alle paar Sekunden neu anzeigt,
+  // aus dem Netz und damit aus der Egress-Abrechnung.
+  const sign = (Key, ContentType) => getSignedUrl(
     r2,
-    // Jeder Key ist zufaellig und wird nie ueberschrieben (neues Foto = neuer
-    // Key) -> darf beliebig lange im Browser-Cache bleiben. Das haelt die
-    // Kiosk-Rotation, die dieselben Fotos alle paar Sekunden neu anzeigt,
-    // aus dem Netz und damit aus der Egress-Abrechnung.
     new PutObjectCommand({
       Bucket: process.env.R2_BUCKET,
-      Key: key,
-      ContentType: contentType,
+      Key,
+      ContentType,
       CacheControl: "public, max-age=31536000, immutable",
     }),
     { expiresIn: 300 }
   );
 
+  const uploadUrl = await sign(key, contentType);
+
+  // Optional eine zweite Upload-URL fuer ein kleines Vorschaubild. Dessen Key
+  // ergibt sich fest aus dem Hauptbild (<name>_t.jpg), damit keine eigene
+  // DB-Spalte noetig ist. Gleiche Regel wie thumbUrl() in src/App.jsx.
+  const thumbKey = thumb ? key.replace(/\.[a-z0-9]+$/i, "_t.jpg") : null;
+  const thumbUploadUrl = thumbKey ? await sign(thumbKey, "image/jpeg") : null;
+
   const base = (process.env.R2_PUBLIC_BASE_URL || "https://img.tennis-herrieden.de").replace(/\/$/, "");
   const publicUrl = `${base}/${key}`;
 
-  res.json({ uploadUrl, publicUrl, key });
+  res.json({ uploadUrl, publicUrl, key, thumbUploadUrl, thumbKey });
 };
